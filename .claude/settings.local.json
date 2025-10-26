@@ -20,7 +20,8 @@
       "Bash(gradlew.bat assembleDebug:*)",
       "Bash(java:*)",
       "Bash(cmd /c \"copy android_studio_setup\\*.gradle hello_world_test\\android_studio_setup\"\")",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(git add:*)"
     ],
     "deny": []
   }
