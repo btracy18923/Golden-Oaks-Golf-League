@@ -1,0 +1,46 @@
+{
+  "timestamp": "2025-10-25T10:27:20.761905",
+  "league": "wednesday",
+  "players": [
+    {
+      "player_name": "Steve Ramirez",
+      "gross_score": 40,
+      "ind_winnings": 0.0
+    },
+    {
+      "player_name": "Alex Grohol",
+      "gross_score": 40,
+      "ind_winnings": 3.8400000000000007
+    },
+    {
+      "player_name": "Test4 Treeee",
+      "gross_score": 40,
+      "ind_winnings": 0.0
+    },
+    {
+      "player_name": "Test11 Trllll",
+      "gross_score": 40,
+      "ind_winnings": 0.0
+    },
+    {
+      "player_name": "John Johnston",
+      "gross_score": 40,
+      "ind_winnings": 5.760000000000001
+    },
+    {
+      "player_name": "Bob Mansi",
+      "gross_score": 40,
+      "ind_winnings": 9.600000000000001
+    },
+    {
+      "player_name": "Test8 Triiii",
+      "gross_score": 40,
+      "ind_winnings": 0.0
+    },
+    {
+      "player_name": "Test5 Trffff",
+      "gross_score": 40,
+      "ind_winnings": 0.0
+    }
+  ]
+}

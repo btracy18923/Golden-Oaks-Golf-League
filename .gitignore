@@ -1,0 +1,32 @@
+# Buildozer files
+.buildozer/
+bin/
+
+# Python files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Database files (optional - you might want to include this)
+*.db
+
+# Log files
+*.log
+
+# Local environment files
+.env
+.venv/
+venv/
