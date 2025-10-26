@@ -1,0 +1,26 @@
+{
+  "timestamp": "2025-01-24T15:30:45.123456",
+  "league": "wednesday",
+  "players": [
+    {
+      "player_name": "John Smith",
+      "gross_score": 85,
+      "ind_winnings": 9.60
+    },
+    {
+      "player_name": "Mike Johnson",
+      "gross_score": 88,
+      "ind_winnings": 5.76
+    },
+    {
+      "player_name": "Bob Wilson",
+      "gross_score": 90,
+      "ind_winnings": 3.84
+    },
+    {
+      "player_name": "Tom Brown",
+      "gross_score": 92,
+      "ind_winnings": 0.00
+    }
+  ]
+}

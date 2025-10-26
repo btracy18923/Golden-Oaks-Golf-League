@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(sqlite3:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)",
+      "Bash(python:*)",
+      "Bash(mkdir:*)",
+      "Bash(cp:*)",
+      "Bash(xcopy:*)",
+      "Bash(robocopy:*)",
+      "Bash(for file in \"C:\\Users\\Acer\\PycharmProjects\\Unified_Golf_Leagues\\python\\screens\"/*.py)",
+      "Bash(do cp \"$file\" \"C:\\Users\\Acer\\PycharmProjects\\Unified_Golf_Leagues\\android_app_new\\app\\src\\main\\python\\screens\"\")",
+      "Bash(done)",
+      "Bash(copy:*)",
+      "Bash(cmd /c \"C:\\Users\\Acer\\PycharmProjects\\Unified_Golf_Leagues\\android_app_new\\copy_files.bat\")",
+      "Bash(powershell:*)",
+      "Bash(.gradlew assembleDebug)",
+      "Bash(gradle --version)",
+      "Bash(gradlew.bat assembleDebug:*)",
+      "Bash(java:*)",
+      "Bash(cmd /c \"copy android_studio_setup\\*.gradle hello_world_test\\android_studio_setup\"\")",
+      "Bash(dir:*)"
+    ],
+    "deny": []
+  }
+}
