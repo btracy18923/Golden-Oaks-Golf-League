@@ -20,27 +20,29 @@ Requirements:
 
 import os
 import sys
+from kivy import platform
 
-# Kivy configuration - MUST be set before importing Kivy modules
-os.environ['KIVY_GL_BACKEND'] = 'angle_sdl2'
-os.environ['KIVY_WINDOW'] = 'sdl2'
+# Android-compatible Kivy configuration
+if platform == 'android':
+    # Android-specific settings
+    pass
+else:
+    # Desktop-specific settings
+    os.environ['KIVY_GL_BACKEND'] = 'angle_sdl2'
+    os.environ['KIVY_WINDOW'] = 'sdl2'
+    from kivy.config import Config
+    Config.set('graphics', 'window_state', 'maximized')  # Start maximized
+    Config.set('graphics', 'resizable', '1')
 
+# Basic Kivy configuration (works on both desktop and Android)
 from kivy.config import Config
 Config.set('graphics', 'multisamples', '0')
-Config.set('kivy', 'window_icon', '')
-Config.set('graphics', 'vsync', '1')
-Config.set('graphics', 'show_cursor', '1')
-Config.set('graphics', 'window_state', 'maximized')  # Start maximized
-Config.set('graphics', 'resizable', '1')
 
 # Kivy imports
 from kivy.app import App
 from kivy.uix.screenmanager import ScreenManager
-from kivy.core.window import Window
 
-# Import screen classes from python/screens directory
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'python'))
-
+# Import screen classes
 from screens.unified_main_menu_screen import UnifiedMainMenuScreen
 from screens.player_selection_screen import PlayerSelectionScreen  
 from screens.player_profile_screen import PlayerProfileScreen
@@ -93,8 +95,10 @@ class UnifiedGolfLeagueApp(App):
     
     def on_start(self):
         """Called when the app starts."""
-        # Set window title
-        Window.set_title("Golden Oaks Golf League - Unified App")
+        # Set window title (desktop only)
+        if platform != 'android':
+            from kivy.core.window import Window
+            Window.set_title("Golden Oaks Golf League - Unified App")
 
 
 if __name__ == '__main__':
