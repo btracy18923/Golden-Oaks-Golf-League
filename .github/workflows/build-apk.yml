@@ -38,10 +38,21 @@ jobs:
 
     - name: Build APK
       run: |
-        yes | buildozer android debug
+        yes | buildozer android debug 2>&1 | tee build.log
+        echo "Build completed with status: $?"
+        echo "Last 50 lines of build log:"
+        tail -n 50 build.log
+
+    - name: Upload build log (always runs)
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: buildozer-log
+        path: build.log
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
+      if: success()
       with:
         name: golden-oaks-golf-apk
         path: bin/*.apk
