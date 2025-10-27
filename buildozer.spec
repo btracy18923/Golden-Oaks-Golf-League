@@ -12,6 +12,9 @@ package.domain = org.goldenoaks
 # (str) Source code where the main.py live
 source.dir = python
 
+# (str) Entry point script (defaults to main.py)
+source.main = main_unified_golf_app.py
+
 # (list) Source files to include (let empty to include all the files)
 source.include_exts = py,png,jpg,kv,atlas
 
@@ -20,7 +23,7 @@ version = 0.1
 
 # (list) Application requirements
 # comma separated e.g. requirements = sqlite3,kivy
-requirements = python3,kivy
+requirements = python3,kivy,sqlite3
 
 # (list) Supported orientations
 # Valid options are: landscape, portrait, portrait-reverse or landscape-reverse
