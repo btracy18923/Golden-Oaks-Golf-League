@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(flutter analyze)",
+      "Bash(flutter:*)",
+      "Bash(dart analyze:*)",
+      "Bash(findstr:*)",
+      "Bash(grep:*)",
+      "Bash(rm:*)",
+      "Bash(move \"unified_main_menu_screen.dart\" \"main_menu_screen.dart\")",
+      "Bash(mv:*)",
+      "Bash(find:*)",
+      "Bash(wc:*)",
+      "Bash(rg:*)",
+      "Bash(tail:*)",
+      "Bash(cp:*)",
+      "Bash(del CLAUDE.md)"
+    ],
+    "deny": []
+  }
+}

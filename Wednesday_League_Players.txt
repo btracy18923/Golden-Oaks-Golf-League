@@ -1,0 +1,49 @@
+Wednesday League Player Information - Current Database Export
+==============================================================
+
+First Name      Last Name       Cell Phone      Email
+----------------------------------------------------
+
+Paul            Altuna          9175771190      altunapm@gmail.com
+Dennis          Asher           5707808853      dengeorgi11@gmail.com
+Rich            Bates           7327547107      richbates102467@gmail.com
+Ken             Betros          7189863218      kbetros2001@aol.com
+Jeff            Coffin          [Not Provided]  Jdcoffin@gmail.com
+Dale            Conlon          [Not Provided]  dale.conlon@gmail.com
+Joe             Cornet          914-805-0140    joco769@hotmail.com
+Bill            Culley          5704996656      bculley5@gmail.com
+Tom             Dantschisch     [Not Provided]  Tomatvda@aol.com
+Bill            Tracy           9082087608      btracy18923@gmail.com
+John            Johnston        5702416230      jukes210@yahoo.com
+AJ              Federico        5702804734      ajfederico5@yahoo.com
+Dave            Testa           [Not Provided]  davetesta@yahoo.com
+Stephen         Ramire          347-582-0613    stephenramirez@icloud.com
+John            Donlon          [Not Provided]  donlonjohn@msn.com
+Alex            Grohol          908-377-5851    grohol@aol.com
+Mike            Handbury        [Not Provided]  mhanbury536@gmail.com
+Bill            Hilgert         732-672-4985    bhilgert@echoes.net
+Jim             Lagrosa         [Not Provided]  [Not Provided]
+John            Martino         [Not Provided]  Jamartino414@gmail.com
+Bob             Manci           [Not Provided]  robertmanci@yahoo.com
+Ted             Rolphing        [Not Provided]  tedrohlf4@netscape.net
+Allan           Siegell         516-971-1150    Asiegell@aol.com
+Frank           Hastie          631-697-1594    frank_hastie@yahoo.com
+Larry           Madama          908-635-1666    lawrencemadama@yahoo.com
+Ron             Pagotto         570-242-6467    rjp113@msn.com
+Tim             Eagan           8605938797      [Not Provided]
+
+==============================================================
+Summary:
+- Total Active Wednesday League Players: 27
+- Players with Cell Phone Numbers: 17
+- Players with Email Addresses: 26 out of 27
+- Players without Email: 1 (Tim Eagan)
+
+Cell Phone Numbers Present for:
+Paul Altuna, Dennis Asher, Rich Bates, Ken Betros, Joe Cornet, 
+Bill Culley, Bill Tracy, John Johnston, AJ Federico, Stephen Ramire, 
+Alex Grohol, Bill Hilgert, Allan Siegell, Frank Hastie, Larry Madama, 
+Ron Pagotto, Tim Eagan
+
+Data Source: Current SQLite database export (golden_oaks_db.zip)
+Export Date: 2025-11-08
