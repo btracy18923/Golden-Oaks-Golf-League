@@ -14,7 +14,9 @@
       "Bash(rg:*)",
       "Bash(tail:*)",
       "Bash(cp:*)",
-      "Bash(del CLAUDE.md)"
+      "Bash(del CLAUDE.md)",
+      "Bash(head:*)",
+      "Bash(git add:*)"
     ],
     "deny": []
   }

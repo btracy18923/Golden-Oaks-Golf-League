@@ -104,29 +104,46 @@ class _ProcessIndividualsScreenState extends State<ProcessIndividualsScreen> {
     for (var group in widget.groups) {
       for (var player in group) {
         if (player != null) {
-          String playerKey = '${player['last']}_gross';
           String playerIdentifier = '${player['first']}_${player['last']}';
-          TextEditingController? controller = widget.grossControllers[playerKey];
           
-          if (controller != null && controller.text.isNotEmpty && !addedPlayers.contains(playerIdentifier)) {
+          if (!addedPlayers.contains(playerIdentifier)) {
             var playerData = Map<String, dynamic>.from(player);
+            bool hasValidScore = false;
             
             try {
-              playerData['gross_score'] = int.parse(controller.text);
-              
               if (widget.selectedLeague == 'wednesday') {
-                double handicap = playerData['handicap']?.toDouble() ?? 0.0;
-                playerData['net_score'] = playerData['gross_score'] - handicap.round();
+                // For Wednesday League, use gross scores
+                String playerKey = '${player['last']}_gross';
+                TextEditingController? controller = widget.grossControllers[playerKey];
+                
+                if (controller != null && controller.text.isNotEmpty) {
+                  playerData['gross_score'] = int.parse(controller.text);
+                  double handicap = playerData['handicap']?.toDouble() ?? 0.0;
+                  playerData['net_score'] = playerData['gross_score'] - handicap.round();
+                  hasValidScore = true;
+                }
               } else {
+                // For Monday League, use SKATS scores
                 String skatsKey = '${player['last']}_skats';
                 TextEditingController? skatsController = widget.skatsControllers[skatsKey];
+                
                 if (skatsController != null && skatsController.text.isNotEmpty) {
                   playerData['skats_score'] = int.parse(skatsController.text);
+                  hasValidScore = true;
+                  
+                  // Also collect gross score if available for Monday League
+                  String playerKey = '${player['last']}_gross';
+                  TextEditingController? grossController = widget.grossControllers[playerKey];
+                  if (grossController != null && grossController.text.isNotEmpty) {
+                    playerData['gross_score'] = int.parse(grossController.text);
+                  }
                 }
               }
               
-              playerScores.add(playerData);
-              addedPlayers.add(playerIdentifier);
+              if (hasValidScore) {
+                playerScores.add(playerData);
+                addedPlayers.add(playerIdentifier);
+              }
             } catch (e) {
               // Skip players with invalid scores
             }

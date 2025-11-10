@@ -5,6 +5,7 @@ import '../services/database_helper.dart';
 import '../services/ante_manager.dart';
 import '../services/percentage_manager.dart';
 import '../services/closest_pin_manager.dart';
+import '../services/mulligan_manager.dart';
 import 'player_selection_screen.dart';
 import 'player_profile_screen.dart';
 import 'player_scores_screen.dart';
@@ -22,13 +23,15 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
   League? currentLeague;
   final DatabaseHelper _dbHelper = DatabaseHelper();
   final TextEditingController _anteController = TextEditingController(text: '\$5.00');
-  final TextEditingController _closestPinController = TextEditingController(text: '\$1.00');
+  final TextEditingController _closestPinController = TextEditingController(text: '\$4.00');
   final TextEditingController _newFieldController = TextEditingController(text: '\$1.00');
+  final TextEditingController _mondayMulligansController = TextEditingController(text: '\$2.00');
   final TextEditingController _individualPercentController = TextEditingController(text: '40%');
   final TextEditingController _groupPercentController = TextEditingController(text: '60%');
   final FocusNode _anteFocusNode = FocusNode();
   final FocusNode _closestPinFocusNode = FocusNode();
   final FocusNode _newFieldFocusNode = FocusNode();
+  final FocusNode _mondayMulligansFocusNode = FocusNode();
   final FocusNode _individualPercentFocusNode = FocusNode();
   final FocusNode _groupPercentFocusNode = FocusNode();
 
@@ -53,8 +56,8 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
       AnteManager().setAnteAmount(amount);
     } else if (text.isEmpty) {
       // Only set default if completely empty
-      String defaultAmount = currentLeague == League.monday ? '\$12.00' : '\$5.00';
-      double defaultValue = currentLeague == League.monday ? 12.0 : 5.0;
+      String defaultAmount = currentLeague == League.monday ? '\$5.00' : '\$5.00';
+      double defaultValue = currentLeague == League.monday ? 5.0 : 5.0;
       
       _anteController.value = TextEditingValue(
         text: defaultAmount,
@@ -90,7 +93,8 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
       ClosestPinManager().setClosestPinAmount(amount);
     } else if (text.isEmpty) {
       // Only set default if completely empty
-      String defaultAmount = '\$1.00';
+      String defaultAmount = currentLeague == League.monday ? '\$4.00' : '\$1.00';
+      double defaultValue = currentLeague == League.monday ? 4.0 : 1.0;
       
       _closestPinController.value = TextEditingValue(
         text: defaultAmount,
@@ -98,7 +102,7 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
       );
       
       // Save default to closest pin manager
-      ClosestPinManager().setClosestPinAmount(1.0);
+      ClosestPinManager().setClosestPinAmount(defaultValue);
     }
     
     // Remove focus after formatting
@@ -151,6 +155,42 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
     // Clear the field and focus when tapped
     _closestPinController.clear();
     _closestPinFocusNode.requestFocus();
+  }
+
+  void _formatMondayMulligansCurrency() {
+    String text = _mondayMulligansController.text;
+    // Remove all non-numeric characters except decimal point
+    String numericText = text.replaceAll(RegExp(r'[^\d\.]'), '');
+    
+    if (numericText.isNotEmpty) {
+      double amount = double.tryParse(numericText) ?? 0.0;
+      String formatted = '\$${amount.toStringAsFixed(2)}';
+      
+      // Only update if the text has actually changed to avoid cursor issues
+      if (formatted != _mondayMulligansController.text) {
+        _mondayMulligansController.value = TextEditingValue(
+          text: formatted,
+          selection: TextSelection.collapsed(offset: formatted.length),
+        );
+      }
+    } else if (text.isEmpty) {
+      // Only set default if completely empty
+      String defaultAmount = '\$2.00';
+      
+      _mondayMulligansController.value = TextEditingValue(
+        text: defaultAmount,
+        selection: TextSelection.collapsed(offset: defaultAmount.length),
+      );
+    }
+    
+    // Remove focus after formatting
+    _mondayMulligansFocusNode.unfocus();
+  }
+
+  void _onMondayMulligansTap() {
+    // Clear the field and focus when tapped
+    _mondayMulligansController.clear();
+    _mondayMulligansFocusNode.requestFocus();
   }
 
   void _formatIndividualPercent() {
@@ -247,7 +287,7 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
   double get currentAnteAmount {
     String text = _anteController.text;
     String numericText = text.replaceAll(RegExp(r'[^\d\.]'), '');
-    return double.tryParse(numericText) ?? (currentLeague == League.monday ? 12.0 : 5.0);
+    return double.tryParse(numericText) ?? (currentLeague == League.monday ? 5.0 : 5.0);
   }
 
   @override
@@ -260,11 +300,13 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
     _anteController.dispose();
     _closestPinController.dispose();
     _newFieldController.dispose();
+    _mondayMulligansController.dispose();
     _individualPercentController.dispose();
     _groupPercentController.dispose();
     _anteFocusNode.dispose();
     _closestPinFocusNode.dispose();
     _newFieldFocusNode.dispose();
+    _mondayMulligansFocusNode.dispose();
     _individualPercentFocusNode.dispose();
     _groupPercentFocusNode.dispose();
     super.dispose();
@@ -273,11 +315,13 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
   void selectMondayLeague() async {
     setState(() {
       currentLeague = League.monday;
-      _anteController.text = '\$12.00'; // Monday league ante
-      _closestPinController.text = '\$1.00'; // Monday league closest pin
+      _anteController.text = '\$5.00'; // Monday league ante
+      _closestPinController.text = '\$4.00'; // Monday league closest pin
+      _mondayMulligansController.text = '\$2.00'; // Monday league mulligans
       _newFieldController.text = '\$1.00'; // Monday league new field
-      AnteManager().setAnteAmount(12.0); // Update global ante manager
-      ClosestPinManager().setClosestPinAmount(1.0); // Update closest pin manager
+      AnteManager().setAnteAmount(5.0); // Update global ante manager
+      ClosestPinManager().setClosestPinAmount(4.0); // Update closest pin manager
+      MulliganManager().setMulliganAmount(2.0); // Update mulligan manager
     });
     
   }
@@ -288,8 +332,10 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
       _anteController.text = '\$5.00'; // Wednesday league ante
       _closestPinController.text = '\$1.00'; // Wednesday league closest pin
       _newFieldController.text = '\$1.00'; // Wednesday league new field
+      _mondayMulligansController.text = '\$1.00'; // Wednesday league mulligans
       AnteManager().setAnteAmount(5.0); // Update global ante manager
       ClosestPinManager().setClosestPinAmount(1.0); // Update closest pin manager
+      MulliganManager().setMulliganAmount(1.0); // Update mulligan manager
       // Reset percentages to defaults for Wednesday league
       PercentageManager().setIndividualPercent(40.0);
     });
@@ -483,8 +529,8 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
                                       width: 2,
                                     ),
                                   ),
-                                  child: const Text(
-                                    'Player\'s Ante',
+                                  child: Text(
+                                    currentLeague == League.monday ? 'Skats Ante' : 'Player\'s Ante',
                                     style: TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.w600,
@@ -608,6 +654,78 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
                                     textAlign: TextAlign.center,
                                     onTap: _onClosestPinTap,
                                     onEditingComplete: _formatClosestPinCurrency,
+                                    enabled: true,
+                                    decoration: const InputDecoration(
+                                      border: InputBorder.none,
+                                      contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                        
+                        // Mulligans Section (Monday only)
+                        if (currentLeague == League.monday) ...[
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              // Label box
+                              Expanded(
+                                flex: 2,
+                                child: Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green[200],
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: Colors.black,
+                                      width: 2,
+                                    ),
+                                  ),
+                                  child: const Text(
+                                    'Mulligans',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.black,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ),
+                              
+                              const SizedBox(width: 8),
+                              
+                              // Input box
+                              Expanded(
+                                flex: 1,
+                                child: Container(
+                                  height: 48,
+                                  decoration: BoxDecoration(
+                                    color: Colors.green[100],
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: Colors.black,
+                                      width: 2,
+                                    ),
+                                  ),
+                                  child: TextField(
+                                    controller: _mondayMulligansController,
+                                    focusNode: _mondayMulligansFocusNode,
+                                    keyboardType: TextInputType.number,
+                                    inputFormatters: [
+                                      FilteringTextInputFormatter.allow(RegExp(r'[\d\$\.]')),
+                                    ],
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.black,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                    onTap: _onMondayMulligansTap,
+                                    onEditingComplete: _formatMondayMulligansCurrency,
                                     enabled: true,
                                     decoration: const InputDecoration(
                                       border: InputBorder.none,

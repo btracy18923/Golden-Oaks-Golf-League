@@ -228,9 +228,11 @@ class _PlayerSelectionScreenState extends State<PlayerSelectionScreen> {
                             side: const BorderSide(color: Colors.black, width: 1),
                           ),
                         ),
-                        child: const Text(
-                          "Enter Player's Scores",
-                          style: TextStyle(fontWeight: FontWeight.bold),
+                        child: Text(
+                          widget.currentLeague == League.monday 
+                              ? "Enter Player's Skats" 
+                              : "Enter Player's Scores",
+                          style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
                       ),
                     ],

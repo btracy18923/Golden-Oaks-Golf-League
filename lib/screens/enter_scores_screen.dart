@@ -81,6 +81,8 @@ class _EnterScoresScreenState extends State<EnterScoresScreen> {
   Map<String, FocusNode> grossFocusNodes = {};
   Map<String, TextEditingController> skatsControllers = {};
   Map<String, FocusNode> skatsFocusNodes = {};
+  Map<String, TextEditingController> diffControllers = {};
+  Map<String, FocusNode> diffFocusNodes = {};
   Map<String, TextEditingController> groupControllers = {};
   Map<String, FocusNode> groupFocusNodes = {};
   bool _isMovingFocus = false;
@@ -137,6 +139,8 @@ class _EnterScoresScreenState extends State<EnterScoresScreen> {
           widget.initialGroups!,
           widget.initialLeague!,
         );
+        // Position keypad in lower right corner by focusing on last player's gross score
+        _setInitialFocusToLowerRight();
       });
     }
   }
@@ -224,6 +228,30 @@ class _EnterScoresScreenState extends State<EnterScoresScreen> {
     });
   }
 
+  // Method to position keypad in lower right corner initially
+  void _setInitialFocusToLowerRight() {
+    // Wait a bit for the UI to be fully built
+    Future.delayed(Duration(milliseconds: 500), () {
+      if (groups.isNotEmpty) {
+        // Find the last non-null player in the last group
+        for (int groupIndex = groups.length - 1; groupIndex >= 0; groupIndex--) {
+          for (int playerIndex = groups[groupIndex].length - 1; playerIndex >= 0; playerIndex--) {
+            var player = groups[groupIndex][playerIndex];
+            if (player != null) {
+              // Focus on the gross score field of the last player (lower right area)
+              String playerKey = '${player['last']}_gross';
+              FocusNode? focusNode = grossFocusNodes[playerKey];
+              if (focusNode != null && focusNode.canRequestFocus) {
+                FocusScope.of(context).requestFocus(focusNode);
+                return; // Exit once we've set focus
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
   Future<void> updateTitleInformation() async {
     double anteAmount = AnteManager().currentAnteAmount;
     double closestPinAmount = ClosestPinManager().currentClosestPinAmount;
@@ -260,16 +288,8 @@ class _EnterScoresScreenState extends State<EnterScoresScreen> {
         }
       }
     } else {
-      // For Monday league, keep the original calculation
-      if (groupsProcessed) {
-        // Group purse calculation: Player's Ante x # Players x Group %
-        double groupPercent = PercentageManager().groupPercent;
-        purseAmount = anteAmount * numPlayers * (groupPercent / 100);
-      } else {
-        // Individual purse calculation: Player's Ante x # of Players Selected x Individual %
-        double individualPercent = PercentageManager().individualPercent;
-        purseAmount = anteAmount * numPlayers * (individualPercent / 100);
-      }
+      // For Monday league, use simple calculation: Skats Ante x Number of Selected Players
+      purseAmount = anteAmount * numPlayers;
     }
     
     // Calculate closest pin purse: Closest Pin x # of Selected Players
@@ -352,7 +372,9 @@ class _EnterScoresScreenState extends State<EnterScoresScreen> {
       child: Row(
         children: [
           Text(
-            groupsProcessed ? "Process Groups:" : "Enter Scores:",
+            selectedLeague == 'monday' 
+              ? (groupsProcessed ? "Process Groups:" : "Enter Skats:")
+              : (groupsProcessed ? "Process Groups:" : "Enter Scores:"),
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
@@ -361,14 +383,25 @@ class _EnterScoresScreenState extends State<EnterScoresScreen> {
           ),
           SizedBox(width: 30),
           Text(
-            groupsProcessed ? "Total Group Purse = $_playersPurseDisplayText" : "Total Players' Purse = $_playersPurseDisplayText",
+            selectedLeague == 'monday'
+              ? (groupsProcessed ? "Total Group Purse = $_playersPurseDisplayText" : "Skat Purse = $_playersPurseDisplayText")
+              : (groupsProcessed ? "Total Group Purse = $_playersPurseDisplayText" : "Total Players' Purse = $_playersPurseDisplayText"),
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           SizedBox(width: 30),
           Text(
-            "Total Closest Pin Purse = $_closestPinPurseDisplayText",
+            selectedLeague == 'monday'
+              ? "Closest Pin Purse = $_closestPinPurseDisplayText"
+              : "Total Closest Pin Purse = $_closestPinPurseDisplayText",
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
+          if (selectedLeague == 'monday') ...[
+            SizedBox(width: 30),
+            Text(
+              "Mulligan Purse = $_mulliganPurseDisplayText",
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+          ],
           if (selectedLeague == 'wednesday') ...[
             SizedBox(width: 30),
             Text(
@@ -406,15 +439,15 @@ class _EnterScoresScreenState extends State<EnterScoresScreen> {
     for (int groupOffset = 0; groupOffset < 3; groupOffset++) {
       int groupNum = sectionIndex * 3 + groupOffset + 1;
       
-      // Group header - positioned at Gross column center
-      double grossColumnCenter = selectedLeague == 'wednesday' ? 175.0 : 130.0; // Center of Gross column
+      // Group header - positioned at center of main columns
+      double columnCenter = selectedLeague == 'wednesday' ? 175.0 : 70.0; // Center position for headers
       
       sectionWidgets.add(Container(
         height: 30,
         child: Stack(
           children: [
             Positioned(
-              left: grossColumnCenter - 80, // Offset to center the text (approximate half width)
+              left: columnCenter - 80, // Offset to center the text (approximate half width)
               child: Text(
                 '------Group $groupNum------',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
@@ -468,8 +501,8 @@ class _EnterScoresScreenState extends State<EnterScoresScreen> {
       ));
     }
     
-    // Gross header (only if groups not processed)
-    if (!groupsProcessed) {
+    // Gross header (only if groups not processed and not Monday league)
+    if (!groupsProcessed && selectedLeague != 'monday') {
       headers.add(Container(
         width: 60,
         child: Text('Gross', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
@@ -512,12 +545,20 @@ class _EnterScoresScreenState extends State<EnterScoresScreen> {
     // SKAT headers (Monday only, and only if groups not processed)
     if (selectedLeague == 'monday' && !groupsProcessed) {
       headers.add(Container(
-        width: 50,
+        width: 70,
         child: Text('SKAT#', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
       ));
       headers.add(Container(
         width: 70,
         child: Text('SKATS', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+      ));
+      headers.add(Container(
+        width: 70,
+        child: Text('DIFF', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+      ));
+      headers.add(Container(
+        width: 70,
+        child: Text('\$\$\$', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
       ));
     }
     
@@ -550,8 +591,8 @@ class _EnterScoresScreenState extends State<EnterScoresScreen> {
         ));
       }
       
-      // Gross score input (only if groups not processed)
-      if (!groupsProcessed) {
+      // Gross score input (only if groups not processed and not Monday league)
+      if (!groupsProcessed && selectedLeague != 'monday') {
         rowWidgets.add(_buildScoreInput(player));
       }
       
@@ -576,19 +617,29 @@ class _EnterScoresScreenState extends State<EnterScoresScreen> {
       // SKAT fields (Monday only, and only if groups not processed)
       if (selectedLeague == 'monday' && !groupsProcessed) {
         rowWidgets.add(Container(
-          width: 50,
+          width: 70,
           height: 40,
           decoration: BoxDecoration(border: Border.all()),
           child: Center(child: Text(player['skat_number']?.toString() ?? '', style: TextStyle(fontSize: 20))),
         ));
         rowWidgets.add(_buildSkatsInput(player));
+        rowWidgets.add(_buildDiffInput(player));
+        rowWidgets.add(Container(
+          width: 70,
+          height: 40,
+          decoration: BoxDecoration(border: Border.all()),
+          child: Center(child: Text(
+            player['skat_winnings'] != null ? '\$${player['skat_winnings'].toStringAsFixed(2)}' : '',
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+          )),
+        ));
       }
     } else {
       // Empty placeholders
       if (selectedLeague == 'wednesday' && !groupsProcessed) {
         rowWidgets.add(_buildEmptyPlaceholder(50)); // HC placeholder
       }
-      if (!groupsProcessed) {
+      if (!groupsProcessed && selectedLeague != 'monday') {
         rowWidgets.add(_buildEmptyPlaceholder(60)); // Gross placeholder
       }
       
@@ -610,8 +661,10 @@ class _EnterScoresScreenState extends State<EnterScoresScreen> {
       }
       
       if (selectedLeague == 'monday' && !groupsProcessed) {
-        rowWidgets.add(_buildEmptyPlaceholder(50)); // SKAT# placeholder
+        rowWidgets.add(_buildEmptyPlaceholder(70)); // SKAT# placeholder
         rowWidgets.add(_buildEmptyPlaceholder(70)); // SKATS placeholder
+        rowWidgets.add(_buildEmptyPlaceholder(70)); // DIFF placeholder
+        rowWidgets.add(_buildEmptyPlaceholder(70)); // $$$ placeholder
       }
     }
     
@@ -924,6 +977,9 @@ class _EnterScoresScreenState extends State<EnterScoresScreen> {
           }
           
           if (value.length == 2) {
+            // Calculate DIFF (SKAT# - SKATS) and populate DIFF field
+            _calculateAndSetDiff(player);
+            
             // Move focus to next row after 2-digit number entry
             // Only move focus if this controller's focus node currently has focus
             if (focusNode.hasFocus) {
@@ -931,9 +987,112 @@ class _EnterScoresScreenState extends State<EnterScoresScreen> {
             }
           }
         },
+        onSubmitted: (value) {
+          _moveFocusToNextRow(controller);
+        },
         decoration: InputDecoration(
           filled: true,
           fillColor: Color(0xFFB3FFB3), // Light green
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(color: Colors.black, width: 2),
+          ),
+          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        ),
+      ),
+    );
+  }
+
+  void _calculateAndSetDiff(Map<String, dynamic> player) {
+    // Get SKAT# and SKATS values
+    int? skatNumber = player['skat_number'];
+    int? skatsScore = player['skats_score'];
+    
+    if (skatNumber != null && skatsScore != null) {
+      // Calculate DIFF = SKATS - SKAT#
+      int diffValue = skatsScore - skatNumber;
+      
+      // Store the calculated DIFF
+      player['diff_score'] = diffValue;
+      
+      // Update the DIFF input field
+      String playerKey = '${player['last']}_diff';
+      TextEditingController? diffController = diffControllers[playerKey];
+      if (diffController != null) {
+        diffController.text = diffValue.toString();
+      }
+    }
+  }
+
+  Widget _buildDiffInput(Map<String, dynamic> player) {
+    String playerKey = '${player['last']}_diff';
+    
+    // Get or create controller and focus node for this player
+    TextEditingController controller = diffControllers[playerKey] ?? TextEditingController();
+    FocusNode focusNode = diffFocusNodes[playerKey] ?? FocusNode();
+    
+    // Store them if they're new
+    if (!diffControllers.containsKey(playerKey)) {
+      diffControllers[playerKey] = controller;
+      diffFocusNodes[playerKey] = focusNode;
+    }
+    
+    String diffText = '';
+    if (player['diff_score'] != null) {
+      int diffScore = player['diff_score'];
+      diffText = diffScore > 0 ? '+${diffScore.toString()}' : diffScore.toString();
+    }
+    
+    // Only set text if it's different to avoid cursor jumping
+    if (controller.text != diffText) {
+      controller.text = diffText;
+    }
+    
+    return Container(
+      width: 70,
+      height: 40,
+      child: TextField(
+        controller: controller,
+        focusNode: focusNode,
+        keyboardType: TextInputType.number,
+        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+        textAlign: TextAlign.center,
+        style: TextStyle(fontSize: 16),
+        onChanged: (value) {
+          // Mark that results need to be recalculated (but don't clear immediately)
+          if (winnersCalculated) {
+            setState(() {
+              winnersCalculated = false;
+              individualsProcessingComplete = false;
+            });
+          }
+          
+          // Store DIFF score
+          if (value.isNotEmpty) {
+            try {
+              int diffScore = int.parse(value);
+              player['diff_score'] = diffScore;
+            } catch (e) {
+              // Handle invalid input
+            }
+          } else {
+            player['diff_score'] = null;
+          }
+          
+          if (value.length == 2) {
+            // Move focus to next row after 2-digit number entry
+            // Only move focus if this controller's focus node currently has focus
+            if (focusNode.hasFocus) {
+              _moveFocusToNextRow(controller);
+            }
+          }
+        },
+        onSubmitted: (value) {
+          _moveFocusToNextRow(controller);
+        },
+        decoration: InputDecoration(
+          filled: true,
+          fillColor: Color(0xFFFFD700), // Light gold
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
             borderSide: BorderSide(color: Colors.black, width: 2),
@@ -1401,13 +1560,19 @@ class _EnterScoresScreenState extends State<EnterScoresScreen> {
       child: Center(
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            _buildFooterButton("Auto Fill", Colors.orange[200]!, _autoFillGrossScores),
-            _buildFooterButton("Main Menu", Colors.lightBlue[100]!, _returnToMainMenu),
-            _buildFooterButton("Individuals", Colors.grey[300]!, _processIndividuals),
-            _buildConditionalProcessGroupsButton(),
-            _buildSwapButton(),
-          ],
+          children: selectedLeague == 'monday' 
+            ? [
+                _buildFooterButton("Process Individuals", Color(0xFFB3FFB3), _processIndividuals),
+                _buildFooterButton("Main Menu", Colors.lightBlue[100]!, _returnToMainMenu),
+                _buildFooterButton("Auto Fill", Colors.orange[200]!, _autoFillGrossScores),
+              ]
+            : [
+                _buildFooterButton("Auto Fill", Colors.orange[200]!, _autoFillGrossScores),
+                _buildFooterButton("Main Menu", Colors.lightBlue[100]!, _returnToMainMenu),
+                _buildFooterButton("Individuals", Colors.grey[300]!, _processIndividuals),
+                _buildConditionalProcessGroupsButton(),
+                _buildSwapButton(),
+              ],
         ),
       ),
     );
@@ -1630,11 +1795,18 @@ class _EnterScoresScreenState extends State<EnterScoresScreen> {
         return;
       }
       
-      // Find next gross input
+      // Find next input (could be gross or skats)
       String? nextPlayerKey = _findNextGrossInput(currentGroupIndex, currentRowIndex, inputType);
       
       if (nextPlayerKey != null) {
-        FocusNode? nextFocusNode = grossFocusNodes[nextPlayerKey];
+        FocusNode? nextFocusNode;
+        // Check if it's a skats key or gross key
+        if (nextPlayerKey.contains('_skats')) {
+          nextFocusNode = skatsFocusNodes[nextPlayerKey];
+        } else {
+          nextFocusNode = grossFocusNodes[nextPlayerKey];
+        }
+        
         if (nextFocusNode != null && nextFocusNode.canRequestFocus) {
           FocusScope.of(context).requestFocus(nextFocusNode);
         }
@@ -1652,13 +1824,24 @@ class _EnterScoresScreenState extends State<EnterScoresScreen> {
   }
   
   String? _findNextGrossInput(int currentGroupIndex, int currentRowIndex, String currentInputType) {
-    // If currently on SKATS input (Monday league), move to next player's gross
-    if (currentInputType == 'skats') {
-      // Find next player
-      return _findNextPlayerGross(currentGroupIndex, currentRowIndex + 1);
+    // For Monday League, alternate between Gross and SKATS
+    if (selectedLeague == 'monday' && !groupsProcessed) {
+      if (currentInputType == 'gross') {
+        // Move from Gross to SKATS of same player
+        var currentPlayer = groups[currentGroupIndex][currentRowIndex];
+        if (currentPlayer != null) {
+          String skatsKey = '${currentPlayer['last']}_skats';
+          if (skatsFocusNodes.containsKey(skatsKey)) {
+            return skatsKey;
+          }
+        }
+      } else if (currentInputType == 'skats') {
+        // Move from SKATS to next player's SKATS
+        return _findNextPlayerSkats(currentGroupIndex, currentRowIndex + 1);
+      }
     }
     
-    // If currently on gross input, move to next player's gross
+    // For Wednesday League or processed groups, move to next player's gross
     return _findNextPlayerGross(currentGroupIndex, currentRowIndex + 1);
   }
   
@@ -1672,6 +1855,24 @@ class _EnterScoresScreenState extends State<EnterScoresScreen> {
         if (player != null) {
           String playerKey = '${player['last']}_gross';
           if (grossFocusNodes.containsKey(playerKey)) {
+            return playerKey;
+          }
+        }
+      }
+    }
+    return null;
+  }
+
+  String? _findNextPlayerSkats(int startGroupIndex, int startRowIndex) {
+    // Start from current position and look for next player with SKATS field
+    for (int groupIndex = startGroupIndex; groupIndex < groups.length; groupIndex++) {
+      int startRow = (groupIndex == startGroupIndex) ? startRowIndex : 0;
+      
+      for (int rowIndex = startRow; rowIndex < groups[groupIndex].length; rowIndex++) {
+        var player = groups[groupIndex][rowIndex];
+        if (player != null) {
+          String playerKey = '${player['last']}_skats';
+          if (skatsFocusNodes.containsKey(playerKey)) {
             return playerKey;
           }
         }
@@ -2230,6 +2431,323 @@ class _EnterScoresScreenState extends State<EnterScoresScreen> {
     }
   }
 
+  Widget _buildPlayerClickColumn(
+    List<Map<String, dynamic>> playerScores, 
+    int columnIndex,
+    Map<String, int> playerValues,
+    StateSetter setState,
+    VoidCallback onTotalChanged,
+    int targetTotal
+  ) {
+    // Divide players into 3 columns
+    int playersPerColumn = (playerScores.length / 3).ceil();
+    int startIndex = columnIndex * playersPerColumn;
+    int endIndex = (startIndex + playersPerColumn).clamp(0, playerScores.length);
+    
+    if (startIndex >= playerScores.length) {
+      return Container(); // Empty column if no more players
+    }
+    
+    List<Map<String, dynamic>> columnPlayers = playerScores.sublist(startIndex, endIndex);
+    
+    // Update total using callback
+    void updateLocalTotal() {
+      setState(() {
+        onTotalChanged();
+      });
+    }
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Players in this column
+        ...columnPlayers.map((player) {
+          String playerName = player['last'] ?? 'Unknown';
+          
+          return Padding(
+            padding: EdgeInsets.symmetric(vertical: 2),
+            child: Row(
+              children: [
+                // Player name with increased width for longer names - clickable to increment
+                SizedBox(
+                  width: 120, // Increased width to accommodate 5 more letters (was 80, now 120)
+                  child: GestureDetector(
+                    onTap: () {
+                      // Increment the player's value when name is clicked
+                      int currentValue = playerValues[playerName] ?? 0;
+                      int currentTotal = playerValues.values.fold(0, (sum, value) => sum + value);
+                      int newTotal = currentTotal + 1;
+                      
+                      // Check both individual limit (5) and total limit (targetTotal)
+                      if (currentValue < 5 && newTotal <= targetTotal) {
+                        setState(() {
+                          int newValue = currentValue + 1;
+                          playerValues[playerName] = newValue;
+                        });
+                        updateLocalTotal();
+                      }
+                    },
+                    child: Container(
+                      padding: EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: Colors.blue.withOpacity(0.3), width: 1),
+                      ),
+                      child: Text(
+                        playerName,
+                        style: TextStyle(
+                          fontSize: 16, 
+                          fontWeight: FontWeight.w500,
+                          color: Colors.blue.shade700,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(width: 8), // Padding between name and value display
+                // Value display (read-only, shows current value)
+                Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    border: Border.all(color: Colors.grey.shade400, width: 1),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Center(
+                    child: Text(
+                      playerValues[playerName]! > 0 ? playerValues[playerName]!.toString() : '',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }).toList(),
+      ],
+    );
+  }
+
+  Future<bool?> _showWinningsPopup(List<Map<String, dynamic>> playerScores, Map<String, int> playerValues) async {
+    int totalSelectedPlayers = playerScores.length;
+    double prizePerPoint = 1.00 * totalSelectedPlayers; // $1.00 * number of selected players
+    
+    // Filter players who actually have values > 0
+    List<Map<String, dynamic>> winnersData = [];
+    
+    for (var player in playerScores) {
+      String playerName = player['last'] ?? 'Unknown';
+      int playerValue = playerValues[playerName] ?? 0;
+      
+      if (playerValue > 0) {
+        double winnings = playerValue * prizePerPoint;
+        winnersData.add({
+          'name': playerName,
+          'value': playerValue,
+          'winnings': winnings,
+        });
+      }
+    }
+    
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(
+            'Closest Pin Winners - ${selectedLeague == 'monday' ? 'Monday' : 'Wednesday'} League',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          content: IntrinsicWidth(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                if (winnersData.isEmpty)
+                  Padding(
+                    padding: EdgeInsets.all(20),
+                    child: Text(
+                      'No winners selected',
+                      style: TextStyle(fontSize: 16, fontStyle: FontStyle.italic),
+                    ),
+                  )
+                else ...[
+                  Text(
+                    'Value × (\$1.00 × $totalSelectedPlayers players) = Value × \$${prizePerPoint.toStringAsFixed(2)}',
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                    textAlign: TextAlign.center,
+                  ),
+                  SizedBox(height: 16),
+                  ...winnersData.map((winner) {
+                    return Padding(
+                      padding: EdgeInsets.symmetric(vertical: 2),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Fixed width for player name
+                          SizedBox(
+                            width: 80,
+                            child: Text(
+                              winner['name'],
+                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          // Calculation part - always starts at same position
+                          Text(
+                            '${winner['value']} × \$${prizePerPoint.toStringAsFixed(2)} = \$${winner['winnings'].toStringAsFixed(2)}',
+                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                  SizedBox(height: 12),
+                  Container(
+                    height: 1,
+                    width: 200,
+                    color: Colors.grey.shade400,
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'Total Paid: \$${winnersData.fold(0.0, (sum, winner) => sum + winner['winnings']).toStringAsFixed(2)}',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.green.shade600),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ],
+            ),
+          ),
+          actions: [
+            ElevatedButton(
+              onPressed: () {
+                // Calculate and distribute SKAT amounts for Monday League
+                _calculateAndDistributeSkatAmounts();
+                Navigator.of(context).pop(true); // Return true to indicate SKAT calculation was performed
+              },
+              child: Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<bool?> _showPlayersCheckboxDialog(List<Map<String, dynamic>> playerScores) async {
+    Map<String, int> playerValues = {};
+    int runningTotal = 0;
+    
+    // Get the Closest Pin amount (target total)
+    double closestPinAmount = ClosestPinManager().currentClosestPinAmount;
+    int targetTotal = closestPinAmount.round(); // Convert to integer for comparison
+    
+    // Initialize player values
+    for (var player in playerScores) {
+      String playerName = player['last'] ?? 'Unknown';
+      playerValues[playerName] = 0;
+    }
+    
+    // Centralized function to update total - NO auto-close
+    void updateTotal() {
+      int newTotal = playerValues.values.fold(0, (sum, value) => sum + value);
+      runningTotal = newTotal;
+      
+      // Just update the UI, no auto-close
+      // Let user manually click Continue when ready
+    }
+    
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: false, // Prevent accidental dismissal
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Column(
+                children: [
+                  Text(
+                    'Process Individuals - ${selectedLeague == 'monday' ? 'Monday' : 'Wednesday'} League',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'Target: \$${targetTotal.toStringAsFixed(0)} | Current Total: $runningTotal',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: runningTotal == targetTotal ? Colors.green : Colors.blue),
+                  ),
+                ],
+              ),
+              content: Container(
+                width: double.maxFinite,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Create 3 columns of players
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Column 1
+                        Expanded(
+                          child: _buildPlayerClickColumn(playerScores, 0, playerValues, setState, updateTotal, targetTotal),
+                        ),
+                        SizedBox(width: 8),
+                        // Column 2
+                        Expanded(
+                          child: _buildPlayerClickColumn(playerScores, 1, playerValues, setState, updateTotal, targetTotal),
+                        ),
+                        SizedBox(width: 8),
+                        // Column 3
+                        Expanded(
+                          child: _buildPlayerClickColumn(playerScores, 2, playerValues, setState, updateTotal, targetTotal),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    // Clear all player values and reset total
+                    setState(() {
+                      for (var player in playerScores) {
+                        String playerName = player['last'] ?? 'Unknown';
+                        playerValues[playerName] = 0;
+                      }
+                      runningTotal = 0;
+                    });
+                  },
+                  child: Text('Clear'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    // Show winnings popup - this will handle returning to Enter Scores screen
+                    bool? skatCalculated = await _showWinningsPopup(playerScores, playerValues);
+                    // After showing winnings, always close this dialog and return to Enter Scores
+                    Navigator.of(context).pop(false);
+                    // If SKAT calculation was performed, trigger UI refresh
+                    if (skatCalculated == true && mounted) {
+                      setState(() {
+                        // Force UI update to show new SKAT amounts in $$$ column
+                      });
+                    }
+                  },
+                  child: Text('Continue'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   void _processIndividuals() async {
     // Close the keyboard
     FocusScope.of(context).unfocus();
@@ -2238,6 +2756,14 @@ class _EnterScoresScreenState extends State<EnterScoresScreen> {
     
     if (playerScores.isEmpty) {
       PopupUtils.showWarning(context, "Process Error", "No player scores available to process!");
+      return;
+    }
+    
+    // Show popup with selected players and checkboxes
+    final popupResult = await _showPlayersCheckboxDialog(playerScores);
+    
+    if (popupResult == null || popupResult == false) {
+      // User cancelled the popup
       return;
     }
     
@@ -2317,24 +2843,54 @@ class _EnterScoresScreenState extends State<EnterScoresScreen> {
     for (var group in groups) {
       for (var player in group) {
         if (player != null) {
-          String playerKey = '${player['last']}_gross';
           String playerIdentifier = '${player['first']}_${player['last']}';
-          TextEditingController? controller = grossControllers[playerKey];
           
-          // Only add if player hasn't been added already and has a score
-          if (controller != null && controller.text.isNotEmpty && !addedPlayers.contains(playerIdentifier)) {
+          // Only add if player hasn't been added already
+          if (!addedPlayers.contains(playerIdentifier)) {
             var playerData = Map<String, dynamic>.from(player);
+            bool hasValidScore = false;
             
             try {
-              playerData['gross_score'] = int.parse(controller.text);
-              
               if (selectedLeague == 'wednesday') {
-                double handicap = playerData['handicap']?.toDouble() ?? 0.0;
-                playerData['net_score'] = playerData['gross_score'] - handicap.round();
+                // For Wednesday League, check gross scores
+                String playerKey = '${player['last']}_gross';
+                TextEditingController? controller = grossControllers[playerKey];
+                
+                if (controller != null && controller.text.isNotEmpty) {
+                  playerData['gross_score'] = int.parse(controller.text);
+                  double handicap = playerData['handicap']?.toDouble() ?? 0.0;
+                  playerData['net_score'] = playerData['gross_score'] - handicap.round();
+                  hasValidScore = true;
+                }
+              } else {
+                // For Monday League, check SKATS scores
+                String skatsKey = '${player['last']}_skats';
+                TextEditingController? skatsController = skatsControllers[skatsKey];
+                
+                if (skatsController != null && skatsController.text.isNotEmpty) {
+                  playerData['skats_score'] = int.parse(skatsController.text);
+                  hasValidScore = true;
+                  
+                  // Also collect DIFF score for Monday League if available
+                  String diffKey = '${player['last']}_diff';
+                  TextEditingController? diffController = diffControllers[diffKey];
+                  if (diffController != null && diffController.text.isNotEmpty) {
+                    playerData['diff_score'] = int.parse(diffController.text);
+                  }
+                  
+                  // Also collect gross score if available for Monday League
+                  String grossKey = '${player['last']}_gross';
+                  TextEditingController? grossController = grossControllers[grossKey];
+                  if (grossController != null && grossController.text.isNotEmpty) {
+                    playerData['gross_score'] = int.parse(grossController.text);
+                  }
+                }
               }
               
-              playerScores.add(playerData);
-              addedPlayers.add(playerIdentifier); // Mark as added
+              if (hasValidScore) {
+                playerScores.add(playerData);
+                addedPlayers.add(playerIdentifier); // Mark as added
+              }
             } catch (e) {
               // Skip invalid scores
             }
@@ -2574,6 +3130,93 @@ class _EnterScoresScreenState extends State<EnterScoresScreen> {
       case 2: return 'nd';
       case 3: return 'rd';
       default: return 'th';
+    }
+  }
+
+  void _calculateAndDistributeSkatAmounts() {
+    // Only process for Monday League
+    if (selectedLeague != 'monday') return;
+    
+    // Calculate the number of selected players (same logic as in updateTitleInformation)
+    int numSelectedPlayers = 0;
+    for (var group in groups) {
+      numSelectedPlayers += group.where((player) => player != null && player['is_wild_card'] != true).length;
+    }
+    
+    // If no selected players, no SKAT distribution
+    if (numSelectedPlayers <= 0) {
+      // Clear any existing SKAT winnings for all players
+      for (var group in groups) {
+        for (var player in group) {
+          if (player != null) {
+            player['skat_winnings'] = 0.0;
+          }
+        }
+      }
+      return;
+    }
+    
+    // Get SKAT purse amount (same calculation as in updateTitleInformation)
+    double anteAmount = AnteManager().currentAnteAmount;
+    double skatPurse = anteAmount * numSelectedPlayers;
+    
+    // Add up all positive DIFF values
+    double totalPositiveDiffs = 0.0;
+    for (var group in groups) {
+      for (var player in group) {
+        if (player != null) {
+          // Get DIFF value from player data (stored as diff_score)
+          var diffScore = player['diff_score'];
+          double diffValue = 0.0;
+          
+          if (diffScore != null) {
+            diffValue = diffScore.toDouble();
+          }
+          
+          if (diffValue > 0) {
+            totalPositiveDiffs += diffValue;
+          }
+        }
+      }
+    }
+    
+    // If no positive DIFFs, clear all winnings
+    if (totalPositiveDiffs <= 0) {
+      for (var group in groups) {
+        for (var player in group) {
+          if (player != null) {
+            player['skat_winnings'] = 0.0;
+          }
+        }
+      }
+      return;
+    }
+    
+    // Calculate SKAT value: divide SKAT purse by total positive DIFFs and ROUND
+    double skatValue = (skatPurse / totalPositiveDiffs).roundToDouble();
+    
+    // Distribute SKAT amounts to players based on their DIFF values
+    for (var group in groups) {
+      for (var player in group) {
+        if (player != null) {
+          // Get DIFF value from player data (stored as diff_score)
+          var diffScore = player['diff_score'];
+          double diffValue = 0.0;
+          
+          if (diffScore != null) {
+            diffValue = diffScore.toDouble();
+          }
+          
+          if (diffValue > 0) {
+            // For positive DIFF: multiply DIFF by SKAT value
+            double skatAmount = diffValue * skatValue;
+            player['skat_winnings'] = skatAmount;
+          } else {
+            // For negative or zero DIFF: post $0.00
+            player['skat_winnings'] = 0.0;
+          }
+        }
+      }
     }
   }
 
@@ -3091,35 +3734,92 @@ class _EnterScoresScreenState extends State<EnterScoresScreen> {
   }
 
   // Auto-fill method for testing - fills all Gross widgets with random scores 35-55 and calculates Net scores
+  // For Monday League, also fills SKATS with random scores 30-40
   void _autoFillGrossScores() {
     final random = Random();
     
     for (var group in groups) {
       for (var player in group) {
         if (player != null) {
-          String playerKey = '${player['last']}_gross';
-          
-          // Get or create controller if it doesn't exist
-          if (!grossControllers.containsKey(playerKey)) {
-            grossControllers[playerKey] = TextEditingController();
-          }
-          
-          // Generate random score between 35 and 55
-          int randomScore = 35 + random.nextInt(21); // 21 to include 55 (35 + 0 to 20)
-          
-          // Set the score in the controller
-          grossControllers[playerKey]!.text = randomScore.toString();
-          
-          // Update the player's gross_score in the data structure
-          player['gross_score'] = randomScore;
-          
-          // Calculate and set net score (Gross - Handicap = Net)
-          if (player['handicap'] != null) {
-            double handicap = player['handicap'] is int 
-                ? (player['handicap'] as int).toDouble() 
-                : player['handicap'] as double;
-            int netScore = randomScore - handicap.round();
-            player['net_score'] = netScore;
+          // For Monday League, only fill SKATS scores
+          if (selectedLeague == 'monday' && !groupsProcessed) {
+            String skatsKey = '${player['last']}_skats';
+            String diffKey = '${player['last']}_diff';
+            
+            // Get or create SKATS controller if it doesn't exist
+            if (!skatsControllers.containsKey(skatsKey)) {
+              skatsControllers[skatsKey] = TextEditingController();
+            }
+            
+            // Get or create SKATS focus node if it doesn't exist
+            if (!skatsFocusNodes.containsKey(skatsKey)) {
+              skatsFocusNodes[skatsKey] = FocusNode();
+            }
+            
+            // Get or create DIFF controller if it doesn't exist
+            if (!diffControllers.containsKey(diffKey)) {
+              diffControllers[diffKey] = TextEditingController();
+            }
+            
+            // Get or create DIFF focus node if it doesn't exist
+            if (!diffFocusNodes.containsKey(diffKey)) {
+              diffFocusNodes[diffKey] = FocusNode();
+            }
+            
+            // Generate random SKATS score between 30 and 40
+            int randomSkatsScore = 30 + random.nextInt(11); // 11 to include 40 (30 + 0 to 10)
+            
+            // Set the SKATS score in the controller
+            skatsControllers[skatsKey]!.text = randomSkatsScore.toString();
+            
+            // Update the player's skats_score in the data structure
+            player['skats_score'] = randomSkatsScore;
+            
+            // Calculate DIFF (SKATS - SKAT#)
+            if (player['skat_number'] != null) {
+              int skatNumber = player['skat_number'] is int 
+                  ? player['skat_number'] as int
+                  : int.tryParse(player['skat_number'].toString()) ?? 0;
+              int diffScore = randomSkatsScore - skatNumber;
+              
+              // Set the DIFF score in the controller
+              diffControllers[diffKey]!.text = diffScore.toString();
+              
+              // Update the player's diff_score in the data structure
+              player['diff_score'] = diffScore;
+            }
+          } 
+          // For Wednesday League, fill gross scores
+          else if (selectedLeague == 'wednesday' && !groupsProcessed) {
+            String playerKey = '${player['last']}_gross';
+            
+            // Get or create controller if it doesn't exist
+            if (!grossControllers.containsKey(playerKey)) {
+              grossControllers[playerKey] = TextEditingController();
+            }
+            
+            // Get or create focus node if it doesn't exist
+            if (!grossFocusNodes.containsKey(playerKey)) {
+              grossFocusNodes[playerKey] = FocusNode();
+            }
+            
+            // Generate random score between 35 and 55
+            int randomScore = 35 + random.nextInt(21); // 21 to include 55 (35 + 0 to 20)
+            
+            // Set the score in the controller
+            grossControllers[playerKey]!.text = randomScore.toString();
+            
+            // Update the player's gross_score in the data structure
+            player['gross_score'] = randomScore;
+            
+            // Calculate and set net score (Gross - Handicap = Net)
+            if (player['handicap'] != null) {
+              double handicap = player['handicap'] is int 
+                  ? (player['handicap'] as int).toDouble() 
+                  : player['handicap'] as double;
+              int netScore = randomScore - handicap.round();
+              player['net_score'] = netScore;
+            }
           }
         }
       }
@@ -3128,4 +3828,5 @@ class _EnterScoresScreenState extends State<EnterScoresScreen> {
     // Refresh the UI to show the new scores
     setState(() {});
   }
+
 }
