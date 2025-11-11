@@ -28,12 +28,10 @@ class _PlayerScoresScreenState extends State<PlayerScoresScreen> {
   final TextEditingController _skatsController = TextEditingController();
   final TextEditingController _winningsController = TextEditingController();
   final TextEditingController _handicapController = TextEditingController();
-  final TextEditingController _skatNumberController = TextEditingController();
   final FocusNode _grossScoreFocus = FocusNode();
   final FocusNode _skatsFocus = FocusNode();
   final FocusNode _winningsFocus = FocusNode();
   final FocusNode _handicapFocus = FocusNode();
-  final FocusNode _skatNumberFocus = FocusNode();
   
   // Golf course selection
   String _selectedGolfCourse = 'TBD';
@@ -61,12 +59,10 @@ class _PlayerScoresScreenState extends State<PlayerScoresScreen> {
     _skatsController.dispose();
     _winningsController.dispose();
     _handicapController.dispose();
-    _skatNumberController.dispose();
     _grossScoreFocus.dispose();
     _skatsFocus.dispose();
     _winningsFocus.dispose();
     _handicapFocus.dispose();
-    _skatNumberFocus.dispose();
     super.dispose();
   }
 
@@ -108,8 +104,9 @@ class _PlayerScoresScreenState extends State<PlayerScoresScreen> {
       setState(() {
         _showAddScoreRow = true;
         // Pre-populate fields with player data
-        _handicapController.text = (player['handicap'] ?? 0.0).toString();
-        _skatNumberController.text = (player['skat_number'] ?? 0).toString();
+        if (_selectedLeague == League.wednesday) {
+          _handicapController.text = (player['handicap'] ?? 0.0).toString();
+        }
         _winningsController.text = '0'; // Prefill winnings field with $0
       });
       return;
@@ -118,8 +115,8 @@ class _PlayerScoresScreenState extends State<PlayerScoresScreen> {
     // Check for required fields
     List<String> missingFields = [];
     
-    // Check gross score
-    if (_grossScoreController.text.trim().isEmpty) {
+    // Check gross score for Wednesday league only
+    if (_selectedLeague == League.wednesday && _grossScoreController.text.trim().isEmpty) {
       missingFields.add('Gross Score');
     }
     
@@ -140,10 +137,13 @@ class _PlayerScoresScreenState extends State<PlayerScoresScreen> {
       return;
     }
     
-    final grossScore = int.tryParse(_grossScoreController.text.trim());
-    if (grossScore == null || grossScore < 10 || grossScore > 99) {
-      _showErrorDialog('Gross score must be between 10 and 99');
-      return;
+    // Validate gross score for Wednesday league
+    if (_selectedLeague == League.wednesday) {
+      final grossScore = int.tryParse(_grossScoreController.text.trim());
+      if (grossScore == null || grossScore < 10 || grossScore > 99) {
+        _showErrorDialog('Gross score must be between 10 and 99');
+        return;
+      }
     }
     
     double winningsAmount = 0.0;
@@ -151,17 +151,19 @@ class _PlayerScoresScreenState extends State<PlayerScoresScreen> {
       winningsAmount = double.tryParse(_winningsController.text.trim()) ?? 0.0;
     }
     
-    // Get handicap from editable field
+    // Get handicap from editable field (for Wednesday league)
     double handicap = 0.0;
-    if (_handicapController.text.trim().isNotEmpty) {
+    if (_selectedLeague == League.wednesday && _handicapController.text.trim().isNotEmpty) {
       handicap = double.tryParse(_handicapController.text.trim()) ?? 0.0;
     }
     
-    // Get SKAT number from editable field (for Monday league)
-    int skatNumber = 0;
-    if (_selectedLeague == League.monday && _skatNumberController.text.trim().isNotEmpty) {
-      skatNumber = int.tryParse(_skatNumberController.text.trim()) ?? 0;
+    // Get gross score (for Wednesday league)
+    int grossScore = 0;
+    if (_selectedLeague == League.wednesday && _grossScoreController.text.trim().isNotEmpty) {
+      grossScore = int.tryParse(_grossScoreController.text.trim()) ?? 0;
     }
+    
+    // SKAT number no longer used - removed from Monday league
     
     try {
       final playerId = _players.firstWhere((p) => p['last'] == _selectedPlayer)['id'];
@@ -172,15 +174,18 @@ class _PlayerScoresScreenState extends State<PlayerScoresScreen> {
         'player_id': playerId,
         'name': player['last'], // Use only Last Name
         'date_played': DateTime.now().toIso8601String().split('T')[0],
-        'handicap': handicap, // Use value from editable field
-        'gross_score': grossScore,
         'close_pin_winnings': 0.0, // Always $0 for now
       };
       
+      // Add handicap and gross score for Wednesday league only
+      if (_selectedLeague == League.wednesday) {
+        scoreData['handicap'] = handicap;
+        scoreData['gross_score'] = grossScore;
+      }
+      
       if (_selectedLeague == League.monday) {
-        // Monday League: Name, Date, Golf Course, HC, SKAT#, Gross, SKATS, Close Pin, SKAT Winnings
+        // Monday League: Name, Date, Golf Course, Close Pin, SKATS, SKAT Winnings
         scoreData['golf_course'] = _selectedGolfCourse; // Use selected golf course
-        scoreData['skat_number'] = skatNumber; // Use value from editable field
         scoreData['skats_score'] = int.tryParse(_skatsController.text.trim()) ?? 0; // From Enter Scores
         scoreData['skat_winnings'] = winningsAmount; // From Enter Scores
       } else {
@@ -197,7 +202,6 @@ class _PlayerScoresScreenState extends State<PlayerScoresScreen> {
       _skatsController.clear();
       _winningsController.clear();
       _handicapController.clear();
-      _skatNumberController.clear();
       
       // Lock the newly created row immediately and hide add score row
       setState(() {
@@ -303,7 +307,6 @@ class _PlayerScoresScreenState extends State<PlayerScoresScreen> {
       _skatsController.clear();
       _winningsController.clear();
       _handicapController.clear();
-      _skatNumberController.clear();
     });
   }
 
@@ -338,15 +341,16 @@ class _PlayerScoresScreenState extends State<PlayerScoresScreen> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(
-                controller: grossController,
-                decoration: const InputDecoration(labelText: 'Gross Score'),
-                keyboardType: TextInputType.number,
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                  LengthLimitingTextInputFormatter(2),
-                ],
-              ),
+              if (_selectedLeague == League.wednesday)
+                TextField(
+                  controller: grossController,
+                  decoration: const InputDecoration(labelText: 'Gross Score'),
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    LengthLimitingTextInputFormatter(2),
+                  ],
+                ),
               if (_selectedLeague == League.monday)
                 TextField(
                   controller: skatsController,
@@ -382,24 +386,30 @@ class _PlayerScoresScreenState extends State<PlayerScoresScreen> {
             TextButton(
               onPressed: () async {
                 try {
-                  final grossScore = int.tryParse(grossController.text);
                   final winnings = double.tryParse(winningsController.text) ?? 0.0;
                   
-                  if (grossScore == null || grossScore < 10 || grossScore > 99) {
-                    // Close the edit dialog first, then show error
-                    Navigator.of(context).pop();
-                    // Re-lock the row since edit failed
-                    setState(() {
-                      _unlockedScoreIds.remove(scoreId);
-                    });
-                    _showErrorDialog('Gross score must be between 10 and 99');
-                    return;
+                  // Validate gross score for Wednesday league
+                  if (_selectedLeague == League.wednesday) {
+                    final grossScore = int.tryParse(grossController.text);
+                    if (grossScore == null || grossScore < 10 || grossScore > 99) {
+                      // Close the edit dialog first, then show error
+                      Navigator.of(context).pop();
+                      // Re-lock the row since edit failed
+                      setState(() {
+                        _unlockedScoreIds.remove(scoreId);
+                      });
+                      _showErrorDialog('Gross score must be between 10 and 99');
+                      return;
+                    }
                   }
                   
                   // Prepare update data based on league
-                  Map<String, dynamic> updateData = {
-                    'gross_score': grossScore,
-                  };
+                  Map<String, dynamic> updateData = {};
+                  
+                  if (_selectedLeague == League.wednesday) {
+                    final grossScore = int.tryParse(grossController.text);
+                    updateData['gross_score'] = grossScore;
+                  }
                   
                   if (_selectedLeague == League.monday) {
                     final skatsScore = skatsController.text.trim();
@@ -495,7 +505,6 @@ class _PlayerScoresScreenState extends State<PlayerScoresScreen> {
       _skatsController.clear();
       _winningsController.clear();
       _handicapController.clear();
-      _skatNumberController.clear();
     });
     _loadPlayers();
   }
@@ -560,7 +569,7 @@ class _PlayerScoresScreenState extends State<PlayerScoresScreen> {
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: SizedBox(
-          width: _selectedLeague == League.monday ? 990 : 870, // Adjust width based on league columns
+          width: _selectedLeague == League.monday ? 730 : 870, // Adjust width based on league columns
           child: Column(
             children: [
               // Two-line header
@@ -619,17 +628,14 @@ class _PlayerScoresScreenState extends State<PlayerScoresScreen> {
 
   Widget _buildScoreRow(Map<String, dynamic> score, bool isUnlocked) {
     if (_selectedLeague == League.monday) {
-      // Monday League: Name, Date, Golf Course, HC, SKAT#, Gross, SKATS, Close Pin, SKAT Winnings
+      // Monday League: Name, Date, Golf Course, Close Pin, SKATS, SKAT Winnings
       return Row(
         children: [
           _buildDataCellWithIcon(score['name'] ?? '', isUnlocked, 80),
           _buildDataCell(_formatDateToMMDDYY(score['date_played']), 90),
           _buildDataCell(score['golf_course'] ?? '', 120),
-          _buildDataCell('${score['handicap'] ?? 0}', 80),
-          _buildDataCell('${score['skat_number'] ?? ''}', 100),
-          _buildDataCell('${score['gross_score'] ?? ''}', 60),
-          _buildDataCell('${score['skats_score'] ?? ''}', 60),
           _buildDataCell(_formatWinningsSimple(score['close_pin_winnings']), 100),
+          _buildDataCell('${score['skats_score'] ?? ''}', 60),
           _buildDataCell(_formatWinningsSimple(score['skat_winnings']), 110),
         ],
       );
@@ -662,17 +668,14 @@ class _PlayerScoresScreenState extends State<PlayerScoresScreen> {
 
   Widget _buildAddScoreRowContent() {
     if (_selectedLeague == League.monday) {
-      // Monday League: Name, Date, Golf Course, HC, SKAT#, Gross, SKATS, Close Pin, SKAT Winnings
+      // Monday League: Name, Date, Golf Course, Close Pin, SKATS, SKAT Winnings
       return Row(
         children: [
           _buildDataCell(_selectedPlayer ?? '', 80),
           _buildDataCell(_getCurrentDateMMDDYY(), 90),
           _buildGolfCourseCell(), // Golf Course - editable dropdown for Monday
-          _buildEditableCellWithBorder(_handicapController, _handicapFocus, 80, TextInputType.number), // HC editable
-          _buildEditableCellWithBorder(_skatNumberController, _skatNumberFocus, 100, TextInputType.number), // SKAT# editable
-          _buildEditableCellWithBorder(_grossScoreController, _grossScoreFocus, 60, TextInputType.number),
-          _buildEditableCellWithBorder(_skatsController, _skatsFocus, 60, TextInputType.number),
           _buildDataCell('\$0.00', 100), // Close pin winnings - always $0
+          _buildEditableCellWithBorder(_skatsController, _skatsFocus, 60, TextInputType.number),
           _buildEditableCellWithBorder(_winningsController, _winningsFocus, 110, TextInputType.number), // SKAT Winnings
         ],
       );
@@ -684,7 +687,7 @@ class _PlayerScoresScreenState extends State<PlayerScoresScreen> {
           _buildDataCell(_getCurrentDateMMDDYY(), 90),
           _buildDataCell('The Hideout', 120), // Golf Course - always The Hideout for Wednesday
           _buildEditableCellWithBorder(_handicapController, _handicapFocus, 80, TextInputType.number), // HC editable
-          _buildEditableCellWithBorder(_grossScoreController, _grossScoreFocus, 60, TextInputType.number),
+          _buildEditableCellWithBorder(_grossScoreController, _grossScoreFocus, 60, TextInputType.number), // Gross editable
           _buildDataCell('\$0.00', 100), // Close pin winnings - always $0
           _buildEditableCellWithBorder(_winningsController, _winningsFocus, 100, TextInputType.number), // Single Winnings
           _buildDataCell('\$0.00', 100), // Group winnings - always $0
@@ -761,9 +764,7 @@ class _PlayerScoresScreenState extends State<PlayerScoresScreen> {
         style: const TextStyle(fontSize: 12),
         textAlign: TextAlign.center,
         onFieldSubmitted: (_) {
-          if (focusNode == _grossScoreFocus && controller.text.length == 2) {
-            FocusScope.of(context).requestFocus(_skatsFocus);
-          }
+          // Handle field submission focus changes if needed
         },
       ),
     );
@@ -820,9 +821,7 @@ class _PlayerScoresScreenState extends State<PlayerScoresScreen> {
           textAlign: TextAlign.center,
           textAlignVertical: TextAlignVertical.center,
           onFieldSubmitted: (_) {
-            if (focusNode == _grossScoreFocus && controller.text.length == 2) {
-              FocusScope.of(context).requestFocus(_skatsFocus);
-            }
+            // Handle field submission focus changes if needed
           },
         ),
       ),
@@ -831,7 +830,7 @@ class _PlayerScoresScreenState extends State<PlayerScoresScreen> {
 
   Widget _buildHeaders() {
     if (_selectedLeague == League.monday) {
-      // Monday League: Name, Date, Golf Course, HC, SKAT#, Gross, SKATS, Close Pin, SKAT Winnings
+      // Monday League: Name, Date, Golf Course, Close Pin, SKATS, SKAT Winnings
       return Column(
         children: [
           // First header line
@@ -840,11 +839,8 @@ class _PlayerScoresScreenState extends State<PlayerScoresScreen> {
               _buildHeaderCell('Name', 80),
               _buildHeaderCell('Date', 90),
               _buildHeaderCell('Golf Course', 120),
-              _buildHeaderCell('HC', 80),
-              _buildHeaderCell('SKAT#', 100),
-              _buildHeaderCell('Gross', 60),
-              _buildHeaderCell('SKATS', 60),
               _buildHeaderCell('Close Pin', 100),
+              _buildHeaderCell('SKATS', 60),
               _buildHeaderCell('SKAT\nWinnings', 110),
             ],
           ),

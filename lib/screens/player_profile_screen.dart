@@ -22,7 +22,6 @@ class _PlayerProfileScreenState extends State<PlayerProfileScreen> {
   final TextEditingController _idController = TextEditingController();
   final TextEditingController _firstController = TextEditingController();
   final TextEditingController _lastController = TextEditingController();
-  final TextEditingController _handicapController = TextEditingController();
   final TextEditingController _skatController = TextEditingController();
   final TextEditingController _cellController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
@@ -31,7 +30,6 @@ class _PlayerProfileScreenState extends State<PlayerProfileScreen> {
   final FocusNode _idFocus = FocusNode();
   final FocusNode _firstFocus = FocusNode();
   final FocusNode _lastFocus = FocusNode();
-  final FocusNode _handicapFocus = FocusNode();
   final FocusNode _skatFocus = FocusNode();
   final FocusNode _cellFocus = FocusNode();
   final FocusNode _emailFocus = FocusNode();
@@ -48,7 +46,6 @@ class _PlayerProfileScreenState extends State<PlayerProfileScreen> {
     _idController.dispose();
     _firstController.dispose();
     _lastController.dispose();
-    _handicapController.dispose();
     _skatController.dispose();
     _cellController.dispose();
     _emailController.dispose();
@@ -56,7 +53,6 @@ class _PlayerProfileScreenState extends State<PlayerProfileScreen> {
     _idFocus.dispose();
     _firstFocus.dispose();
     _lastFocus.dispose();
-    _handicapFocus.dispose();
     _skatFocus.dispose();
     _cellFocus.dispose();
     _emailFocus.dispose();
@@ -79,7 +75,6 @@ class _PlayerProfileScreenState extends State<PlayerProfileScreen> {
     _idController.clear();
     _firstController.clear();
     _lastController.clear();
-    _handicapController.clear();
     _skatController.clear();
     _cellController.clear();
     _emailController.clear();
@@ -94,7 +89,6 @@ class _PlayerProfileScreenState extends State<PlayerProfileScreen> {
       _idController.text = player['player_number']?.toString() ?? '';
       _firstController.text = player['first'] ?? '';
       _lastController.text = player['last'] ?? '';
-      _handicapController.text = player['handicap']?.toString() ?? '';
       _skatController.text = player['skat_number']?.toString() ?? '';
       _cellController.text = player['cell'] ?? '';
       _emailController.text = player['email'] ?? '';
@@ -144,7 +138,6 @@ class _PlayerProfileScreenState extends State<PlayerProfileScreen> {
         'player_number': int.tryParse(_idController.text) ?? 0,
         'first': _firstController.text.trim(),
         'last': _lastController.text.trim(),
-        'handicap': double.tryParse(_handicapController.text) ?? 0.0,
         'skat_number': int.tryParse(_skatController.text),
         'league': leagueStr,
         'cell': _cellController.text.trim(),
@@ -174,7 +167,6 @@ class _PlayerProfileScreenState extends State<PlayerProfileScreen> {
         'player_number': int.tryParse(_idController.text) ?? 0,
         'first': _firstController.text.trim(),
         'last': _lastController.text.trim(),
-        'handicap': double.tryParse(_handicapController.text) ?? 0.0,
         'skat_number': int.tryParse(_skatController.text),
         'league': leagueStr,
         'cell': _cellController.text.trim(),
@@ -317,7 +309,6 @@ class _PlayerProfileScreenState extends State<PlayerProfileScreen> {
                   _buildHeaderCell('ID#', 60),
                   _buildHeaderCell('First', 120),
                   _buildHeaderCell('Last', 120),
-                  _buildHeaderCell('HC', 60),
                   _buildHeaderCell('SKAT#', 80),
                   _buildHeaderCell('Cell', 130),
                   _buildHeaderCell('Email', 200),
@@ -330,7 +321,7 @@ class _PlayerProfileScreenState extends State<PlayerProfileScreen> {
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: SizedBox(
-                width: 770,
+                width: 710,
                 child: ListView.builder(
                   itemCount: _players.length,
                   itemBuilder: (context, index) {
@@ -350,7 +341,6 @@ class _PlayerProfileScreenState extends State<PlayerProfileScreen> {
                             _buildDataCell(player['player_number']?.toString() ?? '', 60),
                             _buildDataCell(player['first'] ?? '', 120),
                             _buildDataCell(player['last'] ?? '', 120),
-                            _buildDataCell(player['handicap']?.toString() ?? '', 60),
                             _buildDataCell(player['skat_number']?.toString() ?? '', 80),
                             _buildDataCell(_formatPhoneNumber(player['cell']), 130),
                             _buildDataCell(player['email'] ?? '', 200),
@@ -426,9 +416,7 @@ class _PlayerProfileScreenState extends State<PlayerProfileScreen> {
                         keyboardType: TextInputType.number, 
                         inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
                       _buildFormField('First Name', _firstController, _firstFocus, _lastFocus),
-                      _buildFormField('Last Name', _lastController, _lastFocus, _handicapFocus),
-                      _buildFormField('Handicap', _handicapController, _handicapFocus, _skatFocus, 
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true)),
+                      _buildFormField('Last Name', _lastController, _lastFocus, _skatFocus),
                       _buildFormField('SKAT#', _skatController, _skatFocus, _cellFocus, 
                         keyboardType: TextInputType.number, 
                         inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
