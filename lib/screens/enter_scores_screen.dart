@@ -6,7 +6,6 @@ import 'package:sqflite/sqflite.dart';
 import 'dart:math';
 import 'popup_utils.dart';
 import 'main_menu_screen.dart';
-import 'player_selection_screen.dart';
 import 'auto_process_groups_screen.dart';
 import 'manual_process_groups_screen.dart';
 import '../services/database_helper.dart';
@@ -852,6 +851,9 @@ class _EnterScoresScreenState extends State<EnterScoresScreen> {
               _moveFocusToNextRow(controller);
             }
           }
+          
+          // Check if all gross scores are now filled and auto-calculate if so
+          _checkAndAutoCalculateWednesday();
         },
         onSubmitted: (value) {
           _moveFocusToNextGrossInput(controller);
@@ -1566,7 +1568,7 @@ class _EnterScoresScreenState extends State<EnterScoresScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: selectedLeague == 'monday' 
             ? [
-                _buildFooterButton("Process Individuals", Color(0xFFB3FFB3), _processIndividuals),
+                _buildFooterButton("Closest Pin", Color(0xFFB3FFB3), _processIndividuals),
                 _buildFooterButton("Main Menu", Colors.lightBlue[100]!, _returnToMainMenu),
                 _buildFooterButton("Auto Fill", Colors.orange[200]!, _autoFillGrossScores),
               ]
@@ -2872,7 +2874,14 @@ class _EnterScoresScreenState extends State<EnterScoresScreen> {
         // Save scores to Player Scores table for Monday League
         await _savePlayerScoresToDatabase(allPlayers);
       } else {
-        // For Wednesday League, use the original closest pin method
+        // For Wednesday League, collect player scores and calculate positions/winnings
+        List<Map<String, dynamic>> playerScores = _collectPlayerScores();
+        
+        if (playerScores.isEmpty) {
+          await PopupUtils.showWarning(context, "Process Error", "No player scores available to process!");
+          return;
+        }
+        
         List<Map<String, dynamic>> allPlayers = [];
         for (var group in groups) {
           for (var player in group) {
@@ -2888,6 +2897,46 @@ class _EnterScoresScreenState extends State<EnterScoresScreen> {
         if (!closestPinCompleted) {
           // User cancelled closest pin selection
           return;
+        }
+        
+        // Calculate positions and prize money for Wednesday League
+        await _calculateWednesdayWinnings(playerScores);
+        
+        // Update player data with pos and prize_money fields
+        for (var player in playerScores) {
+          double winnings = (player['winnings'] ?? 0.0).toDouble();
+          int roundedWinnings = winnings.round();
+          
+          if (roundedWinnings > 0) {
+            int place = player['place'] ?? 0;
+            bool isTied = player['is_tied'] ?? false;
+            
+            if (isTied) {
+              player['pos'] = 'T${place}';
+            } else {
+              player['pos'] = place.toString();
+            }
+            player['prize_money'] = '\$${roundedWinnings}';
+          } else {
+            player['pos'] = '';
+            player['prize_money'] = '';
+          }
+        }
+        
+        // Update the groups data with calculated values
+        for (var updatedPlayer in playerScores) {
+          for (var group in groups) {
+            for (int i = 0; i < group.length; i++) {
+              var player = group[i];
+              if (player != null && 
+                  player['first'] == updatedPlayer['first'] && 
+                  player['last'] == updatedPlayer['last']) {
+                player['pos'] = updatedPlayer['pos'];
+                player['prize_money'] = updatedPlayer['prize_money'];
+                break;
+              }
+            }
+          }
         }
         
         // Set individuals processing as complete
@@ -3915,6 +3964,133 @@ class _EnterScoresScreenState extends State<EnterScoresScreen> {
     
     // Refresh the UI to show the new scores
     setState(() {});
+    
+    // For Wednesday League, automatically process individuals after auto fill
+    if (selectedLeague == 'wednesday') {
+      // Small delay to ensure UI updates complete
+      Future.delayed(Duration(milliseconds: 100), () {
+        _processIndividuals();
+      });
+    }
+  }
+
+  // Check if all gross scores are filled for Wednesday League
+  bool _areAllGrossScoresFilled() {
+    if (selectedLeague != 'wednesday') return false;
+    
+    for (var group in groups) {
+      for (var player in group) {
+        if (player != null) {
+          String playerKey = '${player['last']}_gross';
+          
+          // Check if controller exists and has a value
+          if (!grossControllers.containsKey(playerKey)) {
+            return false;
+          }
+          
+          if (grossControllers[playerKey]!.text.trim().isEmpty) {
+            return false;
+          }
+          
+          // Validate the score is a reasonable number
+          int? score = int.tryParse(grossControllers[playerKey]!.text.trim());
+          if (score == null || score < 10 || score > 99) {
+            return false;
+          }
+        }
+      }
+    }
+    
+    return true;
+  }
+
+  // Automatically calculate positions and prize money when all scores are filled
+  void _checkAndAutoCalculateWednesday() {
+    if (selectedLeague == 'wednesday' && !individualsProcessingComplete && _areAllGrossScoresFilled()) {
+      // Small delay to ensure UI updates complete
+      Future.delayed(Duration(milliseconds: 200), () {
+        _processIndividuals();
+      });
+    }
+  }
+
+  // Calculate positions and winnings for Wednesday League based on net scores
+  Future<void> _calculateWednesdayWinnings(List<Map<String, dynamic>> playerScores) async {
+    // Import the CSV payout service
+    CsvPayoutService csvPayoutService = CsvPayoutService();
+    
+    // Sort players by net score (lowest first)
+    playerScores.sort((a, b) => a['net_score'].compareTo(b['net_score']));
+    
+    // Get payout amounts from CSV based on number of players
+    List<double> payoutList = await csvPayoutService.getPayoutList(playerScores.length);
+    
+    // Group players by their net scores to identify ties
+    List<List<Map<String, dynamic>>> tieGroups = [];
+    int currentIndex = 0;
+    
+    while (currentIndex < playerScores.length) {
+      List<Map<String, dynamic>> tiedPlayers = [playerScores[currentIndex]];
+      int currentScore = playerScores[currentIndex]['net_score'];
+      
+      // Find all players with the same net score
+      for (int i = currentIndex + 1; i < playerScores.length; i++) {
+        int compareScore = playerScores[i]['net_score'];
+        
+        if (compareScore == currentScore) {
+          tiedPlayers.add(playerScores[i]);
+        } else {
+          break;
+        }
+      }
+      
+      tieGroups.add(tiedPlayers);
+      currentIndex += tiedPlayers.length;
+    }
+    
+    // Assign places and winnings based on tie groups
+    int currentPlace = 1;
+    
+    for (var tieGroup in tieGroups) {
+      int groupSize = tieGroup.length;
+      
+      if (groupSize == 1) {
+        // No tie - regular placement
+        var player = tieGroup[0];
+        player['place'] = currentPlace;
+        player['is_tied'] = false;
+        
+        if (currentPlace <= payoutList.length) {
+          player['winnings'] = payoutList[currentPlace - 1];
+        } else {
+          player['winnings'] = 0.0;
+        }
+      } else {
+        // Tie - calculate shared winnings
+        double totalWinnings = 0.0;
+        
+        // Sum up the winnings for all positions involved in the tie
+        for (int i = 0; i < groupSize; i++) {
+          int position = currentPlace + i;
+          if (position <= payoutList.length) {
+            totalWinnings += payoutList[position - 1];
+          }
+        }
+        
+        // Divide evenly among tied players
+        double sharedWinnings = totalWinnings / groupSize;
+        
+        // Assign to all tied players
+        for (var player in tieGroup) {
+          player['place'] = currentPlace;
+          player['is_tied'] = true;
+          player['tie_count'] = groupSize;
+          player['winnings'] = sharedWinnings;
+        }
+      }
+      
+      currentPlace += groupSize;
+    }
   }
 
 }
