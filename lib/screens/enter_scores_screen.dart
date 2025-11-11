@@ -3351,9 +3351,9 @@ class _EnterScoresScreenState extends State<EnterScoresScreen> {
       }
     }
     
-    // After SKAT calculations are complete, trigger closest pin processing for Monday League
+    // After SKAT calculations are complete, trigger individuals processing for Monday League
     Future.delayed(Duration(milliseconds: 500), () {
-      _processClosestPinForMonday();
+      _processIndividuals();
     });
   }
 
@@ -4098,91 +4098,8 @@ class _EnterScoresScreenState extends State<EnterScoresScreen> {
     }
   }
 
-  // Process closest pin for Monday League and save to database
-  Future<void> _processClosestPinForMonday() async {
-    if (selectedLeague != 'monday') return;
-
-    List<Map<String, dynamic>> mondayPlayers = _collectMondayPlayers();
-    
-    if (mondayPlayers.isEmpty) {
-      PopupUtils.showWarning(context, "No Players", "No Monday League players found to process closest pin!");
-      return;
-    }
-
-    // Select 4 closest pin winners for Monday League
-    List<String> winners = await _selectClosestPinWinners(mondayPlayers);
-    
-    if (winners.isNotEmpty) {
-      // Calculate closest pin winnings (4 winners split the pot)
-      double closestPinAmount = ClosestPinManager().currentClosestPinAmount;
-      double totalClosestPinPot = closestPinAmount * mondayPlayers.length;
-      double winningsPerWinner = totalClosestPinPot / 4; // 4 winners for Monday League
-      
-      setState(() {
-        closestPinWinnerName = winners.join(", ");
-        closestPinWinnings = winningsPerWinner;
-      });
-
-      // Save to database after closest pin processing is finished
-      await _saveMondayScoresToDatabase(mondayPlayers, winners, winningsPerWinner);
-      
-      String winnersList = winners.join(", ");
-      await PopupUtils.showSuccess(
-        context, 
-        "Closest Pin Winners", 
-        "Closest Pin Winners: $winnersList\n\nEach winner receives \$${winningsPerWinner.toStringAsFixed(2)}.\n\nAll Monday League scores have been saved to the database."
-      );
-    }
-  }
-
-  // Collect Monday League players with their scores
-  List<Map<String, dynamic>> _collectMondayPlayers() {
-    List<Map<String, dynamic>> mondayPlayers = [];
-    
-    for (var group in groups) {
-      for (var player in group) {
-        if (player != null) {
-          var playerData = Map<String, dynamic>.from(player);
-          
-          // Get SKATS score from controller
-          String skatsKey = '${player['last']}_skats';
-          if (skatsControllers.containsKey(skatsKey) && 
-              skatsControllers[skatsKey]!.text.isNotEmpty) {
-            try {
-              playerData['skats_score'] = int.parse(skatsControllers[skatsKey]!.text);
-            } catch (e) {
-              playerData['skats_score'] = 0;
-            }
-          } else {
-            playerData['skats_score'] = 0;
-          }
-          
-          // Get gross score from controller
-          String grossKey = '${player['last']}_gross';
-          if (grossControllers.containsKey(grossKey) && 
-              grossControllers[grossKey]!.text.isNotEmpty) {
-            try {
-              playerData['gross_score'] = int.parse(grossControllers[grossKey]!.text);
-            } catch (e) {
-              playerData['gross_score'] = 0;
-            }
-          } else {
-            playerData['gross_score'] = 0;
-          }
-          
-          // Calculate SKAT winnings (placeholder for now)
-          playerData['skat_winnings'] = 0.0;
-          
-          mondayPlayers.add(playerData);
-        }
-      }
-    }
-    
-    return mondayPlayers;
-  }
-
-  // Show dialog to select 4 closest pin winners for Monday League
-  Future<List<String>> _selectClosestPinWinners(List<Map<String, dynamic>> players) async {
+  // Show checkbox dialog for selecting 4 closest pin winners (existing method called by _processIndividuals)
+  Future<bool?> _showPlayersCheckboxDialog(List<Map<String, dynamic>> players) async {
     List<String> playerNames = players.map((player) => '${player['first']} ${player['last']}').toList();
     List<String> selectedWinners = [];
     
@@ -4224,7 +4141,7 @@ class _EnterScoresScreenState extends State<EnterScoresScreen> {
       );
       
       if (winner == null) {
-        break; // User cancelled
+        return false; // User cancelled
       } else if (winner == 'DONE') {
         break; // User is done selecting
       } else {
@@ -4233,11 +4150,43 @@ class _EnterScoresScreenState extends State<EnterScoresScreen> {
       }
     }
     
-    return selectedWinners;
+    if (selectedWinners.isNotEmpty) {
+      // Calculate closest pin winnings
+      double closestPinAmount = ClosestPinManager().currentClosestPinAmount;
+      double totalClosestPinPot = closestPinAmount * players.length;
+      double winningsPerWinner = totalClosestPinPot / 4; // 4 winners for Monday League
+      
+      // Store winners for database saving
+      setState(() {
+        closestPinWinnerName = selectedWinners.join(", ");
+        closestPinWinnings = winningsPerWinner;
+      });
+      
+      // Update players with closest pin winnings
+      for (var player in players) {
+        String playerFullName = '${player['first']} ${player['last']}';
+        if (selectedWinners.contains(playerFullName)) {
+          player['close_pin_winnings'] = winningsPerWinner;
+        } else {
+          player['close_pin_winnings'] = 0.0;
+        }
+      }
+      
+      String winnersList = selectedWinners.join(", ");
+      await PopupUtils.showSuccess(
+        context, 
+        "Closest Pin Winners", 
+        "Closest Pin Winners: $winnersList\n\nEach winner receives \$${winningsPerWinner.toStringAsFixed(2)}."
+      );
+      
+      return true; // Closest pin completed successfully
+    }
+    
+    return false;
   }
 
-  // Save Monday League scores to database after closest pin processing
-  Future<void> _saveMondayScoresToDatabase(List<Map<String, dynamic>> players, List<String> closestPinWinners, double closestPinWinnings) async {
+  // Save player scores to database (existing method called by _processIndividuals)
+  Future<void> _savePlayerScoresToDatabase(List<Map<String, dynamic>> players) async {
     final dbHelper = DatabaseHelper();
     String todayDate = DateTime.now().toIso8601String().split('T')[0];
 
@@ -4256,6 +4205,31 @@ class _EnterScoresScreenState extends State<EnterScoresScreen> {
           var playerRecord = playerRecords.first;
           int playerId = playerRecord['id'] as int;
 
+          // Get scores from controllers
+          String skatsKey = '${player['last']}_skats';
+          String grossKey = '${player['last']}_gross';
+          
+          int skatsScore = 0;
+          int grossScore = 0;
+          
+          if (skatsControllers.containsKey(skatsKey) && 
+              skatsControllers[skatsKey]!.text.isNotEmpty) {
+            try {
+              skatsScore = int.parse(skatsControllers[skatsKey]!.text);
+            } catch (e) {
+              skatsScore = 0;
+            }
+          }
+          
+          if (grossControllers.containsKey(grossKey) && 
+              grossControllers[grossKey]!.text.isNotEmpty) {
+            try {
+              grossScore = int.parse(grossControllers[grossKey]!.text);
+            } catch (e) {
+              grossScore = 0;
+            }
+          }
+
           // Prepare score data for Monday League
           Map<String, dynamic> scoreData = {
             'player_id': playerId,
@@ -4264,27 +4238,24 @@ class _EnterScoresScreenState extends State<EnterScoresScreen> {
             'golf_course': 'TBD',  // As specified by user
             'handicap': player['handicap'] ?? 0.0,
             'skat_number': player['skat_number'] ?? 0,
-            'gross_score': player['gross_score'] ?? 0,
-            'skats_score': player['skats_score'] ?? 0,
-            'close_pin_winnings': 0.0,  // Default to 0
+            'gross_score': grossScore,
+            'skats_score': skatsScore,
+            'close_pin_winnings': player['close_pin_winnings'] ?? 0.0,
             'skat_winnings': player['skat_winnings'] ?? 0.0,
             'pos': '',
             'prize_money': '',
           };
 
-          // Set close pin winnings for the 4 winners
-          String playerFullName = '${player['first']} ${player['last']}';
-          if (closestPinWinners.contains(playerFullName)) {
-            scoreData['close_pin_winnings'] = closestPinWinnings;
-          }
-
           // Insert score using the existing database method
           await dbHelper.insertScoreLeague(scoreData, League.monday);
         }
       }
+      
+      await PopupUtils.showSuccess(context, "Database Save", "All Monday League scores have been saved to the database.");
     } catch (e) {
       await PopupUtils.showError(context, "Database Error", "Failed to save Monday League scores: $e");
     }
   }
+
 
 }
