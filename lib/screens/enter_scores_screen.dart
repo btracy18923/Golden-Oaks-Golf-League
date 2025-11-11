@@ -980,6 +980,11 @@ class _EnterScoresScreenState extends State<EnterScoresScreen> {
             // Calculate DIFF (SKAT# - SKATS) and populate DIFF field
             _calculateAndSetDiff(player);
             
+            // Check if all SKATS scores are entered and calculate $$$ if so
+            if (_areAllSkatsScoresEntered()) {
+              _calculateAndDistributeSkatAmounts();
+            }
+            
             // Move focus to next row after 2-digit number entry
             // Only move focus if this controller's focus node currently has focus
             if (focusNode.hasFocus) {
@@ -3133,6 +3138,22 @@ class _EnterScoresScreenState extends State<EnterScoresScreen> {
     }
   }
 
+  bool _areAllSkatsScoresEntered() {
+    // Only check for Monday League
+    if (selectedLeague != 'monday') return false;
+    
+    for (var group in groups) {
+      for (var player in group) {
+        if (player != null && player['is_wild_card'] != true) {
+          if (player['skats_score'] == null) {
+            return false;
+          }
+        }
+      }
+    }
+    return true;
+  }
+
   void _calculateAndDistributeSkatAmounts() {
     // Only process for Monday League
     if (selectedLeague != 'monday') return;
@@ -3775,12 +3796,12 @@ class _EnterScoresScreenState extends State<EnterScoresScreen> {
             // Update the player's skats_score in the data structure
             player['skats_score'] = randomSkatsScore;
             
-            // Calculate DIFF (SKATS - SKAT#)
+            // Calculate DIFF (SKAT# - SKATS)
             if (player['skat_number'] != null) {
               int skatNumber = player['skat_number'] is int 
                   ? player['skat_number'] as int
                   : int.tryParse(player['skat_number'].toString()) ?? 0;
-              int diffScore = randomSkatsScore - skatNumber;
+              int diffScore = skatNumber - randomSkatsScore;
               
               // Set the DIFF score in the controller
               diffControllers[diffKey]!.text = diffScore.toString();
@@ -3823,6 +3844,11 @@ class _EnterScoresScreenState extends State<EnterScoresScreen> {
           }
         }
       }
+    }
+    
+    // For Monday League, calculate SKAT winnings after filling scores
+    if (selectedLeague == 'monday') {
+      _calculateAndDistributeSkatAmounts();
     }
     
     // Refresh the UI to show the new scores
