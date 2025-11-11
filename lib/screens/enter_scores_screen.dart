@@ -2815,8 +2815,8 @@ class _EnterScoresScreenState extends State<EnterScoresScreen> {
                   onPressed: () async {
                     // Show winnings popup - this will handle returning to Enter Scores screen
                     bool? skatCalculated = await _showWinningsPopup(playerScores, playerValues);
-                    // After showing winnings, always close this dialog and return to Enter Scores
-                    Navigator.of(context).pop(false);
+                    // After showing winnings, close this dialog and return true to indicate completion
+                    Navigator.of(context).pop(true);
                     // If SKAT calculation was performed, trigger UI refresh
                     if (skatCalculated == true && mounted) {
                       setState(() {
