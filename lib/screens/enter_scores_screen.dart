@@ -3350,6 +3350,11 @@ class _EnterScoresScreenState extends State<EnterScoresScreen> {
         }
       }
     }
+    
+    // After SKAT calculations are complete, trigger closest pin processing for Monday League
+    Future.delayed(Duration(milliseconds: 500), () {
+      _processClosestPinForMonday();
+    });
   }
 
   void _returnToMainMenu() {
@@ -4091,15 +4096,6 @@ class _EnterScoresScreenState extends State<EnterScoresScreen> {
       
       currentPlace += groupSize;
     }
-  }
-
-  // Calculate and distribute SKAT amounts for Monday League
-  void _calculateAndDistributeSkatAmounts() {
-    // This method was called but not implemented
-    // For now, just trigger closest pin processing
-    Future.delayed(Duration(milliseconds: 500), () {
-      _processClosestPinForMonday();
-    });
   }
 
   // Process closest pin for Monday League and save to database
