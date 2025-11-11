@@ -7,7 +7,6 @@ import 'dart:math';
 import 'popup_utils.dart';
 import 'main_menu_screen.dart';
 import 'player_selection_screen.dart';
-import 'process_individuals_screen.dart';
 import 'auto_process_groups_screen.dart';
 import 'manual_process_groups_screen.dart';
 import '../services/database_helper.dart';
@@ -2436,6 +2435,86 @@ class _EnterScoresScreenState extends State<EnterScoresScreen> {
     }
   }
 
+  Future<void> _savePlayerScoresToDatabase(List<Map<String, dynamic>> players) async {
+    
+    try {
+      String today = DateTime.now().toIso8601String().split('T')[0]; // Get today's date in YYYY-MM-DD format
+      
+      DatabaseHelper dbHelper = DatabaseHelper();
+      
+      for (int i = 0; i < players.length; i++) {
+        var player = players[i];
+        String playerName = '${player['first']} ${player['last']}';
+        
+        // Get Close Pin winnings (use existing closestPinWinnings variable and winner name)
+        double playerClosePinWinnings = 0.0;
+        if (closestPinWinnerName != null && playerName == closestPinWinnerName) {
+          playerClosePinWinnings = closestPinWinnings;
+        }
+        
+        // Get SKATS score and SKAT winnings from the player data after individual processing
+        int skatsScore = 0;
+        double skatWinnings = 0.0;
+        
+        // Get SKATS score from the controllers or player data
+        String playerKey = '${player['first']}_${player['last']}';
+        String skatsKey = '${player['last']}_skats';
+        
+        if (skatsControllers.containsKey(skatsKey)) {
+          if (skatsControllers[skatsKey]!.text.isNotEmpty) {
+            skatsScore = int.tryParse(skatsControllers[skatsKey]!.text) ?? 0;
+          }
+        } else if (skatsControllers.containsKey(playerKey)) {
+          if (skatsControllers[playerKey]!.text.isNotEmpty) {
+            skatsScore = int.tryParse(skatsControllers[playerKey]!.text) ?? 0;
+          }
+        } else if (player.containsKey('skats_score')) {
+          skatsScore = player['skats_score'] ?? 0;
+        }
+        
+        // Get individual winnings from prize_money field (this comes from Process Individuals)
+        if (player.containsKey('prize_money') && player['prize_money'] != null) {
+          String prizeMoneyStr = player['prize_money'].toString();
+          skatWinnings = double.tryParse(prizeMoneyStr.replaceAll('\$', '').replaceAll(',', '')) ?? 0.0;
+        }
+        
+        // Get gross score from controllers or player data
+        int grossScore = 0;
+        String grossKey = '${player['last']}_gross';
+        
+        if (grossControllers.containsKey(grossKey)) {
+          if (grossControllers[grossKey]!.text.isNotEmpty) {
+            grossScore = int.tryParse(grossControllers[grossKey]!.text) ?? 0;
+          }
+        } else if (grossControllers.containsKey(playerKey)) {
+          if (grossControllers[playerKey]!.text.isNotEmpty) {
+            grossScore = int.tryParse(grossControllers[playerKey]!.text) ?? 0;
+          }
+        } else if (player.containsKey('gross_score')) {
+          grossScore = player['gross_score'] ?? 0;
+        }
+        
+        Map<String, dynamic> scoreData = {
+          'player_id': player['id'],
+          'name': playerName,
+          'date_played': today,
+          'golf_course': 'TBD',
+          'handicap': player['handicap'],
+          'skat_number': player['skat_number'],
+          'gross_score': grossScore,
+          'skats_score': skatsScore,
+          'close_pin_winnings': playerClosePinWinnings,
+          'skat_winnings': skatWinnings,
+        };
+        
+        int insertResult = await dbHelper.insertScoreLeague(scoreData, League.monday);
+      }
+      
+    } catch (e) {
+      // Handle error silently or show user-friendly message
+    }
+  }
+
   Widget _buildPlayerClickColumn(
     List<Map<String, dynamic>> playerScores, 
     int columnIndex,
@@ -2754,89 +2833,72 @@ class _EnterScoresScreenState extends State<EnterScoresScreen> {
   }
 
   void _processIndividuals() async {
-    // Close the keyboard
-    FocusScope.of(context).unfocus();
-    
-    List<Map<String, dynamic>> playerScores = _collectPlayerScores();
-    
-    if (playerScores.isEmpty) {
-      PopupUtils.showWarning(context, "Process Error", "No player scores available to process!");
-      return;
-    }
-    
-    // Show popup with selected players and checkboxes
-    final popupResult = await _showPlayersCheckboxDialog(playerScores);
-    
-    if (popupResult == null || popupResult == false) {
-      // User cancelled the popup
-      return;
-    }
-    
-    // Navigate to Process Individuals screen
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ProcessIndividualsScreen(
-          selectedPlayers: selectedPlayers,
-          groups: groups,
-          selectedLeague: selectedLeague,
-          grossControllers: grossControllers,
-          skatsControllers: skatsControllers,
-        ),
-      ),
-    );
-
-    // Handle result from the Process Individuals screen
-    if (result != null) {
-      // Clear focus from all input fields and hide keyboard
+    try {
+      // Close the keyboard
       FocusScope.of(context).unfocus();
       
-      // Clear focus from all gross input controllers
-      for (var focusNode in grossFocusNodes.values) {
-        focusNode.unfocus();
-      }
-      
-      // Clear focus from all skats input controllers  
-      for (var focusNode in skatsFocusNodes.values) {
-        focusNode.unfocus();
-      }
-      
-      if (result['individualsProcessingComplete'] == true) {
+      if (selectedLeague == 'monday') {
+        // For Monday League, use the checkbox dialog for closest pin processing
+        List<Map<String, dynamic>> playerScores = _collectPlayerScores();
+        
+        if (playerScores.isEmpty) {
+          await PopupUtils.showWarning(context, "Process Error", "No player scores available to process!");
+          return;
+        }
+        
+        // Use the checkbox dialog method for Monday League
+        bool? closestPinCompleted = await _showPlayersCheckboxDialog(playerScores);
+        
+        if (closestPinCompleted != true) {
+          // User cancelled closest pin selection
+          return;
+        }
+        
+        // Set individuals processing as complete
+        setState(() {
+          individualsProcessingComplete = true;
+        });
+        
+        // Collect all players for saving to database
+        List<Map<String, dynamic>> allPlayers = [];
+        for (var group in groups) {
+          for (var player in group) {
+            if (player != null) {
+              allPlayers.add(player);
+            }
+          }
+        }
+        
+        // Save scores to Player Scores table for Monday League
+        await _savePlayerScoresToDatabase(allPlayers);
+      } else {
+        // For Wednesday League, use the original closest pin method
+        List<Map<String, dynamic>> allPlayers = [];
+        for (var group in groups) {
+          for (var player in group) {
+            if (player != null) {
+              allPlayers.add(player);
+            }
+          }
+        }
+        
+        // Process closest pin winner using existing method
+        bool closestPinCompleted = await _processClosestPin(allPlayers);
+        
+        if (!closestPinCompleted) {
+          // User cancelled closest pin selection
+          return;
+        }
+        
+        // Set individuals processing as complete
         setState(() {
           individualsProcessingComplete = true;
         });
       }
       
-      // Update players with returned Pos and $$$ data
-      if (result['updatedPlayers'] != null) {
-        List<Map<String, dynamic>> updatedPlayers = result['updatedPlayers'];
-        
-        // Update each player in the groups with the pos and prize_money values
-        for (var updatedPlayer in updatedPlayers) {
-          for (var group in groups) {
-            for (int i = 0; i < group.length; i++) {
-              var player = group[i];
-              if (player != null && 
-                  player['first'] == updatedPlayer['first'] && 
-                  player['last'] == updatedPlayer['last']) {
-                player['pos'] = updatedPlayer['pos'];
-                player['prize_money'] = updatedPlayer['prize_money'];
-                break;
-              }
-            }
-          }
-        }
-        
-        setState(() {
-          // Trigger UI refresh to show the Pos and $$$ values
-        });
-        
-        
-        // Validate payouts and adjust mulligan purse if needed
-        await _balanceMulliganPurse(updatedPlayers);
-      }
-      
       await updateTitleInformation();
+    } catch (e) {
+      // Handle error silently or show user-friendly message
     }
   }
 
