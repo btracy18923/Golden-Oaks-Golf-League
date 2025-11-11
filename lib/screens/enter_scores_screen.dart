@@ -977,7 +977,7 @@ class _EnterScoresScreenState extends State<EnterScoresScreen> {
           }
           
           if (value.length == 2) {
-            // Calculate DIFF (SKAT# - SKATS) and populate DIFF field
+            // Calculate DIFF (SKATS - SKAT#) and populate DIFF field
             _calculateAndSetDiff(player);
             
             // Check if all SKATS scores are entered and calculate $$$ if so
@@ -3213,8 +3213,8 @@ class _EnterScoresScreenState extends State<EnterScoresScreen> {
       return;
     }
     
-    // Calculate SKAT value: divide SKAT purse by total positive DIFFs and ROUND
-    double skatValue = (skatPurse / totalPositiveDiffs).roundToDouble();
+    // Calculate SKAT value: divide SKAT purse by total positive DIFFs
+    double skatValue = skatPurse / totalPositiveDiffs;
     
     // Distribute SKAT amounts to players based on their DIFF values
     for (var group in groups) {
@@ -3229,9 +3229,9 @@ class _EnterScoresScreenState extends State<EnterScoresScreen> {
           }
           
           if (diffValue > 0) {
-            // For positive DIFF: multiply DIFF by SKAT value
+            // For positive DIFF: multiply DIFF by SKAT value and round
             double skatAmount = diffValue * skatValue;
-            player['skat_winnings'] = skatAmount;
+            player['skat_winnings'] = skatAmount.roundToDouble();
           } else {
             // For negative or zero DIFF: post $0.00
             player['skat_winnings'] = 0.0;
@@ -3796,12 +3796,12 @@ class _EnterScoresScreenState extends State<EnterScoresScreen> {
             // Update the player's skats_score in the data structure
             player['skats_score'] = randomSkatsScore;
             
-            // Calculate DIFF (SKAT# - SKATS)
+            // Calculate DIFF (SKATS - SKAT#)
             if (player['skat_number'] != null) {
               int skatNumber = player['skat_number'] is int 
                   ? player['skat_number'] as int
                   : int.tryParse(player['skat_number'].toString()) ?? 0;
-              int diffScore = skatNumber - randomSkatsScore;
+              int diffScore = randomSkatsScore - skatNumber;
               
               // Set the DIFF score in the controller
               diffControllers[diffKey]!.text = diffScore.toString();
