@@ -8,7 +8,6 @@ import 'dart:math';
 import 'popup_utils.dart';
 import 'main_menu_screen.dart';
 import 'player_selection_screen.dart';
-import 'process_individuals_screen.dart';
 import 'auto_process_groups_screen.dart';
 import '../services/database_helper.dart';
 import '../services/ante_manager.dart';
@@ -2219,22 +2218,26 @@ class _ManualProcessGroupsScreenState extends State<ManualProcessGroupsScreen> {
       return;
     }
     
-    // Navigate to Process Individuals screen
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ProcessIndividualsScreen(
-          selectedPlayers: selectedPlayers,
-          groups: groups,
-          selectedLeague: selectedLeague,
-          grossControllers: grossControllers,
-          skatsControllers: {},
-        ),
-      ),
-    );
-
-    // Handle result from the Process Individuals screen
-    if (result != null) {
+    try {
+      // Process individuals inline
+      await _calculateIndividualWinnings(playerScores);
+      
+      // Update players in groups with calculated pos and prize_money values
+      for (var playerScore in playerScores) {
+        for (var group in groups) {
+          for (int i = 0; i < group.length; i++) {
+            var player = group[i];
+            if (player != null && 
+                player['first'] == playerScore['first'] && 
+                player['last'] == playerScore['last']) {
+              player['pos'] = playerScore['pos'] ?? '';
+              player['prize_money'] = playerScore['prize_money'] ?? '';
+              break;
+            }
+          }
+        }
+      }
+      
       // Clear focus from all input fields and hide keyboard
       FocusScope.of(context).unfocus();
       
@@ -2243,39 +2246,120 @@ class _ManualProcessGroupsScreenState extends State<ManualProcessGroupsScreen> {
         focusNode.unfocus();
       }
       
+      setState(() {
+        individualsProcessingComplete = true;
+      });
       
-      if (result['individualsProcessingComplete'] == true) {
-        setState(() {
-          individualsProcessingComplete = true;
-        });
+      await updateTitleInformation();
+      
+      await PopupUtils.showSuccess(context, "Process Complete", "Individual standings and payouts have been calculated successfully!");
+      
+    } catch (e) {
+      await PopupUtils.showError(context, "Process Error", "Failed to process individuals: $e");
+    }
+  }
+
+  Future<void> _calculateIndividualWinnings(List<Map<String, dynamic>> playerScores) async {
+    // Sort players by score
+    if (selectedLeague == 'wednesday') {
+      playerScores.sort((a, b) => a['net_score'].compareTo(b['net_score']));
+    } else {
+      playerScores.sort((a, b) => a['gross_score'].compareTo(b['gross_score']));
+    }
+    
+    // Get payout amounts from CSV
+    List<double> payoutList = await CsvPayoutService().getPayoutList(playerScores.length);
+    
+    // Group players by their scores to identify ties
+    List<List<Map<String, dynamic>>> tieGroups = [];
+    int currentIndex = 0;
+    
+    while (currentIndex < playerScores.length) {
+      List<Map<String, dynamic>> tiedPlayers = [playerScores[currentIndex]];
+      dynamic currentScore = selectedLeague == 'wednesday' 
+          ? playerScores[currentIndex]['net_score'] 
+          : playerScores[currentIndex]['gross_score'];
+      
+      // Find all players with the same score
+      for (int i = currentIndex + 1; i < playerScores.length; i++) {
+        dynamic compareScore = selectedLeague == 'wednesday'
+            ? playerScores[i]['net_score']
+            : playerScores[i]['gross_score'];
+        
+        if (compareScore == currentScore) {
+          tiedPlayers.add(playerScores[i]);
+        } else {
+          break;
+        }
       }
       
-      // Update players with returned Pos and $$$ data
-      if (result['updatedPlayers'] != null) {
-        List<Map<String, dynamic>> updatedPlayers = result['updatedPlayers'];
+      tieGroups.add(tiedPlayers);
+      currentIndex += tiedPlayers.length;
+    }
+    
+    // Assign places and winnings based on tie groups
+    int currentPlace = 1;
+    
+    for (var tieGroup in tieGroups) {
+      int groupSize = tieGroup.length;
+      
+      if (groupSize == 1) {
+        // No tie - regular placement
+        var player = tieGroup[0];
+        player['place'] = currentPlace;
+        player['is_tied'] = false;
         
-        // Update each player in the groups with the pos and prize_money values
-        for (var updatedPlayer in updatedPlayers) {
-          for (var group in groups) {
-            for (int i = 0; i < group.length; i++) {
-              var player = group[i];
-              if (player != null && 
-                  player['first'] == updatedPlayer['first'] && 
-                  player['last'] == updatedPlayer['last']) {
-                player['pos'] = updatedPlayer['pos'];
-                player['prize_money'] = updatedPlayer['prize_money'];
-                break;
-              }
-            }
+        if (currentPlace <= payoutList.length) {
+          player['winnings'] = payoutList[currentPlace - 1];
+        } else {
+          player['winnings'] = 0.0;
+        }
+      } else {
+        // Tie - calculate shared winnings
+        double totalWinnings = 0.0;
+        
+        // Sum up the winnings for all positions involved in the tie
+        for (int i = 0; i < groupSize; i++) {
+          int position = currentPlace + i;
+          if (position <= payoutList.length) {
+            totalWinnings += payoutList[position - 1];
           }
         }
         
-        setState(() {
-          // Trigger UI refresh to show the Pos and $$$ values
-        });
+        // Divide evenly among tied players
+        double sharedWinnings = totalWinnings / groupSize;
+        
+        // Assign to all tied players
+        for (var player in tieGroup) {
+          player['place'] = currentPlace;
+          player['is_tied'] = true;
+          player['tie_count'] = groupSize;
+          player['winnings'] = sharedWinnings;
+        }
       }
       
-      await updateTitleInformation();
+      currentPlace += groupSize;
+    }
+
+    // Set pos and prize_money for display
+    for (var player in playerScores) {
+      double winnings = (player['winnings'] ?? 0.0).toDouble();
+      int roundedWinnings = winnings.round();
+      
+      if (roundedWinnings > 0) {
+        int place = player['place'] ?? 0;
+        bool isTied = player['is_tied'] ?? false;
+        
+        if (isTied) {
+          player['pos'] = 'T${place}';
+        } else {
+          player['pos'] = place.toString();
+        }
+        player['prize_money'] = '\$${roundedWinnings}';
+      } else {
+        player['pos'] = '';
+        player['prize_money'] = '';
+      }
     }
   }
 
