@@ -2448,11 +2448,8 @@ class _EnterScoresScreenState extends State<EnterScoresScreen> {
         var player = players[i];
         String playerName = '${player['first']} ${player['last']}';
         
-        // Get Close Pin winnings (use existing closestPinWinnings variable and winner name)
-        double playerClosePinWinnings = 0.0;
-        if (closestPinWinnerName != null && playerName == closestPinWinnerName) {
-          playerClosePinWinnings = closestPinWinnings;
-        }
+        // Get Close Pin winnings from player data (already set during individual processing)
+        double playerClosePinWinnings = (player['close_pin_winnings'] ?? 0.0).toDouble();
         
         // Get SKATS score and SKAT winnings from the player data after individual processing
         int skatsScore = 0;
@@ -2474,11 +2471,8 @@ class _EnterScoresScreenState extends State<EnterScoresScreen> {
           skatsScore = player['skats_score'] ?? 0;
         }
         
-        // Get individual winnings from prize_money field (this comes from Process Individuals)
-        if (player.containsKey('prize_money') && player['prize_money'] != null) {
-          String prizeMoneyStr = player['prize_money'].toString();
-          skatWinnings = double.tryParse(prizeMoneyStr.replaceAll('\$', '').replaceAll(',', '')) ?? 0.0;
-        }
+        // Get SKAT winnings from player data (calculated during SKAT processing)
+        skatWinnings = (player['skat_winnings'] ?? 0.0).toDouble();
         
         // Get gross score from controllers or player data
         int grossScore = 0;
@@ -2813,16 +2807,60 @@ class _EnterScoresScreenState extends State<EnterScoresScreen> {
                 ),
                 ElevatedButton(
                   onPressed: () async {
-                    // Show winnings popup - this will handle returning to Enter Scores screen
-                    bool? skatCalculated = await _showWinningsPopup(playerScores, playerValues);
-                    // After showing winnings, close this dialog and return true to indicate completion
-                    Navigator.of(context).pop(true);
-                    // If SKAT calculation was performed, trigger UI refresh
-                    if (skatCalculated == true && mounted) {
+                    // Show winnings popup for Monday League closest pin
+                    List<String> winnersList = [];
+                    double totalWinnings = 0.0;
+                    int winnersCount = 0;
+                    
+                    // Calculate closest pin winners from player values
+                    // Each player gets: ($1.00 × total active players) × (number next to their name)
+                    double baseAmount = 1.0; // $1.00 per active player
+                    int totalActivePlayers = playerValues.length;
+                    Map<String, double> individualWinnings = {};
+                    
+                    playerValues.forEach((playerName, value) {
+                      if (value > 0) {
+                        winnersList.add(playerName);
+                        double playerWinnings = baseAmount * totalActivePlayers * value.toDouble();
+                        individualWinnings[playerName] = playerWinnings;
+                        totalWinnings += playerWinnings;
+                        winnersCount++;
+                      }
+                    });
+                    
+                    if (winnersCount > 0) {
+                      // Store closest pin winner information for database saving
                       setState(() {
-                        // Force UI update to show new SKAT amounts in $$$ column
+                        closestPinWinnerName = winnersList.join(", ");
+                        closestPinWinnings = totalWinnings; // Total amount for all winners
+                        
+                        // Store individual winnings in player data for proper database saving
+                        for (var player in playerScores) {
+                          String playerName = player['last'] ?? 'Unknown';
+                          if (individualWinnings.containsKey(playerName)) {
+                            player['close_pin_winnings'] = individualWinnings[playerName];
+                          } else {
+                            player['close_pin_winnings'] = 0.0;
+                          }
+                        }
                       });
+                      
+                      // Create detailed message showing individual amounts
+                      String detailMessage = "Winners:\n";
+                      individualWinnings.forEach((playerName, amount) {
+                        detailMessage += "$playerName: \$${amount.toStringAsFixed(2)}\n";
+                      });
+                      detailMessage += "\nTotal Payout: \$${totalWinnings.toStringAsFixed(2)}";
+                      
+                      await PopupUtils.showSuccess(
+                        context,
+                        "Closest Pin Winners",
+                        detailMessage
+                      );
                     }
+                    
+                    // Close this dialog and return true to indicate completion
+                    Navigator.of(context).pop(true);
                   },
                   child: Text('Continue'),
                 ),
@@ -2856,10 +2894,31 @@ class _EnterScoresScreenState extends State<EnterScoresScreen> {
           return;
         }
         
+        // Transfer Close Pin winnings from playerScores back to the original groups array
+        for (var playerScore in playerScores) {
+          String playerIdentifier = '${playerScore['first']}_${playerScore['last']}';
+          double closePinWinnings = (playerScore['close_pin_winnings'] ?? 0.0).toDouble();
+          
+          // Find the corresponding player in groups array and update their close_pin_winnings
+          for (var group in groups) {
+            for (var player in group) {
+              if (player != null) {
+                String groupPlayerIdentifier = '${player['first']}_${player['last']}';
+                if (groupPlayerIdentifier == playerIdentifier) {
+                  player['close_pin_winnings'] = closePinWinnings;
+                }
+              }
+            }
+          }
+        }
+        
         // Set individuals processing as complete
         setState(() {
           individualsProcessingComplete = true;
         });
+        
+        // Calculate SKAT winnings before saving to database
+        _calculateAndDistributeSkatAmounts();
         
         // Collect all players for saving to database
         List<Map<String, dynamic>> allPlayers = [];
@@ -3352,9 +3411,12 @@ class _EnterScoresScreenState extends State<EnterScoresScreen> {
     }
     
     // After SKAT calculations are complete, trigger individuals processing for Monday League
-    Future.delayed(Duration(milliseconds: 500), () {
-      _processIndividuals();
-    });
+    // Only trigger if individuals processing is not already complete
+    if (!individualsProcessingComplete) {
+      Future.delayed(Duration(milliseconds: 500), () {
+        _processIndividuals();
+      });
+    }
   }
 
   void _returnToMainMenu() {
@@ -3747,8 +3809,9 @@ class _EnterScoresScreenState extends State<EnterScoresScreen> {
   Future<void> _saveResultsToDatabase(List<Map<String, dynamic>> playerScores) async {
     final dbHelper = DatabaseHelper();
     
-    // Add closest pin winnings to the appropriate player
-    if (closestPinWinnerName != null && closestPinWinnings > 0) {
+    // For Monday League individual processing, closest pin winnings are already set in player data
+    // For Wednesday League single winner, add closest pin winnings to the appropriate player
+    if (selectedLeague == 'wednesday' && closestPinWinnerName != null && closestPinWinnings > 0) {
       for (var player in playerScores) {
         String playerFullName = '${player['first']} ${player['last']}';
         if (playerFullName == closestPinWinnerName) {
@@ -3758,6 +3821,7 @@ class _EnterScoresScreenState extends State<EnterScoresScreen> {
         }
       }
     }
+    // For Monday League, individual winnings are already set in the processing dialog
     
     for (var player in playerScores) {
       // Find the player's ID from the database
@@ -3792,7 +3856,7 @@ class _EnterScoresScreenState extends State<EnterScoresScreen> {
           scoreData['golf_course'] = 'TBD'; // Golf Course - could be configurable later
           scoreData['skat_number'] = playerRecord['skat_number'] ?? 0;
           scoreData['skats_score'] = player['skats_score'] ?? 0;
-          scoreData['skat_winnings'] = roundedWinnings.toDouble(); // Single Winnings
+          scoreData['skat_winnings'] = (player['skat_winnings'] ?? 0.0).toDouble(); // SKAT Winnings from SKAT calculation
         } else {
           // Wednesday League: save to wednesday_scores table  
           scoreData['golf_course'] = 'The Hideout'; // Golf Course for Wednesday League
