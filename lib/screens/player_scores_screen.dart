@@ -569,7 +569,7 @@ class _PlayerScoresScreenState extends State<PlayerScoresScreen> {
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: SizedBox(
-          width: _selectedLeague == League.monday ? 730 : 870, // Adjust width based on league columns
+          width: _selectedLeague == League.monday ? 810 : 870, // Adjust width based on league columns
           child: Column(
             children: [
               // Two-line header
@@ -631,7 +631,7 @@ class _PlayerScoresScreenState extends State<PlayerScoresScreen> {
       // Monday League: Name, Date, Golf Course, Close Pin, SKATS, SKAT Winnings
       return Row(
         children: [
-          _buildDataCellWithIcon(score['name'] ?? '', isUnlocked, 80),
+          _buildDataCellWithIcon(score['name'] ?? '', isUnlocked, 160),
           _buildDataCell(_formatDateToMMDDYY(score['date_played']), 90),
           _buildDataCell(score['golf_course'] ?? '', 120),
           _buildDataCell(_formatWinningsSimple(score['close_pin_winnings']), 100),
@@ -671,7 +671,7 @@ class _PlayerScoresScreenState extends State<PlayerScoresScreen> {
       // Monday League: Name, Date, Golf Course, Close Pin, SKATS, SKAT Winnings
       return Row(
         children: [
-          _buildDataCell(_selectedPlayer ?? '', 80),
+          _buildDataCell(_selectedPlayer ?? '', 160),
           _buildDataCell(_getCurrentDateMMDDYY(), 90),
           _buildGolfCourseCell(), // Golf Course - editable dropdown for Monday
           _buildDataCell('\$0.00', 100), // Close pin winnings - always $0
@@ -836,7 +836,7 @@ class _PlayerScoresScreenState extends State<PlayerScoresScreen> {
           // First header line
           Row(
             children: [
-              _buildHeaderCell('Name', 80),
+              _buildHeaderCell('Name', 160),
               _buildHeaderCell('Date', 90),
               _buildHeaderCell('Golf Course', 120),
               _buildHeaderCell('Close Pin', 100),
