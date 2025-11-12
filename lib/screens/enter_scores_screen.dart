@@ -1571,6 +1571,7 @@ class _EnterScoresScreenState extends State<EnterScoresScreen> {
                 _buildFooterButton("Closest Pin", Color(0xFFB3FFB3), _processIndividuals),
                 _buildFooterButton("Main Menu", Colors.lightBlue[100]!, _returnToMainMenu),
                 _buildFooterButton("Auto Fill", Colors.orange[200]!, _autoFillGrossScores),
+                _buildSwapButton(),
               ]
             : [
                 _buildFooterButton("Auto Fill", Colors.orange[200]!, _autoFillGrossScores),
@@ -1649,7 +1650,7 @@ class _EnterScoresScreenState extends State<EnterScoresScreen> {
   }
 
   Widget _buildSwapButton() {
-    String buttonText = 'Manual Process Groups';
+    String buttonText = 'SWAP Players';
     bool isEnabled = false;
     Color buttonColor = Colors.grey[400]!;
     
@@ -1985,8 +1986,6 @@ class _EnterScoresScreenState extends State<EnterScoresScreen> {
           individualsProcessingComplete = false;
         }
       });
-      
-      PopupUtils.showSuccess(context, "Success", "Players swapped successfully!");
       
     } catch (e) {
       PopupUtils.showError(context, "Swap Error", "Failed to swap players: $e");
@@ -3002,6 +3001,9 @@ class _EnterScoresScreenState extends State<EnterScoresScreen> {
         setState(() {
           individualsProcessingComplete = true;
         });
+        
+        // Save player scores to Players Scores Screen database
+        await _saveResultsToDatabase(playerScores);
       }
       
       await updateTitleInformation();
