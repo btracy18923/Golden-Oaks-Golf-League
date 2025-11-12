@@ -251,6 +251,117 @@ class SyncService {
     _errorController.add(error);
   }
 
+  /// Sync Monday League only
+  Future<bool> syncMondayLeagueOnly() async {
+    if (_currentStatus == SyncStatus.syncing) {
+      return false;
+    }
+
+    _updateStatus(SyncStatus.syncing);
+    _lastError = null;
+
+    try {
+      bool syncEnabled = await _firebaseService.isSyncEnabled();
+      if (!syncEnabled) {
+        _updateStatus(SyncStatus.idle);
+        return false;
+      }
+
+      bool hasInternet = await hasInternetConnection();
+      if (!hasInternet) {
+        _updateStatus(SyncStatus.offline);
+        _setError('No internet connection available');
+        return false;
+      }
+
+      bool success = await _firebaseService.syncMondayLeague();
+
+      if (success) {
+        _lastSyncTime = DateTime.now();
+        await _dbHelper.setSetting('last_sync_time', _lastSyncTime!.toIso8601String());
+        _updateStatus(SyncStatus.success);
+        
+        Timer(const Duration(seconds: 2), () {
+          if (_currentStatus == SyncStatus.success) {
+            _updateStatus(SyncStatus.idle);
+          }
+        });
+      } else {
+        _updateStatus(SyncStatus.error);
+        _setError('Monday League sync failed');
+      }
+
+      return success;
+    } catch (e) {
+      _updateStatus(SyncStatus.error);
+      _setError('Monday League sync error: $e');
+      return false;
+    }
+  }
+
+  /// Sync Wednesday League only
+  Future<bool> syncWednesdayLeagueOnly() async {
+    if (_currentStatus == SyncStatus.syncing) {
+      return false;
+    }
+
+    _updateStatus(SyncStatus.syncing);
+    _lastError = null;
+
+    try {
+      bool syncEnabled = await _firebaseService.isSyncEnabled();
+      if (!syncEnabled) {
+        _updateStatus(SyncStatus.idle);
+        return false;
+      }
+
+      bool hasInternet = await hasInternetConnection();
+      if (!hasInternet) {
+        _updateStatus(SyncStatus.offline);
+        _setError('No internet connection available');
+        return false;
+      }
+
+      bool success = await _firebaseService.syncWednesdayLeague();
+
+      if (success) {
+        _lastSyncTime = DateTime.now();
+        await _dbHelper.setSetting('last_sync_time', _lastSyncTime!.toIso8601String());
+        _updateStatus(SyncStatus.success);
+        
+        Timer(const Duration(seconds: 2), () {
+          if (_currentStatus == SyncStatus.success) {
+            _updateStatus(SyncStatus.idle);
+          }
+        });
+      } else {
+        _updateStatus(SyncStatus.error);
+        _setError('Wednesday League sync failed');
+      }
+
+      return success;
+    } catch (e) {
+      _updateStatus(SyncStatus.error);
+      _setError('Wednesday League sync error: $e');
+      return false;
+    }
+  }
+
+  /// Get detailed sync statistics including league breakdown
+  Future<Map<String, dynamic>> getDetailedSyncStats() async {
+    Map<String, dynamic> firebaseStats = await _firebaseService.getComprehensiveSyncStats();
+    
+    return {
+      ...firebaseStats,
+      'sync_service_status': {
+        'current_status': _currentStatus.toString(),
+        'last_error': _lastError,
+        'last_sync_time': _lastSyncTime?.toIso8601String(),
+        'auto_sync_active': _autoSyncTimer != null,
+      }
+    };
+  }
+
   /// Dispose resources
   void dispose() {
     stopAutoSync();

@@ -193,75 +193,162 @@ class FirebaseService {
 
   /// Sync games from Firebase
   Future<void> _syncGamesFromFirebase() async {
-    QuerySnapshot snapshot = await _firestore.collection(gamesCollection).get();
-    
-    for (var doc in snapshot.docs) {
-      Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+    try {
+      QuerySnapshot snapshot = await _firestore.collection(gamesCollection).get();
       
-      // Remove Firebase-specific fields
-      data.remove('last_synced');
-      data.remove('synced_from');
-      
-      // Since we don't have game insert/update methods, we'd need to add them to DatabaseHelper
-      // For now, just log the data
-      print('Game data from Firebase: $data');
+      for (var doc in snapshot.docs) {
+        Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+        
+        // Remove Firebase-specific fields
+        data.remove('last_synced');
+        data.remove('synced_from');
+        
+        // Determine league from data
+        String? leagueStr = data['league'];
+        double anteAmount = (data['ante_amount'] ?? 0.0).toDouble();
+        
+        if (leagueStr != null) {
+          League league = leagueStr == 'monday' ? League.monday : League.wednesday;
+          
+          // Check if game already exists by comparing date and league
+          List<Map<String, dynamic>> existingGames = await _dbHelper.getGamesByLeague(league);
+          
+          bool gameExists = existingGames.any((game) => 
+            game['date'] == data['date'] && 
+            game['league'] == leagueStr
+          );
+          
+          if (!gameExists) {
+            // Create new game
+            await _dbHelper.createGame(league, anteAmount);
+          }
+        }
+      }
+      print('Successfully synced ${snapshot.docs.length} games from Firebase');
+    } catch (e) {
+      print('Error syncing games from Firebase: $e');
     }
   }
 
   /// Sync scores to Firebase
   Future<void> _syncScoresToFirebase() async {
-    // Get all scores for both leagues
-    // Note: We'd need a method to get all scores in DatabaseHelper
-    // For now, this is a placeholder
-    print('Syncing scores to Firebase - method needs implementation');
+    try {
+      // Get scores for Monday league
+      List<Map<String, dynamic>> mondayScores = await _getLeagueScores(League.monday);
+      
+      // Get scores for Wednesday league
+      List<Map<String, dynamic>> wednesdayScores = await _getLeagueScores(League.wednesday);
+      
+      List<Map<String, dynamic>> allScores = [...mondayScores, ...wednesdayScores];
+      
+      WriteBatch batch = _firestore.batch();
+      
+      for (var score in allScores) {
+        String docId = 'score_${score['league']}_${score['player_id']}_${score['date']}';
+        DocumentReference docRef = _firestore.collection(scoresCollection).doc(docId);
+        
+        // Add metadata
+        score['last_synced'] = FieldValue.serverTimestamp();
+        score['synced_from'] = 'local';
+        
+        batch.set(docRef, score, SetOptions(merge: true));
+      }
+      
+      await batch.commit();
+      print('Successfully synced ${allScores.length} scores to Firebase');
+    } catch (e) {
+      print('Error syncing scores to Firebase: $e');
+    }
+  }
+  
+  /// Helper method to get all scores for a specific league
+  Future<List<Map<String, dynamic>>> _getLeagueScores(League league) async {
+    List<Map<String, dynamic>> scores = [];
+    
+    try {
+      // Get all players for the league
+      List<Map<String, dynamic>> players = await _dbHelper.getPlayersByLeague(league);
+      
+      // For each player, get their scores
+      for (var player in players) {
+        List<Map<String, dynamic>> playerScores = await _dbHelper.getPlayerScoresWithWinnings(player['id'], league);
+        scores.addAll(playerScores);
+      }
+    } catch (e) {
+      print('Error getting league scores for ${league.toString()}: $e');
+    }
+    
+    return scores;
   }
 
   /// Sync scores from Firebase
   Future<void> _syncScoresFromFirebase() async {
-    QuerySnapshot snapshot = await _firestore.collection(scoresCollection).get();
-    
-    for (var doc in snapshot.docs) {
-      Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+    try {
+      QuerySnapshot snapshot = await _firestore.collection(scoresCollection).get();
       
-      // Remove Firebase-specific fields
-      data.remove('last_synced');
-      data.remove('synced_from');
-      
-      // Insert score
-      await _dbHelper.insertScore(data);
+      for (var doc in snapshot.docs) {
+        Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+        
+        // Remove Firebase-specific fields
+        data.remove('last_synced');
+        data.remove('synced_from');
+        
+        // Determine league from data
+        String? leagueStr = data['league'];
+        if (leagueStr != null) {
+          League league = leagueStr == 'monday' ? League.monday : League.wednesday;
+          
+          // Insert score into appropriate league table
+          await _dbHelper.insertScoreLeague(data, league);
+        } else {
+          // Fallback to generic insert if league not specified
+          await _dbHelper.insertScore(data);
+        }
+      }
+      print('Successfully synced ${snapshot.docs.length} scores from Firebase');
+    } catch (e) {
+      print('Error syncing scores from Firebase: $e');
     }
   }
 
   /// Sync settings to Firebase
   Future<void> _syncSettingsToFirebase() async {
-    // Get all settings and sync them
-    List<String> settingKeys = [
-      'monday_ante',
-      'wednesday_ante', 
-      'individual_percent',
-      'group_percent',
-      'firebase_sync_enabled'
-    ];
-    
-    WriteBatch batch = _firestore.batch();
-    
-    for (String key in settingKeys) {
-      String? value = await _dbHelper.getSetting(key);
-      if (value != null) {
-        DocumentReference docRef = _firestore.collection(settingsCollection).doc(key);
-        
-        Map<String, dynamic> settingData = {
-          'key_name': key,
-          'value': value,
-          'last_synced': FieldValue.serverTimestamp(),
-          'synced_from': 'local',
-        };
-        
-        batch.set(docRef, settingData, SetOptions(merge: true));
+    try {
+      // Get all settings and sync them
+      List<String> settingKeys = [
+        'monday_ante',
+        'wednesday_ante', 
+        'individual_percent',
+        'group_percent',
+        'firebase_sync_enabled',
+        'last_sync_time',
+        'adjusted_mulligan_purse_monday',
+        'adjusted_mulligan_purse_wednesday'
+      ];
+      
+      WriteBatch batch = _firestore.batch();
+      
+      for (String key in settingKeys) {
+        String? value = await _dbHelper.getSetting(key);
+        if (value != null) {
+          DocumentReference docRef = _firestore.collection(settingsCollection).doc(key);
+          
+          Map<String, dynamic> settingData = {
+            'key_name': key,
+            'value': value,
+            'last_synced': FieldValue.serverTimestamp(),
+            'synced_from': 'local',
+          };
+          
+          batch.set(docRef, settingData, SetOptions(merge: true));
+        }
       }
+      
+      await batch.commit();
+      print('Successfully synced ${settingKeys.length} settings to Firebase');
+    } catch (e) {
+      print('Error syncing settings to Firebase: $e');
     }
-    
-    await batch.commit();
   }
 
   /// Sync settings from Firebase
@@ -350,5 +437,180 @@ class FirebaseService {
   /// Set last sync time
   Future<void> setLastSyncTime() async {
     await _dbHelper.setSetting('last_sync_time', DateTime.now().toIso8601String());
+  }
+
+  /// Sync only Monday League data
+  Future<bool> syncMondayLeague() async {
+    try {
+      if (!await isSyncEnabled()) {
+        print('Firebase sync is disabled');
+        return false;
+      }
+
+      User? user = getCurrentUser();
+      if (user == null) {
+        user = await signInAnonymously();
+        if (user == null) {
+          print('Failed to authenticate with Firebase');
+          return false;
+        }
+      }
+
+      // Sync Monday players bidirectionally
+      await _syncSpecificLeagueToFirebase(League.monday);
+      await _syncSpecificLeagueFromFirebase(League.monday);
+      
+      print('Successfully synced Monday League data');
+      return true;
+    } catch (e) {
+      print('Error syncing Monday League: $e');
+      return false;
+    }
+  }
+
+  /// Sync only Wednesday League data
+  Future<bool> syncWednesdayLeague() async {
+    try {
+      if (!await isSyncEnabled()) {
+        print('Firebase sync is disabled');
+        return false;
+      }
+
+      User? user = getCurrentUser();
+      if (user == null) {
+        user = await signInAnonymously();
+        if (user == null) {
+          print('Failed to authenticate with Firebase');
+          return false;
+        }
+      }
+
+      // Sync Wednesday players bidirectionally
+      await _syncSpecificLeagueToFirebase(League.wednesday);
+      await _syncSpecificLeagueFromFirebase(League.wednesday);
+      
+      print('Successfully synced Wednesday League data');
+      return true;
+    } catch (e) {
+      print('Error syncing Wednesday League: $e');
+      return false;
+    }
+  }
+
+  /// Sync specific league data to Firebase
+  Future<void> _syncSpecificLeagueToFirebase(League league) async {
+    String leagueStr = league.toString().split('.').last;
+    
+    // Sync players for this league
+    List<Map<String, dynamic>> players = await _dbHelper.getPlayersByLeague(league);
+    
+    WriteBatch batch = _firestore.batch();
+    
+    for (var player in players) {
+      String docId = 'player_${leagueStr}_${player['id']}';
+      DocumentReference docRef = _firestore.collection(playersCollection).doc(docId);
+      
+      player['last_synced'] = FieldValue.serverTimestamp();
+      player['synced_from'] = 'local';
+      
+      batch.set(docRef, player, SetOptions(merge: true));
+    }
+    
+    // Sync games for this league
+    List<Map<String, dynamic>> games = await _dbHelper.getGamesByLeague(league);
+    
+    for (var game in games) {
+      String docId = 'game_${leagueStr}_${game['id']}';
+      DocumentReference docRef = _firestore.collection(gamesCollection).doc(docId);
+      
+      game['last_synced'] = FieldValue.serverTimestamp();
+      game['synced_from'] = 'local';
+      
+      batch.set(docRef, game, SetOptions(merge: true));
+    }
+    
+    // Sync scores for this league
+    List<Map<String, dynamic>> scores = await _getLeagueScores(league);
+    
+    for (var score in scores) {
+      String docId = 'score_${leagueStr}_${score['player_id']}_${score['date']}';
+      DocumentReference docRef = _firestore.collection(scoresCollection).doc(docId);
+      
+      score['last_synced'] = FieldValue.serverTimestamp();
+      score['synced_from'] = 'local';
+      
+      batch.set(docRef, score, SetOptions(merge: true));
+    }
+    
+    await batch.commit();
+    print('Synced ${players.length} players, ${games.length} games, and ${scores.length} scores for ${leagueStr} league to Firebase');
+  }
+
+  /// Sync specific league data from Firebase
+  Future<void> _syncSpecificLeagueFromFirebase(League league) async {
+    String leagueStr = league.toString().split('.').last;
+    
+    // Sync players for this league
+    QuerySnapshot playersSnapshot = await _firestore
+        .collection(playersCollection)
+        .where('league', isEqualTo: leagueStr)
+        .get();
+    
+    for (var doc in playersSnapshot.docs) {
+      Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+      data.remove('last_synced');
+      data.remove('synced_from');
+      
+      if (data['id'] != null) {
+        Map<String, dynamic>? existingPlayer = await _dbHelper.getPlayer(data['id']);
+        
+        if (existingPlayer != null) {
+          await _dbHelper.updatePlayer(data['id'], data);
+        } else {
+          await _dbHelper.insertPlayer(data);
+        }
+      }
+    }
+    
+    // Sync scores for this league
+    QuerySnapshot scoresSnapshot = await _firestore
+        .collection(scoresCollection)
+        .where('league', isEqualTo: leagueStr)
+        .get();
+    
+    for (var doc in scoresSnapshot.docs) {
+      Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+      data.remove('last_synced');
+      data.remove('synced_from');
+      
+      await _dbHelper.insertScoreLeague(data, league);
+    }
+    
+    print('Synced ${playersSnapshot.docs.length} players and ${scoresSnapshot.docs.length} scores for ${leagueStr} league from Firebase');
+  }
+
+  /// Get comprehensive sync statistics
+  Future<Map<String, dynamic>> getComprehensiveSyncStats() async {
+    Map<String, int> dataCounts = await _dbHelper.getDataCounts();
+    
+    // Get league-specific counts
+    List<Map<String, dynamic>> mondayPlayers = await _dbHelper.getPlayersByLeague(League.monday);
+    List<Map<String, dynamic>> wednesdayPlayers = await _dbHelper.getPlayersByLeague(League.wednesday);
+    List<Map<String, dynamic>> mondayGames = await _dbHelper.getGamesByLeague(League.monday);
+    List<Map<String, dynamic>> wednesdayGames = await _dbHelper.getGamesByLeague(League.wednesday);
+    
+    return {
+      'total_data': dataCounts,
+      'monday_league': {
+        'players': mondayPlayers.length,
+        'games': mondayGames.length,
+      },
+      'wednesday_league': {
+        'players': wednesdayPlayers.length,
+        'games': wednesdayGames.length,
+      },
+      'firebase_status': await getSyncStatus(),
+      'last_sync': await _dbHelper.getSetting('last_sync_time'),
+    };
   }
 }
