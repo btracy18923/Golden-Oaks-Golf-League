@@ -2,7 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import '../../services/database_helper.dart';
 import '../../models/league.dart';
-import '../enter_scores_screen.dart';
+import 'monday_enter_scores_screen.dart';
 
 class MondayPlayerSelectionScreen extends StatefulWidget {
   const MondayPlayerSelectionScreen({super.key});
@@ -270,14 +270,13 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
         groups.add(group);
       }
       
-      // Navigate to Enter Scores Screen with Monday league type
+      // Navigate to Monday Enter Scores Screen
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => EnterScoresScreen(
+          builder: (context) => MondayEnterScoresScreen(
             initialPlayers: selectedPlayers,
             initialGroups: groups,
-            initialLeague: 'monday', // Hard-coded Monday
           ),
         ),
       );
