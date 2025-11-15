@@ -121,3 +121,7 @@ Ensure proper Android configuration in:
 - Firebase configuration files in `android/app/`
 
 The Flutter framework handles the complexity of Android compilation, eliminating the need for manual Java/Kotlin conversion or complex build tools.
+
+## Git Workflow Instructions
+
+**IMPORTANT**: Do not automatically commit changes or push changes to GitHub. The user will explicitly tell you when to commit and push. Always wait for user instructions before running git commit or git push commands.

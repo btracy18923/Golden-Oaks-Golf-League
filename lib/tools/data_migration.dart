@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:sqflite/sqflite.dart';
 import '../services/database_helper.dart';
 import '../models/league.dart';
 
@@ -68,8 +67,6 @@ class DataMigration {
     try {
       List<dynamic> playerData = playersTable['data'] ?? [];
       
-      int migratedCount = 0;
-      
       for (var playerRow in playerData) {
         Map<String, dynamic> player = Map<String, dynamic>.from(playerRow);
         
@@ -79,8 +76,8 @@ class DataMigration {
         if (migratedPlayer.isNotEmpty) {
           try {
             await _dbHelper.insertPlayer(migratedPlayer);
-            migratedCount++;
           } catch (e) {
+            // Handle insertion error silently
           }
         }
       }
@@ -146,8 +143,6 @@ class DataMigration {
     try {
       List<dynamic> scoresData = scoresTable['data'] ?? [];
       
-      int migratedCount = 0;
-      
       for (var scoreRow in scoresData) {
         Map<String, dynamic> score = Map<String, dynamic>.from(scoreRow);
         
@@ -157,8 +152,8 @@ class DataMigration {
         if (migratedScore.isNotEmpty) {
           try {
             await _dbHelper.insertScore(migratedScore);
-            migratedCount++;
           } catch (e) {
+            // Handle insertion error silently
           }
         }
       }
@@ -193,8 +188,8 @@ class DataMigration {
       List<dynamic> gamesData = gamesTable['data'] ?? [];
       // For now, just process the games data
       // You can implement actual game migration based on your needs
-      for (var game in gamesData) {
-        // Process game data here
+      for (var _ in gamesData) {
+        // Process game data here - placeholder implementation
       }
       
       return true;

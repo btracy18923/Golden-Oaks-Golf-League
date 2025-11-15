@@ -33,10 +33,12 @@ void main() {
         currentMulliganPurse: currentMulliganPurse,
       );
       
-      // Manual calculation with exact amounts
+      // Manual calculation with exact amounts (for reference)
+      // ignore: unused_local_variable
       double exactTotal = 3 * 2.67; // = 8.01
       
-      // Manual calculation with rounded amounts (as user sees on screen)
+      // Manual calculation with rounded amounts (as user sees on screen, for reference)
+      // ignore: unused_local_variable
       double roundedTotal = 3 * 3.0; // = 9.00
       
       // The validation service should now use rounded amounts (9.00) not exact amounts (8.01)

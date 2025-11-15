@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:csv/csv.dart';
 import 'dart:async';
 import 'package:path/path.dart' as path;
 import 'package:sqflite/sqflite.dart';
 import 'dart:math';
 import 'popup_utils.dart';
 import 'main_menu_screen.dart';
-import 'player_selection_screen.dart';
 import 'manual_process_groups_screen.dart';
 import '../services/database_helper.dart';
 import '../services/ante_manager.dart';
@@ -396,7 +394,6 @@ class _AutoProcessGroupsScreenState extends State<AutoProcessGroupsScreen> {
   Future<void> updateTitleInformation() async {
     double anteAmount = AnteManager().currentAnteAmount;
     double closestPinAmount = ClosestPinManager().currentClosestPinAmount;
-    double mulliganAmount = MulliganManager().currentMulliganAmount;
     
     int numPlayers = 0;
     for (var group in groups) {
@@ -460,6 +457,7 @@ class _AutoProcessGroupsScreenState extends State<AutoProcessGroupsScreen> {
   }
 
   Future<void> _assignGroupPlacesAndPrizes(List<Map<String, dynamic>> groupRankings) async {
+    print("DEBUG: _assignGroupPlacesAndPrizes called with ${groupRankings.length} group rankings");
     if (groupRankings.isEmpty) return;
     
     try {
@@ -2170,6 +2168,8 @@ class _AutoProcessGroupsScreenState extends State<AutoProcessGroupsScreen> {
   }
 
   Future<void> _calculateGroupPositionsAndPayouts() async {
+    print("DEBUG: _calculateGroupPositionsAndPayouts called");
+    
     // Collect all groups with their averages
     List<Map<String, dynamic>> groupRankings = [];
     for (int i = 0; i < groups.length; i++) {
@@ -2249,6 +2249,8 @@ class _AutoProcessGroupsScreenState extends State<AutoProcessGroupsScreen> {
   }
 
   Future<void> _calculateGroupWinnings(List<Map<String, dynamic>> groupScores) async {
+    print("DEBUG: _calculateGroupWinnings called with ${groupScores.length} group scores");
+    
     // Get group purse directly from CSV
     try {
       Map<String, double> groupPayoutData = await GroupCsvPayoutService().getPayoutAmounts(selectedPlayers.length);
@@ -2886,6 +2888,8 @@ class _AutoProcessGroupsScreenState extends State<AutoProcessGroupsScreen> {
   }
 
   Future<void> _redistributePlayersRandomly() async {
+    print("DEBUG: _redistributePlayersRandomly called");
+    print("DEBUG: Initial state - groupsProcessed = $groupsProcessed, selectedLeague = $selectedLeague");
     
     // Collect all players from all groups
     List<Map<String, dynamic>?> allPlayers = [];
@@ -3057,8 +3061,11 @@ class _AutoProcessGroupsScreenState extends State<AutoProcessGroupsScreen> {
   }
 
   Future<void> _calculateGroupWinningsLegacy() async {
+    print("DEBUG: _calculateGroupWinningsLegacy called");
+    print("DEBUG: groupsProcessed = $groupsProcessed, selectedLeague = $selectedLeague");
     
     if (!groupsProcessed || selectedLeague != 'wednesday') {
+      print("DEBUG: Returning early from _calculateGroupWinningsLegacy - conditions not met");
       return;
     }
     
@@ -3165,6 +3172,7 @@ class _AutoProcessGroupsScreenState extends State<AutoProcessGroupsScreen> {
         for (var player in playersInGroup) {
           player['group_place'] = logicalPosition; // Use logical position
           player['group_winnings'] = playerWinnings;
+          print("DEBUG: Setting group_winnings = $playerWinnings for player ${player['first']} ${player['last']}");
           player['is_group_tied'] = tieGroup.length > 1;
           player['group_tie_count'] = tieGroup.length;
         }
@@ -3204,7 +3212,9 @@ class _AutoProcessGroupsScreenState extends State<AutoProcessGroupsScreen> {
     await _saveAdjustedMulliganPurse(_adjustedMulliganPurse);
     
     // After calculating group winnings, save them to the database
-    _saveGroupWinningsToDatabase();
+    print("DEBUG: About to call _saveGroupWinningsToDatabase");
+    await _saveGroupWinningsToDatabase();
+    print("DEBUG: _saveGroupWinningsToDatabase completed");
   }
 
   Future<void> _saveAdjustedMulliganPurse(double adjustedAmount) async {
@@ -3269,46 +3279,70 @@ class _AutoProcessGroupsScreenState extends State<AutoProcessGroupsScreen> {
   }
 
   Future<void> _saveGroupWinningsToDatabase() async {
-    if (!groupsProcessed || selectedLeague != 'wednesday') return;
+    print("DEBUG: *** _saveGroupWinningsToDatabase ENTRY POINT ***");
+    print("DEBUG: groupsProcessed = $groupsProcessed, selectedLeague = $selectedLeague");
+    
+    if (!groupsProcessed || selectedLeague != 'wednesday') {
+      print("DEBUG: Returning early - conditions not met");
+      return;
+    }
 
     final dbHelper = DatabaseHelper();
+    int playersProcessed = 0;
     
     // Update group winnings for each player in the database
     for (var group in groups) {
       for (var player in group) {
-        if (player != null && player['group_winnings'] != null) {
-          try {
-            // Find the player's ID from the database
-            final db = await dbHelper.database;
-            final playerRecords = await db.query(
-              'players',
-              where: 'first = ? AND last = ? AND league = ?',
-              whereArgs: [player['first'], player['last'], selectedLeague],
-              limit: 1,
-            );
-            
-            if (playerRecords.isNotEmpty) {
-              var playerRecord = playerRecords.first;
-              int playerId = playerRecord['id'] as int;
-              
-              // Round group winnings to whole dollars
-              double groupWinnings = (player['group_winnings'] as double? ?? 0.0);
-              int roundedGroupWinnings = groupWinnings.round();
-              
-              // Update the group winnings in the most recent record only
-              await dbHelper.updateGroupWinnings(
-                playerId, 
-                roundedGroupWinnings.toDouble(), 
-                League.wednesday
+        if (player != null) {
+          print("DEBUG: Processing player ${player['first']} ${player['last']}");
+          print("DEBUG: Player group_winnings = ${player['group_winnings']}");
+          
+          if (player['group_winnings'] != null && player['group_winnings'] > 0) {
+            try {
+              // Find the player's ID from the database
+              final db = await dbHelper.database;
+              final playerRecords = await db.query(
+                'players',
+                where: 'first = ? AND last = ? AND league = ?',
+                whereArgs: [player['first'], player['last'], selectedLeague],
+                limit: 1,
               );
+              
+              if (playerRecords.isNotEmpty) {
+                var playerRecord = playerRecords.first;
+                int playerId = playerRecord['id'] as int;
+                
+                // Round group winnings to whole dollars
+                double groupWinnings = (player['group_winnings'] as double? ?? 0.0);
+                int roundedGroupWinnings = groupWinnings.round();
+                
+                print("DEBUG: Updating player ID $playerId with group winnings $roundedGroupWinnings");
+                
+                // Update the group winnings in the most recent record only
+                int rowsUpdated = await dbHelper.updateGroupWinnings(
+                  playerId, 
+                  roundedGroupWinnings.toDouble(), 
+                  League.wednesday
+                );
+                
+                print("DEBUG: Rows updated: $rowsUpdated");
+                playersProcessed++;
+              } else {
+                print("DEBUG: No player record found for ${player['first']} ${player['last']}");
+              }
+            } catch (e) {
+              print("DEBUG: Error saving group winnings for ${player['first']} ${player['last']}: $e");
             }
-          } catch (e) {
-            // Error saving group winnings - continue with other players
+          } else {
+            print("DEBUG: Player has no group winnings or winnings is 0");
           }
         }
       }
     }
+    
+    print("DEBUG: Total players with group winnings saved: $playersProcessed");
   }
+
 
   Future<void> _saveResultsToDatabase(List<Map<String, dynamic>> playerScores) async {
     final dbHelper = DatabaseHelper();

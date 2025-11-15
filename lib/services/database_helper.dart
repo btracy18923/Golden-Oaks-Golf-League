@@ -721,8 +721,12 @@ class DatabaseHelper {
 
   // Update group winnings for the most recent score record only
   Future<int> updateGroupWinnings(int playerId, double groupWinnings, League league) async {
+    print("DEBUG: updateGroupWinnings called - playerId: $playerId, groupWinnings: $groupWinnings, league: $league");
+    
     final db = await database;
     String tableName = league == League.monday ? 'monday_scores' : 'wednesday_scores';
+    
+    print("DEBUG: Looking for records in table: $tableName");
     
     // Find the most recent record for this player (highest ID = most recent)
     List<Map<String, dynamic>> recentRecords = await db.query(
@@ -733,16 +737,24 @@ class DatabaseHelper {
       limit: 1,
     );
     
+    print("DEBUG: Found ${recentRecords.length} recent records for player $playerId");
+    
     if (recentRecords.isNotEmpty) {
       int mostRecentId = recentRecords.first['id'] as int;
+      print("DEBUG: Updating record ID: $mostRecentId with group winnings: $groupWinnings");
       
       // Update only the most recent record
-      return await db.update(
+      int rowsUpdated = await db.update(
         tableName,
         {'group_winnings': groupWinnings},
         where: 'id = ?',
         whereArgs: [mostRecentId],
       );
+      
+      print("DEBUG: Database update completed - rows affected: $rowsUpdated");
+      return rowsUpdated;
+    } else {
+      print("DEBUG: No records found for player $playerId in table $tableName");
     }
     
     return 0; // No records found to update
