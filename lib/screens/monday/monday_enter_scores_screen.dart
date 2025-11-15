@@ -6,7 +6,8 @@ import 'package:sqflite/sqflite.dart';
 import 'dart:math';
 import '../popup_utils.dart';
 import '../main_menu_screen.dart';
-import '../auto_process_groups_screen.dart';
+// AutoProcess functionality not used in Monday League
+// import '../auto_process_groups_screen.dart';
 import '../manual_process_groups_screen.dart';
 import '../services/database_helper.dart';
 import '../services/ante_manager.dart';

@@ -2135,10 +2135,9 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => AutoProcessGroupsScreen(
+        builder: (context) => WednesdayAutoProcessGroupsScreen(
           selectedPlayers: randomizedPlayers,
           groups: groups,
-          selectedLeague: selectedLeague,
           grossControllers: grossControllers,
           groupControllers: groupControllers,
         ),
@@ -2170,10 +2169,9 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => AutoProcessGroupsScreen(
+        builder: (context) => WednesdayAutoProcessGroupsScreen(
           selectedPlayers: selectedPlayers,
           groups: groups,
-          selectedLeague: selectedLeague,
           grossControllers: grossControllers,
           groupControllers: groupControllers,
         ),
