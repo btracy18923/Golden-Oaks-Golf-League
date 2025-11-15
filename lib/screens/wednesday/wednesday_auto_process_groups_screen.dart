@@ -6,11 +6,9 @@ import 'package:sqflite/sqflite.dart';
 import 'dart:math';
 import '../popup_utils.dart';
 import '../main_menu_screen.dart';
-import 'wednesday_auto_process_groups_screen.dart';
 import '../manual_process_groups_screen.dart';
 import '../services/database_helper.dart';
 import '../services/ante_manager.dart';
-import '../services/percentage_manager.dart';
 import '../services/closest_pin_manager.dart';
 import '../services/mulligan_manager.dart';
 import '../services/csv_payout_service.dart';
@@ -26,27 +24,35 @@ class Position {
   Position(this.groupIndex, this.playerIndex);
 }
 
-class WednesdayEnterScoresScreen extends StatefulWidget {
+class WednesdayAutoProcessGroupsScreen extends StatefulWidget {
   final List<Map<String, dynamic>>? initialPlayers;
   final List<List<Map<String, dynamic>?>>? initialGroups;
+  final List<Map<String, dynamic>>? selectedPlayers;
+  final List<List<Map<String, dynamic>?>>? groups;
+  final Map<String, TextEditingController>? grossControllers;
+  final Map<String, TextEditingController>? groupControllers;
 
-  const WednesdayEnterScoresScreen({
+  const WednesdayAutoProcessGroupsScreen({
     Key? key,
     this.initialPlayers,
     this.initialGroups,
+    this.selectedPlayers,
+    this.groups,
+    this.grossControllers,
+    this.groupControllers,
   }) : super(key: key);
 
   @override
-  _WednesdayEnterScoresScreenState createState() => _WednesdayEnterScoresScreenState();
+  _WednesdayAutoProcessGroupsScreenState createState() => _WednesdayAutoProcessGroupsScreenState();
 }
 
 // Wrapper widget for navigation with data
-class EnterScoresScreenWithData extends StatelessWidget {
+class AutoProcessGroupsScreenWithData extends StatelessWidget {
   final List<Map<String, dynamic>> selectedPlayers;
   final List<List<Map<String, dynamic>?>> groups;
   final String leagueType;
 
-  const EnterScoresScreenWithData({
+  const AutoProcessGroupsScreenWithData({
     Key? key,
     required this.selectedPlayers,
     required this.groups,
@@ -55,7 +61,7 @@ class EnterScoresScreenWithData extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return EnterScoresScreen(
+    return AutoProcessGroupsScreen(
       initialPlayers: selectedPlayers,
       initialGroups: groups,
       initialLeague: leagueType,
@@ -63,8 +69,37 @@ class EnterScoresScreenWithData extends StatelessWidget {
   }
 }
 
-class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen> {
-  // Hard-coded Wednesday league - no selection needed
+// Wrapper widget for automatic wildcard filling
+class AutoProcessGroupsScreenWithWildcards extends StatelessWidget {
+  final List<Map<String, dynamic>> selectedPlayers;
+  final List<List<Map<String, dynamic>?>> groups;
+  final String selectedLeague;
+  final Map<String, TextEditingController> grossControllers;
+  final Map<String, TextEditingController> groupControllers;
+
+  const AutoProcessGroupsScreenWithWildcards({
+    Key? key,
+    required this.selectedPlayers,
+    required this.groups,
+    required this.selectedLeague,
+    required this.grossControllers,
+    required this.groupControllers,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return AutoProcessGroupsScreen(
+      selectedPlayers: selectedPlayers,
+      groups: groups,
+      selectedLeague: selectedLeague,
+      grossControllers: grossControllers,
+      groupControllers: groupControllers,
+    );
+  }
+}
+
+class _WednesdayAutoProcessGroupsScreenState extends State<WednesdayAutoProcessGroupsScreen> {
+  // Hard-coded Wednesday league - no selection needed  
   final String selectedLeague = 'wednesday';
   List<List<Map<String, dynamic>?>> groups = [];
   List<Map<String, dynamic>> selectedPlayers = [];
@@ -76,10 +111,6 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
   List<FocusNode> focusNodes = [];
   Map<String, TextEditingController> grossControllers = {};
   Map<String, FocusNode> grossFocusNodes = {};
-  Map<String, TextEditingController> skatsControllers = {};
-  Map<String, FocusNode> skatsFocusNodes = {};
-  Map<String, TextEditingController> diffControllers = {};
-  Map<String, FocusNode> diffFocusNodes = {};
   Map<String, TextEditingController> groupControllers = {};
   Map<String, FocusNode> groupFocusNodes = {};
   bool _isMovingFocus = false;
@@ -97,8 +128,6 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
 
   // Individual processing variables
   double totalPurse = 0.0;
-  int individualPercent = 40;
-  int groupPercent = 60;
   double individualPurse = 0.0;
   double groupPurse = 0.0;
   bool winnersCalculated = false;
@@ -126,8 +155,21 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
       // Error loading group payout data - will use fallback calculations
     });
     
-    // Initialize with data if provided
-    if (widget.initialPlayers != null && 
+    // Initialize with data if provided (either from initialPlayers or selectedPlayers)
+    if (widget.selectedPlayers != null && 
+        widget.groups != null && 
+        widget.selectedLeague != null) {
+      // Direct data passed in
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        setPlayersDirectly(
+          widget.selectedPlayers!,
+          widget.groups!,
+          widget.selectedLeague!,
+          widget.grossControllers ?? {},
+          widget.groupControllers ?? {},
+        );
+      });
+    } else if (widget.initialPlayers != null && 
         widget.initialGroups != null && 
         widget.initialLeague != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -136,8 +178,6 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
           widget.initialGroups!,
           widget.initialLeague!,
         );
-        // Position keypad in lower right corner by focusing on last player's gross score
-        _setInitialFocusToLowerRight();
       });
     }
   }
@@ -149,13 +189,6 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
       controller.dispose();
     }
     for (var node in grossFocusNodes.values) {
-      node.dispose();
-    }
-    // Dispose skats controllers and focus nodes
-    for (var controller in skatsControllers.values) {
-      controller.dispose();
-    }
-    for (var node in skatsFocusNodes.values) {
       node.dispose();
     }
     // Dispose group controllers and focus nodes
@@ -172,6 +205,145 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
     setState(() {
       selectedLeague = leagueType;
       updateTitleInformation();
+    });
+  }
+
+  Future<void> setPlayersDirectly(
+    List<Map<String, dynamic>> players, 
+    List<List<Map<String, dynamic>?>> playerGroups, 
+    String leagueType,
+    Map<String, TextEditingController> grossCtrls,
+    Map<String, TextEditingController> groupCtrls
+  ) async {
+    // Create mutable copies of player data and clear specific fields
+    var processedSelectedPlayers = players.map((player) {
+      var cleanedPlayer = Map<String, dynamic>.from(player);
+      // Clear HC, Gross, Pos, and $$$ data, keep Last Name and Net
+      cleanedPlayer.remove('handicap'); // Clear HC
+      cleanedPlayer.remove('gross_score'); // Clear Gross
+      cleanedPlayer.remove('pos'); // Clear Pos
+      cleanedPlayer.remove('place'); // Clear place (alternate for pos)
+      cleanedPlayer.remove('winnings'); // Clear $$$
+      cleanedPlayer.remove('prize_money'); // Clear prize money (alternate for $$$)
+      // Keep 'last' (Last Name) and 'net_score' (Net)
+      return cleanedPlayer;
+    }).toList();
+    
+    // Collect all non-null players from all groups
+    List<Map<String, dynamic>> allPlayers = [];
+    for (var group in playerGroups) {
+      for (var player in group) {
+        if (player != null) {
+          var cleanedPlayer = Map<String, dynamic>.from(player);
+          // Clear HC, Gross, Pos, and $$$ data, keep Last Name and Net
+          cleanedPlayer.remove('handicap'); // Clear HC
+          cleanedPlayer.remove('gross_score'); // Clear Gross
+          cleanedPlayer.remove('pos'); // Clear Pos
+          cleanedPlayer.remove('place'); // Clear place (alternate for pos)
+          cleanedPlayer.remove('winnings'); // Clear $$$
+          cleanedPlayer.remove('prize_money'); // Clear prize money (alternate for $$$)
+          // Keep 'last' (Last Name) and 'net_score' (Net)
+          allPlayers.add(cleanedPlayer);
+        }
+      }
+    }
+    
+    // RANDOMLY REDISTRIBUTE PLAYERS
+    allPlayers.shuffle(); // Randomly shuffle all players
+    
+    // Create new groups with randomly redistributed players (4 players per group)
+    List<List<Map<String, dynamic>?>> newGroups = [];
+    int playerIndex = 0;
+    for (int groupIndex = 0; groupIndex < 9; groupIndex++) { // Create 9 groups
+      List<Map<String, dynamic>?> group = [];
+      for (int slotIndex = 0; slotIndex < 4; slotIndex++) { // 4 slots per group
+        if (playerIndex < allPlayers.length) {
+          group.add(allPlayers[playerIndex]);
+          playerIndex++;
+        } else {
+          group.add(null); // Empty slot
+        }
+      }
+      newGroups.add(group);
+    }
+    
+    // Calculate average Net scores and prepare for group ranking
+    List<Map<String, dynamic>> groupRankings = [];
+    
+    for (int groupIndex = 0; groupIndex < newGroups.length; groupIndex++) {
+      var group = newGroups[groupIndex];
+      List<int> netScores = [];
+      List<Map<String, dynamic>> playersInGroup = [];
+      
+      // Collect net scores from players in this group
+      for (var player in group) {
+        if (player != null && player['net_score'] != null) {
+          try {
+            int netScore = player['net_score'] is int 
+                ? player['net_score'] 
+                : int.parse(player['net_score'].toString());
+            netScores.add(netScore);
+            playersInGroup.add(player);
+          } catch (e) {
+            // Skip players with invalid net scores
+          }
+        }
+      }
+      
+      // Calculate average net score for this group
+      if (netScores.isNotEmpty) {
+        double averageNet = netScores.reduce((a, b) => a + b) / netScores.length;
+        
+        // Assign the average net score to the AVG column for all players in this group
+        for (var player in playersInGroup) {
+          player['avg_net'] = averageNet.toStringAsFixed(1); // Round to 1 decimal place
+        }
+        
+        // Store group data for ranking
+        groupRankings.add({
+          'group_index': groupIndex,
+          'group_number': groupIndex + 1,
+          'average_net': averageNet,
+          'players': playersInGroup,
+        });
+      }
+    }
+    
+    // Sort groups by average net score (lowest score = best place)
+    groupRankings.sort((a, b) => a['average_net'].compareTo(b['average_net']));
+    
+    // Assign places and calculate prize distribution
+    await _assignGroupPlacesAndPrizes(groupRankings);
+    
+    setState(() {
+      selectedPlayers = processedSelectedPlayers;
+      groups = newGroups;
+      selectedLeague = leagueType;
+      selectedForSwap.clear();
+      playerNameButtons.clear();
+      scoreEntries.clear();
+      groupsProcessed = false; // Reset groups processed state
+      individualsProcessingComplete = false; // Reset individuals processing state
+      _mulliganPurseBalanced = false; // Reset mulligan purse balancing flag
+      _groupAssignmentSequence = 1; // Reset group assignment sequence
+      _playersInCurrentGroup = 0; // Reset players in current group counter
+      _initialAssignmentComplete = false; // Reset initial assignment tracking
+      _groupAssignmentsLocked = false; // Reset assignment lock
+      
+      // Clear controllers since we're removing gross score data
+      grossControllers.clear();
+      groupControllers.clear();
+      
+      // Clear focus nodes
+      grossFocusNodes.clear();
+      groupFocusNodes.clear();
+      
+      updateTitleInformation();
+    });
+    
+    // Add a small delay to ensure UI is built, then fill wildcards
+    Future.delayed(Duration(milliseconds: 500), () async {
+      await _fillAllIncompleteGroupsWithWildcards();
     });
   }
 
@@ -201,12 +373,6 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
       for (var node in grossFocusNodes.values) {
         node.dispose();
       }
-      for (var controller in skatsControllers.values) {
-        controller.dispose();
-      }
-      for (var node in skatsFocusNodes.values) {
-        node.dispose();
-      }
       for (var controller in groupControllers.values) {
         controller.dispose();
       }
@@ -215,44 +381,16 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
       }
       grossControllers.clear();
       grossFocusNodes.clear();
-      skatsControllers.clear();
-      skatsFocusNodes.clear();
       groupControllers.clear();
       groupFocusNodes.clear();
       
-      updatePlayerSkatNumbers();
       updateTitleInformation();
-    });
-  }
-
-  // Method to position keypad in lower right corner initially
-  void _setInitialFocusToLowerRight() {
-    // Wait a bit for the UI to be fully built
-    Future.delayed(Duration(milliseconds: 500), () {
-      if (groups.isNotEmpty) {
-        // Find the last non-null player in the last group
-        for (int groupIndex = groups.length - 1; groupIndex >= 0; groupIndex--) {
-          for (int playerIndex = groups[groupIndex].length - 1; playerIndex >= 0; playerIndex--) {
-            var player = groups[groupIndex][playerIndex];
-            if (player != null) {
-              // Focus on the gross score field of the last player (lower right area)
-              String playerKey = '${player['last']}_gross';
-              FocusNode? focusNode = grossFocusNodes[playerKey];
-              if (focusNode != null && focusNode.canRequestFocus) {
-                FocusScope.of(context).requestFocus(focusNode);
-                return; // Exit once we've set focus
-              }
-            }
-          }
-        }
-      }
     });
   }
 
   Future<void> updateTitleInformation() async {
     double anteAmount = AnteManager().currentAnteAmount;
     double closestPinAmount = ClosestPinManager().currentClosestPinAmount;
-    double mulliganAmount = MulliganManager().currentMulliganAmount;
     
     int numPlayers = 0;
     for (var group in groups) {
@@ -262,86 +400,101 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
     // Calculate using different formulas based on whether groups are processed and league type
     double purseAmount;
     
-    if (selectedLeague == 'wednesday') {
-      // For Wednesday league, use CSV amounts
-      try {
-        if (groupsProcessed) {
-          // Use CSV "Groups Total" amount for group processing
-          Map<String, double> groupPayoutData = await GroupCsvPayoutService().getPayoutAmounts(numPlayers);
-          purseAmount = groupPayoutData['groups_total'] ?? 0.0;
-        } else {
-          // Use CSV "Total Individual" amount for individual processing
-          Map<String, double> payoutData = await CsvPayoutService().getPayoutAmounts(numPlayers);
-          purseAmount = payoutData['total_individual'] ?? 0.0;
-        }
-      } catch (e) {
-        // Fallback to old calculation if CSV fails
-        if (groupsProcessed) {
-          double groupPercent = PercentageManager().groupPercent;
-          purseAmount = anteAmount * numPlayers * (groupPercent / 100);
-        } else {
-          double individualPercent = PercentageManager().individualPercent;
-          purseAmount = anteAmount * numPlayers * (individualPercent / 100);
-        }
-      }
-    } else {
-      // For Monday league, use simple calculation: Skats Ante x Number of Selected Players
-      purseAmount = anteAmount * numPlayers;
+    // For Wednesday league Auto Process Groups Screen, ALWAYS use Team Total from CSV
+    try {
+      // Use CSV "Team Total" amount for Auto Process Groups Screen
+      Map<String, double> groupPayoutData = await GroupCsvPayoutService().getPayoutAmounts(numPlayers);
+      purseAmount = groupPayoutData['team_total'] ?? 0.0;
+    } catch (e) {
+      // If CSV fails, set to 0 since we rely on CSV data
+      purseAmount = 0.0;
     }
     
     // Calculate closest pin purse: Closest Pin x # of Selected Players
     double closestPinPurseAmount = closestPinAmount * numPlayers;
     
-    // Calculate mulligan purse: Mulligan x # of Selected Players
-    double mulliganPurseAmount = mulliganAmount * numPlayers;
+    // DO NOT CALCULATE - ONLY use stored adjusted mulligan purse from individual processing
+    String leagueStr = selectedLeague == 'monday' ? 'monday' : 'wednesday';
+    double? storedAdjustedAmount = await DatabaseHelper().getAdjustedMulliganPurse(leagueStr);
     
-    // Initialize adjusted mulligan purse only if balancing hasn't been done yet
-    if (!_mulliganPurseBalanced) {
-      _adjustedMulliganPurse = mulliganPurseAmount;
+    if (storedAdjustedAmount != null) {
+      
+    } else {
+      
+    }
+    
+    if (_mulliganPurseBalanced) {
+      
+    }
+    
+    // ONLY use stored amount - never calculate
+    if (!_mulliganPurseBalanced && storedAdjustedAmount != null) {
+      _adjustedMulliganPurse = storedAdjustedAmount;
+      _mulliganPurseBalanced = true; // Mark as balanced since we're using stored amount
+    } else if (!_mulliganPurseBalanced && storedAdjustedAmount == null) {
+      // Set to 0 to make the error obvious
+      _adjustedMulliganPurse = 0.0;
     }
     
     setState(() {
       // Update display text values
       _playersPurseDisplayText = '\$${purseAmount.toStringAsFixed(2)}';
       _closestPinPurseDisplayText = '\$${closestPinPurseAmount.toStringAsFixed(2)}';
-      // Use adjusted mulligan purse if balancing has been done, otherwise use base amount
-      _mulliganPurseDisplayText = _mulliganPurseBalanced ? '\$${_adjustedMulliganPurse.toStringAsFixed(2)}' : '\$${mulliganPurseAmount.toStringAsFixed(2)}';
+      // Always use the adjusted mulligan purse (which is set from stored amount)
+      _mulliganPurseDisplayText = '\$${_adjustedMulliganPurse.toStringAsFixed(2)}';
       
       anteText = "(\$${anteAmount.toStringAsFixed(2)} per player)";
     });
   }
 
 
-  Future<void> updatePlayerSkatNumbers() async {
-    try {
-      final dbPath = await getDatabasePath();
-      final database = await openDatabase(dbPath);
-      
-      for (var group in groups) {
-        for (var player in group) {
-          if (player != null) {
-            final result = await database.query(
-              'players',
-              columns: ['skat_number'],
-              where: 'first = ? AND last = ? AND league = ?',
-              whereArgs: [player['first'], player['last'], selectedLeague],
-            );
-            
-            if (result.isNotEmpty) {
-              player['skat_number'] = result.first['skat_number'] ?? '';
-            }
-          }
-        }
-      }
-      
-      await database.close();
-    } catch (e) {
-      // Continue with existing data if database query fails
-    }
-  }
 
   Future<String> getDatabasePath() async {
     return path.join(await getDatabasesPath(), 'GoldenOaks.db');
+  }
+
+  Future<void> _assignGroupPlacesAndPrizes(List<Map<String, dynamic>> groupRankings) async {
+    print("DEBUG: _assignGroupPlacesAndPrizes called with ${groupRankings.length} group rankings");
+    if (groupRankings.isEmpty) return;
+    
+    try {
+      // Get total number of players for CSV lookup
+      int totalPlayers = 0;
+      for (var groupData in groupRankings) {
+        List<Map<String, dynamic>> players = groupData['players'];
+        totalPlayers += players.length;
+      }
+      
+      // Load individual prize amounts from Group_Payouts.csv
+      Map<String, double> payouts = await GroupCsvPayoutService().getPayoutAmounts(totalPlayers);
+      
+      // Extract individual team amounts for each place
+      Map<int, double> individualTeamAmounts = {
+        1: payouts['1st_team_ind'] ?? 0.0,
+        2: payouts['2nd_team_ind'] ?? 0.0,
+        3: payouts['3rd_team_ind'] ?? 0.0,
+        4: payouts['4th_team_ind'] ?? 0.0,
+      };
+      
+      // Assign places and prize money to each group
+      for (int rankIndex = 0; rankIndex < groupRankings.length; rankIndex++) {
+        int place = rankIndex + 1; // 1st place, 2nd place, etc.
+        var groupData = groupRankings[rankIndex];
+        List<Map<String, dynamic>> players = groupData['players'];
+        
+        // Get individual team amount for this place (each player gets the same amount)
+        double individualTeamAmount = individualTeamAmounts[place] ?? 0.0;
+        int roundedIndividualAmount = individualTeamAmount.round();
+        
+        // Assign place and prize money to each player in this group
+        for (var player in players) {
+          player['pos'] = place.toString(); // Group place (1, 2, 3, 4...)
+          player['prize_money'] = roundedIndividualAmount.toString(); // Individual team amount from CSV
+        }
+      }
+    } catch (e) {
+      // Continue without prize assignment if CSV fails
+    }
   }
 
   @override
@@ -369,9 +522,7 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
       child: Row(
         children: [
           Text(
-            selectedLeague == 'monday' 
-              ? (groupsProcessed ? "Process Groups:" : "Enter Skats:")
-              : (groupsProcessed ? "Process Groups:" : "Enter Scores:"),
+            groupsProcessed ? "Auto Process:" : "Auto Process:",
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
@@ -380,25 +531,14 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
           ),
           SizedBox(width: 30),
           Text(
-            selectedLeague == 'monday'
-              ? (groupsProcessed ? "Total Group Purse = $_playersPurseDisplayText" : "Skat Purse = $_playersPurseDisplayText")
-              : (groupsProcessed ? "Total Group Purse = $_playersPurseDisplayText" : "Total Players' Purse = $_playersPurseDisplayText"),
+            groupsProcessed ? "Total Group Purse = $_playersPurseDisplayText" : "Total Players' Purse = $_playersPurseDisplayText",
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           SizedBox(width: 30),
           Text(
-            selectedLeague == 'monday'
-              ? "Closest Pin Purse = $_closestPinPurseDisplayText"
-              : "Total Closest Pin Purse = $_closestPinPurseDisplayText",
+            "Total Closest Pin Purse = $_closestPinPurseDisplayText",
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
-          if (selectedLeague == 'monday') ...[
-            SizedBox(width: 30),
-            Text(
-              "Mulligan Purse = $_mulliganPurseDisplayText",
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-          ],
           if (selectedLeague == 'wednesday') ...[
             SizedBox(width: 30),
             Text(
@@ -436,15 +576,15 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
     for (int groupOffset = 0; groupOffset < 3; groupOffset++) {
       int groupNum = sectionIndex * 3 + groupOffset + 1;
       
-      // Group header - positioned at center of main columns
-      double columnCenter = selectedLeague == 'wednesday' ? 175.0 : 70.0; // Center position for headers
+      // Group header - positioned for Auto Process Groups layout (with Group# column)
+      double headerCenter = selectedLeague == 'wednesday' ? 150.0 : 120.0; // Center with Group# column added
       
       sectionWidgets.add(Container(
         height: 30,
         child: Stack(
           children: [
             Positioned(
-              left: columnCenter - 80, // Offset to center the text (approximate half width)
+              left: headerCenter - 80, // Offset to center the text (approximate half width)
               child: Text(
                 '------Group $groupNum------',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
@@ -490,29 +630,14 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
       child: Text('Name', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
     ));
     
-    // HC header (Wednesday only, and only if groups not processed)
-    if (selectedLeague == 'wednesday' && !groupsProcessed) {
-      headers.add(Container(
-        width: 50,
-        child: Text('HC', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
-      ));
-    }
+    // HC header - REMOVED for Auto Process Groups Screen
+    // Gross header - REMOVED for Auto Process Groups Screen
     
-    // Gross header (only if groups not processed and not Monday league)
-    if (!groupsProcessed && selectedLeague != 'monday') {
-      headers.add(Container(
-        width: 60,
-        child: Text('Gross', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
-      ));
-    }
-    
-    // Group# header (Wednesday only, and only if groups are processed)
-    if (selectedLeague == 'wednesday' && groupsProcessed) {
-      headers.add(Container(
-        width: 60,
-        child: Text('Group#', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
-      ));
-    }
+    // Group# header - NOW ALWAYS SHOWN in Auto Process Groups Screen
+    headers.add(Container(
+      width: 60,
+      child: Text('Group#', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+    ));
     
     // Net header (Wednesday only)
     if (selectedLeague == 'wednesday') {
@@ -521,13 +646,11 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
         child: Text('Net', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
       ));
       
-      // AVG header (only when groups are processed)
-      if (groupsProcessed) {
-        headers.add(Container(
-          width: 50,
-          child: Text('AVG', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
-        ));
-      }
+      // AVG header - ALWAYS SHOWN in Auto Process Groups Screen
+      headers.add(Container(
+        width: 50,
+        child: Text('AVG', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+      ));
       
       headers.add(Container(
         width: 50,
@@ -539,25 +662,6 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
       ));
     }
     
-    // SKAT headers (Monday only, and only if groups not processed)
-    if (selectedLeague == 'monday' && !groupsProcessed) {
-      headers.add(Container(
-        width: 70,
-        child: Text('SKAT#', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
-      ));
-      headers.add(Container(
-        width: 70,
-        child: Text('SKATS', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
-      ));
-      headers.add(Container(
-        width: 70,
-        child: Text('DIFF', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
-      ));
-      headers.add(Container(
-        width: 70,
-        child: Text('\$\$\$', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
-      ));
-    }
     
     return Container(
       height: 25,
@@ -578,91 +682,59 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
     }
     
     if (player != null) {
-      // Handicap (Wednesday only, and only if groups not processed)
-      if (selectedLeague == 'wednesday' && !groupsProcessed) {
-        rowWidgets.add(Container(
-          width: 50,
-          height: 40,
-          decoration: BoxDecoration(border: Border.all()),
-          child: Center(child: Text(player['handicap'] != null ? player['handicap'].toStringAsFixed(1) : '', style: TextStyle(fontSize: 16))),
-        ));
-      }
+      // Handicap - REMOVED for Auto Process Groups Screen
+      // Gross score input - REMOVED for Auto Process Groups Screen
       
-      // Gross score input (only if groups not processed and not Monday league)
-      if (!groupsProcessed && selectedLeague != 'monday') {
-        rowWidgets.add(_buildScoreInput(player));
-      }
-      
-      // Group# field (Wednesday only, and only if groups are processed)
-      if (selectedLeague == 'wednesday' && groupsProcessed) {
-        rowWidgets.add(_buildGroupNumberInput(player, groupIndex));
-      }
+      // Group# field - NOW ALWAYS SHOWN in Auto Process Groups Screen
+      rowWidgets.add(Container(
+        width: 60,
+        height: 40,
+        decoration: BoxDecoration(border: Border.all()),
+        child: Center(child: Text((groupIndex + 1).toString(), style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold))),
+      ));
       
       // Net score (Wednesday only)
       if (selectedLeague == 'wednesday') {
         rowWidgets.add(_buildNetScoreLabel(player));
         
-        // AVG column (only when groups are processed)
-        if (groupsProcessed) {
-          rowWidgets.add(_buildAvgLabel(groupIndex));
-        }
+        // AVG column - ALWAYS SHOWN in Auto Process Groups Screen
+        rowWidgets.add(Container(
+          width: 50,
+          height: 40,
+          decoration: BoxDecoration(border: Border.all()),
+          child: Center(child: Text(player['avg_net']?.toString() ?? '', style: TextStyle(fontSize: 16))),
+        ));
         
-        rowWidgets.add(_buildPlaceLabel(player, groupIndex));
-        rowWidgets.add(_buildIndWinLabel(player));
+        rowWidgets.add(Container(
+          width: 50,
+          height: 40,
+          decoration: BoxDecoration(border: Border.all()),
+          child: Center(child: Text(player['pos']?.toString() ?? '', style: TextStyle(fontSize: 16))),
+        ));
+        rowWidgets.add(Container(
+          width: 80,
+          height: 40,
+          decoration: BoxDecoration(border: Border.all()),
+          child: Center(child: Text(_formatCurrency(player['prize_money']?.toString() ?? ''), style: TextStyle(fontSize: 14))),
+        ));
       }
       
-      // SKAT fields (Monday only, and only if groups not processed)
-      if (selectedLeague == 'monday' && !groupsProcessed) {
-        rowWidgets.add(Container(
-          width: 70,
-          height: 40,
-          decoration: BoxDecoration(border: Border.all()),
-          child: Center(child: Text(player['skat_number']?.toString() ?? '', style: TextStyle(fontSize: 20))),
-        ));
-        rowWidgets.add(_buildSkatsInput(player));
-        rowWidgets.add(_buildDiffInput(player));
-        rowWidgets.add(Container(
-          width: 70,
-          height: 40,
-          decoration: BoxDecoration(border: Border.all()),
-          child: Center(child: Text(
-            player['skat_winnings'] != null ? '\$${player['skat_winnings'].toStringAsFixed(2)}' : '',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-          )),
-        ));
-      }
     } else {
-      // Empty placeholders
-      if (selectedLeague == 'wednesday' && !groupsProcessed) {
-        rowWidgets.add(_buildEmptyPlaceholder(50)); // HC placeholder
-      }
-      if (!groupsProcessed && selectedLeague != 'monday') {
-        rowWidgets.add(_buildEmptyPlaceholder(60)); // Gross placeholder
-      }
+      // Empty placeholders - HC and Gross REMOVED for Auto Process Groups Screen
       
-      // Group# placeholder (Wednesday only, and only if groups are processed)
-      if (selectedLeague == 'wednesday' && groupsProcessed) {
-        rowWidgets.add(_buildEmptyPlaceholder(60)); // Group# placeholder
-      }
+      // Group# placeholder - NOW ALWAYS SHOWN in Auto Process Groups Screen
+      rowWidgets.add(_buildEmptyPlaceholder(60)); // Group# placeholder
       
       if (selectedLeague == 'wednesday') {
-        rowWidgets.add(_buildEmptyPlaceholder(50)); // Net placeholder
+        rowWidgets.add(_buildEmptyPlaceholder(40)); // Net placeholder
         
-        // AVG placeholder (only when groups are processed)
-        if (groupsProcessed) {
-          rowWidgets.add(_buildEmptyPlaceholder(50)); // AVG placeholder
-        }
+        // AVG placeholder - ALWAYS SHOWN in Auto Process Groups Screen
+        rowWidgets.add(_buildEmptyPlaceholder(50)); // AVG placeholder
         
         rowWidgets.add(_buildEmptyPlaceholder(50)); // Pos placeholder
         rowWidgets.add(_buildEmptyPlaceholder(80)); // $$$ placeholder
       }
       
-      if (selectedLeague == 'monday' && !groupsProcessed) {
-        rowWidgets.add(_buildEmptyPlaceholder(70)); // SKAT# placeholder
-        rowWidgets.add(_buildEmptyPlaceholder(70)); // SKATS placeholder
-        rowWidgets.add(_buildEmptyPlaceholder(70)); // DIFF placeholder
-        rowWidgets.add(_buildEmptyPlaceholder(70)); // $$$ placeholder
-      }
     }
     
     return Container(
@@ -789,58 +861,44 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
           }
           
           // Calculate Net score for Wednesday league (only after 2 digits entered)
-          if (selectedLeague == 'wednesday') {
-            if (value.isNotEmpty && value.length >= 2) {
-              try {
-                int grossScore = int.parse(value);
-                player['gross_score'] = grossScore; // Store gross score
-                double handicap = player['handicap']?.toDouble() ?? 0.0;
-                int netScore = grossScore - handicap.round();
-                player['net_score'] = netScore;
-                
-                setState(() {}); // Refresh to show Net score
-              } catch (e) {
-                // Handle invalid input
-                player['net_score'] = null;
-                setState(() {});
-              }
-            } else if (value.isNotEmpty && value.length == 1) {
-              // Store gross score but don't calculate net yet
-              try {
-                int grossScore = int.parse(value);
-                player['gross_score'] = grossScore;
-                player['net_score'] = null; // Clear net score until 2nd digit
-                setState(() {});
-              } catch (e) {
-                // Handle invalid input
-                player['gross_score'] = null;
-                player['net_score'] = null;
-                setState(() {});
-              }
-            } else {
-              // Clear both gross and net scores when input is empty
+          if (value.isNotEmpty && value.length >= 2) {
+            try {
+              int grossScore = int.parse(value);
+              player['gross_score'] = grossScore; // Store gross score
+              double handicap = player['handicap']?.toDouble() ?? 0.0;
+              int netScore = grossScore - handicap.round();
+              player['net_score'] = netScore;
+              
+              setState(() {}); // Refresh to show Net score
+            } catch (e) {
+              // Handle invalid input
+              player['net_score'] = null;
+              setState(() {});
+            }
+          } else if (value.isNotEmpty && value.length == 1) {
+            // Store gross score but don't calculate net yet
+            try {
+              int grossScore = int.parse(value);
+              player['gross_score'] = grossScore;
+              player['net_score'] = null; // Clear net score until 2nd digit
+              setState(() {});
+            } catch (e) {
+              // Handle invalid input
               player['gross_score'] = null;
               player['net_score'] = null;
-              
-              // Recalculate group winnings if groups are processed
-              if (groupsProcessed) {
-                unawaited(_calculateGroupWinningsLegacy());
-              }
-              
               setState(() {});
             }
           } else {
-            // For Monday league, just store the gross score
-            if (value.isNotEmpty) {
-              try {
-                int grossScore = int.parse(value);
-                player['gross_score'] = grossScore;
-              } catch (e) {
-                // Handle invalid input
-              }
-            } else {
-              player['gross_score'] = null;
+            // Clear both gross and net scores when input is empty
+            player['gross_score'] = null;
+            player['net_score'] = null;
+            
+            // Recalculate group winnings if groups are processed
+            if (groupsProcessed) {
+              unawaited(_calculateGroupWinningsLegacy());
             }
+            
+            setState(() {});
           }
           
           if (value.length == 2) {
@@ -850,9 +908,6 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
               _moveFocusToNextRow(controller);
             }
           }
-          
-          // Check if all gross scores are now filled and auto-calculate if so
-          _checkAndAutoCalculateWednesday();
         },
         onSubmitted: (value) {
           _moveFocusToNextGrossInput(controller);
@@ -922,191 +977,6 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
     );
   }
 
-  Widget _buildSkatsInput(Map<String, dynamic> player) {
-    String playerKey = '${player['last']}_skats';
-    
-    // Get or create controller and focus node for this player
-    TextEditingController controller = skatsControllers[playerKey] ?? TextEditingController();
-    FocusNode focusNode = skatsFocusNodes[playerKey] ?? FocusNode();
-    
-    // Store them if they're new
-    if (!skatsControllers.containsKey(playerKey)) {
-      skatsControllers[playerKey] = controller;
-      skatsFocusNodes[playerKey] = focusNode;
-    }
-    
-    String skatsText = '';
-    if (player['skats_score'] != null) {
-      skatsText = player['skats_score'].toString();
-    }
-    
-    // Only set text if it's different to avoid cursor jumping
-    if (controller.text != skatsText) {
-      controller.text = skatsText;
-    }
-    
-    return Container(
-      width: 70,
-      height: 40,
-      child: TextField(
-        controller: controller,
-        focusNode: focusNode,
-        keyboardType: TextInputType.number,
-        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-        textAlign: TextAlign.center,
-        style: TextStyle(fontSize: 16),
-        onChanged: (value) {
-          // Mark that results need to be recalculated (but don't clear immediately)
-          if (winnersCalculated) {
-            setState(() {
-              winnersCalculated = false;
-              individualsProcessingComplete = false;
-            });
-          }
-          
-          // Store SKATS score
-          if (value.isNotEmpty) {
-            try {
-              int skatsScore = int.parse(value);
-              player['skats_score'] = skatsScore;
-            } catch (e) {
-              // Handle invalid input
-            }
-          } else {
-            player['skats_score'] = null;
-          }
-          
-          if (value.length == 2) {
-            // Calculate DIFF (SKATS - SKAT#) and populate DIFF field
-            _calculateAndSetDiff(player);
-            
-            // Check if all SKATS scores are entered and calculate $$$ if so
-            if (_areAllSkatsScoresEntered()) {
-              _calculateAndDistributeSkatAmounts();
-            }
-            
-            // Move focus to next row after 2-digit number entry
-            // Only move focus if this controller's focus node currently has focus
-            if (focusNode.hasFocus) {
-              _moveFocusToNextRow(controller);
-            }
-          }
-        },
-        onSubmitted: (value) {
-          _moveFocusToNextRow(controller);
-        },
-        decoration: InputDecoration(
-          filled: true,
-          fillColor: Color(0xFFB3FFB3), // Light green
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(color: Colors.black, width: 2),
-          ),
-          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-        ),
-      ),
-    );
-  }
-
-  void _calculateAndSetDiff(Map<String, dynamic> player) {
-    // Get SKAT# and SKATS values
-    int? skatNumber = player['skat_number'];
-    int? skatsScore = player['skats_score'];
-    
-    if (skatNumber != null && skatsScore != null) {
-      // Calculate DIFF = SKATS - SKAT#
-      int diffValue = skatsScore - skatNumber;
-      
-      // Store the calculated DIFF
-      player['diff_score'] = diffValue;
-      
-      // Update the DIFF input field
-      String playerKey = '${player['last']}_diff';
-      TextEditingController? diffController = diffControllers[playerKey];
-      if (diffController != null) {
-        diffController.text = diffValue.toString();
-      }
-    }
-  }
-
-  Widget _buildDiffInput(Map<String, dynamic> player) {
-    String playerKey = '${player['last']}_diff';
-    
-    // Get or create controller and focus node for this player
-    TextEditingController controller = diffControllers[playerKey] ?? TextEditingController();
-    FocusNode focusNode = diffFocusNodes[playerKey] ?? FocusNode();
-    
-    // Store them if they're new
-    if (!diffControllers.containsKey(playerKey)) {
-      diffControllers[playerKey] = controller;
-      diffFocusNodes[playerKey] = focusNode;
-    }
-    
-    String diffText = '';
-    if (player['diff_score'] != null) {
-      int diffScore = player['diff_score'];
-      diffText = diffScore > 0 ? '+${diffScore.toString()}' : diffScore.toString();
-    }
-    
-    // Only set text if it's different to avoid cursor jumping
-    if (controller.text != diffText) {
-      controller.text = diffText;
-    }
-    
-    return Container(
-      width: 70,
-      height: 40,
-      child: TextField(
-        controller: controller,
-        focusNode: focusNode,
-        keyboardType: TextInputType.number,
-        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-        textAlign: TextAlign.center,
-        style: TextStyle(fontSize: 16),
-        onChanged: (value) {
-          // Mark that results need to be recalculated (but don't clear immediately)
-          if (winnersCalculated) {
-            setState(() {
-              winnersCalculated = false;
-              individualsProcessingComplete = false;
-            });
-          }
-          
-          // Store DIFF score
-          if (value.isNotEmpty) {
-            try {
-              int diffScore = int.parse(value);
-              player['diff_score'] = diffScore;
-            } catch (e) {
-              // Handle invalid input
-            }
-          } else {
-            player['diff_score'] = null;
-          }
-          
-          if (value.length == 2) {
-            // Move focus to next row after 2-digit number entry
-            // Only move focus if this controller's focus node currently has focus
-            if (focusNode.hasFocus) {
-              _moveFocusToNextRow(controller);
-            }
-          }
-        },
-        onSubmitted: (value) {
-          _moveFocusToNextRow(controller);
-        },
-        decoration: InputDecoration(
-          filled: true,
-          fillColor: Color(0xFFFFD700), // Light gold
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(color: Colors.black, width: 2),
-          ),
-          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-        ),
-      ),
-    );
-  }
 
   Widget _buildGroupNumberInput(Map<String, dynamic> player, int groupIndex) {
     String groupText = '';
@@ -1130,6 +1000,16 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
         ),
       ),
     );
+  }
+
+  String _formatCurrency(String value) {
+    if (value.isEmpty) return '';
+    try {
+      double amount = double.parse(value);
+      return '\$${amount.toStringAsFixed(2)}';
+    } catch (e) {
+      return value;
+    }
   }
 
   void _assignGroupNumber(String playerLast) {
@@ -1564,21 +1444,14 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
       padding: EdgeInsets.symmetric(horizontal: 5, vertical: 5),
       child: Center(
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: selectedLeague == 'monday' 
-            ? [
-                _buildFooterButton("Closest Pin", Color(0xFFB3FFB3), _processIndividuals),
-                _buildFooterButton("Main Menu", Colors.lightBlue[100]!, _returnToMainMenu),
-                _buildFooterButton("Auto Fill", Colors.orange[200]!, _autoFillGrossScores),
-                _buildSwapButton(),
-              ]
-            : [
-                _buildFooterButton("Auto Fill", Colors.orange[200]!, _autoFillGrossScores),
-                _buildFooterButton("Main Menu", Colors.lightBlue[100]!, _returnToMainMenu),
-                _buildFooterButton("Individuals", Colors.grey[300]!, _processIndividuals),
-                _buildConditionalProcessGroupsButton(),
-                _buildSwapButton(),
-              ],
+          children: [
+            _buildFooterButton("Return to Main Menu", Colors.lightBlue[100]!, _returnToMainMenu),
+            _buildFooterButton("Process Individuals", selectedLeague == 'wednesday' 
+                ? Color(0xFFFFD700) // Light gold
+                : Color(0xFFB3FFB3), _processIndividuals),
+            _buildConditionalProcessGroupsButton(),
+            _buildSwapButton(),
+          ],
         ),
       ),
     );
@@ -1590,9 +1463,9 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
     
     return Expanded(
       child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 10),
+        padding: EdgeInsets.symmetric(horizontal: 2),
         child: ElevatedButton(
-          onPressed: isEnabled ? () async => await _navigateToPlayerPayout() : null,
+          onPressed: isEnabled ? () async => await _autoCompleteGroupsAndNavigateToPayout() : null,
           style: ElevatedButton.styleFrom(
             backgroundColor: buttonColor,
             foregroundColor: isEnabled ? Colors.black : Colors.grey[600],
@@ -1615,7 +1488,7 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
   Widget _buildFooterButton(String text, Color color, VoidCallback onPressed) {
     return Expanded(
       child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 10),
+        padding: EdgeInsets.symmetric(horizontal: 2),
         child: ElevatedButton(
           onPressed: onPressed,
           style: ElevatedButton.styleFrom(
@@ -1649,7 +1522,7 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
   }
 
   Widget _buildSwapButton() {
-    String buttonText = 'SWAP Players';
+    String buttonText = 'Manual Process Groups';
     bool isEnabled = false;
     Color buttonColor = Colors.grey[400]!;
     
@@ -1666,7 +1539,7 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
     
     return Expanded(
       child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 10),
+        padding: EdgeInsets.symmetric(horizontal: 2),
         child: ElevatedButton(
           onPressed: _manualProcessGroups,
           style: ElevatedButton.styleFrom(
@@ -1682,9 +1555,7 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
   }
 
   Color _getLeagueColor() {
-    return selectedLeague == 'monday' 
-        ? Color(0xFFB3FFB3) // Light green
-        : Color(0xFFFFD700); // Light gold
+    return Color(0xFFFFD700); // Light gold for Wednesday
   }
 
   String _getDisplayName(String selectedItem) {
@@ -1729,11 +1600,6 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
     }
   }
 
-  void _handleSkatsInput(TextEditingController controller, String value) {
-    if (value.isNotEmpty && value.length == 2) {
-      _moveFocusToNextRow(controller);
-    }
-  }
 
   void _moveFocusToNextInput(TextEditingController currentController) {
     try {
@@ -1763,13 +1629,6 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
       }
       
       if (currentPlayerKey == null) {
-        // Try SKATS controllers for Monday league
-        for (var entry in skatsControllers.entries) {
-          if (entry.value == currentController) {
-            currentPlayerKey = entry.key;
-            break;
-          }
-        }
       }
       
       if (currentPlayerKey == null) {
@@ -1779,7 +1638,7 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
       // Parse the player key to find current position
       List<String> keyParts = currentPlayerKey.split('_');
       String playerName = keyParts[0];
-      String inputType = keyParts[1]; // 'gross' or 'skats'
+      String inputType = keyParts[1]; // 'gross'
       
       // Find current player's position in groups
       int currentGroupIndex = -1;
@@ -1801,18 +1660,11 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
         return;
       }
       
-      // Find next input (could be gross or skats)
+      // Find next gross input
       String? nextPlayerKey = _findNextGrossInput(currentGroupIndex, currentRowIndex, inputType);
       
       if (nextPlayerKey != null) {
-        FocusNode? nextFocusNode;
-        // Check if it's a skats key or gross key
-        if (nextPlayerKey.contains('_skats')) {
-          nextFocusNode = skatsFocusNodes[nextPlayerKey];
-        } else {
-          nextFocusNode = grossFocusNodes[nextPlayerKey];
-        }
-        
+        FocusNode? nextFocusNode = grossFocusNodes[nextPlayerKey];
         if (nextFocusNode != null && nextFocusNode.canRequestFocus) {
           FocusScope.of(context).requestFocus(nextFocusNode);
         }
@@ -1830,24 +1682,8 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
   }
   
   String? _findNextGrossInput(int currentGroupIndex, int currentRowIndex, String currentInputType) {
-    // For Monday League, alternate between Gross and SKATS
-    if (selectedLeague == 'monday' && !groupsProcessed) {
-      if (currentInputType == 'gross') {
-        // Move from Gross to SKATS of same player
-        var currentPlayer = groups[currentGroupIndex][currentRowIndex];
-        if (currentPlayer != null) {
-          String skatsKey = '${currentPlayer['last']}_skats';
-          if (skatsFocusNodes.containsKey(skatsKey)) {
-            return skatsKey;
-          }
-        }
-      } else if (currentInputType == 'skats') {
-        // Move from SKATS to next player's SKATS
-        return _findNextPlayerSkats(currentGroupIndex, currentRowIndex + 1);
-      }
-    }
     
-    // For Wednesday League or processed groups, move to next player's gross
+    // If currently on gross input, move to next player's gross
     return _findNextPlayerGross(currentGroupIndex, currentRowIndex + 1);
   }
   
@@ -1869,38 +1705,12 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
     return null;
   }
 
-  String? _findNextPlayerSkats(int startGroupIndex, int startRowIndex) {
-    // Start from current position and look for next player with SKATS field
-    for (int groupIndex = startGroupIndex; groupIndex < groups.length; groupIndex++) {
-      int startRow = (groupIndex == startGroupIndex) ? startRowIndex : 0;
-      
-      for (int rowIndex = startRow; rowIndex < groups[groupIndex].length; rowIndex++) {
-        var player = groups[groupIndex][rowIndex];
-        if (player != null) {
-          String playerKey = '${player['last']}_skats';
-          if (skatsFocusNodes.containsKey(playerKey)) {
-            return playerKey;
-          }
-        }
-      }
-    }
-    return null;
-  }
-
   void _moveFocusToNextGrossInput(TextEditingController currentController) {
     try {
       int currentIndex = scoreEntryOrder.indexOf(currentController);
       int nextGrossIndex;
       
-      if (selectedLeague == 'monday') {
-        if (currentIndex % 2 == 0) {
-          nextGrossIndex = currentIndex + 2;
-        } else {
-          nextGrossIndex = currentIndex + 1;
-        }
-      } else {
-        nextGrossIndex = currentIndex + 1;
-      }
+      nextGrossIndex = currentIndex + 1;
       
       if (nextGrossIndex < scoreEntryOrder.length) {
         FocusScope.of(context).requestFocus(focusNodes[nextGrossIndex]);
@@ -1986,6 +1796,8 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
         }
       });
       
+      PopupUtils.showSuccess(context, "Success", "Players swapped successfully!");
+      
     } catch (e) {
       PopupUtils.showError(context, "Swap Error", "Failed to swap players: $e");
       setState(() {
@@ -2018,7 +1830,7 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
             groups: groups,
             selectedLeague: selectedLeague,
             grossControllers: grossControllers,
-              groupControllers: groupControllers,
+            groupControllers: groupControllers,
           ),
         ),
       );
@@ -2131,7 +1943,7 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
     List<Map<String, dynamic>> randomizedPlayers = List.from(selectedPlayers);
     randomizedPlayers.shuffle();
     
-    // Navigate to Auto Process Groups screen with wildcard auto-filling
+    // Navigate to Auto Process Groups screen
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
@@ -2192,27 +2004,274 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
     }
   }
 
-  Future<void> _calculateGroupWinnings(List<Map<String, dynamic>> groupScores) async {
-    double anteAmount = AnteManager().currentAnteAmount;
-    int playerCount = selectedPlayers.length;
-    double totalPurse = anteAmount * playerCount;
+  Future<void> _autoCompleteGroupsAndNavigateToPayout() async {
+    // Close the keyboard
+    FocusScope.of(context).unfocus();
     
-    int groupPercent = PercentageManager().groupPercent.round();
-    double groupPurse = totalPurse * (groupPercent / 100.0);
+    // STEP 1: Fill incomplete groups with wildcards BEFORE any processing
+    await _fillAllIncompleteGroupsWithWildcards();
+    
+    // STEP 2: Navigate to payout (normal group processing will happen there)
+    await _navigateToPlayerPayout();
+  }
 
-    // Assign rankings
-    for (int i = 0; i < groupScores.length; i++) {
-      groupScores[i]['place'] = i + 1;
+  int _findLastGroupWithPlayers() {
+    // Find the highest group index that contains at least one player
+    for (int i = groups.length - 1; i >= 0; i--) {
+      if (groups[i].any((player) => player != null)) {
+        return i;
+      }
     }
+    return -1; // No groups with players found
+  }
 
-    // Get payout structure based on number of groups
-    Map<int, double> payoutStructure = _getGroupPayoutStructure(groupScores.length);
+  Future<void> _addWildcardPlayersToLastGroup(int lastGroupIndex, int playersNeeded) async {
+    // Collect all selected players (non-wildcards) from all groups
+    List<Map<String, dynamic>> availablePlayers = [];
+    
+    for (var group in groups) {
+      for (var player in group) {
+        if (player != null && player['is_wild_card'] != true) {
+          availablePlayers.add(player);
+        }
+      }
+    }
+    
+    if (availablePlayers.isEmpty) {
+      PopupUtils.showWarning(context, "Process Error", "No available players to add as wildcards!");
+      return;
+    }
+    
+    if (availablePlayers.length < playersNeeded) {
+      PopupUtils.showWarning(context, "Process Error", "Not enough unique players to fill with wildcards!");
+      return;
+    }
+    
+    // Shuffle the available players and take the first N needed (ensures no duplicates)
+    List<Map<String, dynamic>> shuffledPlayers = List.from(availablePlayers);
+    shuffledPlayers.shuffle();
+    
+    for (int i = 0; i < playersNeeded; i++) {
+      // Find next empty slot in the last group
+      int emptySlotIndex = _findEmptySlotInGroup(lastGroupIndex);
+      
+      if (emptySlotIndex == -1) {
+        break; // No more empty slots
+      }
+      
+      // Take the next unique player from the shuffled list
+      Map<String, dynamic> selectedPlayer = shuffledPlayers[i];
+      
+      // Create a wildcard copy of the player
+      Map<String, dynamic> wildcardPlayer = Map<String, dynamic>.from(selectedPlayer);
+      wildcardPlayer['is_wild_card'] = true;
+      wildcardPlayer['manual_group'] = lastGroupIndex + 1; // Groups are 1-indexed
+      
+      // Clear group-specific data from original group (will be recalculated for new group)
+      wildcardPlayer['group_place'] = null;
+      wildcardPlayer['group_winnings'] = null;
+      wildcardPlayer['is_group_tied'] = null;
+      wildcardPlayer['group_tie_count'] = null;
+      wildcardPlayer['avg_net'] = null; // Clear old group average
+      wildcardPlayer['pos'] = null; // Clear old position
+      wildcardPlayer['place'] = null; // Clear old place
+      wildcardPlayer['prize_money'] = null; // Clear old prize money
+      wildcardPlayer['winnings'] = null; // Clear old winnings
+      // Keep scoring data (net_score, gross_score, etc.) for group average calculation
+      
+      // Add the wildcard player to the last group
+      setState(() {
+        groups[lastGroupIndex][emptySlotIndex] = wildcardPlayer;
+      });
+    }
+  }
 
-    // Calculate winnings for each group
-    for (var group in groupScores) {
-      int place = group['place'];
-      double percentage = payoutStructure[place] ?? 0.0;
-      group['group_winnings'] = (groupPurse * percentage / 100.0);
+  int _findEmptySlotInGroup(int groupIndex) {
+    // Find the first empty slot in the specified group
+    List<Map<String, dynamic>?> group = groups[groupIndex];
+    for (int i = 0; i < group.length; i++) {
+      if (group[i] == null) {
+        return i;
+      }
+    }
+    return -1; // No empty slots found
+  }
+
+  Future<void> _fillAllIncompleteGroupsWithWildcards() async {
+    // Find the last group with players
+    int lastGroupIndex = _findLastGroupWithPlayers();
+    
+    if (lastGroupIndex == -1) {
+      return;
+    }
+    
+    // Check if the last group has fewer than 4 players
+    List<Map<String, dynamic>?> lastGroup = groups[lastGroupIndex];
+    int playersInLastGroup = lastGroup.where((player) => player != null).length;
+    
+    if (playersInLastGroup < 4) {
+      int playersNeeded = 4 - playersInLastGroup;
+      await _addWildcardPlayersToLastGroup(lastGroupIndex, playersNeeded);
+      
+      // CRITICAL: Clear ALL position and payout data from ALL players after adding wildcards
+      await _clearAllPositionAndPayoutData();
+      
+      // Recalculate group averages for all groups
+      await _recalculateAllGroupAverages();
+      
+      // Calculate group positions and payouts based on averages
+      await _calculateGroupPositionsAndPayouts();
+    }
+  }
+
+  Future<void> _clearAllPositionAndPayoutData() async {
+    setState(() {
+      for (var group in groups) {
+        for (var player in group) {
+          if (player != null) {
+            // Clear all position and payout related data
+            player['pos'] = null;
+            player['place'] = null;
+            player['prize_money'] = null;
+            player['group_winnings'] = null;
+            player['group_place'] = null;
+            player['is_group_tied'] = null;
+            player['group_tie_count'] = null;
+            player['winnings'] = null;
+            // Keep only: first, last, handicap, gross_score, net_score, manual_group, is_wild_card
+          }
+        }
+      }
+    });
+  }
+
+  Future<void> _recalculateAllGroupAverages() async {
+    setState(() {
+      for (int groupIndex = 0; groupIndex < groups.length; groupIndex++) {
+        List<Map<String, dynamic>?> group = groups[groupIndex];
+        List<Map<String, dynamic>> validPlayers = group.where((player) => player != null).cast<Map<String, dynamic>>().toList();
+        
+        if (validPlayers.isNotEmpty) {
+          double groupAverage = _calculateGroupAverageNetScore(groupIndex);
+          double formattedAverage = double.parse(groupAverage.toStringAsFixed(1)); // Format to 1 decimal place
+          
+          // Set the formatted average for all players in this group
+          for (var player in validPlayers) {
+            player['avg_net'] = formattedAverage;
+          }
+        }
+      }
+    });
+  }
+
+  Future<void> _calculateGroupPositionsAndPayouts() async {
+    print("DEBUG: _calculateGroupPositionsAndPayouts called");
+    
+    // Collect all groups with their averages
+    List<Map<String, dynamic>> groupRankings = [];
+    for (int i = 0; i < groups.length; i++) {
+      List<Map<String, dynamic>?> group = groups[i];
+      List<Map<String, dynamic>> validPlayers = group.where((player) => player != null).cast<Map<String, dynamic>>().toList();
+      
+      if (validPlayers.isNotEmpty) {
+        double average = validPlayers.first['avg_net']?.toDouble() ?? 0.0;
+        groupRankings.add({
+          'groupIndex': i,
+          'average': average,
+          'players': validPlayers,
+        });
+      }
+    }
+    
+    // Sort groups by average (lowest average = best position)
+    groupRankings.sort((a, b) => a['average'].compareTo(b['average']));
+    
+    // Get payout amounts from CSV based on original selected players (not including wildcards)
+    int originalPlayers = 0;
+    for (var group in groups) {
+      for (var player in group) {
+        if (player != null && player['is_wild_card'] != true) {
+          originalPlayers++;
+        }
+      }
+    }
+    
+    try {
+      Map<String, double> groupPayouts = await GroupCsvPayoutService().getPayoutAmounts(originalPlayers);
+      
+      double teamTotal = groupPayouts['team_total'] ?? 0.0;
+      double firstTeam = groupPayouts['1st_team_ind'] ?? 0.0;
+      double secondTeam = groupPayouts['2nd_team_ind'] ?? 0.0;
+      double thirdTeam = groupPayouts['3rd_team_ind'] ?? 0.0;
+      double fourthTeam = groupPayouts['4th_team_ind'] ?? 0.0;
+      
+      List<double> payouts = [firstTeam, secondTeam, thirdTeam, fourthTeam];
+      
+      // Assign positions and payouts
+      setState(() {
+        for (int i = 0; i < groupRankings.length && i < 4; i++) {
+          var groupData = groupRankings[i];
+          List<Map<String, dynamic>> players = groupData['players'];
+          int position = i + 1;
+          double individualPayout = i < payouts.length ? payouts[i] : 0.0; // CSV already has per-player amounts
+          double groupTotalPayout = individualPayout * players.length;
+          
+          // Set position and payout for all players in this group
+          for (var player in players) {
+            player['pos'] = position;
+            player['group_place'] = position;
+            player['group_winnings'] = individualPayout;
+            player['prize_money'] = individualPayout;
+          }
+        }
+      });
+      
+    } catch (e) {
+      // Fallback - just assign positions without payouts
+      setState(() {
+        for (int i = 0; i < groupRankings.length; i++) {
+          var groupData = groupRankings[i];
+          List<Map<String, dynamic>> players = groupData['players'];
+          int position = i + 1;
+          
+          for (var player in players) {
+            player['pos'] = position;
+            player['group_place'] = position;
+            player['group_winnings'] = 0.0;
+            player['prize_money'] = 0.0;
+          }
+        }
+      });
+    }
+  }
+
+  Future<void> _calculateGroupWinnings(List<Map<String, dynamic>> groupScores) async {
+    print("DEBUG: _calculateGroupWinnings called with ${groupScores.length} group scores");
+    
+    // Get group purse directly from CSV
+    try {
+      Map<String, double> groupPayoutData = await GroupCsvPayoutService().getPayoutAmounts(selectedPlayers.length);
+      double groupPurse = groupPayoutData['team_total'] ?? 0.0;
+
+      // Assign rankings
+      for (int i = 0; i < groupScores.length; i++) {
+        groupScores[i]['place'] = i + 1;
+      }
+
+      // Get payout structure based on number of groups
+      Map<int, double> payoutStructure = _getGroupPayoutStructure(groupScores.length);
+
+      // Calculate winnings for each group
+      for (var group in groupScores) {
+        int place = group['place'];
+        double payoutRatio = payoutStructure[place] ?? 0.0;
+        group['group_winnings'] = (groupPurse * payoutRatio / 100.0);
+      }
+    } catch (e) {
+      // If CSV fails, set all group winnings to 0
+      for (var group in groupScores) {
+        group['group_winnings'] = 0.0;
+      }
     }
   }
 
@@ -2254,7 +2313,7 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
               await dbHelper.updateGroupWinnings(
                 playerRecord['id'] as int, 
                 individualGroupShare, 
-                selectedLeague == 'monday' ? League.monday : League.wednesday
+                League.wednesday
               );
             }
           } catch (e) {
@@ -2435,579 +2494,159 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
     }
   }
 
-  Future<void> _savePlayerScoresToDatabase(List<Map<String, dynamic>> players) async {
-    
-    try {
-      String today = DateTime.now().toIso8601String().split('T')[0]; // Get today's date in YYYY-MM-DD format
-      
-      DatabaseHelper dbHelper = DatabaseHelper();
-      
-      for (int i = 0; i < players.length; i++) {
-        var player = players[i];
-        String playerName = '${player['first']} ${player['last']}';
-        
-        // Get Close Pin winnings from player data (already set during individual processing)
-        double playerClosePinWinnings = (player['close_pin_winnings'] ?? 0.0).toDouble();
-        
-        // Get SKATS score and SKAT winnings from the player data after individual processing
-        int skatsScore = 0;
-        double skatWinnings = 0.0;
-        
-        // Get SKATS score from the controllers or player data
-        String playerKey = '${player['first']}_${player['last']}';
-        String skatsKey = '${player['last']}_skats';
-        
-        if (skatsControllers.containsKey(skatsKey)) {
-          if (skatsControllers[skatsKey]!.text.isNotEmpty) {
-            skatsScore = int.tryParse(skatsControllers[skatsKey]!.text) ?? 0;
-          }
-        } else if (skatsControllers.containsKey(playerKey)) {
-          if (skatsControllers[playerKey]!.text.isNotEmpty) {
-            skatsScore = int.tryParse(skatsControllers[playerKey]!.text) ?? 0;
-          }
-        } else if (player.containsKey('skats_score')) {
-          skatsScore = player['skats_score'] ?? 0;
-        }
-        
-        // Get SKAT winnings from player data (calculated during SKAT processing)
-        skatWinnings = (player['skat_winnings'] ?? 0.0).toDouble();
-        
-        // Get gross score from controllers or player data
-        int grossScore = 0;
-        String grossKey = '${player['last']}_gross';
-        
-        if (grossControllers.containsKey(grossKey)) {
-          if (grossControllers[grossKey]!.text.isNotEmpty) {
-            grossScore = int.tryParse(grossControllers[grossKey]!.text) ?? 0;
-          }
-        } else if (grossControllers.containsKey(playerKey)) {
-          if (grossControllers[playerKey]!.text.isNotEmpty) {
-            grossScore = int.tryParse(grossControllers[playerKey]!.text) ?? 0;
-          }
-        } else if (player.containsKey('gross_score')) {
-          grossScore = player['gross_score'] ?? 0;
-        }
-        
-        Map<String, dynamic> scoreData = {
-          'player_id': player['id'],
-          'name': playerName,
-          'date_played': today,
-          'golf_course': 'TBD',
-          'handicap': player['handicap'],
-          'skat_number': player['skat_number'],
-          'gross_score': grossScore,
-          'skats_score': skatsScore,
-          'close_pin_winnings': playerClosePinWinnings,
-          'skat_winnings': skatWinnings,
-        };
-        
-        int insertResult = await dbHelper.insertScoreLeague(scoreData, League.monday);
-      }
-      
-    } catch (e) {
-      // Handle error silently or show user-friendly message
-    }
-  }
-
-  Widget _buildPlayerClickColumn(
-    List<Map<String, dynamic>> playerScores, 
-    int columnIndex,
-    Map<String, int> playerValues,
-    StateSetter setState,
-    VoidCallback onTotalChanged,
-    int targetTotal
-  ) {
-    // Divide players into 3 columns
-    int playersPerColumn = (playerScores.length / 3).ceil();
-    int startIndex = columnIndex * playersPerColumn;
-    int endIndex = (startIndex + playersPerColumn).clamp(0, playerScores.length);
-    
-    if (startIndex >= playerScores.length) {
-      return Container(); // Empty column if no more players
-    }
-    
-    List<Map<String, dynamic>> columnPlayers = playerScores.sublist(startIndex, endIndex);
-    
-    // Update total using callback
-    void updateLocalTotal() {
-      setState(() {
-        onTotalChanged();
-      });
-    }
-    
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Players in this column
-        ...columnPlayers.map((player) {
-          String playerName = player['last'] ?? 'Unknown';
-          
-          return Padding(
-            padding: EdgeInsets.symmetric(vertical: 2),
-            child: Row(
-              children: [
-                // Player name with increased width for longer names - clickable to increment
-                SizedBox(
-                  width: 120, // Increased width to accommodate 5 more letters (was 80, now 120)
-                  child: GestureDetector(
-                    onTap: () {
-                      // Increment the player's value when name is clicked
-                      int currentValue = playerValues[playerName] ?? 0;
-                      int currentTotal = playerValues.values.fold(0, (sum, value) => sum + value);
-                      int newTotal = currentTotal + 1;
-                      
-                      // Check both individual limit (5) and total limit (targetTotal)
-                      if (currentValue < 5 && newTotal <= targetTotal) {
-                        setState(() {
-                          int newValue = currentValue + 1;
-                          playerValues[playerName] = newValue;
-                        });
-                        updateLocalTotal();
-                      }
-                    },
-                    child: Container(
-                      padding: EdgeInsets.symmetric(vertical: 4, horizontal: 2),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(color: Colors.blue.withOpacity(0.3), width: 1),
-                      ),
-                      child: Text(
-                        playerName,
-                        style: TextStyle(
-                          fontSize: 16, 
-                          fontWeight: FontWeight.w500,
-                          color: Colors.blue.shade700,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ),
-                ),
-                SizedBox(width: 8), // Padding between name and value display
-                // Value display (read-only, shows current value)
-                Container(
-                  width: 30,
-                  height: 30,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
-                    border: Border.all(color: Colors.grey.shade400, width: 1),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Center(
-                    child: Text(
-                      playerValues[playerName]! > 0 ? playerValues[playerName]!.toString() : '',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          );
-        }).toList(),
-      ],
-    );
-  }
-
-  Future<bool?> _showWinningsPopup(List<Map<String, dynamic>> playerScores, Map<String, int> playerValues) async {
-    int totalSelectedPlayers = playerScores.length;
-    double prizePerPoint = 1.00 * totalSelectedPlayers; // $1.00 * number of selected players
-    
-    // Filter players who actually have values > 0
-    List<Map<String, dynamic>> winnersData = [];
-    
-    for (var player in playerScores) {
-      String playerName = player['last'] ?? 'Unknown';
-      int playerValue = playerValues[playerName] ?? 0;
-      
-      if (playerValue > 0) {
-        double winnings = playerValue * prizePerPoint;
-        winnersData.add({
-          'name': playerName,
-          'value': playerValue,
-          'winnings': winnings,
-        });
-      }
-    }
-    
-    return showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text(
-            'Closest Pin Winners - ${selectedLeague == 'monday' ? 'Monday' : 'Wednesday'} League',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          content: IntrinsicWidth(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                if (winnersData.isEmpty)
-                  Padding(
-                    padding: EdgeInsets.all(20),
-                    child: Text(
-                      'No winners selected',
-                      style: TextStyle(fontSize: 16, fontStyle: FontStyle.italic),
-                    ),
-                  )
-                else ...[
-                  Text(
-                    'Value × (\$1.00 × $totalSelectedPlayers players) = Value × \$${prizePerPoint.toStringAsFixed(2)}',
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                    textAlign: TextAlign.center,
-                  ),
-                  SizedBox(height: 16),
-                  ...winnersData.map((winner) {
-                    return Padding(
-                      padding: EdgeInsets.symmetric(vertical: 2),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // Fixed width for player name
-                          SizedBox(
-                            width: 80,
-                            child: Text(
-                              winner['name'],
-                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          // Calculation part - always starts at same position
-                          Text(
-                            '${winner['value']} × \$${prizePerPoint.toStringAsFixed(2)} = \$${winner['winnings'].toStringAsFixed(2)}',
-                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-                          ),
-                        ],
-                      ),
-                    );
-                  }).toList(),
-                  SizedBox(height: 12),
-                  Container(
-                    height: 1,
-                    width: 200,
-                    color: Colors.grey.shade400,
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    'Total Paid: \$${winnersData.fold(0.0, (sum, winner) => sum + winner['winnings']).toStringAsFixed(2)}',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.green.shade600),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ],
-            ),
-          ),
-          actions: [
-            ElevatedButton(
-              onPressed: () {
-                // Calculate and distribute SKAT amounts for Monday League
-                _calculateAndDistributeSkatAmounts();
-                Navigator.of(context).pop(true); // Return true to indicate SKAT calculation was performed
-              },
-              child: Text('OK'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Future<bool?> _showPlayersCheckboxDialog(List<Map<String, dynamic>> playerScores) async {
-    Map<String, int> playerValues = {};
-    int runningTotal = 0;
-    
-    // Get the Closest Pin amount (target total)
-    double closestPinAmount = ClosestPinManager().currentClosestPinAmount;
-    int targetTotal = closestPinAmount.round(); // Convert to integer for comparison
-    
-    // Initialize player values
-    for (var player in playerScores) {
-      String playerName = player['last'] ?? 'Unknown';
-      playerValues[playerName] = 0;
-    }
-    
-    // Centralized function to update total - NO auto-close
-    void updateTotal() {
-      int newTotal = playerValues.values.fold(0, (sum, value) => sum + value);
-      runningTotal = newTotal;
-      
-      // Just update the UI, no auto-close
-      // Let user manually click Continue when ready
-    }
-    
-    return showDialog<bool>(
-      context: context,
-      barrierDismissible: false, // Prevent accidental dismissal
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              title: Column(
-                children: [
-                  Text(
-                    'Process Individuals - ${selectedLeague == 'monday' ? 'Monday' : 'Wednesday'} League',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    'Target: \$${targetTotal.toStringAsFixed(0)} | Current Total: $runningTotal',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: runningTotal == targetTotal ? Colors.green : Colors.blue),
-                  ),
-                ],
-              ),
-              content: Container(
-                width: double.maxFinite,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Create 3 columns of players
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Column 1
-                        Expanded(
-                          child: _buildPlayerClickColumn(playerScores, 0, playerValues, setState, updateTotal, targetTotal),
-                        ),
-                        SizedBox(width: 8),
-                        // Column 2
-                        Expanded(
-                          child: _buildPlayerClickColumn(playerScores, 1, playerValues, setState, updateTotal, targetTotal),
-                        ),
-                        SizedBox(width: 8),
-                        // Column 3
-                        Expanded(
-                          child: _buildPlayerClickColumn(playerScores, 2, playerValues, setState, updateTotal, targetTotal),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    // Clear all player values and reset total
-                    setState(() {
-                      for (var player in playerScores) {
-                        String playerName = player['last'] ?? 'Unknown';
-                        playerValues[playerName] = 0;
-                      }
-                      runningTotal = 0;
-                    });
-                  },
-                  child: Text('Clear'),
-                ),
-                ElevatedButton(
-                  onPressed: () async {
-                    // Show winnings popup for Monday League closest pin
-                    List<String> winnersList = [];
-                    double totalWinnings = 0.0;
-                    int winnersCount = 0;
-                    
-                    // Calculate closest pin winners from player values
-                    // Each player gets: ($1.00 × total active players) × (number next to their name)
-                    double baseAmount = 1.0; // $1.00 per active player
-                    int totalActivePlayers = playerValues.length;
-                    Map<String, double> individualWinnings = {};
-                    
-                    playerValues.forEach((playerName, value) {
-                      if (value > 0) {
-                        winnersList.add(playerName);
-                        double playerWinnings = baseAmount * totalActivePlayers * value.toDouble();
-                        individualWinnings[playerName] = playerWinnings;
-                        totalWinnings += playerWinnings;
-                        winnersCount++;
-                      }
-                    });
-                    
-                    if (winnersCount > 0) {
-                      // Store closest pin winner information for database saving
-                      setState(() {
-                        closestPinWinnerName = winnersList.join(", ");
-                        closestPinWinnings = totalWinnings; // Total amount for all winners
-                        
-                        // Store individual winnings in player data for proper database saving
-                        for (var player in playerScores) {
-                          String playerName = player['last'] ?? 'Unknown';
-                          if (individualWinnings.containsKey(playerName)) {
-                            player['close_pin_winnings'] = individualWinnings[playerName];
-                          } else {
-                            player['close_pin_winnings'] = 0.0;
-                          }
-                        }
-                      });
-                      
-                      // Create detailed message showing individual amounts
-                      String detailMessage = "Winners:\n";
-                      individualWinnings.forEach((playerName, amount) {
-                        detailMessage += "$playerName: \$${amount.toStringAsFixed(2)}\n";
-                      });
-                      detailMessage += "\nTotal Payout: \$${totalWinnings.toStringAsFixed(2)}";
-                      
-                      await PopupUtils.showSuccess(
-                        context,
-                        "Closest Pin Winners",
-                        detailMessage
-                      );
-                    }
-                    
-                    // Close this dialog and return true to indicate completion
-                    Navigator.of(context).pop(true);
-                  },
-                  child: Text('Continue'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
   void _processIndividuals() async {
+    // Close the keyboard
+    FocusScope.of(context).unfocus();
+    
+    List<Map<String, dynamic>> playerScores = _collectPlayerScores();
+    
+    if (playerScores.isEmpty) {
+      PopupUtils.showWarning(context, "Process Error", "No player scores available to process!");
+      return;
+    }
+    
     try {
-      // Close the keyboard
+      // Process individuals inline
+      await _calculateIndividualWinnings(playerScores);
+      
+      // Update players in groups with calculated pos and prize_money values
+      for (var playerScore in playerScores) {
+        for (var group in groups) {
+          for (int i = 0; i < group.length; i++) {
+            var player = group[i];
+            if (player != null && 
+                player['first'] == playerScore['first'] && 
+                player['last'] == playerScore['last']) {
+              player['pos'] = playerScore['pos'] ?? '';
+              player['prize_money'] = playerScore['prize_money'] ?? '';
+              break;
+            }
+          }
+        }
+      }
+      
+      // Clear focus from all input fields and hide keyboard
       FocusScope.of(context).unfocus();
       
-      if (selectedLeague == 'monday') {
-        // For Monday League, use the checkbox dialog for closest pin processing
-        List<Map<String, dynamic>> playerScores = _collectPlayerScores();
-        
-        if (playerScores.isEmpty) {
-          await PopupUtils.showWarning(context, "Process Error", "No player scores available to process!");
-          return;
-        }
-        
-        // Use the checkbox dialog method for Monday League
-        bool? closestPinCompleted = await _showPlayersCheckboxDialog(playerScores);
-        
-        if (closestPinCompleted != true) {
-          // User cancelled closest pin selection
-          return;
-        }
-        
-        // Transfer Close Pin winnings from playerScores back to the original groups array
-        for (var playerScore in playerScores) {
-          String playerIdentifier = '${playerScore['first']}_${playerScore['last']}';
-          double closePinWinnings = (playerScore['close_pin_winnings'] ?? 0.0).toDouble();
-          
-          // Find the corresponding player in groups array and update their close_pin_winnings
-          for (var group in groups) {
-            for (var player in group) {
-              if (player != null) {
-                String groupPlayerIdentifier = '${player['first']}_${player['last']}';
-                if (groupPlayerIdentifier == playerIdentifier) {
-                  player['close_pin_winnings'] = closePinWinnings;
-                }
-              }
-            }
-          }
-        }
-        
-        // Set individuals processing as complete
-        setState(() {
-          individualsProcessingComplete = true;
-        });
-        
-        // Calculate SKAT winnings before saving to database
-        _calculateAndDistributeSkatAmounts();
-        
-        // Collect all players for saving to database
-        List<Map<String, dynamic>> allPlayers = [];
-        for (var group in groups) {
-          for (var player in group) {
-            if (player != null) {
-              allPlayers.add(player);
-            }
-          }
-        }
-        
-        // Save scores to Player Scores table for Monday League
-        await _savePlayerScoresToDatabase(allPlayers);
-      } else {
-        // For Wednesday League, collect player scores and calculate positions/winnings
-        List<Map<String, dynamic>> playerScores = _collectPlayerScores();
-        
-        if (playerScores.isEmpty) {
-          await PopupUtils.showWarning(context, "Process Error", "No player scores available to process!");
-          return;
-        }
-        
-        List<Map<String, dynamic>> allPlayers = [];
-        for (var group in groups) {
-          for (var player in group) {
-            if (player != null) {
-              allPlayers.add(player);
-            }
-          }
-        }
-        
-        // Process closest pin winner using existing method
-        bool closestPinCompleted = await _processClosestPin(allPlayers);
-        
-        if (!closestPinCompleted) {
-          // User cancelled closest pin selection
-          return;
-        }
-        
-        // Calculate positions and prize money for Wednesday League
-        await _calculateWednesdayWinnings(playerScores);
-        
-        // Update player data with pos and prize_money fields
-        for (var player in playerScores) {
-          double winnings = (player['winnings'] ?? 0.0).toDouble();
-          int roundedWinnings = winnings.round();
-          
-          if (roundedWinnings > 0) {
-            int place = player['place'] ?? 0;
-            bool isTied = player['is_tied'] ?? false;
-            
-            if (isTied) {
-              player['pos'] = 'T${place}';
-            } else {
-              player['pos'] = place.toString();
-            }
-            player['prize_money'] = '\$${roundedWinnings}';
-          } else {
-            player['pos'] = '';
-            player['prize_money'] = '';
-          }
-        }
-        
-        // Update the groups data with calculated values
-        for (var updatedPlayer in playerScores) {
-          for (var group in groups) {
-            for (int i = 0; i < group.length; i++) {
-              var player = group[i];
-              if (player != null && 
-                  player['first'] == updatedPlayer['first'] && 
-                  player['last'] == updatedPlayer['last']) {
-                player['pos'] = updatedPlayer['pos'];
-                player['prize_money'] = updatedPlayer['prize_money'];
-                break;
-              }
-            }
-          }
-        }
-        
-        // Set individuals processing as complete
-        setState(() {
-          individualsProcessingComplete = true;
-        });
-        
-        // Save player scores to Players Scores Screen database
-        await _saveResultsToDatabase(playerScores);
+      // Clear focus from all gross input controllers
+      for (var focusNode in grossFocusNodes.values) {
+        focusNode.unfocus();
       }
       
+      setState(() {
+        individualsProcessingComplete = true;
+      });
+      
       await updateTitleInformation();
+      
+      await PopupUtils.showSuccess(context, "Process Complete", "Individual standings and payouts have been calculated successfully!");
+      
     } catch (e) {
-      // Handle error silently or show user-friendly message
+      await PopupUtils.showError(context, "Process Error", "Failed to process individuals: $e");
+    }
+  }
+
+  Future<void> _calculateIndividualWinnings(List<Map<String, dynamic>> playerScores) async {
+    // Sort players by score
+    if (selectedLeague == 'wednesday') {
+      playerScores.sort((a, b) => a['net_score'].compareTo(b['net_score']));
+    } else {
+      playerScores.sort((a, b) => a['gross_score'].compareTo(b['gross_score']));
+    }
+    
+    // Get payout amounts from CSV
+    List<double> payoutList = await CsvPayoutService().getPayoutList(playerScores.length);
+    
+    // Group players by their scores to identify ties
+    List<List<Map<String, dynamic>>> tieGroups = [];
+    int currentIndex = 0;
+    
+    while (currentIndex < playerScores.length) {
+      List<Map<String, dynamic>> tiedPlayers = [playerScores[currentIndex]];
+      dynamic currentScore = selectedLeague == 'wednesday' 
+          ? playerScores[currentIndex]['net_score'] 
+          : playerScores[currentIndex]['gross_score'];
+      
+      // Find all players with the same score
+      for (int i = currentIndex + 1; i < playerScores.length; i++) {
+        dynamic compareScore = selectedLeague == 'wednesday'
+            ? playerScores[i]['net_score']
+            : playerScores[i]['gross_score'];
+        
+        if (compareScore == currentScore) {
+          tiedPlayers.add(playerScores[i]);
+        } else {
+          break;
+        }
+      }
+      
+      tieGroups.add(tiedPlayers);
+      currentIndex += tiedPlayers.length;
+    }
+    
+    // Assign places and winnings based on tie groups
+    int currentPlace = 1;
+    
+    for (var tieGroup in tieGroups) {
+      int groupSize = tieGroup.length;
+      
+      if (groupSize == 1) {
+        // No tie - regular placement
+        var player = tieGroup[0];
+        player['place'] = currentPlace;
+        player['is_tied'] = false;
+        
+        if (currentPlace <= payoutList.length) {
+          player['winnings'] = payoutList[currentPlace - 1];
+        } else {
+          player['winnings'] = 0.0;
+        }
+      } else {
+        // Tie - calculate shared winnings
+        double totalWinnings = 0.0;
+        
+        // Sum up the winnings for all positions involved in the tie
+        for (int i = 0; i < groupSize; i++) {
+          int position = currentPlace + i;
+          if (position <= payoutList.length) {
+            totalWinnings += payoutList[position - 1];
+          }
+        }
+        
+        // Divide evenly among tied players
+        double sharedWinnings = totalWinnings / groupSize;
+        
+        // Assign to all tied players
+        for (var player in tieGroup) {
+          player['place'] = currentPlace;
+          player['is_tied'] = true;
+          player['tie_count'] = groupSize;
+          player['winnings'] = sharedWinnings;
+        }
+      }
+      
+      currentPlace += groupSize;
+    }
+
+    // Set pos and prize_money for display
+    for (var player in playerScores) {
+      double winnings = (player['winnings'] ?? 0.0).toDouble();
+      int roundedWinnings = winnings.round();
+      
+      if (roundedWinnings > 0) {
+        int place = player['place'] ?? 0;
+        bool isTied = player['is_tied'] ?? false;
+        
+        if (isTied) {
+          player['pos'] = 'T${place}';
+        } else {
+          player['pos'] = place.toString();
+        }
+        player['prize_money'] = '\$${roundedWinnings}';
+      } else {
+        player['pos'] = '';
+        player['prize_money'] = '';
+      }
     }
   }
 
@@ -3019,54 +2658,24 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
     for (var group in groups) {
       for (var player in group) {
         if (player != null) {
+          String playerKey = '${player['last']}_gross';
           String playerIdentifier = '${player['first']}_${player['last']}';
+          TextEditingController? controller = grossControllers[playerKey];
           
-          // Only add if player hasn't been added already
-          if (!addedPlayers.contains(playerIdentifier)) {
+          // Only add if player hasn't been added already and has a score
+          if (controller != null && controller.text.isNotEmpty && !addedPlayers.contains(playerIdentifier)) {
             var playerData = Map<String, dynamic>.from(player);
-            bool hasValidScore = false;
             
             try {
+              playerData['gross_score'] = int.parse(controller.text);
+              
               if (selectedLeague == 'wednesday') {
-                // For Wednesday League, check gross scores
-                String playerKey = '${player['last']}_gross';
-                TextEditingController? controller = grossControllers[playerKey];
-                
-                if (controller != null && controller.text.isNotEmpty) {
-                  playerData['gross_score'] = int.parse(controller.text);
-                  double handicap = playerData['handicap']?.toDouble() ?? 0.0;
-                  playerData['net_score'] = playerData['gross_score'] - handicap.round();
-                  hasValidScore = true;
-                }
-              } else {
-                // For Monday League, check SKATS scores
-                String skatsKey = '${player['last']}_skats';
-                TextEditingController? skatsController = skatsControllers[skatsKey];
-                
-                if (skatsController != null && skatsController.text.isNotEmpty) {
-                  playerData['skats_score'] = int.parse(skatsController.text);
-                  hasValidScore = true;
-                  
-                  // Also collect DIFF score for Monday League if available
-                  String diffKey = '${player['last']}_diff';
-                  TextEditingController? diffController = diffControllers[diffKey];
-                  if (diffController != null && diffController.text.isNotEmpty) {
-                    playerData['diff_score'] = int.parse(diffController.text);
-                  }
-                  
-                  // Also collect gross score if available for Monday League
-                  String grossKey = '${player['last']}_gross';
-                  TextEditingController? grossController = grossControllers[grossKey];
-                  if (grossController != null && grossController.text.isNotEmpty) {
-                    playerData['gross_score'] = int.parse(grossController.text);
-                  }
-                }
+                double handicap = playerData['handicap']?.toDouble() ?? 0.0;
+                playerData['net_score'] = playerData['gross_score'] - handicap.round();
               }
               
-              if (hasValidScore) {
-                playerScores.add(playerData);
-                addedPlayers.add(playerIdentifier); // Mark as added
-              }
+              playerScores.add(playerData);
+              addedPlayers.add(playerIdentifier); // Mark as added
             } catch (e) {
               // Skip invalid scores
             }
@@ -3118,14 +2727,8 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
     try {
       payoutAmounts = await CsvPayoutService().getPayoutList(numPlayers);
     } catch (e) {
-      // Fallback to old percentage system
-      double anteAmount = AnteManager().currentAnteAmount;
-      double closestPinAmount = ClosestPinManager().currentClosestPinAmount;
-      double adjustedAnteAmount = anteAmount - closestPinAmount;
-      double totalPurse = players.length * adjustedAnteAmount;
-      double individualPurse = totalPurse * PercentageManager().individualPercentDecimal;
-      List<double> prizePercentages = [0.50, 0.30, 0.20];
-      payoutAmounts = prizePercentages.map((p) => individualPurse * p).toList();
+      // If CSV fails, set payouts to zero since we rely on CSV data
+      payoutAmounts = [0.0, 0.0, 0.0, 0.0];
     }
     
     // Handle ties by grouping players with same scores
@@ -3229,27 +2832,13 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
     }
   }
 
-  Future<void> _saveAdjustedMulliganPurse(double adjustedAmount) async {
-    try {
-      final db = await DatabaseHelper().database;
-      final currentDate = DateTime.now().toIso8601String().split('T')[0];
-      
-      // Save or update the adjusted mulligan purse for the current date and league
-      await db.execute('''
-        INSERT OR REPLACE INTO adjusted_mulligan_purse 
-        (date, league, adjusted_amount, created_at) 
-        VALUES (?, ?, ?, ?)
-      ''', [currentDate, selectedLeague, adjustedAmount, DateTime.now().toIso8601String()]);
-      
-    } catch (e) {
-      // Log error but don't fail the operation
-      // Failed to save adjusted mulligan purse: $e
-    }
-  }
-
   Future<void> _balanceMulliganPurse(List<Map<String, dynamic>> players) async {
-    final dbHelper = DatabaseHelper();
-    await dbHelper.checkPlayersTableExists();
+    // Calculate total actual payouts
+    double totalActualPayouts = 0.0;
+    for (var player in players) {
+      double winnings = player['winnings']?.toDouble() ?? 0.0;
+      totalActualPayouts += winnings;
+    }
     
     // Get the total number of selected players (not just those with scores)
     int totalSelectedPlayers = 0;
@@ -3257,45 +2846,25 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
       totalSelectedPlayers += group.where((player) => player != null && player['is_wild_card'] != true).length;
     }
     
-    League currentLeague = selectedLeague == 'monday' ? League.monday : League.wednesday;
-    
+    // Get the expected total from CSV using total selected players
     try {
-      PayoutValidationResult result = await PayoutValidationService().validateIndividualPayouts(
-        players: players,
-        league: currentLeague,
-        totalSelectedPlayers: totalSelectedPlayers,
-        currentMulliganPurse: _adjustedMulliganPurse,
-      );
+      Map<String, double> payoutData = await CsvPayoutService().getPayoutAmounts(totalSelectedPlayers);
+      double expectedTotal = payoutData['total_individual'] ?? 0.0;
       
-      if (result.requiresAdjustment) {
-        _adjustedMulliganPurse = result.adjustedMulliganPurse;
-        
-        // Show validation message to user
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(result.description),
-              duration: Duration(seconds: 4),
-            ),
-          );
-        }
-      }
+      // Calculate the overage (actual - expected)
+      double overage = totalActualPayouts - expectedTotal;
       
-      // ALWAYS save the current mulligan purse amount (adjusted or original)
-      // This ensures Auto Process Groups uses the correct amount for this session
-      await _saveAdjustedMulliganPurse(_adjustedMulliganPurse);
+      // Get current mulligan purse amount (what's currently displayed)
+      double currentMulliganPurse = _adjustedMulliganPurse;
+      
+      // Simply subtract the overage from current amount
+      _adjustedMulliganPurse = currentMulliganPurse - overage;
       
       // Mark that balancing has been done
       _mulliganPurseBalanced = true;
       
-      
-      // Update display
-      setState(() {
-        _mulliganPurseDisplayText = '\$${_adjustedMulliganPurse.toStringAsFixed(2)}';
-      });
-      
     } catch (e) {
-      // Error handling - keep original amount if validation service fails
+      // Error handling - keep original amount if CSV lookup fails
     }
   }
 
@@ -3309,117 +2878,6 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
     }
   }
 
-  bool _areAllSkatsScoresEntered() {
-    // Only check for Monday League
-    if (selectedLeague != 'monday') return false;
-    
-    for (var group in groups) {
-      for (var player in group) {
-        if (player != null && player['is_wild_card'] != true) {
-          if (player['skats_score'] == null) {
-            return false;
-          }
-        }
-      }
-    }
-    return true;
-  }
-
-  void _calculateAndDistributeSkatAmounts() {
-    // Only process for Monday League
-    if (selectedLeague != 'monday') return;
-    
-    // Calculate the number of selected players (same logic as in updateTitleInformation)
-    int numSelectedPlayers = 0;
-    for (var group in groups) {
-      numSelectedPlayers += group.where((player) => player != null && player['is_wild_card'] != true).length;
-    }
-    
-    // If no selected players, no SKAT distribution
-    if (numSelectedPlayers <= 0) {
-      // Clear any existing SKAT winnings for all players
-      for (var group in groups) {
-        for (var player in group) {
-          if (player != null) {
-            player['skat_winnings'] = 0.0;
-          }
-        }
-      }
-      return;
-    }
-    
-    // Get SKAT purse amount (same calculation as in updateTitleInformation)
-    double anteAmount = AnteManager().currentAnteAmount;
-    double skatPurse = anteAmount * numSelectedPlayers;
-    
-    // Add up all positive DIFF values
-    double totalPositiveDiffs = 0.0;
-    for (var group in groups) {
-      for (var player in group) {
-        if (player != null) {
-          // Get DIFF value from player data (stored as diff_score)
-          var diffScore = player['diff_score'];
-          double diffValue = 0.0;
-          
-          if (diffScore != null) {
-            diffValue = diffScore.toDouble();
-          }
-          
-          if (diffValue > 0) {
-            totalPositiveDiffs += diffValue;
-          }
-        }
-      }
-    }
-    
-    // If no positive DIFFs, clear all winnings
-    if (totalPositiveDiffs <= 0) {
-      for (var group in groups) {
-        for (var player in group) {
-          if (player != null) {
-            player['skat_winnings'] = 0.0;
-          }
-        }
-      }
-      return;
-    }
-    
-    // Calculate SKAT value: divide SKAT purse by total positive DIFFs
-    double skatValue = skatPurse / totalPositiveDiffs;
-    
-    // Distribute SKAT amounts to players based on their DIFF values
-    for (var group in groups) {
-      for (var player in group) {
-        if (player != null) {
-          // Get DIFF value from player data (stored as diff_score)
-          var diffScore = player['diff_score'];
-          double diffValue = 0.0;
-          
-          if (diffScore != null) {
-            diffValue = diffScore.toDouble();
-          }
-          
-          if (diffValue > 0) {
-            // For positive DIFF: multiply DIFF by SKAT value and round
-            double skatAmount = diffValue * skatValue;
-            player['skat_winnings'] = skatAmount.roundToDouble();
-          } else {
-            // For negative or zero DIFF: post $0.00
-            player['skat_winnings'] = 0.0;
-          }
-        }
-      }
-    }
-    
-    // After SKAT calculations are complete, trigger individuals processing for Monday League
-    // Only trigger if individuals processing is not already complete
-    if (!individualsProcessingComplete) {
-      Future.delayed(Duration(milliseconds: 500), () {
-        _processIndividuals();
-      });
-    }
-  }
-
   void _returnToMainMenu() {
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (context) => UnifiedMainMenuScreen()),
@@ -3427,6 +2885,9 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
   }
 
   Future<void> _redistributePlayersRandomly() async {
+    print("DEBUG: _redistributePlayersRandomly called");
+    print("DEBUG: Initial state - groupsProcessed = $groupsProcessed, selectedLeague = $selectedLeague");
+    
     // Collect all players from all groups
     List<Map<String, dynamic>?> allPlayers = [];
     for (var group in groups) {
@@ -3597,7 +3058,13 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
   }
 
   Future<void> _calculateGroupWinningsLegacy() async {
-    if (!groupsProcessed || selectedLeague != 'wednesday') return;
+    print("DEBUG: _calculateGroupWinningsLegacy called");
+    print("DEBUG: groupsProcessed = $groupsProcessed, selectedLeague = $selectedLeague");
+    
+    if (!groupsProcessed || selectedLeague != 'wednesday') {
+      print("DEBUG: Returning early from _calculateGroupWinningsLegacy - conditions not met");
+      return;
+    }
     
     // Clear previous group winnings
     for (var group in groups) {
@@ -3644,7 +3111,7 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
     Map<String, double> groupPayouts = await GroupCsvPayoutService().getPayoutAmounts(numPlayers);
     double totalGroupPurse = groupPayouts['groups_total'] ?? 0.0;
     
-    // Get actual prize amounts from CSV (not percentages)
+    // Get actual prize amounts from CSV
     List<double> prizeAmounts = [
       groupPayouts['1st'] ?? 0.0,
       groupPayouts['2nd'] ?? 0.0,
@@ -3702,6 +3169,7 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
         for (var player in playersInGroup) {
           player['group_place'] = logicalPosition; // Use logical position
           player['group_winnings'] = playerWinnings;
+          print("DEBUG: Setting group_winnings = $playerWinnings for player ${player['first']} ${player['last']}");
           player['is_group_tied'] = tieGroup.length > 1;
           player['group_tie_count'] = tieGroup.length;
         }
@@ -3715,41 +3183,83 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
     if (selectedLeague == 'wednesday') {
       await _balanceMulliganPurseForGroups();
     }
+
+    PayoutValidationResult? validationResult = await validateGroupProcessingResults();
+    if (validationResult != null && validationResult.requiresAdjustment) {
+      // Update the adjusted mulligan purse based on validation results
+      _adjustedMulliganPurse = validationResult.adjustedMulliganPurse;
+      
+      // Show validation message to user via SnackBar
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(validationResult.description),
+            duration: Duration(seconds: 4),
+          ),
+        );
+      }
+      
+      // Update display of mulligan purse
+      setState(() {
+        _mulliganPurseDisplayText = '\$${_adjustedMulliganPurse.toStringAsFixed(2)}';
+      });
+    }
+    
+    // Save the adjusted mulligan purse after group processing (Step 7)
+    await _saveAdjustedMulliganPurse(_adjustedMulliganPurse);
     
     // After calculating group winnings, save them to the database
-    _saveGroupWinningsToDatabase();
+    print("DEBUG: About to call _saveGroupWinningsToDatabase");
+    await _saveGroupWinningsToDatabase();
+    print("DEBUG: _saveGroupWinningsToDatabase completed");
+  }
+
+  Future<void> _saveAdjustedMulliganPurse(double adjustedAmount) async {
+    try {
+      final db = await DatabaseHelper().database;
+      final currentDate = DateTime.now().toIso8601String().split('T')[0];
+      
+      // Save or update the adjusted mulligan purse for the current date and league
+      await db.execute('''
+        INSERT OR REPLACE INTO adjusted_mulligan_purse 
+        (date, league, adjusted_amount, created_at) 
+        VALUES (?, ?, ?, ?)
+      ''', [currentDate, selectedLeague, adjustedAmount, DateTime.now().toIso8601String()]);
+      
+      
+    } catch (e) {
+    }
   }
 
   Future<void> _balanceMulliganPurseForGroups() async {
+    // Calculate total actual group payouts
+    double totalActualGroupPayouts = 0.0;
+    for (var group in groups) {
+      for (var player in group) {
+        if (player != null) {
+          double groupWinnings = player['group_winnings']?.toDouble() ?? 0.0;
+          totalActualGroupPayouts += groupWinnings;
+        }
+      }
+    }
+    
     // Get total number of selected players (excluding wild cards)
     int totalSelectedPlayers = 0;
     for (var group in groups) {
       totalSelectedPlayers += group.where((player) => player != null && player['is_wild_card'] != true).length;
     }
     
-    League currentLeague = selectedLeague == 'monday' ? League.monday : League.wednesday;
-    
+    // Get expected group total from CSV payout data
     try {
-      PayoutValidationResult result = await PayoutValidationService().validateGroupPayouts(
-        groups: groups,
-        league: currentLeague,
-        totalSelectedPlayers: totalSelectedPlayers,
-        currentMulliganPurse: _adjustedMulliganPurse,
-      );
+      Map<String, double> groupPayoutData = await GroupCsvPayoutService().getPayoutAmounts(totalSelectedPlayers);
+      double expectedGroupTotal = groupPayoutData['groups_total'] ?? 0.0;
       
-      if (result.requiresAdjustment) {
-        _adjustedMulliganPurse = result.adjustedMulliganPurse;
-        
-        // Show validation message to user
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(result.description),
-              duration: Duration(seconds: 4),
-            ),
-          );
-        }
-      }
+      // Calculate overage/underage (actual - expected)
+      double groupOverage = totalActualGroupPayouts - expectedGroupTotal;
+      
+      // Adjust the mulligan purse by subtracting the group overage
+      // This ensures the total payout pool remains consistent
+      _adjustedMulliganPurse = _adjustedMulliganPurse - groupOverage;
       
       // Mark that balancing has been done (or update existing balance)
       _mulliganPurseBalanced = true;
@@ -3760,59 +3270,82 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
       });
       
     } catch (e) {
-      // If validation service fails, keep the current mulligan purse amount
+      // If CSV lookup fails, keep the current mulligan purse amount
       // This prevents errors from breaking the balancing system
     }
   }
 
   Future<void> _saveGroupWinningsToDatabase() async {
-    if (!groupsProcessed || selectedLeague != 'wednesday') return;
+    print("DEBUG: *** _saveGroupWinningsToDatabase ENTRY POINT ***");
+    print("DEBUG: groupsProcessed = $groupsProcessed, selectedLeague = $selectedLeague");
     
+    if (!groupsProcessed || selectedLeague != 'wednesday') {
+      print("DEBUG: Returning early - conditions not met");
+      return;
+    }
+
     final dbHelper = DatabaseHelper();
+    int playersProcessed = 0;
     
     // Update group winnings for each player in the database
     for (var group in groups) {
       for (var player in group) {
-        if (player != null && player['group_winnings'] != null) {
-          try {
-            // Find the player's ID from the database
-            final db = await dbHelper.database;
-            final playerRecords = await db.query(
-              'players',
-              where: 'first = ? AND last = ? AND league = ?',
-              whereArgs: [player['first'], player['last'], selectedLeague],
-              limit: 1,
-            );
-            
-            if (playerRecords.isNotEmpty) {
-              var playerRecord = playerRecords.first;
-              int playerId = playerRecord['id'] as int;
-              
-              // Round group winnings to whole dollars
-              double groupWinnings = (player['group_winnings'] as double? ?? 0.0);
-              int roundedGroupWinnings = groupWinnings.round();
-              
-              // Update the group winnings in the most recent record only
-              await dbHelper.updateGroupWinnings(
-                playerId, 
-                roundedGroupWinnings.toDouble(), 
-                League.wednesday
+        if (player != null) {
+          print("DEBUG: Processing player ${player['first']} ${player['last']}");
+          print("DEBUG: Player group_winnings = ${player['group_winnings']}");
+          
+          if (player['group_winnings'] != null && player['group_winnings'] > 0) {
+            try {
+              // Find the player's ID from the database
+              final db = await dbHelper.database;
+              final playerRecords = await db.query(
+                'players',
+                where: 'first = ? AND last = ? AND league = ?',
+                whereArgs: [player['first'], player['last'], selectedLeague],
+                limit: 1,
               );
+              
+              if (playerRecords.isNotEmpty) {
+                var playerRecord = playerRecords.first;
+                int playerId = playerRecord['id'] as int;
+                
+                // Round group winnings to whole dollars
+                double groupWinnings = (player['group_winnings'] as double? ?? 0.0);
+                int roundedGroupWinnings = groupWinnings.round();
+                
+                print("DEBUG: Updating player ID $playerId with group winnings $roundedGroupWinnings");
+                
+                // Update the group winnings in the most recent record only
+                int rowsUpdated = await dbHelper.updateGroupWinnings(
+                  playerId, 
+                  roundedGroupWinnings.toDouble(), 
+                  League.wednesday
+                );
+                
+                print("DEBUG: Rows updated: $rowsUpdated");
+                playersProcessed++;
+              } else {
+                print("DEBUG: No player record found for ${player['first']} ${player['last']}");
+              }
+            } catch (e) {
+              print("DEBUG: Error saving group winnings for ${player['first']} ${player['last']}: $e");
             }
-          } catch (e) {
-            // Error saving group winnings - continue with other players
+          } else {
+            print("DEBUG: Player has no group winnings or winnings is 0");
           }
         }
       }
     }
+    
+    print("DEBUG: Total players with group winnings saved: $playersProcessed");
   }
+
 
   Future<void> _saveResultsToDatabase(List<Map<String, dynamic>> playerScores) async {
     final dbHelper = DatabaseHelper();
     
-    // For Monday League individual processing, closest pin winnings are already set in player data
-    // For Wednesday League single winner, add closest pin winnings to the appropriate player
-    if (selectedLeague == 'wednesday' && closestPinWinnerName != null && closestPinWinnings > 0) {
+    // Add closest pin winnings to the appropriate player
+    if (closestPinWinnerName != null && closestPinWinnings > 0) {
       for (var player in playerScores) {
         String playerFullName = '${player['first']} ${player['last']}';
         if (playerFullName == closestPinWinnerName) {
@@ -3822,7 +3355,6 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
         }
       }
     }
-    // For Monday League, individual winnings are already set in the processing dialog
     
     for (var player in playerScores) {
       // Find the player's ID from the database
@@ -3852,26 +3384,17 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
           'close_pin_winnings': player['close_pin_winnings']?.toDouble() ?? 0.0,
         };
         
-        if (selectedLeague == 'monday') {
-          // Monday League: save to monday_scores table
-          scoreData['golf_course'] = 'TBD'; // Golf Course - could be configurable later
-          scoreData['skat_number'] = playerRecord['skat_number'] ?? 0;
-          scoreData['skats_score'] = player['skats_score'] ?? 0;
-          scoreData['skat_winnings'] = (player['skat_winnings'] ?? 0.0).toDouble(); // SKAT Winnings from SKAT calculation
-        } else {
-          // Wednesday League: save to wednesday_scores table  
-          scoreData['golf_course'] = 'The Hideout'; // Golf Course for Wednesday League
-          scoreData['single_winnings'] = roundedWinnings.toDouble(); // Single Winnings from Enter Scores Screen
-          
-          // Round group winnings to whole dollars
-          double groupWinnings = (player['group_winnings'] ?? 0.0).toDouble();
-          int roundedGroupWinnings = groupWinnings.round();
-          scoreData['group_winnings'] = roundedGroupWinnings.toDouble(); // Group Winnings from Enter Scores Screen
-        }
+        // Wednesday League: save to wednesday_scores table  
+        scoreData['golf_course'] = 'The Hideout'; // Golf Course for Wednesday League
+        scoreData['single_winnings'] = roundedWinnings.toDouble(); // Single Winnings from Enter Scores Screen
+        
+        // Round group winnings to whole dollars
+        double groupWinnings = (player['group_winnings'] ?? 0.0).toDouble();
+        int roundedGroupWinnings = groupWinnings.round();
+        scoreData['group_winnings'] = roundedGroupWinnings.toDouble(); // Group Winnings from Enter Scores Screen
         
         // Save to the appropriate league table (this will automatically limit to 20 scores and lock the row)
-        League league = selectedLeague == 'monday' ? League.monday : League.wednesday;
-        await dbHelper.insertScoreLeague(scoreData, league);
+        await dbHelper.insertScoreLeague(scoreData, League.wednesday);
       }
     }
     
@@ -3914,7 +3437,6 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
           'group_number': groupNumber,
           'gross_score': player['gross_score'],
           'net_score': player['net_score'],
-          'skats_score': player['skats_score'],
           'place': player['place'],
           'winnings': roundedWinnings,
         });
@@ -3922,247 +3444,49 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
     }
     
     if (playerResults.isNotEmpty) {
-      // Determine league and ante amount
-      League league = selectedLeague == 'monday' ? League.monday : League.wednesday;
+      // Determine ante amount
       double anteAmount = AnteManager().currentAnteAmount;
       
       // Save to legacy game system
       await dbHelper.saveGameResults(
-        league: league,
+        league: League.wednesday,
         anteAmount: anteAmount,
         playerResults: playerResults,
       );
+
+      await validateGroupProcessingResults();
     }
   }
 
-  // Auto-fill method for testing - fills all Gross widgets with random scores 35-55 and calculates Net scores
-  // For Monday League, also fills SKATS with random scores 30-40
-  void _autoFillGrossScores() {
-    final random = Random();
-    
-    for (var group in groups) {
-      for (var player in group) {
-        if (player != null) {
-          // For Monday League, only fill SKATS scores
-          if (selectedLeague == 'monday' && !groupsProcessed) {
-            String skatsKey = '${player['last']}_skats';
-            String diffKey = '${player['last']}_diff';
-            
-            // Get or create SKATS controller if it doesn't exist
-            if (!skatsControllers.containsKey(skatsKey)) {
-              skatsControllers[skatsKey] = TextEditingController();
-            }
-            
-            // Get or create SKATS focus node if it doesn't exist
-            if (!skatsFocusNodes.containsKey(skatsKey)) {
-              skatsFocusNodes[skatsKey] = FocusNode();
-            }
-            
-            // Get or create DIFF controller if it doesn't exist
-            if (!diffControllers.containsKey(diffKey)) {
-              diffControllers[diffKey] = TextEditingController();
-            }
-            
-            // Get or create DIFF focus node if it doesn't exist
-            if (!diffFocusNodes.containsKey(diffKey)) {
-              diffFocusNodes[diffKey] = FocusNode();
-            }
-            
-            // Generate random SKATS score between 30 and 40
-            int randomSkatsScore = 30 + random.nextInt(11); // 11 to include 40 (30 + 0 to 10)
-            
-            // Set the SKATS score in the controller
-            skatsControllers[skatsKey]!.text = randomSkatsScore.toString();
-            
-            // Update the player's skats_score in the data structure
-            player['skats_score'] = randomSkatsScore;
-            
-            // Calculate DIFF (SKATS - SKAT#)
-            if (player['skat_number'] != null) {
-              int skatNumber = player['skat_number'] is int 
-                  ? player['skat_number'] as int
-                  : int.tryParse(player['skat_number'].toString()) ?? 0;
-              int diffScore = randomSkatsScore - skatNumber;
-              
-              // Set the DIFF score in the controller
-              diffControllers[diffKey]!.text = diffScore.toString();
-              
-              // Update the player's diff_score in the data structure
-              player['diff_score'] = diffScore;
-            }
-          } 
-          // For Wednesday League, fill gross scores
-          else if (selectedLeague == 'wednesday' && !groupsProcessed) {
-            String playerKey = '${player['last']}_gross';
-            
-            // Get or create controller if it doesn't exist
-            if (!grossControllers.containsKey(playerKey)) {
-              grossControllers[playerKey] = TextEditingController();
-            }
-            
-            // Get or create focus node if it doesn't exist
-            if (!grossFocusNodes.containsKey(playerKey)) {
-              grossFocusNodes[playerKey] = FocusNode();
-            }
-            
-            // Generate random score between 35 and 55
-            int randomScore = 35 + random.nextInt(21); // 21 to include 55 (35 + 0 to 20)
-            
-            // Set the score in the controller
-            grossControllers[playerKey]!.text = randomScore.toString();
-            
-            // Update the player's gross_score in the data structure
-            player['gross_score'] = randomScore;
-            
-            // Calculate and set net score (Gross - Handicap = Net)
-            if (player['handicap'] != null) {
-              double handicap = player['handicap'] is int 
-                  ? (player['handicap'] as int).toDouble() 
-                  : player['handicap'] as double;
-              int netScore = randomScore - handicap.round();
-              player['net_score'] = netScore;
-            }
-          }
-        }
-      }
-    }
-    
-    // For Monday League, calculate SKAT winnings after filling scores
-    if (selectedLeague == 'monday') {
-      _calculateAndDistributeSkatAmounts();
-    }
-    
-    // Refresh the UI to show the new scores
-    setState(() {});
-    
-    // For Wednesday League, automatically process individuals after auto fill
-    if (selectedLeague == 'wednesday') {
-      // Small delay to ensure UI updates complete
-      Future.delayed(Duration(milliseconds: 100), () {
-        _processIndividuals();
-      });
-    }
-  }
-
-  // Check if all gross scores are filled for Wednesday League
-  bool _areAllGrossScoresFilled() {
-    if (selectedLeague != 'wednesday') return false;
-    
-    for (var group in groups) {
-      for (var player in group) {
-        if (player != null) {
-          String playerKey = '${player['last']}_gross';
-          
-          // Check if controller exists and has a value
-          if (!grossControllers.containsKey(playerKey)) {
-            return false;
-          }
-          
-          if (grossControllers[playerKey]!.text.trim().isEmpty) {
-            return false;
-          }
-          
-          // Validate the score is a reasonable number
-          int? score = int.tryParse(grossControllers[playerKey]!.text.trim());
-          if (score == null || score < 10 || score > 99) {
-            return false;
-          }
-        }
-      }
-    }
-    
-    return true;
-  }
-
-  // Automatically calculate positions and prize money when all scores are filled
-  void _checkAndAutoCalculateWednesday() {
-    if (selectedLeague == 'wednesday' && !individualsProcessingComplete && _areAllGrossScoresFilled()) {
-      // Small delay to ensure UI updates complete
-      Future.delayed(Duration(milliseconds: 200), () {
-        _processIndividuals();
-      });
-    }
-  }
-
-  // Calculate positions and winnings for Wednesday League based on net scores
-  Future<void> _calculateWednesdayWinnings(List<Map<String, dynamic>> playerScores) async {
-    // Import the CSV payout service
-    CsvPayoutService csvPayoutService = CsvPayoutService();
-    
-    // Sort players by net score (lowest first)
-    playerScores.sort((a, b) => a['net_score'].compareTo(b['net_score']));
-    
-    // Get payout amounts from CSV based on number of players
-    List<double> payoutList = await csvPayoutService.getPayoutList(playerScores.length);
-    
-    // Group players by their net scores to identify ties
-    List<List<Map<String, dynamic>>> tieGroups = [];
-    int currentIndex = 0;
-    
-    while (currentIndex < playerScores.length) {
-      List<Map<String, dynamic>> tiedPlayers = [playerScores[currentIndex]];
-      int currentScore = playerScores[currentIndex]['net_score'];
-      
-      // Find all players with the same net score
-      for (int i = currentIndex + 1; i < playerScores.length; i++) {
-        int compareScore = playerScores[i]['net_score'];
-        
-        if (compareScore == currentScore) {
-          tiedPlayers.add(playerScores[i]);
-        } else {
-          break;
-        }
+  Future<PayoutValidationResult?> validateGroupProcessingResults() async {
+    try {
+      // Get total number of selected players (excluding wild cards)
+      int totalSelectedPlayers = 0;
+      for (var group in groups) {
+        totalSelectedPlayers += group.where((player) => player != null && player['is_wild_card'] != true).length;
       }
       
-      tieGroups.add(tiedPlayers);
-      currentIndex += tiedPlayers.length;
-    }
-    
-    // Assign places and winnings based on tie groups
-    int currentPlace = 1;
-    
-    for (var tieGroup in tieGroups) {
-      int groupSize = tieGroup.length;
+      // Get current mulligan purse amount
+      double currentMulliganPurse = MulliganManager().currentMulliganAmount * totalSelectedPlayers;
       
-      if (groupSize == 1) {
-        // No tie - regular placement
-        var player = tieGroup[0];
-        player['place'] = currentPlace;
-        player['is_tied'] = false;
-        
-        if (currentPlace <= payoutList.length) {
-          player['winnings'] = payoutList[currentPlace - 1];
-        } else {
-          player['winnings'] = 0.0;
-        }
-      } else {
-        // Tie - calculate shared winnings
-        double totalWinnings = 0.0;
-        
-        // Sum up the winnings for all positions involved in the tie
-        for (int i = 0; i < groupSize; i++) {
-          int position = currentPlace + i;
-          if (position <= payoutList.length) {
-            totalWinnings += payoutList[position - 1];
-          }
-        }
-        
-        // Divide evenly among tied players
-        double sharedWinnings = totalWinnings / groupSize;
-        
-        // Assign to all tied players
-        for (var player in tieGroup) {
-          player['place'] = currentPlace;
-          player['is_tied'] = true;
-          player['tie_count'] = groupSize;
-          player['winnings'] = sharedWinnings;
-        }
-      }
+      League currentLeague = selectedLeague == 'monday' ? League.monday : League.wednesday;
+
+      // Check for stored adjusted amount from individual processing
+      String leagueStr = currentLeague == League.monday ? 'monday' : 'wednesday';
+      double? storedAdjustedAmount = await DatabaseHelper().getAdjustedMulliganPurse(leagueStr);
       
-      currentPlace += groupSize;
+      // Validate group payouts using the centralized service
+      PayoutValidationResult result = await PayoutValidationService().validateGroupPayouts(
+        groups: groups,
+        league: currentLeague,
+        totalSelectedPlayers: totalSelectedPlayers,
+        currentMulliganPurse: currentMulliganPurse,
+      );
+      
+      
+      return result;
+    } catch (e) {
+      return null;
     }
   }
-
-
-
 }
