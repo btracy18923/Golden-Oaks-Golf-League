@@ -11,6 +11,8 @@ import 'player_profile_screen.dart';
 import 'player_scores_screen.dart';
 import 'golf_course_info_screen.dart';
 import 'admin_screen.dart';
+import 'monday/monday_parent_screen.dart';
+import 'wednesday/wednesday_parent_screen.dart';
 
 class UnifiedMainMenuScreen extends StatefulWidget {
   const UnifiedMainMenuScreen({super.key});
@@ -313,33 +315,30 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
   }
 
   void selectMondayLeague() async {
-    setState(() {
-      currentLeague = League.monday;
-      _anteController.text = '\$5.00'; // Monday league ante
-      _closestPinController.text = '\$4.00'; // Monday league closest pin
-      _mondayMulligansController.text = '\$2.00'; // Monday league mulligans
-      _newFieldController.text = '\$1.00'; // Monday league new field
-      AnteManager().setAnteAmount(5.0); // Update global ante manager
-      ClosestPinManager().setClosestPinAmount(4.0); // Update closest pin manager
-      MulliganManager().setMulliganAmount(2.0); // Update mulligan manager
-    });
+    // Set up Monday league managers
+    AnteManager().setAnteAmount(5.0);
+    ClosestPinManager().setClosestPinAmount(4.0);
+    MulliganManager().setMulliganAmount(2.0);
     
+    // Navigate directly to Monday Parent Screen
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const MondayParentScreen()),
+    );
   }
 
   void selectWednesdayLeague() async {
-    setState(() {
-      currentLeague = League.wednesday;
-      _anteController.text = '\$5.00'; // Wednesday league ante
-      _closestPinController.text = '\$1.00'; // Wednesday league closest pin
-      _newFieldController.text = '\$1.00'; // Wednesday league new field
-      _mondayMulligansController.text = '\$1.00'; // Wednesday league mulligans
-      AnteManager().setAnteAmount(5.0); // Update global ante manager
-      ClosestPinManager().setClosestPinAmount(1.0); // Update closest pin manager
-      MulliganManager().setMulliganAmount(1.0); // Update mulligan manager
-      // Reset percentages to defaults for Wednesday league
-      PercentageManager().setIndividualPercent(40.0);
-    });
+    // Set up Wednesday league managers
+    AnteManager().setAnteAmount(5.0);
+    ClosestPinManager().setClosestPinAmount(1.0);
+    MulliganManager().setMulliganAmount(1.0);
+    PercentageManager().setIndividualPercent(40.0);
     
+    // Navigate directly to Wednesday Parent Screen
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const WednesdayParentScreen()),
+    );
   }
 
   void navigateToScreen(Widget screen) {
