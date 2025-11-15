@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'monday_player_selection_screen.dart';
+import 'monday_player_scores_screen.dart';
 import '../admin_screen.dart';
 import '../../models/league.dart';
 
@@ -286,6 +287,12 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
                     Icons.people,
                     Colors.green[300]!,
                     () => navigateToScreen(const MondayPlayerSelectionScreen()),
+                  ),
+                  _buildNavigationButton(
+                    'Player Scores',
+                    Icons.score,
+                    Colors.green[200]!,
+                    () => navigateToScreen(const MondayPlayerScoresScreen()),
                   ),
                   _buildNavigationButton(
                     'Administration',
