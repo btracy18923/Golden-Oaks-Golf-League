@@ -252,6 +252,46 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
     );
   }
 
+  Widget _buildCompactFormField(String label, TextEditingController controller, FocusNode focusNode, FocusNode? nextFocus, {TextInputType? keyboardType, List<TextInputFormatter>? inputFormatters}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 1),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            '$label:',
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
+          ),
+          const SizedBox(height: 1),
+          SizedBox(
+            height: 28, // Reduced height for text field
+            child: TextFormField(
+              controller: controller,
+              focusNode: focusNode,
+              keyboardType: keyboardType,
+              inputFormatters: inputFormatters,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                isDense: true,
+                contentPadding: EdgeInsets.only(left: 6, right: 6, top: 2, bottom: 10),
+              ),
+              style: const TextStyle(fontSize: 11, height: 1.0),
+              onFieldSubmitted: (_) {
+                // If a player is selected, update the player; otherwise close keyboard
+                if (_selectedPlayer != null) {
+                  _updatePlayer();
+                } else {
+                  FocusScope.of(context).unfocus();
+                }
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildFormField(String label, TextEditingController controller, FocusNode focusNode, FocusNode? nextFocus, {TextInputType? keyboardType, List<TextInputFormatter>? inputFormatters}) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isMobile = screenWidth < 600;
@@ -280,6 +320,11 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
               onFieldSubmitted: (_) {
                 if (nextFocus != null) {
                   FocusScope.of(context).requestFocus(nextFocus);
+                } else {
+                  // If this is the last field and a player is selected, update the player
+                  if (_selectedPlayer != null) {
+                    _updatePlayer();
+                  }
                 }
               },
             ),
@@ -312,6 +357,11 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
                 onFieldSubmitted: (_) {
                   if (nextFocus != null) {
                     FocusScope.of(context).requestFocus(nextFocus);
+                  } else {
+                    // If this is the last field and a player is selected, update the player
+                    if (_selectedPlayer != null) {
+                      _updatePlayer();
+                    }
                   }
                 },
               ),
@@ -326,11 +376,17 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
     final screenWidth = MediaQuery.of(context).size.width;
     final isMobile = screenWidth < 600;
     final isTablet = screenWidth >= 900;
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+    final is6InchPhonePortrait = !isLandscape && screenWidth <= 600;
     
     // Calculate available width for table
     double tableWidth;
     if (isMobile) {
-      tableWidth = screenWidth - 40; // Account for padding
+      if (is6InchPhonePortrait) {
+        tableWidth = screenWidth; // Full screen width for 6" phone portrait
+      } else {
+        tableWidth = screenWidth - 20; // Account for padding (10px on each side)
+      }
     } else if (isTablet) {
       // In tablet layout, table gets 70% of remaining width after form
       tableWidth = (screenWidth * 0.7) - 30; // Account for padding and gap
@@ -338,7 +394,8 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
       tableWidth = screenWidth - 40;
     }
     
-    return Container(
+    Widget tableWidget = Container(
+      width: tableWidth,
       decoration: BoxDecoration(
         border: Border.all(color: Colors.grey),
         color: Colors.grey[50],
@@ -358,17 +415,18 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
-                  children: isMobile ? [
-                    _buildHeaderCell('ID#', 60),
-                    _buildHeaderCell('Name', tableWidth - 200),
-                    _buildHeaderCell('Phone', 140),
+                  children: isMobile ? (is6InchPhonePortrait ? [
+                    _buildHeaderCellLeftAlign('Name', tableWidth * 0.47),
+                    _buildHeaderCellLeftAlign('SK#', tableWidth * 0.16),
+                    _buildHeaderCellLeftAlign('Phone', tableWidth * 0.37),
                   ] : [
-                    _buildHeaderCell('ID#', 60),
-                    _buildHeaderCell('First', (tableWidth - 240) * 0.3),
-                    _buildHeaderCell('Last', (tableWidth - 240) * 0.3),
-                    _buildHeaderCell('SKAT#', 60),
-                    _buildHeaderCell('Cell', 120),
-                    _buildHeaderCell('Email', (tableWidth - 240) * 0.4),
+                    _buildHeaderCell('Name', tableWidth * 0.55),
+                    _buildHeaderCell('S#', tableWidth * 0.2),
+                    _buildHeaderCell('Phone', tableWidth * 0.2),
+                  ]) : [
+                    _buildHeaderCell('Name', tableWidth * 0.5),
+                    _buildHeaderCell('S#', tableWidth * 0.25),
+                    _buildHeaderCell('Phone', tableWidth * 0.25),
                   ],
                 ),
               ),
@@ -381,9 +439,7 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: SizedBox(
-                  width: isMobile ? 
-                    (60 + (tableWidth - 200) + 140) : 
-                    (60 + (tableWidth - 240) * 0.3 + (tableWidth - 240) * 0.3 + 60 + 120 + (tableWidth - 240) * 0.4),
+                  width: tableWidth, // Use full available table width
                   child: ListView.builder(
                     itemCount: _players.length,
                     itemBuilder: (context, index) {
@@ -412,14 +468,36 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
         ],
       ),
     );
+    
+    // For 6" phone portrait, use OverflowBox to allow table to exceed parent bounds
+    if (is6InchPhonePortrait) {
+      return OverflowBox(
+        maxWidth: screenWidth,
+        alignment: Alignment.centerLeft,
+        child: Transform.translate(
+          offset: const Offset(-10, 0),
+          child: tableWidget,
+        ),
+      );
+    } else {
+      return tableWidget;
+    }
   }
   
   Widget _buildMobilePlayerRow(Map<String, dynamic> player, double tableWidth) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+    final is6InchPhonePortrait = !isLandscape && screenWidth <= 600;
+    
     return Row(
       children: [
-        _buildDataCell(player['player_number']?.toString() ?? '', 60),
-        _buildDataCell('${player['first'] ?? ''} ${player['last'] ?? ''}', tableWidth - 200),
-        _buildDataCell(_formatPhoneNumber(player['cell']), 140),
+        _buildDataCell('${player['first'] ?? ''} ${player['last'] ?? ''}', 
+                      is6InchPhonePortrait ? tableWidth * 0.5 : tableWidth * 0.55, 
+                      alignLeft: true),
+        _buildDataCell(player['skat_number']?.toString() ?? '', 
+                      is6InchPhonePortrait ? tableWidth * 0.1 : tableWidth * 0.2),
+        _buildDataCell(_formatPhoneNumber(player['cell']), 
+                      is6InchPhonePortrait ? tableWidth * 0.4 : tableWidth * 0.2),
       ],
     );
   }
@@ -427,12 +505,9 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
   Widget _buildTabletPlayerRow(Map<String, dynamic> player, double tableWidth) {
     return Row(
       children: [
-        _buildDataCell(player['player_number']?.toString() ?? '', 60),
-        _buildDataCell(player['first'] ?? '', (tableWidth - 240) * 0.3),
-        _buildDataCell(player['last'] ?? '', (tableWidth - 240) * 0.3),
-        _buildDataCell(player['skat_number']?.toString() ?? '', 60),
-        _buildDataCell(_formatPhoneNumber(player['cell']), 120),
-        _buildDataCell(player['email'] ?? '', (tableWidth - 240) * 0.4),
+        _buildDataCell('${player['first'] ?? ''} ${player['last'] ?? ''}', tableWidth * 0.5, alignLeft: true),
+        _buildDataCell(player['skat_number']?.toString() ?? '', tableWidth * 0.25),
+        _buildDataCell(_formatPhoneNumber(player['cell']), tableWidth * 0.25),
       ],
     );
   }
@@ -452,19 +527,50 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
     );
   }
 
-  Widget _buildDataCell(String text, double width) {
+  Widget _buildHeaderCellLeftAlign(String text, double width) {
     return Container(
       width: width,
       height: 40,
       padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: Center(
-        child: Text(
-          text,
-          style: const TextStyle(fontSize: 12),
-          textAlign: TextAlign.center,
-          overflow: TextOverflow.ellipsis,
+      decoration: const BoxDecoration(
+        border: Border(
+          right: BorderSide(color: Colors.grey, width: 1),
         ),
       ),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Text(
+          text,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+          textAlign: TextAlign.left,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDataCell(String text, double width, {bool alignLeft = false}) {
+    return Container(
+      width: width,
+      height: 40,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: alignLeft 
+        ? Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              text,
+              style: const TextStyle(fontSize: 12),
+              textAlign: TextAlign.left,
+              overflow: TextOverflow.ellipsis,
+            ),
+          )
+        : Center(
+            child: Text(
+              text,
+              style: const TextStyle(fontSize: 12),
+              textAlign: TextAlign.center,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
     );
   }
 
@@ -480,7 +586,7 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
         backgroundColor: _selectedLeague == League.monday ? Colors.green[700] : Colors.orange[700],
         foregroundColor: Colors.white,
       ),
-      resizeToAvoidBottomInset: true,
+      resizeToAvoidBottomInset: false,
       body: SafeArea(
         child: Container(
           color: Colors.grey[100],
@@ -525,28 +631,66 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
   }
   
   Widget _buildMobileLayout() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+    final is6InchPhonePortrait = !isLandscape && screenWidth <= 600;
+    
     return LayoutBuilder(
       builder: (context, constraints) {
-        final formHeight = constraints.maxHeight * 0.6;
-        final remainingHeight = constraints.maxHeight - formHeight - 20;
-        
-        return Column(
-          children: [
-            // Form section on top
-            SizedBox(
-              height: formHeight,
-              child: _buildFormSection(),
-            ),
-            
-            const SizedBox(height: 20),
-            
-            // Player list below
-            SizedBox(
-              height: remainingHeight,
-              child: _buildPlayerTable(),
-            ),
-          ],
-        );
+        if (is6InchPhonePortrait) {
+          // 6" phone portrait: move buttons to bottom footer
+          final footerHeight = 80.0; // Height for 2-row footer
+          final formHeight = constraints.maxHeight * 0.5; // Reduced from 0.55 to 0.5
+          final remainingHeight = constraints.maxHeight - formHeight - footerHeight - 30;
+          
+          return Column(
+            children: [
+              // Form section on top (no buttons)
+              SizedBox(
+                height: formHeight,
+                child: _buildFormSectionWithoutButtons(),
+              ),
+              
+              const SizedBox(height: 10),
+              
+              // Player list in middle
+              SizedBox(
+                height: remainingHeight,
+                child: _buildPlayerTable(),
+              ),
+              
+              const SizedBox(height: 10),
+              
+              // Button footer at bottom
+              SizedBox(
+                height: footerHeight,
+                child: _buildButtonFooter(),
+              ),
+            ],
+          );
+        } else {
+          // Original layout for other mobile sizes
+          final formHeight = constraints.maxHeight * 0.6;
+          final remainingHeight = constraints.maxHeight - formHeight - 20;
+          
+          return Column(
+            children: [
+              // Form section on top
+              SizedBox(
+                height: formHeight,
+                child: _buildFormSection(),
+              ),
+              
+              const SizedBox(height: 20),
+              
+              // Player list below
+              SizedBox(
+                height: remainingHeight,
+                child: _buildPlayerTable(),
+              ),
+            ],
+          );
+        }
       },
     );
   }
@@ -579,6 +723,126 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
         // Action buttons - fixed at bottom
         _buildActionButtons(),
       ],
+    );
+  }
+  
+  Widget _buildFormSectionWithoutButtons() {
+    return Column(
+      children: [
+        // Form fields - static layout that fits within available space
+        Expanded(
+          flex: 1,
+          child: _buildCompactFormField('ID#', _idController, _idFocus, _firstFocus, 
+            keyboardType: TextInputType.number, 
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
+        ),
+        Expanded(
+          flex: 1,
+          child: _buildCompactFormField('First Name', _firstController, _firstFocus, _lastFocus),
+        ),
+        Expanded(
+          flex: 1,
+          child: _buildCompactFormField('Last Name', _lastController, _lastFocus, _skatFocus),
+        ),
+        Expanded(
+          flex: 1,
+          child: _buildCompactFormField('SKAT#', _skatController, _skatFocus, _cellFocus, 
+            keyboardType: TextInputType.number, 
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
+        ),
+        Expanded(
+          flex: 1,
+          child: _buildCompactFormField('Cell Phone', _cellController, _cellFocus, _emailFocus, 
+            keyboardType: TextInputType.numberWithOptions(decimal: false)),
+        ),
+        Expanded(
+          flex: 1,
+          child: _buildCompactFormField('Email', _emailController, _emailFocus, null),
+        ),
+      ],
+    );
+  }
+  
+  Widget _buildButtonFooter() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Column(
+        children: [
+          // First row: 2 buttons
+          Expanded(
+            child: Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 2),
+                    child: ElevatedButton(
+                      onPressed: _addPlayer,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.lightGreen,
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                      ),
+                      child: const Text('Add Player', style: TextStyle(fontSize: 10)),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 2),
+                    child: ElevatedButton(
+                      onPressed: _deletePlayer,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red[300],
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                      ),
+                      child: const Text('Delete Player', style: TextStyle(fontSize: 10)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          const SizedBox(height: 4),
+          
+          // Second row: 2 buttons
+          Expanded(
+            child: Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 2),
+                    child: ElevatedButton(
+                      onPressed: _clearForm,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.amber[300],
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                      ),
+                      child: const Text('Clear Form', style: TextStyle(fontSize: 10)),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 2),
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red[300],
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                      ),
+                      child: const Text('Return to Main', style: TextStyle(fontSize: 10)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
   
