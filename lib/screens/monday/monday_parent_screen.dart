@@ -1136,36 +1136,429 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
                         ],
                       );
                     } else {
-                      // Original layout for larger screens
-                      return Row(
-                        children: [
-                          // Left Side - League Info
-                          Expanded(
-                            flex: 3,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                // League Title
-                                Container(
-                                  padding: const EdgeInsets.all(20),
-                                  decoration: BoxDecoration(
-                                    color: Colors.green[300],
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                      color: Colors.black,
-                                      width: 2,
-                                    ),
-                                  ),
-                                  child: const Text(
-                                    'MONDAY LEAGUE',
+                      // Check for 6" phone portrait mode
+                      final is6InchPhonePortrait = !isLandscape && screenWidth <= 600;
+                      
+                      if (is6InchPhonePortrait) {
+                        // 6" phone portrait mode layout
+                        return Column(
+                          children: [
+                            // League Title - horizontal layout for 6" phone portrait
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                              decoration: BoxDecoration(
+                                color: Colors.green[300],
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: Colors.black,
+                                  width: 2,
+                                ),
+                              ),
+                              child: const Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    'M',
                                     style: TextStyle(
-                                      fontSize: 24,
+                                      fontSize: 20,
                                       fontWeight: FontWeight.bold,
                                       color: Colors.black,
                                     ),
-                                    textAlign: TextAlign.center,
                                   ),
-                                ),
+                                  Text(
+                                    'O',
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                  Text(
+                                    'N',
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                  Text(
+                                    'D',
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                  Text(
+                                    'A',
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                  Text(
+                                    'Y',
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                  SizedBox(width: 16),
+                                  Text(
+                                    'L',
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                  Text(
+                                    'E',
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                  Text(
+                                    'A',
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                  Text(
+                                    'G',
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                  Text(
+                                    'U',
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                  Text(
+                                    'E',
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            
+                            const SizedBox(height: 16),
+                            
+                            // Settings in single vertical column
+                            Expanded(
+                              child: Column(
+                                children: [
+                                  // Skats Ante
+                                  Expanded(
+                                    child: Container(
+                                      width: double.infinity,
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: Colors.green[200],
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(
+                                          color: Colors.black,
+                                          width: 2,
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          const Text(
+                                            'Skats Ante',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.black,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Container(
+                                            padding: const EdgeInsets.all(6),
+                                            decoration: BoxDecoration(
+                                              color: Colors.green[100],
+                                              borderRadius: BorderRadius.circular(4),
+                                              border: Border.all(
+                                                color: Colors.black,
+                                                width: 1,
+                                              ),
+                                            ),
+                                            child: GestureDetector(
+                                              onTap: () => _editValue('Skats Ante', _skatsAnteController, (value) {
+                                                setState(() {
+                                                  skatsAnte = value;
+                                                  _skatsAnteController.text = value.toStringAsFixed(2);
+                                                });
+                                              }),
+                                              child: Text(
+                                                '\$${skatsAnte.toStringAsFixed(2)}',
+                                                style: const TextStyle(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.black,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  
+                                  const SizedBox(height: 8),
+                                  
+                                  // Closest Pin
+                                  Expanded(
+                                    child: Container(
+                                      width: double.infinity,
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: Colors.green[200],
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(
+                                          color: Colors.black,
+                                          width: 2,
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          const Text(
+                                            'Closest Pin',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.black,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Container(
+                                            padding: const EdgeInsets.all(6),
+                                            decoration: BoxDecoration(
+                                              color: Colors.green[100],
+                                              borderRadius: BorderRadius.circular(4),
+                                              border: Border.all(
+                                                color: Colors.black,
+                                                width: 1,
+                                              ),
+                                            ),
+                                            child: GestureDetector(
+                                              onTap: () => _editValue('Closest Pin', _closestPinController, (value) {
+                                                setState(() {
+                                                  closestPin = value;
+                                                  _closestPinController.text = value.toStringAsFixed(2);
+                                                });
+                                              }),
+                                              child: Text(
+                                                '\$${closestPin.toStringAsFixed(2)}',
+                                                style: const TextStyle(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.black,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  
+                                  const SizedBox(height: 8),
+                                  
+                                  // Mulligans
+                                  Expanded(
+                                    child: Container(
+                                      width: double.infinity,
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: Colors.green[200],
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(
+                                          color: Colors.black,
+                                          width: 2,
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          const Text(
+                                            'Mulligans',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.black,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Container(
+                                            padding: const EdgeInsets.all(6),
+                                            decoration: BoxDecoration(
+                                              color: Colors.green[100],
+                                              borderRadius: BorderRadius.circular(4),
+                                              border: Border.all(
+                                                color: Colors.black,
+                                                width: 1,
+                                              ),
+                                            ),
+                                            child: GestureDetector(
+                                              onTap: () => _editValue('Mulligans', _mulligansController, (value) {
+                                                setState(() {
+                                                  mulligans = value;
+                                                  _mulligansController.text = value.toStringAsFixed(2);
+                                                });
+                                              }),
+                                              child: Text(
+                                                '\$${mulligans.toStringAsFixed(2)}',
+                                                style: const TextStyle(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.black,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  
+                                  const SizedBox(height: 8),
+                                  
+                                  // Select Course
+                                  Expanded(
+                                    child: Container(
+                                      width: double.infinity,
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: Colors.green[200],
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(
+                                          color: Colors.black,
+                                          width: 2,
+                                        ),
+                                      ),
+                                      child: Column(
+                                        children: [
+                                          const Text(
+                                            'Select Course',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.black,
+                                            ),
+                                            textAlign: TextAlign.center,
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Expanded(
+                                            child: Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                              decoration: BoxDecoration(
+                                                color: Colors.green[100],
+                                                borderRadius: BorderRadius.circular(4),
+                                                border: Border.all(
+                                                  color: Colors.black,
+                                                  width: 1,
+                                                ),
+                                              ),
+                                              child: isLoadingCourses 
+                                                ? const Center(
+                                                    child: SizedBox(
+                                                      height: 16,
+                                                      width: 16,
+                                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                                    ),
+                                                  )
+                                                : DropdownButton<String>(
+                                                    value: selectedGolfCourse,
+                                                    hint: const Text(
+                                                      'Choose Course',
+                                                      style: TextStyle(
+                                                        fontSize: 14,
+                                                        color: Colors.black54,
+                                                      ),
+                                                    ),
+                                                    isExpanded: true,
+                                                    underline: Container(),
+                                                    style: const TextStyle(
+                                                      fontSize: 14,
+                                                      fontWeight: FontWeight.bold,
+                                                      color: Colors.black,
+                                                    ),
+                                                    items: golfCourses.map<DropdownMenuItem<String>>((course) {
+                                                      return DropdownMenuItem<String>(
+                                                        value: course['name'],
+                                                        child: Text(
+                                                          course['name'],
+                                                          style: const TextStyle(fontSize: 14),
+                                                        ),
+                                                      );
+                                                    }).toList(),
+                                                    onChanged: (String? newValue) {
+                                                      setState(() {
+                                                        selectedGolfCourse = newValue;
+                                                      });
+                                                    },
+                                                  ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        );
+                      } else {
+                        // Original layout for larger screens
+                        return Row(
+                          children: [
+                            // Left Side - League Info
+                            Expanded(
+                              flex: 3,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  // League Title
+                                  Container(
+                                    padding: const EdgeInsets.all(20),
+                                    decoration: BoxDecoration(
+                                      color: Colors.green[300],
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: Colors.black,
+                                        width: 2,
+                                      ),
+                                    ),
+                                    child: const Text(
+                                      'MONDAY LEAGUE',
+                                      style: TextStyle(
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.black,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
                                 
                                 const SizedBox(height: 20),
                                 
@@ -1381,6 +1774,7 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
                           ),
                         ],
                       );
+                      }
                     }
                   }
                 },
@@ -1407,6 +1801,8 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
   Widget _buildFooterButtons(double screenWidth, bool isLandscape) {
     // 6" phones in landscape: width ~820px, exclude larger tablets (>850px)
     final is6InchPhoneLandscape = isLandscape && screenWidth <= 850;
+    // 6" phones in portrait: width <= 600px
+    final is6InchPhonePortrait = !isLandscape && screenWidth <= 600;
     
     final buttons = [
       _buildNavigationButton(
@@ -1414,35 +1810,35 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
         Icons.people,
         selectedGolfCourse != null ? Colors.green[300]! : Colors.grey[400]!,
         selectedGolfCourse != null ? () => navigateToScreen(const MondayPlayerSelectionScreen()) : null,
-        isCompact: is6InchPhoneLandscape,
+        isCompact: is6InchPhoneLandscape || is6InchPhonePortrait,
       ),
       _buildNavigationButton(
         'Player Scores',
         Icons.score,
         Colors.green[200]!,
         () => navigateToScreen(const MondayPlayerScoresScreen()),
-        isCompact: is6InchPhoneLandscape,
+        isCompact: is6InchPhoneLandscape || is6InchPhonePortrait,
       ),
       _buildNavigationButton(
         'Player Profiles',
         Icons.person,
         Colors.green[300]!,
         () => navigateToScreen(const MondayPlayerProfileScreen()),
-        isCompact: is6InchPhoneLandscape,
+        isCompact: is6InchPhoneLandscape || is6InchPhonePortrait,
       ),
       _buildNavigationButton(
         'Golf Courses',
         Icons.golf_course,
         Colors.green[100]!,
         () => navigateToScreen(const MondayGolfCourseScreen()),
-        isCompact: is6InchPhoneLandscape,
+        isCompact: is6InchPhoneLandscape || is6InchPhonePortrait,
       ),
       _buildNavigationButton(
         'Administration',
         Icons.settings,
         Colors.green[100]!,
         () => navigateToScreen(AdminScreen(currentLeague: League.monday)),
-        isCompact: is6InchPhoneLandscape,
+        isCompact: is6InchPhoneLandscape || is6InchPhonePortrait,
       ),
     ];
 
@@ -1450,6 +1846,29 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
       // Single row for phone landscape
       return Row(
         children: buttons.map((button) => Expanded(child: button)).toList(),
+      );
+    } else if (is6InchPhonePortrait) {
+      // Two rows for 6" phone portrait
+      return Column(
+        children: [
+          // First row: 3 buttons
+          Row(
+            children: [
+              Expanded(child: buttons[0]), // Player Selection
+              Expanded(child: buttons[1]), // Player Scores  
+              Expanded(child: buttons[2]), // Player Profiles
+            ],
+          ),
+          const SizedBox(height: 4),
+          // Second row: 2 buttons centered
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              Flexible(child: buttons[3]), // Golf Courses
+              Flexible(child: buttons[4]), // Administration
+            ],
+          ),
+        ],
       );
     } else {
       // Default wrap layout for other screen sizes
