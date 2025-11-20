@@ -1803,8 +1803,10 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
     final is6InchPhoneLandscape = isLandscape && screenWidth <= 850;
     // 6" phones in portrait: width <= 600px
     final is6InchPhonePortrait = !isLandscape && screenWidth <= 600;
+    // 8" tablets: width between 600-900px
+    final is8InchTablet = screenWidth >= 600 && screenWidth <= 900;
     
-    final buttons = [
+    final baseButtons = [
       _buildNavigationButton(
         'Player Selection',
         Icons.people,
@@ -1833,14 +1835,21 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
         () => navigateToScreen(const MondayGolfCourseScreen()),
         isCompact: is6InchPhoneLandscape || is6InchPhonePortrait,
       ),
-      _buildNavigationButton(
-        'Administration',
-        Icons.settings,
-        Colors.green[100]!,
-        () => navigateToScreen(AdminScreen(currentLeague: League.monday)),
-        isCompact: is6InchPhoneLandscape || is6InchPhonePortrait,
-      ),
     ];
+    
+    // Add Administration button only if NOT 6" phone/tablet or 8" tablet
+    final buttons = (is6InchPhoneLandscape || is6InchPhonePortrait || is8InchTablet)
+      ? baseButtons
+      : [
+          ...baseButtons,
+          _buildNavigationButton(
+            'Administration',
+            Icons.settings,
+            Colors.green[100]!,
+            () => navigateToScreen(AdminScreen(currentLeague: League.monday)),
+            isCompact: is6InchPhoneLandscape || is6InchPhonePortrait,
+          ),
+        ];
 
     if (is6InchPhoneLandscape) {
       // Single row for phone landscape
@@ -1860,13 +1869,12 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
             ],
           ),
           const SizedBox(height: 4),
-          // Second row: 2 buttons centered
+          // Second row: remaining buttons centered
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              Flexible(child: buttons[3]), // Golf Courses
-              Flexible(child: buttons[4]), // Administration
-            ],
+            children: buttons.length > 3 
+              ? buttons.sublist(3).map((button) => Flexible(child: button)).toList()
+              : [],
           ),
         ],
       );
