@@ -5,7 +5,6 @@ import 'screens/main_menu_screen.dart';
 import 'firebase_options.dart';
 
 //Version 4, November 16, 2025
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   

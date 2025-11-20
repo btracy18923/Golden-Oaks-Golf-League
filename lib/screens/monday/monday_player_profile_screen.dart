@@ -253,43 +253,146 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
   }
 
   Widget _buildCompactFormField(String label, TextEditingController controller, FocusNode focusNode, FocusNode? nextFocus, {TextInputType? keyboardType, List<TextInputFormatter>? inputFormatters}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 1),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            '$label:',
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
-          ),
-          const SizedBox(height: 1),
-          SizedBox(
-            height: 28, // Reduced height for text field
-            child: TextFormField(
-              controller: controller,
-              focusNode: focusNode,
-              keyboardType: keyboardType,
-              inputFormatters: inputFormatters,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                isDense: true,
-                contentPadding: EdgeInsets.only(left: 6, right: 6, top: 2, bottom: 10),
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+    final is6InchPhoneLandscape = isLandscape && screenWidth <= 900;
+    
+    // Convert long labels to short labels for landscape mode
+    String displayLabel = label;
+    if (is6InchPhoneLandscape) {
+      if (label == 'First Name') displayLabel = 'First';
+      else if (label == 'Last Name') displayLabel = 'Last';
+      else if (label == 'Cell Phone') displayLabel = 'Phone';
+      else if (label == 'SKAT#') displayLabel = 'SKAT#';
+    }
+    
+    if (is6InchPhoneLandscape) {
+      // Special layout for Email field in landscape mode
+      if (label == 'Email') {
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 2),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Email:',
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 10),
               ),
-              style: const TextStyle(fontSize: 11, height: 1.0),
-              onFieldSubmitted: (_) {
-                // If a player is selected, update the player; otherwise close keyboard
-                if (_selectedPlayer != null) {
-                  _updatePlayer();
-                } else {
-                  FocusScope.of(context).unfocus();
-                }
-              },
-            ),
+              const SizedBox(height: 2),
+              SizedBox(
+                height: 28,
+                child: TextFormField(
+                  controller: controller,
+                  focusNode: focusNode,
+                  keyboardType: keyboardType,
+                  inputFormatters: inputFormatters,
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                    contentPadding: EdgeInsets.only(left: 6, right: 6, top: 2, bottom: 10),
+                  ),
+                  style: const TextStyle(fontSize: 9, height: 1.0),
+                  onFieldSubmitted: (_) {
+                    if (_selectedPlayer != null) {
+                      _updatePlayer();
+                    } else {
+                      FocusScope.of(context).unfocus();
+                    }
+                  },
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
-    );
+        );
+      } else {
+        // Horizontal layout for other fields in landscape mode
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 2),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 60, // Fixed width for label
+                child: Text(
+                  displayLabel == 'SKAT#' ? displayLabel : '$displayLabel:',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 10),
+                ),
+              ),
+              const SizedBox(width: 4),
+              Expanded(
+                child: SizedBox(
+                  height: 28,
+                  child: TextFormField(
+                    controller: controller,
+                    focusNode: focusNode,
+                    keyboardType: keyboardType,
+                    inputFormatters: inputFormatters,
+                    readOnly: is6InchPhoneLandscape && (keyboardType == TextInputType.number || keyboardType == const TextInputType.numberWithOptions(decimal: false)), // Disable system keyboard for numeric fields in landscape
+                    showCursor: true,
+                    decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                      contentPadding: EdgeInsets.only(left: 6, right: 6, top: 2, bottom: 10),
+                    ),
+                    style: const TextStyle(fontSize: 11, height: 1.0),
+                    onTap: () {
+                      if (is6InchPhoneLandscape && (keyboardType == TextInputType.number || keyboardType == const TextInputType.numberWithOptions(decimal: false))) {
+                        _showCustomKeypad(controller);
+                      }
+                    },
+                    onFieldSubmitted: (_) {
+                      if (_selectedPlayer != null) {
+                        _updatePlayer();
+                      } else {
+                        FocusScope.of(context).unfocus();
+                      }
+                    },
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+    } else {
+      // Original vertical layout for portrait mode
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 1),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              '$label:',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
+            ),
+            const SizedBox(height: 1),
+            SizedBox(
+              height: 28, // Reduced height for text field
+              child: TextFormField(
+                controller: controller,
+                focusNode: focusNode,
+                keyboardType: keyboardType,
+                inputFormatters: inputFormatters,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                  contentPadding: EdgeInsets.only(left: 6, right: 6, top: 2, bottom: 10),
+                ),
+                style: const TextStyle(fontSize: 11, height: 1.0),
+                onFieldSubmitted: (_) {
+                  // If a player is selected, update the player; otherwise close keyboard
+                  if (_selectedPlayer != null) {
+                    _updatePlayer();
+                  } else {
+                    FocusScope.of(context).unfocus();
+                  }
+                },
+              ),
+            ),
+          ],
+        ),
+      );
+    }
   }
 
   Widget _buildFormField(String label, TextEditingController controller, FocusNode focusNode, FocusNode? nextFocus, {TextInputType? keyboardType, List<TextInputFormatter>? inputFormatters}) {
@@ -378,12 +481,16 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
     final isTablet = screenWidth >= 900;
     final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
     final is6InchPhonePortrait = !isLandscape && screenWidth <= 600;
+    final is6InchPhoneLandscape = isLandscape && screenWidth <= 900;
     
     // Calculate available width for table
     double tableWidth;
-    if (isMobile) {
+    if (isMobile || is6InchPhoneLandscape) {
       if (is6InchPhonePortrait) {
         tableWidth = screenWidth; // Full screen width for 6" phone portrait
+      } else if (is6InchPhoneLandscape) {
+        // For landscape, table is in right column (60% of screen minus padding and gap)
+        tableWidth = (screenWidth * 0.6) - 20; // Account for 10px gap and padding
       } else {
         tableWidth = screenWidth - 20; // Account for padding (10px on each side)
       }
@@ -415,7 +522,7 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
-                  children: isMobile ? (is6InchPhonePortrait ? [
+                  children: isMobile || is6InchPhoneLandscape ? (is6InchPhonePortrait || is6InchPhoneLandscape ? [
                     _buildHeaderCellLeftAlign('Name', tableWidth * 0.47),
                     _buildHeaderCellLeftAlign('SK#', tableWidth * 0.16),
                     _buildHeaderCellLeftAlign('Phone', tableWidth * 0.37),
@@ -449,12 +556,12 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
                       return GestureDetector(
                         onTap: () => _selectPlayer(player),
                         child: Container(
-                          height: isMobile ? 50 : 40,
+                          height: isMobile || is6InchPhoneLandscape ? 50 : 40,
                           decoration: BoxDecoration(
                             color: isSelected ? Colors.lightGreen[200] : Colors.transparent,
                             border: Border(bottom: BorderSide(color: Colors.grey[300]!)),
                           ),
-                          child: isMobile 
+                          child: isMobile || is6InchPhoneLandscape
                             ? _buildMobilePlayerRow(player, tableWidth) 
                             : _buildTabletPlayerRow(player, tableWidth),
                         ),
@@ -469,7 +576,7 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
       ),
     );
     
-    // For 6" phone portrait, use OverflowBox to allow table to exceed parent bounds
+    // For 6" phone portrait only, use OverflowBox to allow table to exceed parent bounds
     if (is6InchPhonePortrait) {
       return OverflowBox(
         maxWidth: screenWidth,
@@ -488,16 +595,17 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
     final screenWidth = MediaQuery.of(context).size.width;
     final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
     final is6InchPhonePortrait = !isLandscape && screenWidth <= 600;
+    final is6InchPhoneLandscape = isLandscape && screenWidth <= 900;
     
     return Row(
       children: [
         _buildDataCell('${player['first'] ?? ''} ${player['last'] ?? ''}', 
-                      is6InchPhonePortrait ? tableWidth * 0.5 : tableWidth * 0.55, 
+                      is6InchPhonePortrait ? tableWidth * 0.47 : (is6InchPhoneLandscape ? tableWidth * 0.47 : tableWidth * 0.55), 
                       alignLeft: true),
         _buildDataCell(player['skat_number']?.toString() ?? '', 
-                      is6InchPhonePortrait ? tableWidth * 0.1 : tableWidth * 0.2),
+                      is6InchPhonePortrait ? tableWidth * 0.14 : (is6InchPhoneLandscape ? tableWidth * 0.16 : tableWidth * 0.2)),
         _buildDataCell(_formatPhoneNumber(player['cell']), 
-                      is6InchPhonePortrait ? tableWidth * 0.4 : tableWidth * 0.2),
+                      is6InchPhonePortrait ? tableWidth * 0.39 : (is6InchPhoneLandscape ? tableWidth * 0.37 : tableWidth * 0.2)),
       ],
     );
   }
@@ -579,6 +687,9 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth >= 900;
     final isMobile = screenWidth < 600;
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+    final is6InchPhoneLandscape = isLandscape && screenWidth <= 900;
+    final is6InchPhonePortrait = !isLandscape && screenWidth <= 600;
     
     return Scaffold(
       appBar: AppBar(
@@ -586,14 +697,194 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
         backgroundColor: _selectedLeague == League.monday ? Colors.green[700] : Colors.orange[700],
         foregroundColor: Colors.white,
       ),
-      resizeToAvoidBottomInset: false,
+      resizeToAvoidBottomInset: !(is6InchPhoneLandscape || is6InchPhonePortrait), // Disable resize for 6" phones to prevent keyboard overlap
       body: SafeArea(
-        child: Container(
+        child: Stack(
+          children: [
+            Container(
+              color: Colors.grey[100],
+              padding: EdgeInsets.all(isMobile ? 10 : 20),
+              child: isTablet 
+                ? _buildTabletLayout()
+                : _buildMobileLayout(),
+            ),
+            if (is6InchPhoneLandscape && _showKeypad)
+              _buildConstrainedKeyboard(context),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  TextEditingController? _activeController;
+  bool _showKeypad = false;
+
+  void _showCustomKeypad(TextEditingController controller) {
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final is6InchPhoneLandscape = isLandscape && screenWidth <= 900;
+    
+    // Only show keypad for 6" phone landscape mode, not portrait
+    if (is6InchPhoneLandscape) {
+      setState(() {
+        _activeController = controller;
+        _showKeypad = true;
+      });
+    }
+  }
+
+  void _hideKeypad() {
+    setState(() {
+      _showKeypad = false;
+      _activeController = null;
+    });
+  }
+
+  void _onKeypadInput(String value) {
+    if (_activeController != null) {
+      if (value == 'backspace') {
+        if (_activeController!.text.isNotEmpty) {
+          _activeController!.text = _activeController!.text.substring(0, _activeController!.text.length - 1);
+        }
+      } else if (value == 'enter') {
+        // Hide keypad and update player if one is selected
+        _hideKeypad();
+        if (_selectedPlayer != null) {
+          _updatePlayer();
+        }
+      } else {
+        _activeController!.text += value;
+      }
+    }
+  }
+
+  Widget _buildConstrainedKeyboard(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    // Use the exact same height calculation as the 6" landscape layout
+    final footerHeight = 40.0;
+    final availableHeight = MediaQuery.of(context).size.height - 
+                            AppBar().preferredSize.height - 
+                            MediaQuery.of(context).padding.top - 
+                            20; // Account for overall padding
+    final mainContentHeight = availableHeight - footerHeight - 5;
+    
+    return Positioned(
+      bottom: 64, // Above button footer (40px footer + 2px gap + 22px offset)
+      right: 0,
+      width: screenWidth * 0.6, // Match Player Table width (60%)
+      height: mainContentHeight, // Match Player Table container height exactly
+      child: Container(
+        decoration: BoxDecoration(
           color: Colors.grey[100],
-          padding: EdgeInsets.all(isMobile ? 10 : 20),
-          child: isTablet 
-            ? _buildTabletLayout()
-            : _buildMobileLayout(),
+          border: Border.all(color: Colors.grey),
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(8),
+            topRight: Radius.circular(8),
+          ),
+        ),
+        child: Column(
+          children: [
+            // Header
+            Container(
+              height: 40,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(8),
+                  topRight: Radius.circular(8),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.all(8.0),
+                    child: Text('Numeric Keypad', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 18),
+                    onPressed: _hideKeypad,
+                  ),
+                ],
+              ),
+            ),
+            // Keypad
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: Row(
+                        children: [
+                          _buildKeypadButton('1'),
+                          _buildKeypadButton('2'),
+                          _buildKeypadButton('3'),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      child: Row(
+                        children: [
+                          _buildKeypadButton('4'),
+                          _buildKeypadButton('5'),
+                          _buildKeypadButton('6'),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      child: Row(
+                        children: [
+                          _buildKeypadButton('7'),
+                          _buildKeypadButton('8'),
+                          _buildKeypadButton('9'),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      child: Row(
+                        children: [
+                          _buildKeypadButton('backspace'),
+                          _buildKeypadButton('0'),
+                          _buildKeypadButton('enter'),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildKeypadButton(String value) {
+    IconData? icon;
+    String displayText = value;
+    
+    if (value == 'backspace') {
+      icon = Icons.backspace;
+      displayText = '';
+    } else if (value == 'enter') {
+      icon = Icons.check;
+      displayText = '';
+    }
+
+    return Expanded(
+      child: Container(
+        margin: const EdgeInsets.all(2),
+        child: ElevatedButton(
+          onPressed: () => _onKeypadInput(value),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.white,
+            foregroundColor: Colors.black,
+            padding: const EdgeInsets.all(8),
+          ),
+          child: icon != null 
+            ? Icon(icon, size: 16)
+            : Text(displayText, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
         ),
       ),
     );
@@ -634,6 +925,7 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
     final screenWidth = MediaQuery.of(context).size.width;
     final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
     final is6InchPhonePortrait = !isLandscape && screenWidth <= 600;
+    final is6InchPhoneLandscape = isLandscape && screenWidth <= 900; // Detect 6" phone landscape
     
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -665,6 +957,56 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
               SizedBox(
                 height: footerHeight,
                 child: _buildButtonFooter(),
+              ),
+            ],
+          );
+        } else if (is6InchPhoneLandscape) {
+          // 6" phone landscape: 2-column layout with form on left, table on right
+          final footerHeight = 40.0; // Single row footer height
+          final mainContentHeight = constraints.maxHeight - footerHeight - 5; // Content height minus footer and reduced spacing
+          
+          return Column(
+            children: [
+              // Main content area - 2 columns
+              SizedBox(
+                height: mainContentHeight,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Left column - Form (40% of width)
+                    Expanded(
+                      flex: 40,
+                      child: Container(
+                        height: mainContentHeight,
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey, width: 1),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        padding: const EdgeInsets.all(8),
+                        child: _buildFormSectionWithoutButtons(),
+                      ),
+                    ),
+                    
+                    const SizedBox(width: 10),
+                    
+                    // Right column - Player Table (60% of width)
+                    Expanded(
+                      flex: 60,
+                      child: Container(
+                        height: mainContentHeight,
+                        child: _buildPlayerTable(),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              const SizedBox(height: 2),
+              
+              // Button footer at bottom
+              SizedBox(
+                height: footerHeight,
+                child: _buildButtonFooterLandscape(),
               ),
             ],
           );
@@ -727,40 +1069,82 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
   }
   
   Widget _buildFormSectionWithoutButtons() {
-    return Column(
-      children: [
-        // Form fields - static layout that fits within available space
-        Expanded(
-          flex: 1,
-          child: _buildCompactFormField('ID#', _idController, _idFocus, _firstFocus, 
-            keyboardType: TextInputType.number, 
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
-        ),
-        Expanded(
-          flex: 1,
-          child: _buildCompactFormField('First Name', _firstController, _firstFocus, _lastFocus),
-        ),
-        Expanded(
-          flex: 1,
-          child: _buildCompactFormField('Last Name', _lastController, _lastFocus, _skatFocus),
-        ),
-        Expanded(
-          flex: 1,
-          child: _buildCompactFormField('SKAT#', _skatController, _skatFocus, _cellFocus, 
-            keyboardType: TextInputType.number, 
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
-        ),
-        Expanded(
-          flex: 1,
-          child: _buildCompactFormField('Cell Phone', _cellController, _cellFocus, _emailFocus, 
-            keyboardType: TextInputType.numberWithOptions(decimal: false)),
-        ),
-        Expanded(
-          flex: 1,
-          child: _buildCompactFormField('Email', _emailController, _emailFocus, null),
-        ),
-      ],
-    );
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+    final is6InchPhoneLandscape = isLandscape && screenWidth <= 900;
+    
+    if (is6InchPhoneLandscape) {
+      // For landscape, use compact layout that fits in container
+      return Column(
+        children: [
+          Expanded(
+            flex: 1,
+            child: _buildCompactFormField('ID#', _idController, _idFocus, _firstFocus, 
+              keyboardType: TextInputType.number, 
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
+          ),
+          Expanded(
+            flex: 1,
+            child: _buildCompactFormField('First Name', _firstController, _firstFocus, _lastFocus),
+          ),
+          Expanded(
+            flex: 1,
+            child: _buildCompactFormField('Last Name', _lastController, _lastFocus, _skatFocus),
+          ),
+          Expanded(
+            flex: 1,
+            child: _buildCompactFormField('SKAT#', _skatController, _skatFocus, _cellFocus, 
+              keyboardType: TextInputType.number, 
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
+          ),
+          Expanded(
+            flex: 1,
+            child: _buildCompactFormField('Cell Phone', _cellController, _cellFocus, _emailFocus, 
+              keyboardType: TextInputType.numberWithOptions(decimal: false)),
+          ),
+          Expanded(
+            flex: 2,
+            child: _buildCompactFormField('Email', _emailController, _emailFocus, null),
+          ),
+        ],
+      );
+    } else {
+      // Original expanded layout for portrait mode
+      return Column(
+        children: [
+          // Form fields - static layout that fits within available space
+          Expanded(
+            flex: 1,
+            child: _buildCompactFormField('ID#', _idController, _idFocus, _firstFocus, 
+              keyboardType: TextInputType.number, 
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
+          ),
+          Expanded(
+            flex: 1,
+            child: _buildCompactFormField('First Name', _firstController, _firstFocus, _lastFocus),
+          ),
+          Expanded(
+            flex: 1,
+            child: _buildCompactFormField('Last Name', _lastController, _lastFocus, _skatFocus),
+          ),
+          Expanded(
+            flex: 1,
+            child: _buildCompactFormField('SKAT#', _skatController, _skatFocus, _cellFocus, 
+              keyboardType: TextInputType.number, 
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
+          ),
+          Expanded(
+            flex: 1,
+            child: _buildCompactFormField('Cell Phone', _cellController, _cellFocus, _emailFocus, 
+              keyboardType: TextInputType.numberWithOptions(decimal: false)),
+          ),
+          Expanded(
+            flex: 1,
+            child: _buildCompactFormField('Email', _emailController, _emailFocus, null),
+          ),
+        ],
+      );
+    }
   }
   
   Widget _buildButtonFooter() {
@@ -839,6 +1223,86 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
                   ),
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildButtonFooterLandscape() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 2),
+      child: Row(
+        children: [
+          Expanded(
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 1),
+              child: ElevatedButton(
+                onPressed: _addPlayer,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.lightGreen,
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                ),
+                child: const Text('Add', style: TextStyle(fontSize: 9)),
+              ),
+            ),
+          ),
+          Expanded(
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 1),
+              child: ElevatedButton(
+                onPressed: _updatePlayer,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.lightBlue,
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                ),
+                child: const Text('Edit', style: TextStyle(fontSize: 9)),
+              ),
+            ),
+          ),
+          Expanded(
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 1),
+              child: ElevatedButton(
+                onPressed: _deletePlayer,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red[300],
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                ),
+                child: const Text('Delete', style: TextStyle(fontSize: 9)),
+              ),
+            ),
+          ),
+          Expanded(
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 1),
+              child: ElevatedButton(
+                onPressed: _clearForm,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.amber[300],
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                ),
+                child: const Text('Clear', style: TextStyle(fontSize: 9)),
+              ),
+            ),
+          ),
+          Expanded(
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 1),
+              child: ElevatedButton(
+                onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red[300],
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                ),
+                child: const Text('Main', style: TextStyle(fontSize: 9)),
+              ),
             ),
           ),
         ],
