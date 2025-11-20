@@ -1,18 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'dart:math';
 import '../models/league.dart';
 import '../services/database_helper.dart';
 import '../services/ante_manager.dart';
 import '../services/percentage_manager.dart';
 import '../services/closest_pin_manager.dart';
 import '../services/mulligan_manager.dart';
-import 'player_selection_screen.dart';
-import 'player_profile_screen.dart';
-import 'player_scores_screen.dart';
-import 'golf_course_info_screen.dart';
-import 'admin_screen.dart';
 import 'monday/monday_parent_screen.dart';
+import 'monday/monday_player_selection_screen.dart';
 import 'wednesday/wednesday_parent_screen.dart';
+import 'wednesday/wednesday_player_selection_screen.dart';
+import 'admin_screen.dart';
+import 'csv_import_screen.dart';
+import 'sync_demo_screen.dart';
+import 'firebase_test_screen.dart';
+import 'test_keypad_screen.dart';
 
 class UnifiedMainMenuScreen extends StatefulWidget {
   const UnifiedMainMenuScreen({super.key});
@@ -39,14 +42,12 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
 
   void _formatCurrency() {
     String text = _anteController.text;
-    // Remove all non-numeric characters except decimal point
     String numericText = text.replaceAll(RegExp(r'[^\d\.]'), '');
     
     if (numericText.isNotEmpty) {
       double amount = double.tryParse(numericText) ?? 0.0;
       String formatted = '\$${amount.toStringAsFixed(2)}';
       
-      // Only update if the text has actually changed to avoid cursor issues
       if (formatted != _anteController.text) {
         _anteController.value = TextEditingValue(
           text: formatted,
@@ -54,10 +55,8 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
         );
       }
       
-      // Update the global ante manager
       AnteManager().setAnteAmount(amount);
     } else if (text.isEmpty) {
-      // Only set default if completely empty
       String defaultAmount = currentLeague == League.monday ? '\$5.00' : '\$5.00';
       double defaultValue = currentLeague == League.monday ? 5.0 : 5.0;
       
@@ -66,24 +65,20 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
         selection: TextSelection.collapsed(offset: defaultAmount.length),
       );
       
-      // Update the global ante manager
       AnteManager().setAnteAmount(defaultValue);
     }
     
-    // Remove focus after formatting
     _anteFocusNode.unfocus();
   }
 
   void _formatClosestPinCurrency() {
     String text = _closestPinController.text;
-    // Remove all non-numeric characters except decimal point
     String numericText = text.replaceAll(RegExp(r'[^\d\.]'), '');
     
     if (numericText.isNotEmpty) {
       double amount = double.tryParse(numericText) ?? 0.0;
       String formatted = '\$${amount.toStringAsFixed(2)}';
       
-      // Only update if the text has actually changed to avoid cursor issues
       if (formatted != _closestPinController.text) {
         _closestPinController.value = TextEditingValue(
           text: formatted,
@@ -91,10 +86,8 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
         );
       }
       
-      // Save to closest pin manager
       ClosestPinManager().setClosestPinAmount(amount);
     } else if (text.isEmpty) {
-      // Only set default if completely empty
       String defaultAmount = currentLeague == League.monday ? '\$4.00' : '\$1.00';
       double defaultValue = currentLeague == League.monday ? 4.0 : 1.0;
       
@@ -103,24 +96,20 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
         selection: TextSelection.collapsed(offset: defaultAmount.length),
       );
       
-      // Save default to closest pin manager
       ClosestPinManager().setClosestPinAmount(defaultValue);
     }
     
-    // Remove focus after formatting
     _closestPinFocusNode.unfocus();
   }
 
   void _formatNewFieldCurrency() {
     String text = _newFieldController.text;
-    // Remove all non-numeric characters except decimal point
     String numericText = text.replaceAll(RegExp(r'[^\d\.]'), '');
     
     if (numericText.isNotEmpty) {
       double amount = double.tryParse(numericText) ?? 0.0;
       String formatted = '\$${amount.toStringAsFixed(2)}';
       
-      // Only update if the text has actually changed to avoid cursor issues
       if (formatted != _newFieldController.text) {
         _newFieldController.value = TextEditingValue(
           text: formatted,
@@ -128,7 +117,6 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
         );
       }
     } else if (text.isEmpty) {
-      // Only set default if completely empty
       String defaultAmount = '\$1.00';
       
       _newFieldController.value = TextEditingValue(
@@ -137,38 +125,32 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
       );
     }
     
-    // Remove focus after formatting
     _newFieldFocusNode.unfocus();
   }
 
   void _onNewFieldTap() {
-    // Clear the field and focus when tapped
     _newFieldController.clear();
     _newFieldFocusNode.requestFocus();
   }
 
   void _onAnteTap() {
-    // Clear the field and focus when tapped
     _anteController.clear();
     _anteFocusNode.requestFocus();
   }
 
   void _onClosestPinTap() {
-    // Clear the field and focus when tapped
     _closestPinController.clear();
     _closestPinFocusNode.requestFocus();
   }
 
   void _formatMondayMulligansCurrency() {
     String text = _mondayMulligansController.text;
-    // Remove all non-numeric characters except decimal point
     String numericText = text.replaceAll(RegExp(r'[^\d\.]'), '');
     
     if (numericText.isNotEmpty) {
       double amount = double.tryParse(numericText) ?? 0.0;
       String formatted = '\$${amount.toStringAsFixed(2)}';
       
-      // Only update if the text has actually changed to avoid cursor issues
       if (formatted != _mondayMulligansController.text) {
         _mondayMulligansController.value = TextEditingValue(
           text: formatted,
@@ -176,7 +158,6 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
         );
       }
     } else if (text.isEmpty) {
-      // Only set default if completely empty
       String defaultAmount = '\$2.00';
       
       _mondayMulligansController.value = TextEditingValue(
@@ -185,24 +166,20 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
       );
     }
     
-    // Remove focus after formatting
     _mondayMulligansFocusNode.unfocus();
   }
 
   void _onMondayMulligansTap() {
-    // Clear the field and focus when tapped
     _mondayMulligansController.clear();
     _mondayMulligansFocusNode.requestFocus();
   }
 
   void _formatIndividualPercent() {
     String text = _individualPercentController.text;
-    // Remove all non-numeric characters except decimal point
     String numericText = text.replaceAll(RegExp(r'[^\d\.]'), '');
     
     if (numericText.isNotEmpty) {
       double percent = double.tryParse(numericText) ?? 40.0;
-      // Ensure percent is between 0 and 100
       percent = percent.clamp(0.0, 100.0);
       
       String formatted = '${percent.toStringAsFixed(0)}%';
@@ -211,7 +188,6 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
         selection: TextSelection.collapsed(offset: formatted.length),
       );
       
-      // Update group percent to balance to 100%
       double groupPercent = 100.0 - percent;
       String groupFormatted = '${groupPercent.toStringAsFixed(0)}%';
       _groupPercentController.value = TextEditingValue(
@@ -219,10 +195,8 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
         selection: TextSelection.collapsed(offset: groupFormatted.length),
       );
       
-      // Save to percentage manager
       PercentageManager().setIndividualPercent(percent);
     } else {
-      // If empty, set default values
       _individualPercentController.value = TextEditingValue(
         text: '40%',
         selection: TextSelection.collapsed(offset: 3),
@@ -231,22 +205,18 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
         text: '60%',
         selection: TextSelection.collapsed(offset: 3),
       );
-      // Save defaults to percentage manager
       PercentageManager().setIndividualPercent(40.0);
     }
     
-    // Remove focus after formatting
     _individualPercentFocusNode.unfocus();
   }
 
   void _formatGroupPercent() {
     String text = _groupPercentController.text;
-    // Remove all non-numeric characters except decimal point
     String numericText = text.replaceAll(RegExp(r'[^\d\.]'), '');
     
     if (numericText.isNotEmpty) {
       double percent = double.tryParse(numericText) ?? 60.0;
-      // Ensure percent is between 0 and 100
       percent = percent.clamp(0.0, 100.0);
       
       String formatted = '${percent.toStringAsFixed(0)}%';
@@ -255,7 +225,6 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
         selection: TextSelection.collapsed(offset: formatted.length),
       );
       
-      // Update individual percent to balance to 100%
       double individualPercent = 100.0 - percent;
       String individualFormatted = '${individualPercent.toStringAsFixed(0)}%';
       _individualPercentController.value = TextEditingValue(
@@ -263,10 +232,8 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
         selection: TextSelection.collapsed(offset: individualFormatted.length),
       );
       
-      // Save to percentage manager
       PercentageManager().setGroupPercent(percent);
     } else {
-      // If empty, set default values
       _individualPercentController.value = TextEditingValue(
         text: '40%',
         selection: TextSelection.collapsed(offset: 3),
@@ -275,16 +242,11 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
         text: '60%',
         selection: TextSelection.collapsed(offset: 3),
       );
-      // Save defaults to percentage manager
       PercentageManager().setIndividualPercent(40.0);
     }
     
-    // Remove focus after formatting
     _groupPercentFocusNode.unfocus();
   }
-
-
-
 
   double get currentAnteAmount {
     String text = _anteController.text;
@@ -315,12 +277,10 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
   }
 
   void selectMondayLeague() async {
-    // Set up Monday league managers
     AnteManager().setAnteAmount(5.0);
     ClosestPinManager().setClosestPinAmount(4.0);
     MulliganManager().setMulliganAmount(2.0);
     
-    // Navigate directly to Monday Parent Screen
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const MondayParentScreen()),
@@ -328,13 +288,11 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
   }
 
   void selectWednesdayLeague() async {
-    // Set up Wednesday league managers
     AnteManager().setAnteAmount(5.0);
     ClosestPinManager().setClosestPinAmount(1.0);
     MulliganManager().setMulliganAmount(1.0);
     PercentageManager().setIndividualPercent(40.0);
     
-    // Navigate directly to Wednesday Parent Screen
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const WednesdayParentScreen()),
@@ -360,521 +318,1032 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final orientation = MediaQuery.of(context).orientation;
+    
+    // Define breakpoints for different screen sizes
+    // Use diagonal screen size calculation for better device detection
+    final screenDiagonal = sqrt(screenWidth * screenWidth + screenHeight * screenHeight);
+    final isPhone = screenDiagonal < 1000; // Phones typically < 1000dp diagonal
+    final isTablet8 = screenDiagonal >= 1000 && screenDiagonal < 1300; // 8" tablets
+    final isTablet10 = screenDiagonal >= 1300; // 10" tablets
+    final isPortrait = orientation == Orientation.portrait;
+    
+    // Debug output
+    print('Screen width: $screenWidth, height: $screenHeight, diagonal: $screenDiagonal');
+    print('isPhone: $isPhone, isTablet8: $isTablet8, isTablet10: $isTablet10, isPortrait: $isPortrait');
+    
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Golden Oaks Golf League',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: isPhone ? 18 : 20,
+          ),
         ),
         backgroundColor: Colors.green[700],
         foregroundColor: Colors.white,
         centerTitle: true,
         actions: [
-          // Database status indicator
-          const Icon(
+          Icon(
             Icons.storage,
             color: Colors.white,
-            size: 28,
+            size: isPhone ? 24 : 28,
           ),
-          const SizedBox(width: 16),
+          SizedBox(width: isPhone ? 12 : 16),
         ],
       ),
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            // League Selection Section
-            Expanded(
-              flex: 2,
-              child: Row(
-                children: [
-                  // Left Side - League Selection
-                  Expanded(
-                    flex: 3,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const Text(
-                          'Select Your League:',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 16),
-                        
-                        // League Selection Buttons
-                        Row(
-                          children: [
-                            // Monday Group Button
-                            Expanded(
-                              child: Container(
-                                margin: const EdgeInsets.only(right: 8),
-                                child: ElevatedButton(
-                                  onPressed: selectMondayLeague,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: currentLeague == League.monday 
-                                        ? Colors.green[300] 
-                                        : Colors.green[100],
-                                    foregroundColor: Colors.black,
-                                    padding: const EdgeInsets.all(20),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                      side: BorderSide(
-                                        color: Colors.black,
-                                        width: 2,
-                                      ),
-                                    ),
-                                  ),
-                                  child: const Text(
-                                    'Monday Group',
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            
-                            // Wednesday Group Button
-                            Expanded(
-                              child: Container(
-                                margin: const EdgeInsets.only(left: 8),
-                                child: ElevatedButton(
-                                  onPressed: selectWednesdayLeague,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: currentLeague == League.wednesday 
-                                        ? Colors.orange[300] 
-                                        : Colors.orange[100],
-                                    foregroundColor: Colors.black,
-                                    padding: const EdgeInsets.all(20),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                      side: BorderSide(
-                                        color: Colors.black,
-                                        width: 2,
-                                      ),
-                                    ),
-                                  ),
-                                  child: const Text(
-                                    'Wednesday Group',
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        
-                        const SizedBox(height: 12),
-                        
-                        // Current League Status
-                        Container(
-                          padding: const EdgeInsets.all(12),
+        padding: EdgeInsets.all(isPhone ? 8.0 : 16.0),
+        child: isPhone 
+          ? (isPortrait ? _buildPhoneLayout(context) : _buildPhoneLandscapeLayout(context))
+          : (isTablet8 && isPortrait)
+            ? _buildTabletPortraitLayout(context)
+            : _buildTabletLayout(context, isTablet10, isTablet8),
+      ),
+    );
+  }
+
+  Widget _buildPhoneLandscapeLayout(BuildContext context) {
+    return Column(
+      children: [
+        // Top area - League selection, config, and image
+        Expanded(
+          child: Row(
+            children: [
+              // Left side - League selection and configuration
+              Expanded(
+                flex: 1,
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      _buildLeagueSelectionCompact(context),
+                      
+                      const SizedBox(height: 6),
+                      
+                      if (currentLeague != null) _buildLeagueConfigurationCompact(context),
+                    ],
+                  ),
+                ),
+              ),
+              
+              const SizedBox(width: 12),
+              
+              // Right side - Image only
+              Expanded(
+                flex: 1,
+                child: Container(
+                  width: double.infinity,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.asset(
+                      'assets/images/GoldenOaks.png',
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
                           decoration: BoxDecoration(
-                            color: currentLeague == League.monday 
-                                ? Colors.green[300] 
-                                : currentLeague == League.wednesday 
-                                    ? Colors.orange[300] 
-                                    : Colors.grey[200],
+                            color: Colors.green[50],
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: Colors.black,
-                              width: 2,
+                            border: Border.all(color: Colors.green[200]!),
+                          ),
+                          child: Center(
+                            child: Icon(
+                              Icons.park,
+                              size: 40,
+                              color: Colors.green[600],
                             ),
                           ),
-                          child: Text(
-                            currentLeague != null 
-                                ? 'Active League: ${currentLeague!.name.toUpperCase()}'
-                                : 'No League Selected',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.black,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                        
-                        // Show Player's Ante and Closest Pin sections only when a league is selected
-                        if (currentLeague != null) ...[
-                          const SizedBox(height: 12),
-                          
-                          // Player's Ante Section
-                          Row(
-                            children: [
-                              // Label box
-                              Expanded(
-                                flex: 2,
-                                child: Container(
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    color: currentLeague == League.monday 
-                                        ? Colors.green[200] 
-                                        : currentLeague == League.wednesday 
-                                            ? Colors.orange[200] 
-                                            : Colors.grey[200],
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(
-                                      color: Colors.black,
-                                      width: 2,
-                                    ),
-                                  ),
-                                  child: Text(
-                                    currentLeague == League.monday ? 'Skats Ante' : 'Player\'s Ante',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.black,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ),
-                              ),
-                              
-                              const SizedBox(width: 8),
-                              
-                              // Input box
-                              Expanded(
-                                flex: 1,
-                                child: Container(
-                                  height: 48,
-                                  decoration: BoxDecoration(
-                                    color: currentLeague == League.monday 
-                                        ? Colors.green[100] 
-                                        : currentLeague == League.wednesday 
-                                            ? Colors.orange[100] 
-                                            : Colors.grey[100],
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(
-                                      color: Colors.black,
-                                      width: 2,
-                                    ),
-                                  ),
-                                  child: TextField(
-                                    controller: _anteController,
-                                    focusNode: _anteFocusNode,
-                                    keyboardType: TextInputType.number,
-                                    inputFormatters: [
-                                      FilteringTextInputFormatter.allow(RegExp(r'[\d\$\.]')),
-                                    ],
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.black,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                    onTap: _onAnteTap,
-                                    onEditingComplete: _formatCurrency,
-                                    enabled: true,
-                                    decoration: const InputDecoration(
-                                      border: InputBorder.none,
-                                      contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          
-                          const SizedBox(height: 16),
-                          
-                          // Closest Pin Section
-                          Row(
-                            children: [
-                              // Label box
-                              Expanded(
-                                flex: 2,
-                                child: Container(
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    color: currentLeague == League.monday 
-                                        ? Colors.green[200] 
-                                        : currentLeague == League.wednesday 
-                                            ? Colors.orange[200] 
-                                            : Colors.grey[200],
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(
-                                      color: Colors.black,
-                                      width: 2,
-                                    ),
-                                  ),
-                                  child: const Text(
-                                    'Closest Pin',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.black,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ),
-                              ),
-                              
-                              const SizedBox(width: 8),
-                              
-                              // Input box
-                              Expanded(
-                                flex: 1,
-                                child: Container(
-                                  height: 48,
-                                  decoration: BoxDecoration(
-                                    color: currentLeague == League.monday 
-                                        ? Colors.green[100] 
-                                        : currentLeague == League.wednesday 
-                                            ? Colors.orange[100] 
-                                            : Colors.grey[100],
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(
-                                      color: Colors.black,
-                                      width: 2,
-                                    ),
-                                  ),
-                                  child: TextField(
-                                    controller: _closestPinController,
-                                    focusNode: _closestPinFocusNode,
-                                    keyboardType: TextInputType.number,
-                                    inputFormatters: [
-                                      FilteringTextInputFormatter.allow(RegExp(r'[\d\$\.]')),
-                                    ],
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.black,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                    onTap: _onClosestPinTap,
-                                    onEditingComplete: _formatClosestPinCurrency,
-                                    enabled: true,
-                                    decoration: const InputDecoration(
-                                      border: InputBorder.none,
-                                      contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                        
-                        // Mulligans Section (Monday only)
-                        if (currentLeague == League.monday) ...[
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              // Label box
-                              Expanded(
-                                flex: 2,
-                                child: Container(
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    color: Colors.green[200],
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(
-                                      color: Colors.black,
-                                      width: 2,
-                                    ),
-                                  ),
-                                  child: const Text(
-                                    'Mulligans',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.black,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ),
-                              ),
-                              
-                              const SizedBox(width: 8),
-                              
-                              // Input box
-                              Expanded(
-                                flex: 1,
-                                child: Container(
-                                  height: 48,
-                                  decoration: BoxDecoration(
-                                    color: Colors.green[100],
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(
-                                      color: Colors.black,
-                                      width: 2,
-                                    ),
-                                  ),
-                                  child: TextField(
-                                    controller: _mondayMulligansController,
-                                    focusNode: _mondayMulligansFocusNode,
-                                    keyboardType: TextInputType.number,
-                                    inputFormatters: [
-                                      FilteringTextInputFormatter.allow(RegExp(r'[\d\$\.]')),
-                                    ],
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.black,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                    onTap: _onMondayMulligansTap,
-                                    onEditingComplete: _formatMondayMulligansCurrency,
-                                    enabled: true,
-                                    decoration: const InputDecoration(
-                                      border: InputBorder.none,
-                                      contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                        
-                        // New Field Section (Wednesday only)
-                        if (currentLeague == League.wednesday) ...[
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              // Label box
-                              Expanded(
-                                flex: 2,
-                                child: Container(
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    color: Colors.orange[200],
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(
-                                      color: Colors.black,
-                                      width: 2,
-                                    ),
-                                  ),
-                                  child: const Text(
-                                    'Mulligans',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.black,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ),
-                              ),
-                              
-                              const SizedBox(width: 8),
-                              
-                              // Input box
-                              Expanded(
-                                flex: 1,
-                                child: Container(
-                                  height: 48,
-                                  decoration: BoxDecoration(
-                                    color: Colors.orange[100],
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(
-                                      color: Colors.black,
-                                      width: 2,
-                                    ),
-                                  ),
-                                  child: TextField(
-                                    controller: _newFieldController,
-                                    focusNode: _newFieldFocusNode,
-                                    keyboardType: TextInputType.number,
-                                    inputFormatters: [
-                                      FilteringTextInputFormatter.allow(RegExp(r'[\d\$\.]')),
-                                    ],
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.black,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                    onTap: _onNewFieldTap,
-                                    onEditingComplete: _formatNewFieldCurrency,
-                                    enabled: true,
-                                    decoration: const InputDecoration(
-                                      border: InputBorder.none,
-                                      contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                        
-                        
-                        const Spacer(),
-                      ],
+                        );
+                      },
                     ),
                   ),
-                  
-                  const SizedBox(width: 20),
-                  
-                  // Right Side - Golden Oaks Image
-                  Expanded(
-                    flex: 7,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Image.asset(
-                        'assets/images/GoldenOaks.png',
-                        fit: BoxFit.contain,
-                        width: double.infinity,
-                        height: double.infinity,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            decoration: BoxDecoration(
-                              color: Colors.green[50],
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.green[200]!),
+                ),
+              ),
+            ],
+          ),
+        ),
+        
+        const SizedBox(height: 8),
+        
+        // Bottom row - Admin Functions
+        Container(
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: Colors.grey[300],
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: GridView.count(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisCount: 5, // All 5 buttons in one row
+            mainAxisSpacing: 2,
+            crossAxisSpacing: 2,
+            childAspectRatio: 3.0, // 50% height reduction
+            children: [
+              _buildCompactAdminButton('Firebase', Icons.cloud_upload, Colors.red[200]!, 
+                () => Navigator.push(context, MaterialPageRoute(builder: (context) => const FirebaseTestScreen()))),
+              _buildCompactAdminButton('CSV', Icons.upload_file, Colors.blue[200]!, 
+                () => Navigator.push(context, MaterialPageRoute(builder: (context) => const CsvImportScreen()))),
+              _buildCompactAdminButton('Players', Icons.people, 
+                currentLeague == League.monday ? Colors.green[300]! : currentLeague == League.wednesday ? Colors.orange[300]! : Colors.grey[200]!,
+                () => navigateToScreen(currentLeague == League.monday ? const MondayPlayerSelectionScreen() : const WednesdayPlayerSelectionScreen())),
+              _buildCompactAdminButton('Admin', Icons.settings, 
+                currentLeague == League.monday ? Colors.green[100]! : currentLeague == League.wednesday ? Colors.orange[100]! : Colors.grey[200]!,
+                () => Navigator.push(context, MaterialPageRoute(builder: (context) => AdminScreen(currentLeague: currentLeague)))),
+              _buildCompactAdminButton('Speech', Icons.keyboard_voice, Colors.purple[200]!, 
+                () => Navigator.push(context, MaterialPageRoute(builder: (context) => const TestKeypadScreen()))),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPhoneLayout(BuildContext context) {
+    return Column(
+      children: [
+        // League Selection and Configuration - Fixed at top
+        _buildLeagueSelection(context, true),
+        
+        const SizedBox(height: 12),
+        
+        if (currentLeague != null) _buildLeagueConfiguration(context, true),
+        
+        if (currentLeague != null) const SizedBox(height: 12),
+        
+        // Golden Oaks Image - Fill remaining space
+        Expanded(
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.asset(
+                'assets/images/GoldenOaks.png',
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    decoration: BoxDecoration(
+                      color: Colors.green[50],
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.green[200]!),
+                    ),
+                    child: Center(
+                      child: Icon(
+                        Icons.park,
+                        size: 100,
+                        color: Colors.green[600],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
+        
+        // Admin Functions - Fixed at bottom
+        _buildAdminFunctionsPhone(context),
+      ],
+    );
+  }
+
+  Widget _buildTabletPortraitLayout(BuildContext context) {
+    return Column(
+      children: [
+        // Scrollable content area
+        Expanded(
+          child: Column(
+            children: [
+              // League Selection Section
+              _buildLeagueSelection(context, false),
+              
+              const SizedBox(height: 16),
+              
+              // League Configuration (if league selected)
+              if (currentLeague != null) _buildLeagueConfiguration(context, false),
+              
+              const SizedBox(height: 16),
+              
+              // Golden Oaks Image - Fill remaining space
+              Expanded(
+                child: Container(
+                  width: double.infinity,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.asset(
+                      'assets/images/GoldenOaks.png',
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          decoration: BoxDecoration(
+                            color: Colors.green[50],
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.green[200]!),
+                          ),
+                          child: Center(
+                            child: Icon(
+                              Icons.park,
+                              size: 120,
+                              color: Colors.green[600],
                             ),
-                            child: Center(
-                              child: Icon(
-                                Icons.park,
-                                size: 120,
-                                color: Colors.green[600],
-                              ),
-                            ),
-                          );
-                        },
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ),
+              
+              const SizedBox(height: 16),
+            ],
+          ),
+        ),
+        
+        // Admin Functions - Single Row at Bottom
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.grey[300],
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: GridView.count(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisCount: 5, // 5 columns for single row
+            mainAxisSpacing: 4,
+            crossAxisSpacing: 4,
+            childAspectRatio: 1.0, // Square buttons
+            children: [
+              _buildAdminButton(
+                'Firebase Upload',
+                Icons.cloud_upload,
+                Colors.red[200]!,
+                () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const FirebaseTestScreen()),
+                ),
+              ),
+              _buildAdminButton(
+                'CSV Import',
+                Icons.upload_file,
+                Colors.blue[200]!,
+                () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const CsvImportScreen()),
+                ),
+              ),
+              _buildAdminButton(
+                'Player Selection',
+                Icons.people,
+                currentLeague == League.monday ? Colors.green[300]! : currentLeague == League.wednesday ? Colors.orange[300]! : Colors.grey[200]!,
+                () => navigateToScreen(
+                  currentLeague == League.monday 
+                    ? const MondayPlayerSelectionScreen()
+                    : const WednesdayPlayerSelectionScreen(),
+                ),
+              ),
+              _buildAdminButton(
+                'Administration',
+                Icons.settings,
+                currentLeague == League.monday ? Colors.green[100]! : currentLeague == League.wednesday ? Colors.orange[100]! : Colors.grey[200]!,
+                () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => AdminScreen(currentLeague: currentLeague)),
+                ),
+              ),
+              _buildAdminButton(
+                'Test Speech',
+                Icons.keyboard_voice,
+                Colors.purple[200]!,
+                () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const TestKeypadScreen()),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTabletLayout(BuildContext context, bool isTablet10, bool isTablet8) {
+    return Column(
+      children: [
+        Expanded(
+          flex: 2,
+          child: Row(
+            children: [
+              Expanded(
+                flex: 4,
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _buildLeagueSelection(context, false),
+                      if (currentLeague != null) ...[
+                        const SizedBox(height: 16),
+                        _buildLeagueConfiguration(context, false),
+                      ],
+                      const SizedBox(height: 20),
+                    ],
+                  ),
+                ),
+              ),
+              
+              const SizedBox(width: 20),
+              
+              Expanded(
+                flex: 7,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.asset(
+                    'assets/images/GoldenOaks.png',
+                    fit: BoxFit.contain,
+                    width: double.infinity,
+                    height: double.infinity,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        decoration: BoxDecoration(
+                          color: Colors.green[50],
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.green[200]!),
+                        ),
+                        child: Center(
+                          child: Icon(
+                            Icons.park,
+                            size: 120,
+                            color: Colors.green[600],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        
+        const SizedBox(height: 12),
+        
+        _buildAdminFunctionsTablet(context, isTablet10, isTablet8),
+      ],
+    );
+  }
+
+  Widget _buildLeagueSelection(BuildContext context, bool isPhone) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'Select Your League:',
+          style: TextStyle(
+            fontSize: isPhone ? 18 : 20,
+            fontWeight: FontWeight.bold,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        SizedBox(height: isPhone ? 12 : 16),
+        
+        isPhone 
+          ? Column(
+              children: [
+                Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(bottom: 8),
+                  child: ElevatedButton(
+                    onPressed: selectMondayLeague,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: currentLeague == League.monday 
+                          ? Colors.green[300] 
+                          : Colors.green[100],
+                      foregroundColor: Colors.black,
+                      padding: const EdgeInsets.all(16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: BorderSide(
+                          color: Colors.black,
+                          width: 2,
+                        ),
+                      ),
+                    ),
+                    child: Text(
+                      'Monday Group',
+                      style: TextStyle(
+                        fontSize: isPhone ? 16 : 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+                
+                Container(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: selectWednesdayLeague,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: currentLeague == League.wednesday 
+                          ? Colors.orange[300] 
+                          : Colors.orange[100],
+                      foregroundColor: Colors.black,
+                      padding: const EdgeInsets.all(16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: BorderSide(
+                          color: Colors.black,
+                          width: 2,
+                        ),
+                      ),
+                    ),
+                    child: Text(
+                      'Wednesday Group',
+                      style: TextStyle(
+                        fontSize: isPhone ? 16 : 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+              ],
+            )
+          : Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    margin: const EdgeInsets.only(right: 8),
+                    child: ElevatedButton(
+                      onPressed: selectMondayLeague,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: currentLeague == League.monday 
+                            ? Colors.green[300] 
+                            : Colors.green[100],
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.all(20),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          side: BorderSide(
+                            color: Colors.black,
+                            width: 2,
+                          ),
+                        ),
+                      ),
+                      child: const Text(
+                        'Monday Group',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
                       ),
                     ),
                   ),
-                ],
+                ),
+                
+                Expanded(
+                  child: Container(
+                    margin: const EdgeInsets.only(left: 8),
+                    child: ElevatedButton(
+                      onPressed: selectWednesdayLeague,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: currentLeague == League.wednesday 
+                            ? Colors.orange[300] 
+                            : Colors.orange[100],
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.all(20),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          side: BorderSide(
+                            color: Colors.black,
+                            width: 2,
+                          ),
+                        ),
+                      ),
+                      child: const Text(
+                        'Wednesday Group',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+        
+        SizedBox(height: isPhone ? 8 : 12),
+        
+        Container(
+          padding: EdgeInsets.all(isPhone ? 8 : 12),
+          decoration: BoxDecoration(
+            color: currentLeague == League.monday 
+                ? Colors.green[300] 
+                : currentLeague == League.wednesday 
+                    ? Colors.orange[300] 
+                    : Colors.grey[200],
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: Colors.black,
+              width: 2,
+            ),
+          ),
+          child: Text(
+            currentLeague != null 
+                ? 'Active League: ${currentLeague!.name.toUpperCase()}'
+                : 'No League Selected',
+            style: TextStyle(
+              fontSize: isPhone ? 14 : 16,
+              fontWeight: FontWeight.w600,
+              color: Colors.black,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLeagueConfiguration(BuildContext context, bool isPhone) {
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              flex: 2,
+              child: Container(
+                padding: EdgeInsets.all(isPhone ? 8 : 12),
+                decoration: BoxDecoration(
+                  color: currentLeague == League.monday 
+                      ? Colors.green[200] 
+                      : currentLeague == League.wednesday 
+                          ? Colors.orange[200] 
+                          : Colors.grey[200],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: Colors.black,
+                    width: 2,
+                  ),
+                ),
+                child: Text(
+                  currentLeague == League.monday ? 'Skats Ante' : 'Player\'s Ante',
+                  style: TextStyle(
+                    fontSize: isPhone ? 14 : 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
               ),
             ),
             
-            const SizedBox(height: 12),
+            const SizedBox(width: 8),
             
-            // Admin Function Buttons Footer
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(12),
+            Expanded(
+              flex: 1,
+              child: Container(
+                height: isPhone ? 40 : 48,
+                decoration: BoxDecoration(
+                  color: currentLeague == League.monday 
+                      ? Colors.green[100] 
+                      : currentLeague == League.wednesday 
+                          ? Colors.orange[100] 
+                          : Colors.grey[100],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: Colors.black,
+                    width: 2,
+                  ),
+                ),
+                child: TextField(
+                  controller: _anteController,
+                  focusNode: _anteFocusNode,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'[\d\$\.]')),
+                  ],
+                  style: TextStyle(
+                    fontSize: isPhone ? 14 : 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black,
+                  ),
+                  textAlign: TextAlign.center,
+                  onTap: _onAnteTap,
+                  onEditingComplete: _formatCurrency,
+                  enabled: true,
+                  decoration: const InputDecoration(
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                  ),
+                ),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _buildAdminButton(
+            ),
+          ],
+        ),
+        
+        SizedBox(height: isPhone ? 12 : 16),
+        
+        Row(
+          children: [
+            Expanded(
+              flex: 2,
+              child: Container(
+                padding: EdgeInsets.all(isPhone ? 8 : 12),
+                decoration: BoxDecoration(
+                  color: currentLeague == League.monday 
+                      ? Colors.green[200] 
+                      : currentLeague == League.wednesday 
+                          ? Colors.orange[200] 
+                          : Colors.grey[200],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: Colors.black,
+                    width: 2,
+                  ),
+                ),
+                child: Text(
+                  'Closest Pin',
+                  style: TextStyle(
+                    fontSize: isPhone ? 14 : 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+            
+            const SizedBox(width: 8),
+            
+            Expanded(
+              flex: 1,
+              child: Container(
+                height: isPhone ? 40 : 48,
+                decoration: BoxDecoration(
+                  color: currentLeague == League.monday 
+                      ? Colors.green[100] 
+                      : currentLeague == League.wednesday 
+                          ? Colors.orange[100] 
+                          : Colors.grey[100],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: Colors.black,
+                    width: 2,
+                  ),
+                ),
+                child: TextField(
+                  controller: _closestPinController,
+                  focusNode: _closestPinFocusNode,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'[\d\$\.]')),
+                  ],
+                  style: TextStyle(
+                    fontSize: isPhone ? 14 : 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black,
+                  ),
+                  textAlign: TextAlign.center,
+                  onTap: _onClosestPinTap,
+                  onEditingComplete: _formatClosestPinCurrency,
+                  enabled: true,
+                  decoration: const InputDecoration(
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        
+        if (currentLeague == League.monday) ...[
+          SizedBox(height: isPhone ? 8 : 12),
+          Row(
+            children: [
+              Expanded(
+                flex: 2,
+                child: Container(
+                  padding: EdgeInsets.all(isPhone ? 8 : 12),
+                  decoration: BoxDecoration(
+                    color: Colors.green[200],
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: Colors.black,
+                      width: 2,
+                    ),
+                  ),
+                  child: Text(
+                    'Mulligans',
+                    style: TextStyle(
+                      fontSize: isPhone ? 14 : 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+              
+              const SizedBox(width: 8),
+              
+              Expanded(
+                flex: 1,
+                child: Container(
+                  height: isPhone ? 40 : 48,
+                  decoration: BoxDecoration(
+                    color: Colors.green[100],
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: Colors.black,
+                      width: 2,
+                    ),
+                  ),
+                  child: TextField(
+                    controller: _mondayMulligansController,
+                    focusNode: _mondayMulligansFocusNode,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'[\d\$\.]')),
+                    ],
+                    style: TextStyle(
+                      fontSize: isPhone ? 14 : 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black,
+                    ),
+                    textAlign: TextAlign.center,
+                    onTap: _onMondayMulligansTap,
+                    onEditingComplete: _formatMondayMulligansCurrency,
+                    enabled: true,
+                    decoration: const InputDecoration(
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+        
+        if (currentLeague == League.wednesday) ...[
+          SizedBox(height: isPhone ? 8 : 12),
+          Row(
+            children: [
+              Expanded(
+                flex: 2,
+                child: Container(
+                  padding: EdgeInsets.all(isPhone ? 8 : 12),
+                  decoration: BoxDecoration(
+                    color: Colors.orange[200],
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: Colors.black,
+                      width: 2,
+                    ),
+                  ),
+                  child: Text(
+                    'Mulligans',
+                    style: TextStyle(
+                      fontSize: isPhone ? 14 : 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+              
+              const SizedBox(width: 8),
+              
+              Expanded(
+                flex: 1,
+                child: Container(
+                  height: isPhone ? 40 : 48,
+                  decoration: BoxDecoration(
+                    color: Colors.orange[100],
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: Colors.black,
+                      width: 2,
+                    ),
+                  ),
+                  child: TextField(
+                    controller: _newFieldController,
+                    focusNode: _newFieldFocusNode,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'[\d\$\.]')),
+                    ],
+                    style: TextStyle(
+                      fontSize: isPhone ? 14 : 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black,
+                    ),
+                    textAlign: TextAlign.center,
+                    onTap: _onNewFieldTap,
+                    onEditingComplete: _formatNewFieldCurrency,
+                    enabled: true,
+                    decoration: const InputDecoration(
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildAdminFunctionsPhone(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(
+        color: Colors.grey[300],
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        children: [
+          // First row - 3 buttons
+          SizedBox(
+            height: 60,
+            child: Row(
+              children: [
+                Expanded(
+                  child: _buildPhoneGridButton(
+                    'Firebase Upload',
+                    Icons.cloud_upload,
+                    Colors.red[200]!,
+                    () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const FirebaseTestScreen()),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: _buildPhoneGridButton(
+                    'CSV Import',
+                    Icons.upload_file,
+                    Colors.blue[200]!,
+                    () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const CsvImportScreen()),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: _buildPhoneGridButton(
                     'Player Selection',
                     Icons.people,
                     currentLeague == League.monday ? Colors.green[300]! : currentLeague == League.wednesday ? Colors.orange[300]! : Colors.grey[200]!,
-                    () => navigateToScreen(PlayerSelectionScreen(currentLeague: currentLeague)),
+                    () => navigateToScreen(
+                      currentLeague == League.monday 
+                        ? const MondayPlayerSelectionScreen()
+                        : const WednesdayPlayerSelectionScreen(),
+                    ),
                   ),
-                  _buildAdminButton(
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 6),
+          // Second row - 2 buttons
+          SizedBox(
+            height: 60,
+            child: Row(
+              children: [
+                Expanded(
+                  child: _buildPhoneGridButton(
                     'Administration',
                     Icons.settings,
                     currentLeague == League.monday ? Colors.green[100]! : currentLeague == League.wednesday ? Colors.orange[100]! : Colors.grey[200]!,
-                    () => navigateToScreen(AdminScreen(currentLeague: currentLeague)),
+                    () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => AdminScreen(currentLeague: currentLeague)),
+                    ),
                   ),
-                ],
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: _buildPhoneGridButton(
+                    'Test Speech',
+                    Icons.keyboard_voice,
+                    Colors.purple[200]!,
+                    () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const TestKeypadScreen()),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAdminFunctionsTablet(BuildContext context, bool isTablet10, bool isTablet8) {
+    return Container(
+      padding: EdgeInsets.all(isTablet8 ? 4 : 8),
+      decoration: BoxDecoration(
+        color: Colors.grey[300],
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: GridView.count(
+        shrinkWrap: true,
+        crossAxisCount: isTablet10 ? 5 : (isTablet8 ? 5 : 3),
+        mainAxisSpacing: isTablet8 ? 4 : 8,
+        crossAxisSpacing: isTablet8 ? 4 : 8,
+        childAspectRatio: isTablet10 ? 1.2 : (isTablet8 ? 3.0 : 1.0),
+        children: [
+          _buildAdminButton(
+            'Firebase Upload',
+            Icons.cloud_upload,
+            Colors.red[200]!,
+            () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const FirebaseTestScreen()),
+            ),
+          ),
+          _buildAdminButton(
+            'CSV Import',
+            Icons.upload_file,
+            Colors.blue[200]!,
+            () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const CsvImportScreen()),
+            ),
+          ),
+          _buildAdminButton(
+            'Player Selection',
+            Icons.people,
+            currentLeague == League.monday ? Colors.green[300]! : currentLeague == League.wednesday ? Colors.orange[300]! : Colors.grey[200]!,
+            () => navigateToScreen(
+              currentLeague == League.monday 
+                ? const MondayPlayerSelectionScreen()
+                : const WednesdayPlayerSelectionScreen(),
+            ),
+          ),
+          _buildAdminButton(
+            'Administration',
+            Icons.settings,
+            currentLeague == League.monday ? Colors.green[100]! : currentLeague == League.wednesday ? Colors.orange[100]! : Colors.grey[200]!,
+            () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => AdminScreen(currentLeague: currentLeague)),
+            ),
+          ),
+          _buildAdminButton(
+            'Test Speech',
+            Icons.keyboard_voice,
+            Colors.purple[200]!,
+            () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const TestKeypadScreen()),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPhoneAdminButton(String title, IconData icon, Color bgColor, VoidCallback onPressed) {
+    return Container(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: bgColor,
+          foregroundColor: Colors.black,
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+            side: const BorderSide(color: Colors.black, width: 1),
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 24),
+            const SizedBox(width: 8),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ],
@@ -883,41 +1352,332 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
     );
   }
 
-
-
-  Widget _buildAdminButton(String title, IconData icon, Color bgColor, VoidCallback onPressed) {
-    return Expanded(
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 4),
-        child: ElevatedButton(
-          onPressed: onPressed,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: bgColor,
-            foregroundColor: Colors.black,
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-              side: const BorderSide(color: Colors.black, width: 1),
-            ),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 20),
-              const SizedBox(height: 2),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
+  Widget _buildPhoneGridButton(String title, IconData icon, Color bgColor, VoidCallback onPressed) {
+    return ElevatedButton(
+      onPressed: onPressed,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: bgColor,
+        foregroundColor: Colors.black,
+        padding: const EdgeInsets.all(4),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+          side: const BorderSide(color: Colors.black, width: 1),
         ),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 16),
+          const SizedBox(height: 2),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 8,
+              fontWeight: FontWeight.w600,
+            ),
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
       ),
     );
   }
 
+  Widget _buildLeagueSelectionCompact(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'Select League:',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 6),
+        
+        // Compact league buttons - stacked for narrow space
+        Column(
+          children: [
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.only(bottom: 4),
+              child: ElevatedButton(
+                onPressed: selectMondayLeague,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: currentLeague == League.monday 
+                      ? Colors.green[300] 
+                      : Colors.green[100],
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.all(8),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(6),
+                    side: BorderSide(
+                      color: Colors.black,
+                      width: 1,
+                    ),
+                  ),
+                ),
+                child: Text(
+                  'Monday',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+            
+            Container(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: selectWednesdayLeague,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: currentLeague == League.wednesday 
+                      ? Colors.orange[300] 
+                      : Colors.orange[100],
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.all(8),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(6),
+                    side: BorderSide(
+                      color: Colors.black,
+                      width: 1,
+                    ),
+                  ),
+                ),
+                child: Text(
+                  'Wednesday',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+          ],
+        ),
+        
+        const SizedBox(height: 6),
+        
+        // Compact status
+        Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: currentLeague == League.monday 
+                ? Colors.green[300] 
+                : currentLeague == League.wednesday 
+                    ? Colors.orange[300] 
+                    : Colors.grey[200],
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(
+              color: Colors.black,
+              width: 1,
+            ),
+          ),
+          child: Text(
+            currentLeague != null 
+                ? '${currentLeague!.name.toUpperCase()}'
+                : 'No League',
+            style: TextStyle(
+              fontSize: 8,
+              fontWeight: FontWeight.w600,
+              color: Colors.black,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLeagueConfigurationCompact(BuildContext context) {
+    return Column(
+      children: [
+        // Compact ante section
+        Row(
+          children: [
+            Expanded(
+              flex: 2,
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: currentLeague == League.monday 
+                      ? Colors.green[200] 
+                      : currentLeague == League.wednesday 
+                          ? Colors.orange[200] 
+                          : Colors.grey[200],
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: Colors.black, width: 1),
+                ),
+                child: Text(
+                  currentLeague == League.monday ? 'Ante' : 'Ante',
+                  style: const TextStyle(fontSize: 8, fontWeight: FontWeight.w600),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+            const SizedBox(width: 4),
+            Expanded(
+              flex: 1,
+              child: Container(
+                height: 24,
+                decoration: BoxDecoration(
+                  color: currentLeague == League.monday 
+                      ? Colors.green[100] 
+                      : currentLeague == League.wednesday 
+                          ? Colors.orange[100] 
+                          : Colors.grey[100],
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: Colors.black, width: 1),
+                ),
+                child: TextField(
+                  controller: _anteController,
+                  focusNode: _anteFocusNode,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[\d\$\.]'))],
+                  style: const TextStyle(fontSize: 8, fontWeight: FontWeight.w600),
+                  textAlign: TextAlign.center,
+                  onTap: _onAnteTap,
+                  onEditingComplete: _formatCurrency,
+                  decoration: const InputDecoration(
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        
+        const SizedBox(height: 4),
+        
+        // Compact closest pin section
+        Row(
+          children: [
+            Expanded(
+              flex: 2,
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: currentLeague == League.monday 
+                      ? Colors.green[200] 
+                      : currentLeague == League.wednesday 
+                          ? Colors.orange[200] 
+                          : Colors.grey[200],
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: Colors.black, width: 1),
+                ),
+                child: const Text(
+                  'Pin',
+                  style: TextStyle(fontSize: 8, fontWeight: FontWeight.w600),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+            const SizedBox(width: 4),
+            Expanded(
+              flex: 1,
+              child: Container(
+                height: 24,
+                decoration: BoxDecoration(
+                  color: currentLeague == League.monday 
+                      ? Colors.green[100] 
+                      : currentLeague == League.wednesday 
+                          ? Colors.orange[100] 
+                          : Colors.grey[100],
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: Colors.black, width: 1),
+                ),
+                child: TextField(
+                  controller: _closestPinController,
+                  focusNode: _closestPinFocusNode,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[\d\$\.]'))],
+                  style: const TextStyle(fontSize: 8, fontWeight: FontWeight.w600),
+                  textAlign: TextAlign.center,
+                  onTap: _onClosestPinTap,
+                  onEditingComplete: _formatClosestPinCurrency,
+                  decoration: const InputDecoration(
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCompactAdminButton(String title, IconData icon, Color bgColor, VoidCallback onPressed) {
+    return ElevatedButton(
+      onPressed: onPressed,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: bgColor,
+        foregroundColor: Colors.black,
+        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(6),
+          side: const BorderSide(color: Colors.black, width: 1),
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 14),
+          const SizedBox(height: 1),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 8,
+              fontWeight: FontWeight.w600,
+            ),
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAdminButton(String title, IconData icon, Color bgColor, VoidCallback onPressed) {
+    return ElevatedButton(
+      onPressed: onPressed,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: bgColor,
+        foregroundColor: Colors.black,
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+          side: const BorderSide(color: Colors.black, width: 1),
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 18),
+          const SizedBox(height: 2),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+            ),
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
 }

@@ -893,6 +893,24 @@ class DatabaseHelper {
     ''', [leagueStr, playerId, leagueStr]);
   }
 
+  // Get player score history by last name and league
+  Future<List<Map<String, dynamic>>> getPlayerScoreHistory(String playerLast, League league) async {
+    final db = await database;
+    String leagueStr = league == League.monday ? 'monday' : 'wednesday';
+    String tableName = league == League.monday ? 'monday_scores' : 'wednesday_scores';
+    
+    return await db.rawQuery('''
+      SELECT s.*,
+        p.first as first_name,
+        p.last as last_name
+      FROM $tableName s
+      JOIN players p ON s.player_id = p.id
+      WHERE p.last = ? AND p.league = ?
+      ORDER BY s.date_played DESC
+      LIMIT 20
+    ''', [playerLast, leagueStr]);
+  }
+
   // Helper method to clean up old score entries, keeping only the latest 20
   Future<void> _cleanupOldScores(int playerId, String league) async {
     final db = await database;

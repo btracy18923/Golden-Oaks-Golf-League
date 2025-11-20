@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'wednesday_player_selection_screen.dart';
 import 'wednesday_player_scores_screen.dart';
 import 'wednesday_player_profile_screen.dart';
-import 'wednesday_golf_course_info_screen.dart';
-import '../admin_screen.dart';
 import '../../models/league.dart';
 
 class WednesdayParentScreen extends StatefulWidget {
@@ -299,20 +297,8 @@ class _WednesdayParentScreenState extends State<WednesdayParentScreen> {
                   _buildNavigationButton(
                     'Player Profiles',
                     Icons.person,
-                    Colors.orange[250]!,
-                    () => navigateToScreen(const WednesdayPlayerProfileScreen()),
-                  ),
-                  _buildNavigationButton(
-                    'Golf Courses',
-                    Icons.golf_course,
-                    Colors.orange[150]!,
-                    () => navigateToScreen(const WednesdayGolfCourseInfoScreen()),
-                  ),
-                  _buildNavigationButton(
-                    'Administration',
-                    Icons.settings,
                     Colors.orange[100]!,
-                    () => navigateToScreen(AdminScreen(currentLeague: League.wednesday)),
+                    () => navigateToScreen(const WednesdayPlayerProfileScreen()),
                   ),
                 ],
               ),
@@ -324,35 +310,34 @@ class _WednesdayParentScreenState extends State<WednesdayParentScreen> {
   }
 
   Widget _buildNavigationButton(String title, IconData icon, Color bgColor, VoidCallback onPressed) {
-    return Expanded(
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 4),
-        child: ElevatedButton(
-          onPressed: onPressed,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: bgColor,
-            foregroundColor: Colors.black,
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-              side: const BorderSide(color: Colors.black, width: 1),
-            ),
+    return Container(
+      width: 120, // Fixed width instead of Expanded
+      margin: const EdgeInsets.symmetric(horizontal: 4),
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: bgColor,
+          foregroundColor: Colors.black,
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+            side: const BorderSide(color: Colors.black, width: 1),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 20),
-              const SizedBox(height: 2),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-                textAlign: TextAlign.center,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 20),
+            const SizedBox(height: 2),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
               ),
-            ],
-          ),
+              textAlign: TextAlign.center,
+            ),
+          ],
         ),
       ),
     );

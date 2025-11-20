@@ -6,7 +6,6 @@ import 'package:sqflite/sqflite.dart';
 import 'dart:math';
 import 'popup_utils.dart';
 import 'main_menu_screen.dart';
-import 'manual_process_groups_screen.dart';
 import '../services/database_helper.dart';
 import '../services/ante_manager.dart';
 import '../services/closest_pin_manager.dart';
@@ -1824,19 +1823,11 @@ class _AutoProcessGroupsScreenState extends State<AutoProcessGroupsScreen> {
         return;
       }
       
-      // Navigate to Manual Process Groups screen
-      final result = await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => ManualProcessGroupsScreen(
-            selectedPlayers: selectedPlayers,
-            groups: groups,
-            selectedLeague: selectedLeague,
-            grossControllers: grossControllers,
-            groupControllers: groupControllers,
-          ),
-        ),
+      // Manual Process Groups functionality removed
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Manual Process Groups screen was removed')),
       );
+      final result = null;
 
       // Handle result from the Manual Process Groups screen
       if (result != null) {

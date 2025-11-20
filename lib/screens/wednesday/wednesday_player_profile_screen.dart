@@ -32,7 +32,7 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
   final FocusNode _emailFocus = FocusNode();
 
   // Hard-coded Wednesday league values
-  static const Color _leagueColor = Colors.orange;
+  static const MaterialColor _leagueColor = Colors.orange;
   static const String _leagueTitle = 'Wednesday League Player Profiles';
 
   @override
@@ -334,7 +334,7 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
                               labelText: 'Cell Phone',
                               border: OutlineInputBorder(),
                             ),
-                            keyboardType: TextInputType.phone,
+                            keyboardType: TextInputType.numberWithOptions(decimal: false),
                             onSubmitted: (_) => _emailFocus.requestFocus(),
                           ),
                           

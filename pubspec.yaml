@@ -12,12 +12,20 @@ dependencies:
   cupertino_icons: ^1.0.2
   sqflite: ^2.3.0
   path: ^1.8.3
+  path_provider: ^2.1.1
   csv: ^5.0.2
+  firebase_core: ^2.24.2
+  cloud_firestore: ^4.13.6
+  firebase_auth: ^4.15.3
+  connectivity_plus: ^6.0.5
+  permission_handler: ^11.3.1
+  speech_to_text: ^7.0.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.0
+  flutter_launcher_icons: ^0.13.1
 
 flutter:
   uses-material-design: true
@@ -25,3 +33,10 @@ flutter:
   assets:
     - assets/images/
     - assets/
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  image_path: "assets/images/GoldenOaks_square.png"
+  min_sdk_android: 21
+  adaptive_icon_background: "#ffffff"
+  adaptive_icon_foreground: "assets/images/GoldenOaks_square.png"

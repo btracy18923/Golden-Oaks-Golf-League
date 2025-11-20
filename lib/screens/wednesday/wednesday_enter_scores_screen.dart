@@ -7,16 +7,15 @@ import 'dart:math';
 import '../popup_utils.dart';
 import '../main_menu_screen.dart';
 import 'wednesday_auto_process_groups_screen.dart';
-import '../manual_process_groups_screen.dart';
-import '../services/database_helper.dart';
-import '../services/ante_manager.dart';
-import '../services/percentage_manager.dart';
-import '../services/closest_pin_manager.dart';
-import '../services/mulligan_manager.dart';
-import '../services/csv_payout_service.dart';
-import '../services/group_csv_payout_service.dart';
-import '../services/payout_validation_service.dart';
-import '../models/league.dart';
+import '../../services/database_helper.dart';
+import '../../services/ante_manager.dart';
+import '../../services/percentage_manager.dart';
+import '../../services/closest_pin_manager.dart';
+import '../../services/mulligan_manager.dart';
+import '../../services/csv_payout_service.dart';
+import '../../services/group_csv_payout_service.dart';
+import '../../services/payout_validation_service.dart';
+import '../../models/league.dart';
 
 // Helper class to track positions in the groups grid
 class Position {
@@ -29,11 +28,13 @@ class Position {
 class WednesdayEnterScoresScreen extends StatefulWidget {
   final List<Map<String, dynamic>>? initialPlayers;
   final List<List<Map<String, dynamic>?>>? initialGroups;
+  final String? initialLeague;
 
   const WednesdayEnterScoresScreen({
     Key? key,
     this.initialPlayers,
     this.initialGroups,
+    this.initialLeague,
   }) : super(key: key);
 
   @override
@@ -55,7 +56,7 @@ class EnterScoresScreenWithData extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return EnterScoresScreen(
+    return WednesdayEnterScoresScreen(
       initialPlayers: selectedPlayers,
       initialGroups: groups,
       initialLeague: leagueType,
@@ -65,7 +66,7 @@ class EnterScoresScreenWithData extends StatelessWidget {
 
 class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen> {
   // Hard-coded Wednesday league - no selection needed
-  final String selectedLeague = 'wednesday';
+  String selectedLeague = 'wednesday';
   List<List<Map<String, dynamic>?>> groups = [];
   List<Map<String, dynamic>> selectedPlayers = [];
   List<String> selectedForSwap = [];
@@ -2009,19 +2010,11 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
         return;
       }
       
-      // Navigate to Manual Process Groups screen
-      final result = await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => ManualProcessGroupsScreen(
-            selectedPlayers: selectedPlayers,
-            groups: groups,
-            selectedLeague: selectedLeague,
-            grossControllers: grossControllers,
-              groupControllers: groupControllers,
-          ),
-        ),
+      // Manual Process Groups functionality removed
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Manual Process Groups screen was removed')),
       );
+      final result = null;
 
       // Handle result from the Manual Process Groups screen
       if (result != null) {

@@ -122,6 +122,40 @@ Ensure proper Android configuration in:
 
 The Flutter framework handles the complexity of Android compilation, eliminating the need for manual Java/Kotlin conversion or complex build tools.
 
+## Responsive Design Guidelines
+
+This application targets multiple Android device sizes:
+- **10" tablets**: Primary deployment devices for league management
+- **8" tablets**: Secondary deployment option
+- **6" phones**: Mobile access for players and officials
+
+### Implementation Approach
+**Recommended: Single responsive app**
+- Use `MediaQuery.of(context).size` to get screen dimensions
+- Implement responsive layouts with `LayoutBuilder` or `ResponsiveBuilder`
+- Adjust UI elements based on screen width/height breakpoints
+
+### Prompting for Responsive Changes
+When requesting screen optimizations, specify:
+- Target screen (e.g., "player selection screen")
+- Device sizes (e.g., "for 10", 8", and 6" screens")
+- Layout preference (e.g., "use grid layout for tablets and list view for phones")
+
+Example: "Make the player selection screen responsive for 10", 8", and 6" screens - use grid layout for tablets and list view for phones"
+
+### Flutter Responsive Widgets
+- `Flexible`, `Expanded` for dynamic sizing
+- `Wrap` for flowing layouts
+- `OrientationBuilder` for landscape/portrait handling
+- `MediaQuery` for screen size detection
+- Custom breakpoint logic for device-specific layouts
+
+### Alternative: Device-Specific Versions
+If needed, create separate screen variants:
+- `player_selection_tablet.dart` for larger screens
+- `player_selection_phone.dart` for smaller screens
+- Route based on screen size in navigation logic
+
 ## Git Workflow Instructions
 
 **IMPORTANT**: Do not automatically commit changes or push changes to GitHub. The user will explicitly tell you when to commit and push. Always wait for user instructions before running git commit or git push commands.

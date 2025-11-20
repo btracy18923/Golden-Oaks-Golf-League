@@ -83,7 +83,7 @@ class _WednesdayPlayerSelectionScreenState extends State<WednesdayPlayerSelectio
       backgroundColor: Colors.grey[300],
       appBar: AppBar(
         title: const Text("Select Players for Wednesday's Match"),
-        backgroundColor: _appBarColor[700],
+        backgroundColor: Colors.orange[700],
         foregroundColor: Colors.white,
         centerTitle: true,
       ),

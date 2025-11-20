@@ -17,7 +17,7 @@ class _WednesdayPlayerScoresScreenState extends State<WednesdayPlayerScoresScree
   bool _isLoading = false;
 
   // Hard-coded Wednesday league values
-  static const Color _leagueColor = Colors.orange;
+  static const MaterialColor _leagueColor = Colors.orange;
   static const String _leagueTitle = 'Wednesday League Player Scores';
 
   @override

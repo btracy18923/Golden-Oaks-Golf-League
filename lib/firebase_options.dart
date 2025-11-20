@@ -41,20 +41,20 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'your-web-api-key',
-    appId: 'your-web-app-id',
-    messagingSenderId: 'your-sender-id',
-    projectId: 'your-project-id',
-    authDomain: 'your-project-id.firebaseapp.com',
-    storageBucket: 'your-project-id.appspot.com',
+    apiKey: 'AIzaSyCNbOi-C2QsZIa9H6XTzQw62BNVNx5_nkQ',
+    appId: '1:926599368373:web:d74047addb20379f6fb8fc',
+    messagingSenderId: '926599368373',
+    projectId: 'golf-league-b0bb2',
+    authDomain: 'golf-league-b0bb2.firebaseapp.com',
+    storageBucket: 'golf-league-b0bb2.firebasestorage.app',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'your-android-api-key',
-    appId: 'your-android-app-id',
-    messagingSenderId: 'your-sender-id',
-    projectId: 'your-project-id',
-    storageBucket: 'your-project-id.appspot.com',
+    apiKey: 'AIzaSyAdY2zvezLb0S3sdEBIbeG2VJZydcaF3rM',
+    appId: '1:926599368373:android:c777f4a9d09b6b736fb8fc',
+    messagingSenderId: '926599368373',
+    projectId: 'golf-league-b0bb2',
+    storageBucket: 'golf-league-b0bb2.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
@@ -76,11 +76,11 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'your-windows-api-key',
-    appId: 'your-windows-app-id',
-    messagingSenderId: 'your-sender-id',
-    projectId: 'your-project-id',
-    authDomain: 'your-project-id.firebaseapp.com',
-    storageBucket: 'your-project-id.appspot.com',
+    apiKey: 'AIzaSyCNbOi-C2QsZIa9H6XTzQw62BNVNx5_nkQ',
+    appId: '1:926599368373:web:d74047addb20379f6fb8fc',
+    messagingSenderId: '926599368373',
+    projectId: 'golf-league-b0bb2',
+    authDomain: 'golf-league-b0bb2.firebaseapp.com',
+    storageBucket: 'golf-league-b0bb2.firebasestorage.app',
   );
 }

@@ -1,0 +1,1050 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Golf League Manager</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .login-container {
+            max-width: 400px;
+            margin: 100px auto;
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        .login-container h1 {
+            text-align: center;
+            color: #2d3748;
+            margin-bottom: 10px;
+        }
+        
+        .login-container p {
+            text-align: center;
+            color: #718096;
+            margin-bottom: 30px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+            display: none;
+        }
+        
+        .container.show {
+            display: block;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            position: relative;
+        }
+        
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .logout-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9em;
+        }
+        
+        .logout-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        .user-info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: rgba(255,255,255,0.8);
+            font-size: 0.9em;
+        }
+        
+        .admin-badge {
+            background: #f6ad55;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            margin-left: 8px;
+        }
+        
+        nav {
+            display: flex;
+            background: #f7fafc;
+            border-bottom: 2px solid #e2e8f0;
+            overflow-x: auto;
+        }
+        
+        nav button {
+            flex: 1;
+            padding: 15px 20px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 600;
+            color: #4a5568;
+            transition: all 0.3s;
+            white-space: nowrap;
+        }
+        
+        nav button:hover {
+            background: #edf2f7;
+        }
+        
+        nav button.active {
+            background: white;
+            color: #667eea;
+            border-bottom: 3px solid #667eea;
+        }
+        
+        nav button.hidden {
+            display: none;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .section {
+            display: none;
+        }
+        
+        .section.active {
+            display: block;
+        }
+        
+        .card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .card h3 {
+            color: #2d3748;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+        
+        .announcement {
+            background: #ebf8ff;
+            border-left: 4px solid #4299e1;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+        }
+        
+        .announcement.important {
+            background: #fff5f5;
+            border-left-color: #f56565;
+        }
+        
+        .announcement h4 {
+            color: #2d3748;
+            margin-bottom: 5px;
+        }
+        
+        .announcement p {
+            color: #4a5568;
+            margin-bottom: 5px;
+        }
+        
+        .announcement .timestamp {
+            color: #a0aec0;
+            font-size: 0.85em;
+        }
+        
+        .player-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .player-card {
+            background: #f7fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s;
+        }
+        
+        .player-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+        }
+        
+        .player-card.playing {
+            background: #c6f6d5;
+            border-color: #48bb78;
+        }
+        
+        .player-info h4 {
+            color: #2d3748;
+            margin-bottom: 5px;
+        }
+        
+        .player-info .handicap {
+            color: #718096;
+            font-size: 0.9em;
+        }
+        
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+        
+        input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        th {
+            background: #f7fafc;
+            color: #2d3748;
+            font-weight: 600;
+        }
+        
+        tr:hover {
+            background: #f7fafc;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #2d3748;
+            font-weight: 600;
+        }
+        
+        input, textarea, select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+        
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        button.primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 6px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+            width: 100%;
+        }
+        
+        button.primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        button.primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #718096;
+        }
+        
+        .error {
+            background: #fed7d7;
+            color: #742a2a;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+        
+        .success {
+            background: #c6f6d5;
+            color: #22543d;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+        
+        .info-box {
+            background: #bee3f8;
+            border-left: 4px solid #4299e1;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="loginContainer" class="login-container">
+        <h1>⛳ Golf League</h1>
+        <p>Members Login</p>
+        <form id="loginForm" autocomplete="off">
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" id="loginEmail" required autocomplete="off">
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="loginPassword" required autocomplete="new-password">
+            </div>
+            <div class="info-box" style="font-size: 0.9em;">
+                <strong>Note:</strong> Regular members use the league password. Administrators use the admin password.
+            </div>
+            <button type="submit" class="primary" id="loginBtn">Login</button>
+            <div id="loginError"></div>
+        </form>
+    </div>
+
+    <div class="container" id="mainApp">
+        <header>
+            <div class="user-info" id="userInfo"></div>
+            <h1>⛳ Golf League Manager</h1>
+            <p>30 Team League</p>
+            <button class="logout-btn" onclick="logout()">Logout</button>
+        </header>
+        
+        <nav>
+            <button class="nav-btn active" data-section="announcements">📢 Announcements</button>
+            <button class="nav-btn" data-section="availability">✅ Sign Up Sheet</button>
+            <button class="nav-btn" data-section="stats">📊 Stats</button>
+            <button class="nav-btn" id="adminNavBtn" data-section="admin">⚙️ Admin</button>
+        </nav>
+        
+        <div class="content">
+            <div id="announcements" class="section active">
+                <div class="card">
+                    <h3>Latest Announcements</h3>
+                    <div id="announcementsList">
+                        <div class="loading">Loading announcements...</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="availability" class="section">
+                <div id="playDatesContainer">
+                    <div class="loading">Loading play dates...</div>
+                </div>
+            </div>
+            
+            <div id="stats" class="section">
+                <div class="card">
+                    <h3>Player Statistics</h3>
+                    <div id="statsTable">
+                        <div class="loading">Loading stats...</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="admin" class="section">
+                <!-- Admin Tab Selection -->
+                <div id="adminTabSelection" class="card">
+                    <h3>Administrator Functions</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
+                        <button class="primary" onclick="showAdminScreen('postAnnouncement')" style="padding: 20px; font-size: 1.1em;">
+                            📢 Post Announcement
+                        </button>
+                        <button class="primary" onclick="showAdminScreen('schedulePlayDate')" style="padding: 20px; font-size: 1.1em;">
+                            📅 Schedule Play Date
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Post Announcement Screen -->
+                <div id="postAnnouncementScreen" class="card" style="display: none;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3>Post Announcement</h3>
+                        <button onclick="showAdminTabSelection()" style="background: #718096; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">
+                            ← Back to Admin Menu
+                        </button>
+                    </div>
+                    <form id="announcementForm">
+                        <div class="form-group">
+                            <label>Title</label>
+                            <input type="text" id="annTitle" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Message</label>
+                            <textarea id="annMessage" rows="4" required></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Priority</label>
+                            <select id="annPriority">
+                                <option value="normal">Normal</option>
+                                <option value="important">Important</option>
+                                <option value="urgent">Urgent</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="primary">Post Announcement</button>
+                    </form>
+                    <div id="annResult"></div>
+                </div>
+                
+                <!-- Schedule Play Date Screen -->
+                <div id="schedulePlayDateScreen" class="card" style="display: none;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3>Schedule Play Date</h3>
+                        <button onclick="showAdminTabSelection()" style="background: #718096; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">
+                            ← Back to Admin Menu
+                        </button>
+                    </div>
+                    <form id="playDateForm">
+                        <div class="form-group">
+                            <label>Date</label>
+                            <input type="date" id="playDate" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Course</label>
+                            <select id="playCourse" required>
+                                <option value="">Select a course...</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Departure Time</label>
+                            <input type="time" id="departTime">
+                        </div>
+                        <div class="form-group">
+                            <label>Tee Time</label>
+                            <input type="time" id="teeTime">
+                        </div>
+                        <div class="form-group">
+                            <label>Notes</label>
+                            <textarea id="playNotes" rows="3"></textarea>
+                        </div>
+                        <button type="submit" class="primary">Schedule Play Date</button>
+                    </form>
+                    <div id="playDateResult"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getFirestore, collection, query, where, getDocs, addDoc, doc, setDoc, getDoc, deleteDoc, orderBy, limit, Timestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCNbOi-C2QsZIa9H6XTzQw62BNVNx5_nkQ",
+            authDomain: "golf-league-b0bb2.firebaseapp.com",
+            projectId: "golf-league-b0bb2",
+            storageBucket: "golf-league-b0bb2.firebasestorage.app",
+            messagingSenderId: "926599368373",
+            appId: "1:926599368373:web:d74047addb20379f6fb8fc"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        const LEAGUE_PASSWORD = 'golden';
+        const ADMIN_PASSWORD = 'goldenadmin';
+        const ADMIN_EMAILS = ['btracy18923@gmail.com'];
+        
+        let currentUser = null;
+        let isAdmin = false;
+        
+        const storedSession = sessionStorage.getItem('golfLeagueSession');
+        if (storedSession) {
+            const session = JSON.parse(storedSession);
+            currentUser = session.user;
+            isAdmin = session.isAdmin;
+            showMainApp();
+        }
+        
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+            const password = document.getElementById('loginPassword').value;
+            const errorDiv = document.getElementById('loginError');
+            const loginBtn = document.getElementById('loginBtn');
+            
+            errorDiv.innerHTML = '';
+            loginBtn.disabled = true;
+            loginBtn.textContent = 'Checking...';
+            
+            try {
+                console.log('Starting login process for:', email);
+                console.log('Email length:', email.length);
+                console.log('Email chars:', email.split('').map(c => c.charCodeAt(0)));
+                
+                const playersRef = collection(db, 'players');
+                const q = query(playersRef, where('email', '==', email));
+                
+                console.log('Querying Firebase for player...');
+                
+                // Add timeout to prevent infinite hanging
+                const timeoutPromise = new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Login timeout - please try again')), 10000)
+                );
+                
+                const querySnapshot = await Promise.race([getDocs(q), timeoutPromise]);
+                
+                console.log('Query completed, found docs:', querySnapshot.docs.length);
+                
+                if (querySnapshot.empty) {
+                    throw new Error('Email not found in league roster');
+                }
+                
+                const player = { id: querySnapshot.docs[0].id, ...querySnapshot.docs[0].data() };
+                console.log('Found player:', player.name);
+                
+                const isAdminEmail = ADMIN_EMAILS.map(e => e.toLowerCase()).includes(email);
+                
+                if (isAdminEmail) {
+                    if (password !== ADMIN_PASSWORD) {
+                        throw new Error('Incorrect admin password');
+                    }
+                    isAdmin = true;
+                } else {
+                    if (password !== LEAGUE_PASSWORD) {
+                        throw new Error('Incorrect password');
+                    }
+                    isAdmin = false;
+                }
+                
+                currentUser = player;
+                sessionStorage.setItem('golfLeagueSession', JSON.stringify({
+                    user: player,
+                    isAdmin: isAdmin
+                }));
+                showMainApp();
+                
+            } catch (err) {
+                console.error('Login error:', err);
+                errorDiv.innerHTML = `<div class="error">${err.message}</div>`;
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'Login';
+            }
+        });
+        
+        function showMainApp() {
+            document.getElementById('loginContainer').style.display = 'none';
+            document.getElementById('mainApp').classList.add('show');
+            
+            const userInfoHtml = `Logged in as: ${currentUser.name}${isAdmin ? '<span class="admin-badge">ADMIN</span>' : ''}`;
+            document.getElementById('userInfo').innerHTML = userInfoHtml;
+            
+            const adminNavBtn = document.getElementById('adminNavBtn');
+            if (!isAdmin) {
+                adminNavBtn.classList.add('hidden');
+            } else {
+                adminNavBtn.classList.remove('hidden');
+            }
+            
+            loadAnnouncements();
+            loadAllPlayDates();
+            loadStats();
+            if (isAdmin) {
+                loadCourses();
+                cleanupOldAnnouncements(); // Auto-cleanup old announcements
+            }
+        }
+        
+        window.logout = function() {
+            console.log('Logging out...');
+            sessionStorage.removeItem('golfLeagueSession');
+            currentUser = null;
+            isAdmin = false;
+            document.getElementById('loginContainer').style.display = 'block';
+            document.getElementById('mainApp').classList.remove('show');
+            
+            // Clear form and reset button state
+            const loginForm = document.getElementById('loginForm');
+            const loginBtn = document.getElementById('loginBtn');
+            const errorDiv = document.getElementById('loginError');
+            
+            loginForm.reset();
+            loginBtn.disabled = false;
+            loginBtn.textContent = 'Login';
+            errorDiv.innerHTML = '';
+            
+            console.log('Logout complete');
+        };
+        
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (btn.getAttribute('data-section') === 'admin' && !isAdmin) {
+                    return;
+                }
+                
+                document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+                
+                btn.classList.add('active');
+                const sectionId = btn.getAttribute('data-section');
+                document.getElementById(sectionId).classList.add('active');
+            });
+        });
+        
+        async function loadAnnouncements() {
+            try {
+                const announcementsRef = collection(db, 'announcements');
+                const q = query(announcementsRef, orderBy('createdAt', 'desc'), limit(10));
+                const querySnapshot = await getDocs(q);
+                
+                const container = document.getElementById('announcementsList');
+                
+                if (querySnapshot.empty) {
+                    container.innerHTML = '<p style="color: #718096;">No announcements yet.</p>';
+                    return;
+                }
+                
+                // Filter out announcements older than today
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                
+                const announcements = querySnapshot.docs
+                    .map(doc => ({ id: doc.id, ...doc.data() }))
+                    .filter(ann => {
+                        if (!ann.createdAt) return true; // Keep announcements without dates
+                        const annDate = new Date(ann.createdAt.seconds * 1000);
+                        annDate.setHours(0, 0, 0, 0);
+                        return annDate >= today;
+                    });
+                
+                container.innerHTML = announcements.map(ann => `
+                    <div class="announcement ${ann.priority === 'important' || ann.priority === 'urgent' ? 'important' : ''}">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+                            <h4 style="margin: 0;">${ann.title}</h4>
+                            ${isAdmin ? `<button onclick="deleteAnnouncement('${ann.id}')" style="background: #f56565; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.8em;">Delete</button>` : ''}
+                        </div>
+                        <p>${ann.message}</p>
+                    </div>
+                `).join('');
+            } catch (err) {
+                document.getElementById('announcementsList').innerHTML = 
+                    `<div class="error">Error loading announcements: ${err.message}</div>`;
+            }
+        }
+        
+        async function loadAllPlayDates() {
+            try {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                
+                const playDatesRef = collection(db, 'playDates');
+                const q = query(playDatesRef, where('date', '>=', Timestamp.fromDate(today)), orderBy('date'));
+                const querySnapshot = await getDocs(q);
+                
+                const container = document.getElementById('playDatesContainer');
+                
+                if (querySnapshot.empty) {
+                    container.innerHTML = '<div class="card"><p style="color: #718096;">No upcoming play dates scheduled.</p></div>';
+                    return;
+                }
+                
+                const playDates = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                
+                let htmlContent = '';
+                
+                for (const playDate of playDates) {
+                    let courseName = 'TBD';
+                    if (playDate.courseId) {
+                        const courseDoc = await getDoc(doc(db, 'courses', playDate.courseId));
+                        if (courseDoc.exists()) {
+                            courseName = courseDoc.data().name;
+                        }
+                    }
+                    
+                    htmlContent += `
+                        <div class="card">
+                            <h3>${new Date(playDate.date.seconds * 1000).toLocaleDateString()} - ${courseName}</h3>
+                            <div style="margin-bottom: 15px;">
+                                <p><strong>Course:</strong> ${courseName}</p>
+                                <p><strong>Departure:</strong> ${playDate.departureTime || 'TBD'}</p>
+                                <p><strong>Tee Time:</strong> ${playDate.teeTime || 'TBD'}</p>
+                                ${playDate.notes ? `<p><strong>Notes:</strong> ${playDate.notes}</p>` : ''}
+                            </div>
+                            <h4>Who's Playing? - Check Box</h4>
+                            <div id="playersList_${playDate.id}" class="player-grid">
+                                <div class="loading">Loading players...</div>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                container.innerHTML = htmlContent;
+                
+                // Load availability for each play date
+                for (const playDate of playDates) {
+                    loadAvailability(playDate.id, `playersList_${playDate.id}`);
+                }
+                
+            } catch (err) {
+                document.getElementById('playDatesContainer').innerHTML = 
+                    '<div class="card"><p style="color: #718096;">Error loading play dates.</p></div>';
+            }
+        }
+        
+        async function loadAvailability(playDateId, containerId = 'playersList') {
+            try {
+                const playersRef = collection(db, 'players');
+                const playersSnapshot = await getDocs(query(playersRef, orderBy('name')));
+                const players = playersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                
+                const availabilityRef = collection(db, 'availability');
+                const q = query(availabilityRef, where('playDateId', '==', playDateId));
+                const availSnapshot = await getDocs(q);
+                
+                const availMap = {};
+                availSnapshot.docs.forEach(doc => {
+                    const data = doc.data();
+                    availMap[data.playerId] = data.isPlaying;
+                });
+                
+                const container = document.getElementById(containerId);
+                container.innerHTML = players.map(player => {
+                    const isPlaying = availMap[player.id] || false;
+                    const canToggle = isAdmin || player.id === currentUser.id;
+                    const checkboxStyle = canToggle ? '' : 'pointer-events: none; opacity: 0.5;';
+                    const labelStyle = canToggle ? 'cursor: pointer;' : 'cursor: default;';
+                    
+                    return `
+                        <div class="${isPlaying ? 'playing' : ''}" style="width: auto; min-width: 150px; padding: 4px; border: none; background: none; box-shadow: none;">
+                            <label class="checkbox-label" style="gap: 8px; flex-direction: row; ${labelStyle}">
+                                <input type="checkbox" 
+                                       ${isPlaying ? 'checked' : ''}
+                                       ${canToggle ? '' : 'disabled'}
+                                       style="${checkboxStyle} border: 2px solid #4a5568;"
+                                       onchange="window.toggleAvailability('${player.id}', '${playDateId}', this.checked, '${containerId}')">
+                                <span style="font-weight: 600; color: #2d3748; user-select: none;">${player.name}</span>
+                            </label>
+                        </div>
+                    `;
+                }).join('');
+            } catch (err) {
+                document.getElementById(containerId).innerHTML = 
+                    `<div class="error">Error loading players: ${err.message}</div>`;
+            }
+        }
+        
+        window.toggleAvailability = async function(playerId, playDateId, isPlaying, containerId = 'playersList') {
+            try {
+                // Check permissions: admin can toggle anyone, regular users only themselves
+                if (!isAdmin && playerId !== currentUser.id) {
+                    alert('You can only update your own availability');
+                    loadAvailability(playDateId, containerId); // Reload to reset checkbox
+                    return;
+                }
+                
+                const availId = `${playerId}_${playDateId}`;
+                await setDoc(doc(db, 'availability', availId), {
+                    playerId: playerId,
+                    playDateId: playDateId,
+                    isPlaying: isPlaying,
+                    updatedAt: Timestamp.now()
+                });
+                
+                loadAvailability(playDateId, containerId);
+            } catch (err) {
+                alert('Error updating availability: ' + err.message);
+            }
+        };
+        
+        async function loadStats() {
+            try {
+                const container = document.getElementById('statsTable');
+                let statsData = [];
+                
+                if (isAdmin) {
+                    // Admin sees all player stats
+                    const playersRef = collection(db, 'players');
+                    const playersSnapshot = await getDocs(query(playersRef, orderBy('name')));
+                    const players = playersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    
+                    for (const player of players) {
+                        const scoresRef = collection(db, 'scores');
+                        const q = query(scoresRef, where('playerId', '==', player.id));
+                        const scoresSnapshot = await getDocs(q);
+                        const scores = scoresSnapshot.docs.map(doc => doc.data());
+                        
+                        const rounds = scores.length;
+                        const avgGross = rounds > 0 ? 
+                            (scores.reduce((sum, s) => sum + (s.grossScore || 0), 0) / rounds).toFixed(1) : 'N/A';
+                        const avgNet = rounds > 0 ? 
+                            (scores.reduce((sum, s) => sum + (s.netScore || 0), 0) / rounds).toFixed(1) : 'N/A';
+                        
+                        statsData.push({ ...player, rounds, avgGross, avgNet });
+                    }
+                    
+                    container.innerHTML = `
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Player</th>
+                                    <th>Handicap</th>
+                                    <th>Rounds</th>
+                                    <th>Avg Gross</th>
+                                    <th>Avg Net</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${statsData.map(p => `
+                                    <tr>
+                                        <td><strong>${p.name}</strong></td>
+                                        <td>${p.handicap || 'N/A'}</td>
+                                        <td>${p.rounds}</td>
+                                        <td>${p.avgGross}</td>
+                                        <td>${p.avgNet}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                } else {
+                    // Regular player sees only their own stats
+                    const scoresRef = collection(db, 'scores');
+                    const q = query(scoresRef, where('playerId', '==', currentUser.id));
+                    const scoresSnapshot = await getDocs(q);
+                    const scores = scoresSnapshot.docs.map(doc => doc.data());
+                    
+                    const rounds = scores.length;
+                    const avgGross = rounds > 0 ? 
+                        (scores.reduce((sum, s) => sum + (s.grossScore || 0), 0) / rounds).toFixed(1) : 'N/A';
+                    const avgNet = rounds > 0 ? 
+                        (scores.reduce((sum, s) => sum + (s.netScore || 0), 0) / rounds).toFixed(1) : 'N/A';
+                    
+                    container.innerHTML = `
+                        <div style="text-align: center; margin-bottom: 20px;">
+                            <h3>Your Personal Statistics</h3>
+                        </div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Player</th>
+                                    <th>Handicap</th>
+                                    <th>Rounds Played</th>
+                                    <th>Average Gross Score</th>
+                                    <th>Average Net Score</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>${currentUser.name}</strong></td>
+                                    <td>${currentUser.handicap || 'N/A'}</td>
+                                    <td>${rounds}</td>
+                                    <td>${avgGross}</td>
+                                    <td>${avgNet}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    `;
+                }
+            } catch (err) {
+                document.getElementById('statsTable').innerHTML = 
+                    `<div class="error">Error loading stats: ${err.message}</div>`;
+            }
+        }
+        
+        async function loadCourses() {
+            try {
+                const coursesRef = collection(db, 'courses');
+                const q = query(coursesRef, orderBy('name'));
+                const querySnapshot = await getDocs(q);
+                const courses = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                
+                const select = document.getElementById('playCourse');
+                select.innerHTML = '<option value="">Select a course...</option>' + 
+                    courses.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+            } catch (err) {
+                console.error('Error loading courses:', err);
+            }
+        }
+        
+        document.getElementById('announcementForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            if (!isAdmin) {
+                alert('You must be an administrator to post announcements');
+                return;
+            }
+            
+            const result = document.getElementById('annResult');
+            
+            try {
+                await addDoc(collection(db, 'announcements'), {
+                    title: document.getElementById('annTitle').value,
+                    message: document.getElementById('annMessage').value,
+                    priority: document.getElementById('annPriority').value,
+                    createdAt: Timestamp.now()
+                });
+                
+                result.innerHTML = '<div class="success">Announcement posted successfully!</div>';
+                e.target.reset();
+                loadAnnouncements();
+                
+                setTimeout(() => result.innerHTML = '', 3000);
+            } catch (err) {
+                result.innerHTML = `<div class="error">Error: ${err.message}</div>`;
+            }
+        });
+        
+        setInterval(() => {
+            if (currentUser) {
+                loadAnnouncements();
+                loadAllPlayDates();
+                loadStats();
+            }
+        }, 30000);
+        
+        // Admin screen navigation functions
+        window.showAdminScreen = function(screenType) {
+            document.getElementById('adminTabSelection').style.display = 'none';
+            
+            if (screenType === 'postAnnouncement') {
+                document.getElementById('postAnnouncementScreen').style.display = 'block';
+                document.getElementById('schedulePlayDateScreen').style.display = 'none';
+            } else if (screenType === 'schedulePlayDate') {
+                document.getElementById('postAnnouncementScreen').style.display = 'none';
+                document.getElementById('schedulePlayDateScreen').style.display = 'block';
+            }
+        };
+        
+        window.showAdminTabSelection = function() {
+            document.getElementById('adminTabSelection').style.display = 'block';
+            document.getElementById('postAnnouncementScreen').style.display = 'none';
+            document.getElementById('schedulePlayDateScreen').style.display = 'none';
+        };
+        
+        window.deleteAnnouncement = async function(announcementId) {
+            if (!isAdmin) {
+                alert('You must be an administrator to delete announcements');
+                return;
+            }
+            
+            if (!confirm('Are you sure you want to delete this announcement? This action cannot be undone.')) {
+                return;
+            }
+            
+            try {
+                await deleteDoc(doc(db, 'announcements', announcementId));
+                loadAnnouncements();
+            } catch (err) {
+                alert('Error deleting announcement: ' + err.message);
+            }
+        };
+        
+        // Auto-cleanup old announcements (admin only)
+        async function cleanupOldAnnouncements() {
+            if (!isAdmin) return;
+            
+            try {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                
+                const announcementsRef = collection(db, 'announcements');
+                const q = query(announcementsRef, where('createdAt', '<', Timestamp.fromDate(today)));
+                const querySnapshot = await getDocs(q);
+                
+                const deletePromises = querySnapshot.docs.map(doc => deleteDoc(doc.ref));
+                await Promise.all(deletePromises);
+                
+                if (querySnapshot.docs.length > 0) {
+                    console.log(`Cleaned up ${querySnapshot.docs.length} old announcements`);
+                }
+            } catch (err) {
+                console.error('Error cleaning up announcements:', err);
+            }
+        }
+        
+        document.getElementById('playDateForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            if (!isAdmin) {
+                alert('You must be an administrator to schedule play dates');
+                return;
+            }
+            
+            const result = document.getElementById('playDateResult');
+            
+            try {
+                const dateValue = document.getElementById('playDate').value;
+                const dateObj = new Date(dateValue + 'T12:00:00');
+                
+                await addDoc(collection(db, 'playDates'), {
+                    date: Timestamp.fromDate(dateObj),
+                    courseId: document.getElementById('playCourse').value,
+                    departureTime: document.getElementById('departTime').value || null,
+                    teeTime: document.getElementById('teeTime').value || null,
+                    notes: document.getElementById('playNotes').value || null,
+                    createdAt: Timestamp.now()
+                });
+                
+                result.innerHTML = '<div class="success">Play date scheduled successfully!</div>';
+                e.target.reset();
+                loadAllPlayDates();
+                
+                setTimeout(() => result.innerHTML = '', 3000);
+            } catch (err) {
+                result.innerHTML = `<div class="error">Error: ${err.message}</div>`;
+            }
+        });
+    </script>
+</body>
+</html>

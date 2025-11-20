@@ -16,3 +16,17 @@ A few resources to get you started if this is your first Flutter project:
 For help getting started with Flutter development, view the
 [online documentation](https://docs.flutter.dev/), which offers tutorials,
 samples, guidance on mobile development, and a full API reference.
+
+Firebase browser key: AIzaSyCNbOi-C2QsZIa9H6XTzQw62BNVNx5_nkQ
+
+1. Enable Anonymous Authentication in Firebase Console
+2. Configure Firebase Security Rules for tablet access
+3. Implement Auto-Sync between Monday/Wednesday tablets
+4. Add Download/Restore functionality from Firebase
+5. Setup Real-time Sync for live updates
+
+📱 Current Tablet Setup:
+
+- Monday Tablet: Local SQLite + manual Firebase upload capability
+- Wednesday Tablet: Local SQLite + manual Firebase upload capability
+- Web Interface: Can read from Firebase (via your Netlify site)

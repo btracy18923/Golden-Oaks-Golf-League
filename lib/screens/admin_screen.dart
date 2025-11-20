@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/league.dart';
-import 'player_profile_screen.dart';
-import 'player_scores_screen.dart';
-import 'golf_course_info_screen.dart';
+import 'firebase_test_screen.dart';
 
 class AdminScreen extends StatelessWidget {
   final League? currentLeague;
@@ -38,22 +36,13 @@ class AdminScreen extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
                     _buildAdminButton(
-                      'Player Profile',
-                      Icons.person,
-                      currentLeague == League.monday ? Colors.green[300]! : currentLeague == League.wednesday ? Colors.orange[300]! : Colors.grey[200]!,
-                      () => _navigateToScreen(context, PlayerProfileScreen(league: currentLeague)),
-                    ),
-                    _buildAdminButton(
-                      'Player Scores',
-                      Icons.score,
-                      currentLeague == League.monday ? Colors.green[300]! : currentLeague == League.wednesday ? Colors.orange[300]! : Colors.grey[200]!,
-                      () => _navigateToScreen(context, PlayerScoresScreen(league: currentLeague)),
-                    ),
-                    _buildAdminButton(
-                      'Golf Course Info',
-                      Icons.golf_course,
-                      currentLeague == League.monday ? Colors.green[300]! : currentLeague == League.wednesday ? Colors.orange[300]! : Colors.grey[200]!,
-                      () => _navigateToScreen(context, GolfCourseInfoScreen(league: currentLeague)),
+                      'Firebase Upload Test',
+                      Icons.cloud_upload,
+                      Colors.blue[300]!,
+                      () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const FirebaseTestScreen()),
+                      ),
                     ),
                   ],
                 ),

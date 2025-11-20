@@ -10,7 +10,7 @@ class WednesdayGolfCourseInfoScreen extends StatefulWidget {
 class _WednesdayGolfCourseInfoScreenState extends State<WednesdayGolfCourseInfoScreen> {
   
   // Hard-coded Wednesday league values and courses
-  static const Color _leagueColor = Colors.orange;
+  static const MaterialColor _leagueColor = Colors.orange;
   static const String _leagueTitle = 'Wednesday League Golf Course Information';
   
   final List<Map<String, String>> _wednesdayCourses = [
