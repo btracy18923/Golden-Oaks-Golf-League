@@ -28,10 +28,12 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
   final TextEditingController _skatsController = TextEditingController();
   final TextEditingController _winningsController = TextEditingController();
   final TextEditingController _handicapController = TextEditingController();
+  final TextEditingController _closePinController = TextEditingController();
   final FocusNode _grossScoreFocus = FocusNode();
   final FocusNode _skatsFocus = FocusNode();
   final FocusNode _winningsFocus = FocusNode();
   final FocusNode _handicapFocus = FocusNode();
+  final FocusNode _closePinFocus = FocusNode();
   
   // Golf course selection
   String _selectedGolfCourse = 'TBD';
@@ -51,18 +53,58 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
     // Set default golf course based on league
     _selectedGolfCourse = _selectedLeague == League.monday ? 'TBD' : 'The Hideout';
     _loadPlayers();
+    
+    // Force landscape orientation for 6" phones
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _setOrientation();
+    });
+  }
+
+  void _setOrientation() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+    
+    // Detect 6" phone (typically around 400-450px width in portrait)
+    final is6InchPhone = (isLandscape && screenWidth <= 900) || (!isLandscape && screenWidth <= 600);
+    
+    if (is6InchPhone) {
+      // Force landscape orientation for 6" phones
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+    } else {
+      // Allow all orientations for larger devices
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
+        DeviceOrientation.portraitDown,
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+    }
   }
 
   @override
   void dispose() {
+    // Restore all orientations when leaving the screen
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+    
     _grossScoreController.dispose();
     _skatsController.dispose();
     _winningsController.dispose();
     _handicapController.dispose();
+    _closePinController.dispose();
     _grossScoreFocus.dispose();
     _skatsFocus.dispose();
     _winningsFocus.dispose();
     _handicapFocus.dispose();
+    _closePinFocus.dispose();
     super.dispose();
   }
 
@@ -101,13 +143,18 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
     // If the add score row is not showing, show it and populate fields
     if (!_showAddScoreRow) {
       final player = _players.firstWhere((p) => p['last'] == _selectedPlayer);
+      final screenWidth = MediaQuery.of(context).size.width;
+      final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+      final is6InchPhoneLandscape = isLandscape && screenWidth <= 900;
+      
       setState(() {
         _showAddScoreRow = true;
         // Pre-populate fields with player data
         if (_selectedLeague == League.wednesday) {
           _handicapController.text = (player['handicap'] ?? 0.0).toString();
         }
-        _winningsController.text = '0'; // Prefill winnings field with $0
+        _winningsController.text = is6InchPhoneLandscape ? '0.00' : '0'; // Prefill winnings field with appropriate format
+        _closePinController.text = is6InchPhoneLandscape ? '0.00' : '0'; // Prefill close pin field with appropriate format
       });
       return;
     }
@@ -163,6 +210,12 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
       grossScore = int.tryParse(_grossScoreController.text.trim()) ?? 0;
     }
     
+    // Get close pin winnings
+    double closePinWinnings = 0.0;
+    if (_closePinController.text.trim().isNotEmpty) {
+      closePinWinnings = double.tryParse(_closePinController.text.trim()) ?? 0.0;
+    }
+    
     // SKAT number no longer used - removed from Monday league
     
     try {
@@ -174,7 +227,7 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
         'player_id': playerId,
         'name': player['last'], // Use only Last Name
         'date_played': DateTime.now().toIso8601String().split('T')[0],
-        'close_pin_winnings': 0.0, // Always $0 for now
+        'close_pin_winnings': closePinWinnings, // From Close Pin field
       };
       
       // Add handicap and gross score for Wednesday league only
@@ -202,6 +255,7 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
       _skatsController.clear();
       _winningsController.clear();
       _handicapController.clear();
+      _closePinController.clear();
       
       // Lock the newly created row immediately and hide add score row
       setState(() {
@@ -307,6 +361,7 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
       _skatsController.clear();
       _winningsController.clear();
       _handicapController.clear();
+      _closePinController.clear();
     });
   }
 
@@ -509,9 +564,52 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
     _loadPlayers();
   }
 
-  Widget _buildPlayerList() {
+  Widget _buildPlayerList({bool isCompact = false, bool hideHeader = false}) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+    final is6InchPhonePortrait = !isLandscape && screenWidth <= 600;
+    
+    double listWidth = isCompact ? double.infinity : 200;
+    double headerFontSize = isCompact ? 12 : 16;
+    double itemFontSize = isCompact ? 11 : 14;
+    double itemPadding = isCompact ? 2 : 4;
+    
+    Widget playerListView = ListView.builder(
+      itemCount: _players.length,
+      itemBuilder: (context, index) {
+        final player = _players[index];
+        final playerName = '${player['first']} ${player['last']}';
+        final isSelected = _selectedPlayer == player['last'];
+        
+        return GestureDetector(
+          onTap: () => _selectPlayer(player['last']),
+          child: Container(
+            padding: EdgeInsets.symmetric(horizontal: isCompact ? 4 : 8, vertical: itemPadding),
+            decoration: BoxDecoration(
+              color: isSelected 
+                  ? (_selectedLeague == League.monday ? Colors.green[200] : Colors.amber[200])
+                  : Colors.transparent,
+              border: Border(bottom: BorderSide(color: Colors.grey[300]!)),
+            ),
+            child: Text(
+              playerName,
+              style: TextStyle(
+                fontSize: itemFontSize,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        );
+      },
+    );
+
+    if (hideHeader) {
+      return playerListView;
+    }
+
     return Container(
-      width: 200,
+      width: isCompact ? null : listWidth,
       decoration: BoxDecoration(
         border: Border.all(color: Colors.grey),
         color: Colors.grey[50],
@@ -519,45 +617,18 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
       child: Column(
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: EdgeInsets.all(isCompact ? 4 : 8),
             decoration: BoxDecoration(
               color: Colors.grey[200],
               border: Border(bottom: BorderSide(color: Colors.grey)),
             ),
-            child: const Text(
+            child: Text(
               'Players',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: headerFontSize),
             ),
           ),
           Expanded(
-            child: ListView.builder(
-              itemCount: _players.length,
-              itemBuilder: (context, index) {
-                final player = _players[index];
-                final playerName = '${player['first']} ${player['last']}';
-                final isSelected = _selectedPlayer == player['last'];
-                
-                return GestureDetector(
-                  onTap: () => _selectPlayer(player['last']),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: isSelected 
-                          ? (_selectedLeague == League.monday ? Colors.green[200] : Colors.amber[200])
-                          : Colors.transparent,
-                      border: Border(bottom: BorderSide(color: Colors.grey[300]!)),
-                    ),
-                    child: Text(
-                      playerName,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
+            child: playerListView,
           ),
         ],
       ),
@@ -565,150 +636,185 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
   }
 
   Widget _buildScoresTable() {
-    return Expanded(
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: SizedBox(
-          width: _selectedLeague == League.monday ? 810 : 870, // Adjust width based on league columns
-          child: Column(
-            children: [
-              // Two-line header
-              Container(
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.black),
-                  color: Colors.grey[200],
-                ),
-                child: _buildHeaders(),
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+    final is6InchPhonePortrait = !isLandscape && screenWidth <= 600;
+    final is6InchPhoneLandscape = isLandscape && screenWidth <= 900;
+    
+    // Adjust table width based on screen size
+    double tableWidth;
+    if (is6InchPhonePortrait) {
+      // Compact width for 6" phone portrait
+      tableWidth = _selectedLeague == League.monday ? 560 : 600;
+    } else if (is6InchPhoneLandscape) {
+      // Optimized width for 6" phone landscape (60% of screen width)
+      tableWidth = _selectedLeague == League.monday ? 510 : 550;
+    } else {
+      // Full width for larger screens  
+      tableWidth = _selectedLeague == League.monday ? 810 : 870;
+    }
+    
+    final isCompact = is6InchPhonePortrait || is6InchPhoneLandscape;
+    
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final availableWidth = constraints.maxWidth;
+        final finalTableWidth = availableWidth > tableWidth ? availableWidth : tableWidth;
+        
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: SizedBox(
+            width: finalTableWidth,
+            child: Column(
+              children: [
+            // Two-line header
+            Container(
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.black),
+                color: Colors.grey[200],
               ),
-              
-              // Add new score row (if player selected and add score button clicked)
-              if (_selectedPlayer != null && _showAddScoreRow) _buildAddScoreRow(),
-              
-              // Scores list
-              Expanded(
-                child: ListView.builder(
-                  itemCount: _scores.length,
-                  itemBuilder: (context, index) {
-                    final score = _scores[index];
-                    final isSelected = _selectedScoreIndex == index;
-                    final scoreId = score['id'] as int;
-                    final isUnlocked = _unlockedScoreIds.contains(scoreId);
-                    
-                    return GestureDetector(
-                      key: ValueKey(index),
-                      onTap: () {
-                        setState(() {
-                          _selectedScoreIndex = isSelected ? null : index;
-                        });
-                      },
-                      child: Container(
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                            color: isUnlocked ? Colors.orange : Colors.black, 
-                            width: isUnlocked ? 1.5 : 0.5
-                          ),
-                          color: isSelected 
-                              ? (_selectedLeague == League.monday ? Colors.green[200] : Colors.amber[200])
-                              : isUnlocked 
-                                ? Colors.orange[50]
-                                : Colors.grey[50],
+              child: _buildHeaders(isCompact: isCompact),
+            ),
+            
+            // Add new score row (if player selected and add score button clicked)
+            if (_selectedPlayer != null && _showAddScoreRow) _buildAddScoreRow(isCompact: isCompact),
+            
+            // Scores list
+            Expanded(
+              child: ListView.builder(
+                itemCount: _scores.length,
+                itemBuilder: (context, index) {
+                  final score = _scores[index];
+                  final isSelected = _selectedScoreIndex == index;
+                  final scoreId = score['id'] as int;
+                  final isUnlocked = _unlockedScoreIds.contains(scoreId);
+                  
+                  return GestureDetector(
+                    key: ValueKey(index),
+                    onTap: () {
+                      setState(() {
+                        _selectedScoreIndex = isSelected ? null : index;
+                      });
+                    },
+                    child: Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: isUnlocked ? Colors.orange : Colors.black, 
+                          width: isUnlocked ? 1.5 : 0.5
                         ),
-                        child: _buildScoreRow(score, isUnlocked),
+                        color: isSelected 
+                            ? (_selectedLeague == League.monday ? Colors.green[200] : Colors.amber[200])
+                            : isUnlocked 
+                              ? Colors.orange[50]
+                              : Colors.grey[50],
                       ),
-                    );
-                  },
-                ),
+                      child: _buildScoreRow(score, isUnlocked, isCompact: isCompact),
+                    ),
+                  );
+                },
               ),
-            ],
+            ),
+              ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
-  Widget _buildScoreRow(Map<String, dynamic> score, bool isUnlocked) {
+  Widget _buildScoreRow(Map<String, dynamic> score, bool isUnlocked, {bool isCompact = false}) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+    final is6InchPhoneLandscape = isLandscape && screenWidth <= 900;
+    
     if (_selectedLeague == League.monday) {
       // Monday League: Name, Date, Golf Course, Close Pin, SKATS, SKAT Winnings
       return Row(
         children: [
-          _buildDataCellWithIcon(score['name'] ?? '', isUnlocked, 160),
-          _buildDataCell(_formatDateToMMDDYY(score['date_played']), 90),
-          _buildDataCell(score['golf_course'] ?? '', 120),
-          _buildDataCell(_formatWinningsSimple(score['close_pin_winnings']), 100),
-          _buildDataCell('${score['skats_score'] ?? ''}', 60),
-          _buildDataCell(_formatWinningsSimple(score['skat_winnings']), 110),
+          _buildFlexDataCellWithIcon(score['name'] ?? '', isUnlocked, isCompact ? 22 : 24, isCompact: isCompact),
+          _buildFlexDataCell(_formatDateToMMDDYY(score['date_played']), isCompact ? 14 : 14, isCompact: isCompact),
+          _buildFlexDataCell(score['golf_course'] ?? '', isCompact ? 20 : 18, isCompact: isCompact),
+          _buildFlexDataCell(is6InchPhoneLandscape ? _formatWinningsWithCents(score['close_pin_winnings']) : _formatWinningsSimple(score['close_pin_winnings']), isCompact ? 16 : 15, isCompact: isCompact),
+          _buildFlexDataCell('${score['skats_score'] ?? ''}', isCompact ? 10 : 9, isCompact: isCompact),
+          _buildFlexDataCell(is6InchPhoneLandscape ? _formatWinningsWithCents(score['skat_winnings']) : _formatWinningsSimple(score['skat_winnings']), isCompact ? 18 : 20, isCompact: isCompact),
         ],
       );
     } else {
       // Wednesday League: Name, Date, Golf Course, HC, Gross, Close Pin, Single Winnings, Group Winnings
       return Row(
         children: [
-          _buildDataCellWithIcon(score['name'] ?? '', isUnlocked, 80),
-          _buildDataCell(_formatDateToMMDDYY(score['date_played']), 90),
-          _buildDataCell(score['golf_course'] ?? '', 120),
-          _buildDataCell('${score['handicap'] ?? 0}', 80),
-          _buildDataCell('${score['gross_score'] ?? ''}', 60),
-          _buildDataCell(_formatWinningsSimple(score['close_pin_winnings']), 100),
-          _buildDataCell(_formatWinningsSimple(score['single_winnings']), 100),
-          _buildDataCell(_formatWinningsSimple(score['group_winnings']), 100),
+          _buildFlexDataCellWithIcon(score['name'] ?? '', isUnlocked, isCompact ? 12 : 12, isCompact: isCompact),
+          _buildFlexDataCell(_formatDateToMMDDYY(score['date_played']), isCompact ? 14 : 14, isCompact: isCompact),
+          _buildFlexDataCell(score['golf_course'] ?? '', isCompact ? 18 : 18, isCompact: isCompact),
+          _buildFlexDataCell('${score['handicap'] ?? 0}', isCompact ? 12 : 12, isCompact: isCompact),
+          _buildFlexDataCell('${score['gross_score'] ?? ''}', isCompact ? 10 : 9, isCompact: isCompact),
+          _buildFlexDataCell(_formatWinningsSimple(score['close_pin_winnings']), isCompact ? 16 : 15, isCompact: isCompact),
+          _buildFlexDataCell(_formatWinningsSimple(score['single_winnings']), isCompact ? 16 : 15, isCompact: isCompact),
+          _buildFlexDataCell(_formatWinningsSimple(score['group_winnings']), isCompact ? 16 : 15, isCompact: isCompact),
         ],
       );
     }
   }
 
-  Widget _buildAddScoreRow() {
+  Widget _buildAddScoreRow({bool isCompact = false}) {
     return Container(
       decoration: BoxDecoration(
         border: Border.all(color: Colors.black, width: 0.5),
         color: _selectedLeague == League.monday ? Colors.green[100] : Colors.amber[100],
       ),
-      child: _buildAddScoreRowContent(),
+      child: _buildAddScoreRowContent(isCompact: isCompact),
     );
   }
 
-  Widget _buildAddScoreRowContent() {
+  Widget _buildAddScoreRowContent({bool isCompact = false}) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+    final is6InchPhoneLandscape = isLandscape && screenWidth <= 900;
+    
     if (_selectedLeague == League.monday) {
       // Monday League: Name, Date, Golf Course, Close Pin, SKATS, SKAT Winnings
       return Row(
         children: [
-          _buildDataCell(_selectedPlayer ?? '', 160),
-          _buildDataCell(_getCurrentDateMMDDYY(), 90),
-          _buildGolfCourseCell(), // Golf Course - editable dropdown for Monday
-          _buildDataCell('\$0.00', 100), // Close pin winnings - always $0
-          _buildEditableCellWithBorder(_skatsController, _skatsFocus, 60, TextInputType.number),
-          _buildEditableCellWithBorder(_winningsController, _winningsFocus, 110, TextInputType.number), // SKAT Winnings
+          _buildFlexDataCell(_selectedPlayer ?? '', isCompact ? 22 : 24, isCompact: isCompact),
+          _buildFlexDataCell(_getCurrentDateMMDDYY(), isCompact ? 14 : 14, isCompact: isCompact),
+          _buildFlexGolfCourseCell(isCompact: isCompact), // Golf Course - editable dropdown for Monday
+          is6InchPhoneLandscape 
+            ? _buildFlexEditableCellWithBorder(_closePinController, _closePinFocus, isCompact ? 16 : 15, TextInputType.number, isCompact: isCompact) // Close Pin - editable for 6" landscape
+            : _buildFlexDataCell('\$0.00', isCompact ? 16 : 15, isCompact: isCompact), // Close pin winnings - static for other sizes
+          _buildFlexEditableCellWithBorder(_skatsController, _skatsFocus, isCompact ? 10 : 9, TextInputType.number, isCompact: isCompact),
+          _buildFlexEditableCellWithBorder(_winningsController, _winningsFocus, isCompact ? 18 : 20, TextInputType.number, isCompact: isCompact), // SKAT Winnings
         ],
       );
     } else {
       // Wednesday League: Name, Date, Golf Course, HC, Gross, Close Pin, Single Winnings, Group Winnings
       return Row(
         children: [
-          _buildDataCell(_selectedPlayer ?? '', 80),
-          _buildDataCell(_getCurrentDateMMDDYY(), 90),
-          _buildDataCell('The Hideout', 120), // Golf Course - always The Hideout for Wednesday
-          _buildEditableCellWithBorder(_handicapController, _handicapFocus, 80, TextInputType.number), // HC editable
-          _buildEditableCellWithBorder(_grossScoreController, _grossScoreFocus, 60, TextInputType.number), // Gross editable
-          _buildDataCell('\$0.00', 100), // Close pin winnings - always $0
-          _buildEditableCellWithBorder(_winningsController, _winningsFocus, 100, TextInputType.number), // Single Winnings
-          _buildDataCell('\$0.00', 100), // Group winnings - always $0
+          _buildFlexDataCell(_selectedPlayer ?? '', isCompact ? 12 : 12, isCompact: isCompact),
+          _buildFlexDataCell(_getCurrentDateMMDDYY(), isCompact ? 14 : 14, isCompact: isCompact),
+          _buildFlexDataCell('The Hideout', isCompact ? 18 : 18, isCompact: isCompact), // Golf Course - always The Hideout for Wednesday
+          _buildFlexEditableCellWithBorder(_handicapController, _handicapFocus, isCompact ? 12 : 12, TextInputType.number, isCompact: isCompact), // HC editable
+          _buildFlexEditableCellWithBorder(_grossScoreController, _grossScoreFocus, isCompact ? 10 : 9, TextInputType.number, isCompact: isCompact), // Gross editable
+          _buildFlexDataCell('\$0.00', isCompact ? 16 : 15, isCompact: isCompact), // Close pin winnings - always $0
+          _buildFlexEditableCellWithBorder(_winningsController, _winningsFocus, isCompact ? 16 : 15, TextInputType.number, isCompact: isCompact), // Single Winnings
+          _buildFlexDataCell('\$0.00', isCompact ? 16 : 15, isCompact: isCompact), // Group winnings - always $0
         ],
       );
     }
   }
 
-  Widget _buildGolfCourseCell() {
+  Widget _buildGolfCourseCell({bool isCompact = false}) {
     // Wednesday League always uses "The Hideout", Monday League has dropdown
     if (_selectedLeague == League.wednesday) {
-      return _buildDataCell('The Hideout', 120);
+      return _buildDataCell('The Hideout', isCompact ? 100 : 120, isCompact: isCompact);
     } else {
-      return _buildGolfCourseDropdown();
+      return _buildGolfCourseDropdown(isCompact: isCompact);
     }
   }
 
-  Widget _buildGolfCourseDropdown() {
+  Widget _buildGolfCourseDropdown({bool isCompact = false}) {
     return Container(
-      width: 120,
-      height: 30,
+      width: isCompact ? 100 : 120,
+      height: isCompact ? 25 : 30,
       decoration: BoxDecoration(
         border: Border.all(color: Colors.black, width: 0.5),
       ),
@@ -720,16 +826,16 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
           contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 0),
           isDense: true,
         ),
-        style: const TextStyle(fontSize: 12, color: Colors.black),
+        style: TextStyle(fontSize: isCompact ? 10 : 12, color: Colors.black),
         items: _golfCourses.map((course) {
           return DropdownMenuItem(
             value: course,
             child: Container(
-              width: 100,
+              width: isCompact ? 80 : 100,
               alignment: Alignment.center,
               child: Text(
                 course, 
-                style: const TextStyle(fontSize: 12),
+                style: TextStyle(fontSize: isCompact ? 10 : 12),
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
               ),
@@ -770,7 +876,7 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
     );
   }
 
-  Widget _buildEditableCellWithBorder(TextEditingController controller, FocusNode focusNode, double width, TextInputType inputType) {
+  Widget _buildEditableCellWithBorder(TextEditingController controller, FocusNode focusNode, double width, TextInputType inputType, {bool isCompact = false}) {
     List<TextInputFormatter>? formatters;
     String? prefixText;
     
@@ -800,7 +906,7 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
     
     return Container(
       width: width,
-      height: 30,
+      height: isCompact ? 25 : 30,
       decoration: BoxDecoration(
         border: Border.all(color: Colors.black, width: 0.5),
       ),
@@ -815,9 +921,9 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
             contentPadding: EdgeInsets.zero,
             isDense: true,
             prefixText: prefixText,
-            prefixStyle: const TextStyle(fontSize: 12),
+            prefixStyle: TextStyle(fontSize: isCompact ? 10 : 12),
           ),
-          style: const TextStyle(fontSize: 12),
+          style: TextStyle(fontSize: isCompact ? 10 : 12),
           textAlign: TextAlign.center,
           textAlignVertical: TextAlignVertical.center,
           onFieldSubmitted: (_) {
@@ -828,7 +934,11 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
     );
   }
 
-  Widget _buildHeaders() {
+  Widget _buildHeaders({bool isCompact = false}) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+    final is6InchPhoneLandscape = isLandscape && screenWidth <= 900;
+    
     if (_selectedLeague == League.monday) {
       // Monday League: Name, Date, Golf Course, Close Pin, SKATS, SKAT Winnings
       return Column(
@@ -836,12 +946,12 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
           // First header line
           Row(
             children: [
-              _buildHeaderCell('Name', 160),
-              _buildHeaderCell('Date', 90),
-              _buildHeaderCell('Golf Course', 120),
-              _buildHeaderCell('Close Pin', 100),
-              _buildHeaderCell('SKATS', 60),
-              _buildHeaderCell('SKAT\nWinnings', 110),
+              _buildFlexHeaderCell('Name', isCompact ? 22 : 24, isCompact: isCompact),
+              _buildFlexHeaderCell('Date', isCompact ? 14 : 14, isCompact: isCompact),
+              _buildFlexHeaderCell('Golf Course', isCompact ? 20 : 18, isCompact: isCompact),
+              _buildFlexHeaderCell(is6InchPhoneLandscape ? 'Close Pin\nWinnings' : 'Close Pin', isCompact ? 16 : 15, isCompact: isCompact),
+              _buildFlexHeaderCell('SKATS', isCompact ? 10 : 9, isCompact: isCompact),
+              _buildFlexHeaderCell('SKAT\nWinnings', isCompact ? 18 : 20, isCompact: isCompact),
             ],
           ),
         ],
@@ -853,14 +963,14 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
           // First header line
           Row(
             children: [
-              _buildHeaderCell('Name', 80),
-              _buildHeaderCell('Date', 90),
-              _buildHeaderCell('Golf Course', 120),
-              _buildHeaderCell('HC', 80),
-              _buildHeaderCell('Gross', 60),
-              _buildHeaderCell('Close Pin', 100),
-              _buildHeaderCell('Single\nWinnings', 100),
-              _buildHeaderCell('Group\nWinnings', 100),
+              _buildFlexHeaderCell('Name', isCompact ? 12 : 12, isCompact: isCompact),
+              _buildFlexHeaderCell('Date', isCompact ? 14 : 14, isCompact: isCompact),
+              _buildFlexHeaderCell('Golf Course', isCompact ? 18 : 18, isCompact: isCompact),
+              _buildFlexHeaderCell('HC', isCompact ? 12 : 12, isCompact: isCompact),
+              _buildFlexHeaderCell('Gross', isCompact ? 10 : 9, isCompact: isCompact),
+              _buildFlexHeaderCell(is6InchPhoneLandscape ? 'Close Pin\nWinnings' : 'Close Pin', isCompact ? 16 : 15, isCompact: isCompact),
+              _buildFlexHeaderCell('Single\nWinnings', isCompact ? 16 : 15, isCompact: isCompact),
+              _buildFlexHeaderCell('Group\nWinnings', isCompact ? 16 : 15, isCompact: isCompact),
             ],
           ),
         ],
@@ -868,17 +978,42 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
     }
   }
 
-  Widget _buildHeaderCell(String text, double width) {
+  Widget _buildFlexHeaderCell(String text, int flex, {bool isCompact = false}) {
+    return Expanded(
+      flex: flex,
+      child: Container(
+        height: isCompact ? 40 : 50, // Reduced height for compact mode
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.black, width: 0.5),
+        ),
+        child: Center(
+          child: Text(
+            text,
+            style: TextStyle(
+              fontWeight: FontWeight.bold, 
+              fontSize: isCompact ? 10 : 12,
+              height: 1.0, // Reduce line height to tighten spacing
+            ),
+            textAlign: TextAlign.center,
+            maxLines: 2, // Allow text to wrap to 2 lines
+            overflow: TextOverflow.visible,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeaderCell(String text, double width, {bool isCompact = false}) {
     return Container(
       width: width,
-      height: 50, // Increased height to accommodate multi-word titles
+      height: isCompact ? 40 : 50, // Reduced height for compact mode
       decoration: BoxDecoration(
         border: Border.all(color: Colors.black, width: 0.5),
       ),
       child: Center(
         child: Text(
           text,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: isCompact ? 10 : 12),
           textAlign: TextAlign.center,
           maxLines: 2, // Allow text to wrap to 2 lines
           overflow: TextOverflow.visible,
@@ -887,49 +1022,224 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
     );
   }
 
-  Widget _buildDataCell(String text, double width) {
+  Widget _buildFlexDataCell(String text, int flex, {bool isCompact = false}) {
+    return Expanded(
+      flex: flex,
+      child: Container(
+        height: isCompact ? 25 : 30,
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.black, width: 0.5),
+        ),
+        child: Center(
+          child: Text(
+            text,
+            style: TextStyle(fontSize: isCompact ? 10 : 12),
+            textAlign: TextAlign.center,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDataCell(String text, double width, {bool isCompact = false}) {
     return Container(
       width: width,
-      height: 30,
+      height: isCompact ? 25 : 30,
       decoration: BoxDecoration(
         border: Border.all(color: Colors.black, width: 0.5),
       ),
       child: Center(
         child: Text(
           text,
-          style: const TextStyle(fontSize: 12),
+          style: TextStyle(fontSize: isCompact ? 10 : 12),
           textAlign: TextAlign.center,
+          overflow: TextOverflow.ellipsis,
         ),
       ),
     );
   }
 
-  Widget _buildDataCellWithIcon(String text, bool isUnlocked, double width) {
+  Widget _buildFlexDataCellWithIcon(String text, bool isUnlocked, int flex, {bool isCompact = false}) {
+    return Expanded(
+      flex: flex,
+      child: Container(
+        height: isCompact ? 25 : 30,
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.black, width: 0.5),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: isCompact ? 15 : 20,
+              child: Icon(
+                isUnlocked ? Icons.lock_open : Icons.lock,
+                size: isCompact ? 10 : 12,
+                color: isUnlocked ? Colors.orange : Colors.grey[600],
+              ),
+            ),
+            Expanded(
+              child: Text(
+                text,
+                style: TextStyle(fontSize: isCompact ? 10 : 12),
+                textAlign: TextAlign.center,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDataCellWithIcon(String text, bool isUnlocked, double width, {bool isCompact = false}) {
     return Container(
       width: width,
-      height: 30,
+      height: isCompact ? 25 : 30,
       decoration: BoxDecoration(
         border: Border.all(color: Colors.black, width: 0.5),
       ),
       child: Row(
         children: [
           Container(
-            width: 20,
+            width: isCompact ? 15 : 20,
             child: Icon(
               isUnlocked ? Icons.lock_open : Icons.lock,
-              size: 12,
+              size: isCompact ? 10 : 12,
               color: isUnlocked ? Colors.orange : Colors.grey[600],
             ),
           ),
           Expanded(
             child: Text(
               text,
-              style: const TextStyle(fontSize: 12),
+              style: TextStyle(fontSize: isCompact ? 10 : 12),
               textAlign: TextAlign.center,
               overflow: TextOverflow.ellipsis,
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildFlexGolfCourseCell({bool isCompact = false}) {
+    // Wednesday League always uses "The Hideout", Monday League has dropdown
+    if (_selectedLeague == League.wednesday) {
+      return _buildFlexDataCell('The Hideout', isCompact ? 18 : 18, isCompact: isCompact);
+    } else {
+      return _buildFlexGolfCourseDropdown(isCompact: isCompact);
+    }
+  }
+
+  Widget _buildFlexGolfCourseDropdown({bool isCompact = false}) {
+    return Expanded(
+      flex: isCompact ? 20 : 18,
+      child: Container(
+        height: isCompact ? 25 : 30,
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.black, width: 0.5),
+        ),
+        child: DropdownButtonFormField<String>(
+          value: _selectedGolfCourse,
+          isExpanded: true,
+          decoration: const InputDecoration(
+            border: InputBorder.none,
+            contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+            isDense: true,
+          ),
+          style: TextStyle(fontSize: isCompact ? 10 : 12, color: Colors.black),
+          items: _golfCourses.map((course) {
+            return DropdownMenuItem(
+              value: course,
+              child: Container(
+                alignment: Alignment.center,
+                child: Text(
+                  course, 
+                  style: TextStyle(fontSize: isCompact ? 10 : 12),
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            );
+          }).toList(),
+          onChanged: (value) {
+            setState(() {
+              _selectedGolfCourse = value!;
+            });
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFlexEditableCellWithBorder(TextEditingController controller, FocusNode focusNode, int flex, TextInputType inputType, {bool isCompact = false}) {
+    List<TextInputFormatter>? formatters;
+    String? prefixText;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+    final is6InchPhoneLandscape = isLandscape && screenWidth <= 900;
+    
+    if (inputType == TextInputType.number) {
+      if (controller == _grossScoreController || controller == _skatsController) {
+        formatters = [
+          FilteringTextInputFormatter.digitsOnly,
+          LengthLimitingTextInputFormatter(2),
+        ];
+      } else if (controller == _handicapController) {
+        formatters = [
+          FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+          LengthLimitingTextInputFormatter(5), // Allow decimal handicaps like 12.5
+        ];
+      } else if (controller == _winningsController || controller == _closePinController) {
+        // Currency formatting for winnings fields
+        if (is6InchPhoneLandscape) {
+          // Allow decimal input for 6" landscape mode (e.g., 5.00, 10.50)
+          formatters = [
+            FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+            LengthLimitingTextInputFormatter(6), // Allow up to 999.99
+          ];
+        } else {
+          // Digits only for other screen sizes
+          formatters = [
+            FilteringTextInputFormatter.digitsOnly,
+          ];
+        }
+        prefixText = '\$';
+      } else {
+        formatters = [
+          FilteringTextInputFormatter.digitsOnly,
+        ];
+      }
+    }
+    
+    return Expanded(
+      flex: flex,
+      child: Container(
+        height: isCompact ? 25 : 30,
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.black, width: 0.5),
+        ),
+        child: Center(
+          child: TextFormField(
+            controller: controller,
+            focusNode: focusNode,
+            keyboardType: inputType,
+            inputFormatters: formatters,
+            decoration: InputDecoration(
+              border: InputBorder.none,
+              contentPadding: EdgeInsets.zero,
+              isDense: true,
+              prefixText: prefixText,
+              prefixStyle: TextStyle(fontSize: isCompact ? 10 : 12),
+            ),
+            style: TextStyle(fontSize: isCompact ? 10 : 12),
+            textAlign: TextAlign.center,
+            textAlignVertical: TextAlignVertical.center,
+            onFieldSubmitted: (_) {
+              // Handle field submission focus changes if needed
+            },
+          ),
+        ),
       ),
     );
   }
@@ -944,6 +1254,17 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
     // Convert to whole dollar amount (no cents)
     int amount = winnings is int ? winnings : (winnings as double).round();
     return '\$${amount}';
+  }
+
+  String _formatWinningsWithCents(dynamic winnings) {
+    // Format with cents for 6" phone landscape mode
+    if (winnings == null || winnings == 0) {
+      return '\$0.00';
+    }
+    
+    // Convert to dollar amount with cents
+    double amount = winnings is int ? winnings.toDouble() : (winnings as double);
+    return '\$${amount.toStringAsFixed(2)}';
   }
 
   String _formatDateToMMDDYY(String? dateString) {
@@ -975,6 +1296,18 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
   }
 
   Widget _buildActionButtons() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+    final is6InchPhonePortrait = !isLandscape && screenWidth <= 600;
+    
+    if (is6InchPhonePortrait) {
+      return _buildCompactActionButtons();
+    } else {
+      return _buildStandardActionButtons();
+    }
+  }
+
+  Widget _buildStandardActionButtons() {
     return Container(
       padding: const EdgeInsets.all(10),
       child: Column(
@@ -1044,48 +1377,434 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
     );
   }
 
+  Widget _buildCompactActionButtons() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Column(
+        children: [
+          // First row: 3 buttons
+          Expanded(
+            child: Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 2),
+                    child: ElevatedButton(
+                      onPressed: _addScore,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.lightGreen,
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                      ),
+                      child: const Text('Add', style: TextStyle(fontSize: 9)),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 2),
+                    child: ElevatedButton(
+                      onPressed: _selectedScoreIndex != null ? _editScore : null,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.lightBlue,
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                      ),
+                      child: const Text('Edit', style: TextStyle(fontSize: 9)),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 2),
+                    child: ElevatedButton(
+                      onPressed: _selectedScoreIndex != null ? () => _deleteScore(_scores[_selectedScoreIndex!]) : null,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red[300],
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                      ),
+                      child: const Text('Delete', style: TextStyle(fontSize: 9)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          const SizedBox(height: 3),
+          
+          // Second row: 3 buttons
+          Expanded(
+            child: Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 2),
+                    child: ElevatedButton(
+                      onPressed: _clearSelection,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.amber[300],
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                      ),
+                      child: const Text('Clear', style: TextStyle(fontSize: 9)),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 2),
+                    child: ElevatedButton(
+                      onPressed: _clearAllScoreData,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red[600],
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                      ),
+                      child: const Text('Clear All', style: TextStyle(fontSize: 9)),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 2),
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red[300],
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                      ),
+                      child: const Text('Return', style: TextStyle(fontSize: 9)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+    final is6InchPhonePortrait = !isLandscape && screenWidth <= 600;
+    final is6InchPhoneLandscape = isLandscape && screenWidth <= 900;
+    
     return Scaffold(
       appBar: AppBar(
         title: Text('Player Scores - ${_getLeagueDisplayName()} League'),
         backgroundColor: _selectedLeague == League.monday ? Colors.green[700] : Colors.orange[700],
         foregroundColor: Colors.white,
       ),
-      body: Container(
-        color: Colors.grey[100],
-        child: Column(
+      resizeToAvoidBottomInset: !is6InchPhonePortrait,
+      body: SafeArea(
+        child: Container(
+          color: Colors.grey[100],
+          padding: EdgeInsets.all(is6InchPhonePortrait ? 5 : (is6InchPhoneLandscape ? 10 : 20)),
+          child: (is6InchPhonePortrait || is6InchPhoneLandscape) 
+            ? _build6InchPhoneLayout()
+            : _buildDesktopLayout(),
+        ),
+      ),
+    );
+  }
+
+  Widget _build6InchPhoneLayout() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+    
+    if (isLandscape) {
+      // 6" phone landscape - use 2-column layout similar to tablets
+      return _buildTabletStyleLayout();
+    } else {
+      // 6" phone portrait - use mobile layout (though this should be rare due to orientation lock)
+      return _buildMobileLayout();
+    }
+  }
+
+  Widget _buildTabletStyleLayout() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final footerHeight = 40.0; // Single row footer height
+        final mainContentHeight = constraints.maxHeight - footerHeight - 5; // Content height minus footer and spacing
+        
+        return Column(
           children: [
-            // Title
-            Container(
-              padding: const EdgeInsets.all(20),
-              child: const Text(
-                'Player Scores',
-                style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-              ),
-            ),
-            
-            // Main content
-            Expanded(
+            // Main content area - 2 columns
+            SizedBox(
+              height: mainContentHeight,
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Left sidebar - Player list (15%)
-                  _buildPlayerList(),
+                  // Left column - Player list (20% of width)
+                  Expanded(
+                    flex: 20,
+                    child: Container(
+                      height: mainContentHeight,
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey, width: 1),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Column(
+                        children: [
+                          // Player list header
+                          Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[200],
+                              border: Border(bottom: BorderSide(color: Colors.grey)),
+                            ),
+                            child: const Text(
+                              'Players',
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                            ),
+                          ),
+                          // Player list content
+                          Expanded(
+                            child: _buildPlayerList(isCompact: true, hideHeader: true),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                   
-                  const SizedBox(width: 20),
+                  const SizedBox(width: 10),
                   
-                  // Right side - Scores table (85%)
-                  _buildScoresTable(),
+                  // Right column - Scores Table (80% of width)
+                  Expanded(
+                    flex: 80,
+                    child: Container(
+                      height: mainContentHeight,
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey, width: 1),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: _buildScoresTable(),
+                    ),
+                  ),
                 ],
               ),
             ),
             
-            // Action buttons
-            _buildActionButtons(),
+            const SizedBox(height: 2),
+            
+            // Button footer at bottom
+            SizedBox(
+              height: footerHeight,
+              child: _buildButtonFooterLandscape(),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildButtonFooterLandscape() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 2),
+      child: Row(
+        children: [
+          Expanded(
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 1),
+              child: ElevatedButton(
+                onPressed: _addScore,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.lightGreen,
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                ),
+                child: const Text('Add', style: TextStyle(fontSize: 9)),
+              ),
+            ),
+          ),
+          Expanded(
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 1),
+              child: ElevatedButton(
+                onPressed: _selectedScoreIndex != null ? () => _deleteScore(_scores[_selectedScoreIndex!]) : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red[300],
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                ),
+                child: const Text('Delete', style: TextStyle(fontSize: 9)),
+              ),
+            ),
+          ),
+          Expanded(
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 1),
+              child: ElevatedButton(
+                onPressed: _clearSelection,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.amber[300],
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                ),
+                child: const Text('Clear', style: TextStyle(fontSize: 9)),
+              ),
+            ),
+          ),
+          Expanded(
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 1),
+              child: ElevatedButton(
+                onPressed: _clearAllScoreData,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red[600],
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                ),
+                child: const Text('Clear All', style: TextStyle(fontSize: 9)),
+              ),
+            ),
+          ),
+          Expanded(
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 1),
+              child: ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red[300],
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                ),
+                child: const Text('Return', style: TextStyle(fontSize: 9)),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLandscapeActionButtons() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 2),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _buildCompactButton('Add', Colors.lightGreen, _addScore),
+            const SizedBox(width: 4),
+            _buildCompactButton('Edit', Colors.lightBlue, _selectedScoreIndex != null ? _editScore : null),
+            const SizedBox(width: 4),
+            _buildCompactButton('Delete', Colors.red[300]!, _selectedScoreIndex != null ? () => _deleteScore(_scores[_selectedScoreIndex!]) : null),
+            const SizedBox(width: 4),
+            _buildCompactButton('Clear', Colors.amber[300]!, _clearSelection),
+            const SizedBox(width: 4),
+            _buildCompactButton('Clear All', Colors.red[600]!, _clearAllScoreData),
+            const SizedBox(width: 4),
+            _buildCompactButton('Return', Colors.red[300]!, () => Navigator.of(context).popUntil((route) => route.isFirst)),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildCompactButton(String text, Color color, VoidCallback? onPressed) {
+    return SizedBox(
+      height: 35,
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: color,
+          foregroundColor: text == 'Clear All' ? Colors.white : Colors.black,
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        ),
+        child: Text(text, style: const TextStyle(fontSize: 10)),
+      ),
+    );
+  }
+
+  Widget _buildDesktopLayout() {
+    return Column(
+      children: [
+        // Title
+        Container(
+          padding: const EdgeInsets.all(20),
+          child: const Text(
+            'Player Scores',
+            style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+          ),
+        ),
+        
+        // Main content
+        Expanded(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Left sidebar - Player list (15%)
+              _buildPlayerList(),
+              
+              const SizedBox(width: 20),
+              
+              // Right side - Scores table (85%)
+              _buildScoresTable(),
+            ],
+          ),
+        ),
+        
+        // Action buttons
+        _buildActionButtons(),
+      ],
+    );
+  }
+
+  Widget _buildMobileLayout() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final titleHeight = 30.0;
+        final playerListHeight = constraints.maxHeight * 0.22; // Reduced from 0.25
+        final buttonHeight = 75.0; // Reduced from 80.0
+        final spacing = 25.0; // Total spacing (3 gaps of ~8px each)
+        final remainingHeight = constraints.maxHeight - titleHeight - playerListHeight - buttonHeight - spacing;
+        
+        return Column(
+          children: [
+            // Compact title
+            SizedBox(
+              height: titleHeight,
+              child: const Center(
+                child: Text(
+                  'Player Scores',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold), // Reduced font size
+                ),
+              ),
+            ),
+            
+            const SizedBox(height: 8),
+            
+            // Player list - compact at top
+            SizedBox(
+              height: playerListHeight,
+              child: _buildPlayerList(isCompact: true),
+            ),
+            
+            const SizedBox(height: 8),
+            
+            // Scores table - main content (using Expanded to take remaining space)
+            Expanded(
+              child: _buildScoresTable(),
+            ),
+            
+            const SizedBox(height: 8),
+            
+            // Compact action buttons at bottom
+            SizedBox(
+              height: buttonHeight,
+              child: _buildActionButtons(),
+            ),
+          ],
+        );
+      },
     );
   }
 
