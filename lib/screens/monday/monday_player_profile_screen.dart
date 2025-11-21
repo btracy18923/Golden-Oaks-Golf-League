@@ -326,19 +326,12 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
                     focusNode: focusNode,
                     keyboardType: keyboardType,
                     inputFormatters: inputFormatters,
-                    readOnly: is6InchPhoneLandscape && (keyboardType == TextInputType.number || keyboardType == const TextInputType.numberWithOptions(decimal: false)), // Disable system keyboard for numeric fields in landscape
-                    showCursor: true,
                     decoration: const InputDecoration(
                       border: OutlineInputBorder(),
                       isDense: true,
                       contentPadding: EdgeInsets.only(left: 6, right: 6, top: 2, bottom: 10),
                     ),
                     style: const TextStyle(fontSize: 11, height: 1.0),
-                    onTap: () {
-                      if (is6InchPhoneLandscape && (keyboardType == TextInputType.number || keyboardType == const TextInputType.numberWithOptions(decimal: false))) {
-                        _showCustomKeypad(controller);
-                      }
-                    },
                     onFieldSubmitted: (_) {
                       if (_selectedPlayer != null) {
                         _updatePlayer();
@@ -697,7 +690,7 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
         backgroundColor: _selectedLeague == League.monday ? Colors.green[700] : Colors.orange[700],
         foregroundColor: Colors.white,
       ),
-      resizeToAvoidBottomInset: !(is6InchPhoneLandscape || is6InchPhonePortrait), // Disable resize for 6" phones to prevent keyboard overlap
+      resizeToAvoidBottomInset: !is6InchPhonePortrait, // Disable resize for 6" phones portrait to prevent keyboard overlap
       body: SafeArea(
         child: Stack(
           children: [
@@ -708,187 +701,12 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
                 ? _buildTabletLayout()
                 : _buildMobileLayout(),
             ),
-            if (is6InchPhoneLandscape && _showKeypad)
-              _buildConstrainedKeyboard(context),
           ],
         ),
       ),
     );
   }
   
-  TextEditingController? _activeController;
-  bool _showKeypad = false;
-
-  void _showCustomKeypad(TextEditingController controller) {
-    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
-    final screenWidth = MediaQuery.of(context).size.width;
-    final is6InchPhoneLandscape = isLandscape && screenWidth <= 900;
-    
-    // Only show keypad for 6" phone landscape mode, not portrait
-    if (is6InchPhoneLandscape) {
-      setState(() {
-        _activeController = controller;
-        _showKeypad = true;
-      });
-    }
-  }
-
-  void _hideKeypad() {
-    setState(() {
-      _showKeypad = false;
-      _activeController = null;
-    });
-  }
-
-  void _onKeypadInput(String value) {
-    if (_activeController != null) {
-      if (value == 'backspace') {
-        if (_activeController!.text.isNotEmpty) {
-          _activeController!.text = _activeController!.text.substring(0, _activeController!.text.length - 1);
-        }
-      } else if (value == 'enter') {
-        // Hide keypad and update player if one is selected
-        _hideKeypad();
-        if (_selectedPlayer != null) {
-          _updatePlayer();
-        }
-      } else {
-        _activeController!.text += value;
-      }
-    }
-  }
-
-  Widget _buildConstrainedKeyboard(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    // Use the exact same height calculation as the 6" landscape layout
-    final footerHeight = 40.0;
-    final availableHeight = MediaQuery.of(context).size.height - 
-                            AppBar().preferredSize.height - 
-                            MediaQuery.of(context).padding.top - 
-                            20; // Account for overall padding
-    final mainContentHeight = availableHeight - footerHeight - 5;
-    
-    return Positioned(
-      bottom: 64, // Above button footer (40px footer + 2px gap + 22px offset)
-      right: 0,
-      width: screenWidth * 0.6, // Match Player Table width (60%)
-      height: mainContentHeight, // Match Player Table container height exactly
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.grey[100],
-          border: Border.all(color: Colors.grey),
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(8),
-            topRight: Radius.circular(8),
-          ),
-        ),
-        child: Column(
-          children: [
-            // Header
-            Container(
-              height: 40,
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(8),
-                  topRight: Radius.circular(8),
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Padding(
-                    padding: EdgeInsets.all(8.0),
-                    child: Text('Numeric Keypad', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close, size: 18),
-                    onPressed: _hideKeypad,
-                  ),
-                ],
-              ),
-            ),
-            // Keypad
-            Expanded(
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                child: Column(
-                  children: [
-                    Expanded(
-                      child: Row(
-                        children: [
-                          _buildKeypadButton('1'),
-                          _buildKeypadButton('2'),
-                          _buildKeypadButton('3'),
-                        ],
-                      ),
-                    ),
-                    Expanded(
-                      child: Row(
-                        children: [
-                          _buildKeypadButton('4'),
-                          _buildKeypadButton('5'),
-                          _buildKeypadButton('6'),
-                        ],
-                      ),
-                    ),
-                    Expanded(
-                      child: Row(
-                        children: [
-                          _buildKeypadButton('7'),
-                          _buildKeypadButton('8'),
-                          _buildKeypadButton('9'),
-                        ],
-                      ),
-                    ),
-                    Expanded(
-                      child: Row(
-                        children: [
-                          _buildKeypadButton('backspace'),
-                          _buildKeypadButton('0'),
-                          _buildKeypadButton('enter'),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildKeypadButton(String value) {
-    IconData? icon;
-    String displayText = value;
-    
-    if (value == 'backspace') {
-      icon = Icons.backspace;
-      displayText = '';
-    } else if (value == 'enter') {
-      icon = Icons.check;
-      displayText = '';
-    }
-
-    return Expanded(
-      child: Container(
-        margin: const EdgeInsets.all(2),
-        child: ElevatedButton(
-          onPressed: () => _onKeypadInput(value),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.white,
-            foregroundColor: Colors.black,
-            padding: const EdgeInsets.all(8),
-          ),
-          child: icon != null 
-            ? Icon(icon, size: 16)
-            : Text(displayText, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-        ),
-      ),
-    );
-  }
   
   Widget _buildTabletLayout() {
     return LayoutBuilder(
@@ -1212,13 +1030,13 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
                   child: Container(
                     margin: const EdgeInsets.symmetric(horizontal: 2),
                     child: ElevatedButton(
-                      onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
+                      onPressed: () => Navigator.of(context).pop(),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.red[300],
                         foregroundColor: Colors.black,
                         padding: const EdgeInsets.symmetric(vertical: 4),
                       ),
-                      child: const Text('Return to Main', style: TextStyle(fontSize: 10)),
+                      child: const Text('Return', style: TextStyle(fontSize: 10)),
                     ),
                   ),
                 ),
@@ -1229,6 +1047,7 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
       ),
     );
   }
+  
   
   Widget _buildButtonFooterLandscape() {
     return Container(
@@ -1246,20 +1065,6 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 8),
                 ),
                 child: const Text('Add', style: TextStyle(fontSize: 9)),
-              ),
-            ),
-          ),
-          Expanded(
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 1),
-              child: ElevatedButton(
-                onPressed: _updatePlayer,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.lightBlue,
-                  foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                ),
-                child: const Text('Edit', style: TextStyle(fontSize: 9)),
               ),
             ),
           ),
@@ -1295,13 +1100,13 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
             child: Container(
               margin: const EdgeInsets.symmetric(horizontal: 1),
               child: ElevatedButton(
-                onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
+                onPressed: () => Navigator.of(context).pop(),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.red[300],
                   foregroundColor: Colors.black,
                   padding: const EdgeInsets.symmetric(vertical: 8),
                 ),
-                child: const Text('Main', style: TextStyle(fontSize: 9)),
+                child: const Text('Return', style: TextStyle(fontSize: 9)),
               ),
             ),
           ),

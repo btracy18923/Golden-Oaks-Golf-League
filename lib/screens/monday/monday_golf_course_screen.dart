@@ -449,6 +449,8 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
   Widget _buildCourseTable() {
     final screenWidth = MediaQuery.of(context).size.width;
     final isMobile = screenWidth < 600;
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+    final is6InchPhonePortrait = !isLandscape && screenWidth <= 600;
     
     return Container(
       decoration: BoxDecoration(
@@ -468,11 +470,14 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
               scrollDirection: Axis.horizontal,
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
-                children: isMobile ? [
+                children: isMobile ? (is6InchPhonePortrait ? [
+                  _buildHeaderCell('Name', (screenWidth - 20) * 0.6),
+                  _buildHeaderCell('Phone', (screenWidth - 20) * 0.4),
+                ] : [
                   _buildHeaderCell('Name', 150),
                   _buildHeaderCell('Phone', 120),
                   _buildHeaderCell('Details', 80),
-                ] : [
+                ]) : [
                   _buildHeaderCell('Name', 180),
                   _buildHeaderCell('Phone', 100),
                   _buildHeaderCell('Holes', 70),
@@ -489,7 +494,7 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: SizedBox(
-                width: isMobile ? 350 : 660,
+                width: isMobile ? (is6InchPhonePortrait ? screenWidth - 20 : 350) : 660,
                 child: ListView.builder(
                   itemCount: _courses.length,
                   itemBuilder: (context, index) {
@@ -518,13 +523,32 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
   }
   
   Widget _buildMobileCourseRow(Map<String, dynamic> course) {
-    return Row(
-      children: [
-        _buildDataCell(course['name'] ?? '', 150),
-        _buildDataCell(_formatPhoneNumber(course['phone'] ?? ''), 120),
-        _buildButtonCell(course, 80),
-      ],
-    );
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+    final is6InchPhonePortrait = !isLandscape && screenWidth <= 600;
+    
+    if (is6InchPhonePortrait) {
+      // 6" portrait: no Details column, use full width
+      final availableWidth = screenWidth - 20; // Account for padding
+      final nameWidth = availableWidth * 0.6; // 60% for name
+      final phoneWidth = availableWidth * 0.4; // 40% for phone
+      
+      return Row(
+        children: [
+          _buildDataCellLeftAlign(course['name'] ?? '', nameWidth),
+          _buildDataCell(_formatPhoneNumber(course['phone'] ?? ''), phoneWidth),
+        ],
+      );
+    } else {
+      // Other mobile layouts: include Details column
+      return Row(
+        children: [
+          _buildDataCell(course['name'] ?? '', 150),
+          _buildDataCell(_formatPhoneNumber(course['phone'] ?? ''), 120),
+          _buildButtonCell(course, 80),
+        ],
+      );
+    }
   }
   
   Widget _buildTabletCourseRow(Map<String, dynamic> course) {
@@ -580,6 +604,23 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
           text,
           style: const TextStyle(fontSize: 12),
           textAlign: TextAlign.center,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDataCellLeftAlign(String text, double width) {
+    return Container(
+      width: width,
+      height: 40,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Text(
+          text,
+          style: const TextStyle(fontSize: 12),
+          textAlign: TextAlign.left,
           overflow: TextOverflow.ellipsis,
         ),
       ),
@@ -655,24 +696,208 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
   }
   
   Widget _buildMobileLayout() {
-    return Column(
-      children: [
-        // Form section on top
-        Expanded(
-          flex: 1,
-          child: SingleChildScrollView(
-            child: _buildFormSection(),
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+    final is6InchPhonePortrait = !isLandscape && screenWidth <= 600;
+    
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (is6InchPhonePortrait) {
+          // 6" phone portrait: 3-section layout with button footer
+          final footerHeight = 80.0; // Height for 2-row footer
+          final formHeight = constraints.maxHeight * 0.5; // Form section height
+          final remainingHeight = constraints.maxHeight - formHeight - footerHeight - 30;
+          
+          return Column(
+            children: [
+              // Form section on top (no buttons)
+              SizedBox(
+                height: formHeight,
+                child: _buildFormSectionWithoutButtons(),
+              ),
+              
+              const SizedBox(height: 10),
+              
+              // Course table in middle
+              SizedBox(
+                height: remainingHeight,
+                child: _buildCourseTable(),
+              ),
+              
+              const SizedBox(height: 10),
+              
+              // Button footer at bottom
+              SizedBox(
+                height: footerHeight,
+                child: _buildButtonFooter(),
+              ),
+            ],
+          );
+        } else {
+          // Original layout for other mobile sizes
+          return Column(
+            children: [
+              // Form section on top
+              Expanded(
+                flex: 1,
+                child: SingleChildScrollView(
+                  child: _buildFormSection(),
+                ),
+              ),
+              
+              const SizedBox(height: 20),
+              
+              // Course list below
+              Expanded(
+                flex: 1,
+                child: _buildCourseTable(),
+              ),
+            ],
+          );
+        }
+      },
+    );
+  }
+  
+  Widget _buildFormSectionWithoutButtons() {
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          _buildCompactFormField('Name', _nameController, _nameFocus, _phoneFocus),
+          _buildCompactFormField('Phone', _phoneController, _phoneFocus, _holesFocus, 
+            keyboardType: TextInputType.phone),
+          _buildCompactFormField('# Holes', _holesController, _holesFocus, _teesFocus, 
+            keyboardType: TextInputType.number, 
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
+          _buildCompactFormField('Tees', _teesController, _teesFocus, _slopeFocus),
+          _buildCompactFormField('Slope', _slopeController, _slopeFocus, _travelTimeFocus, 
+            keyboardType: TextInputType.number, 
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
+          _buildCompactFormField('Travel Time', _travelTimeController, _travelTimeFocus, null),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildCompactFormField(String label, TextEditingController controller, FocusNode focusNode, FocusNode? nextFocus, {TextInputType? keyboardType, List<TextInputFormatter>? inputFormatters}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 1),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            '$label:',
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
           ),
-        ),
-        
-        const SizedBox(height: 20),
-        
-        // Course list below
-        Expanded(
-          flex: 1,
-          child: _buildCourseTable(),
-        ),
-      ],
+          const SizedBox(height: 1),
+          SizedBox(
+            height: 28, // Reduced height for text field
+            child: TextFormField(
+              controller: controller,
+              focusNode: focusNode,
+              keyboardType: keyboardType,
+              inputFormatters: inputFormatters,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                isDense: true,
+                contentPadding: EdgeInsets.only(left: 6, right: 6, top: 2, bottom: 10),
+              ),
+              style: const TextStyle(fontSize: 11, height: 1.0),
+              onFieldSubmitted: (_) {
+                if (nextFocus != null) {
+                  FocusScope.of(context).requestFocus(nextFocus);
+                } else {
+                  FocusScope.of(context).unfocus();
+                }
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildButtonFooter() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Column(
+        children: [
+          // First row: 2 buttons (Edit button removed for 6" portrait)
+          Expanded(
+            child: Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 1),
+                    child: ElevatedButton(
+                      onPressed: _addCourse,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.lightGreen,
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                      ),
+                      child: const Text('Add', style: TextStyle(fontSize: 9)),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 1),
+                    child: ElevatedButton(
+                      onPressed: _deleteCourse,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red[300],
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                      ),
+                      child: const Text('Delete', style: TextStyle(fontSize: 9)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          const SizedBox(height: 4),
+          
+          // Second row: 2 buttons
+          Expanded(
+            child: Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 2),
+                    child: ElevatedButton(
+                      onPressed: _clearForm,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.amber[300],
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                      ),
+                      child: const Text('Clear Form', style: TextStyle(fontSize: 9)),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 2),
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red[300],
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                      ),
+                      child: const Text('Return', style: TextStyle(fontSize: 9)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
   
