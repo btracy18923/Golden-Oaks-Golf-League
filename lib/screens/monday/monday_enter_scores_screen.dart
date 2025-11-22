@@ -90,6 +90,9 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
   bool _initialAssignmentComplete = false; // Track if all players have initial assignments
   bool _groupAssignmentsLocked = false; // Track if assignments are locked for wildcard mode
 
+  // Scroll controller for synchronized scrolling on 6" phone landscape
+  ScrollController _synchronizedScrollController = ScrollController();
+
   // Display values
   String _playersPurseDisplayText = "\$0.00";
   String _closestPinPurseDisplayText = "\$0.00";
@@ -118,6 +121,11 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
   void initState() {
     super.initState();
     
+    // Lock to landscape mode for 6" phones
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _setOrientationForDevice();
+    });
+    
     // Load CSV payout data
     CsvPayoutService().loadPayoutData().catchError((e) {
       // Error loading payout data - will use fallback calculations
@@ -144,8 +152,42 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     }
   }
 
+  void _setOrientationForDevice() {
+    // Get screen dimensions to detect 6" phone
+    double screenWidth = MediaQuery.of(context).size.width;
+    double screenHeight = MediaQuery.of(context).size.height;
+    double screenDiagonal = (screenWidth * screenWidth + screenHeight * screenHeight);
+    
+    // Check if it's likely a 6" phone (rough estimation based on common 6" phone resolutions)
+    bool is6InchPhone = screenDiagonal <= (980 * 980 + 600 * 600); // Approximate 6" phone detection
+    
+    if (is6InchPhone) {
+      // Lock to landscape mode only for 6" phones
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+      
+      // Hide status bar for 6" phones in landscape
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    }
+  }
+
   @override
   void dispose() {
+    // Reset orientation constraints and status bar when leaving the screen
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+    
+    // Restore status bar
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: [
+      SystemUiOverlay.top,
+      SystemUiOverlay.bottom,
+    ]);
     // Dispose gross controllers and focus nodes
     for (var controller in grossControllers.values) {
       controller.dispose();
@@ -167,6 +209,8 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     for (var node in groupFocusNodes.values) {
       node.dispose();
     }
+    // Dispose synchronized scroll controller
+    _synchronizedScrollController.dispose();
     super.dispose();
   }
 
@@ -362,50 +406,167 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
   }
 
   Widget _buildTitleContainer() {
+    // Get screen dimensions for responsive design
+    double screenWidth = MediaQuery.of(context).size.width;
+    double screenHeight = MediaQuery.of(context).size.height;
+    bool isLandscape = screenWidth > screenHeight;
+    bool is6InchPhoneLandscape = isLandscape && 
+        (screenWidth <= 980 || screenHeight <= 600);
+    
+    // Responsive sizing for 6" phone landscape
+    double fontSize = is6InchPhoneLandscape ? 13 : 20;
+    double spacing = is6InchPhoneLandscape ? 8 : 30;
+    double containerHeight = is6InchPhoneLandscape 
+        ? MediaQuery.of(context).size.height * 0.08 
+        : MediaQuery.of(context).size.height * 0.05;
+    
     return Container(
-      height: MediaQuery.of(context).size.height * 0.05,
-      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      height: containerHeight,
+      padding: EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
-        color: Colors.grey[200],
+        color: is6InchPhoneLandscape ? Colors.green[400] : Colors.grey[200],
       ),
+      child: Align(
+        alignment: Alignment.center,
+        child: is6InchPhoneLandscape 
+          ? _build6InchLandscapeTitle(fontSize, spacing)
+          : _buildStandardTitle(fontSize, spacing),
+      ),
+    );
+  }
+  
+  Widget _buildStandardTitle(double fontSize, double spacing) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          selectedLeague == 'monday' 
+            ? (groupsProcessed ? "Process Groups:" : "Enter Skats:l")
+            : (groupsProcessed ? "Process Groups:" : "Enter Scores:"),
+          style: TextStyle(
+            fontSize: fontSize,
+            fontWeight: FontWeight.bold,
+            color: Colors.black,
+          ),
+        ),
+        SizedBox(width: spacing),
+        Text(
+          selectedLeague == 'monday'
+            ? (groupsProcessed ? "Total Group Purse = $_playersPurseDisplayText" : "Skat Purse = $_playersPurseDisplayText")
+            : (groupsProcessed ? "Total Group Purse = $_playersPurseDisplayText" : "Total Players' Purse = $_playersPurseDisplayText"),
+          style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold),
+        ),
+        SizedBox(width: spacing),
+        Text(
+          selectedLeague == 'monday'
+            ? "Closest Pin Purse = $_closestPinPurseDisplayText"
+            : "Total Closest Pin Purse = $_closestPinPurseDisplayText",
+          style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold),
+        ),
+        if (selectedLeague == 'monday') ...[
+          SizedBox(width: spacing),
+          Text(
+            "Mulligan Purse = $_mulliganPurseDisplayText",
+            style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold),
+          ),
+        ],
+        if (selectedLeague == 'wednesday') ...[
+          SizedBox(width: spacing),
+          Text(
+            "Total Mulligan Purse = $_mulliganPurseDisplayText",
+            style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold),
+          ),
+        ],
+      ],
+    );
+  }
+  
+  Widget _build6InchLandscapeTitle(double fontSize, double spacing) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
       child: Row(
         children: [
           Text(
             selectedLeague == 'monday' 
-              ? (groupsProcessed ? "Process Groups:" : "Enter Skats:")
+              ? (groupsProcessed ? "Process Groups:" : "")
               : (groupsProcessed ? "Process Groups:" : "Enter Scores:"),
             style: TextStyle(
-              fontSize: 20,
+              fontSize: fontSize,
               fontWeight: FontWeight.bold,
               color: Colors.black,
             ),
           ),
-          SizedBox(width: 30),
-          Text(
-            selectedLeague == 'monday'
-              ? (groupsProcessed ? "Total Group Purse = $_playersPurseDisplayText" : "Skat Purse = $_playersPurseDisplayText")
-              : (groupsProcessed ? "Total Group Purse = $_playersPurseDisplayText" : "Total Players' Purse = $_playersPurseDisplayText"),
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          SizedBox(width: spacing),
+          Row(
+            children: [
+              Text(
+                selectedLeague == 'monday'
+                  ? (groupsProcessed ? "Total Group Purse = " : "Skat Purse = ")
+                  : (groupsProcessed ? "Total Group Purse = " : "Total Players' Purse = "),
+                style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold),
+              ),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.lightGreen[100],
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  _playersPurseDisplayText,
+                  style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
           ),
-          SizedBox(width: 30),
-          Text(
-            selectedLeague == 'monday'
-              ? "Closest Pin Purse = $_closestPinPurseDisplayText"
-              : "Total Closest Pin Purse = $_closestPinPurseDisplayText",
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          SizedBox(width: spacing),
+          Row(
+            children: [
+              Text(
+                selectedLeague == 'monday'
+                  ? "Closest Pin Purse = "
+                  : "Total Closest Pin Purse = ",
+                style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold),
+              ),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.lightGreen[100],
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  _closestPinPurseDisplayText,
+                  style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
           ),
           if (selectedLeague == 'monday') ...[
-            SizedBox(width: 30),
-            Text(
-              "Mulligan Purse = $_mulliganPurseDisplayText",
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            SizedBox(width: spacing),
+            Row(
+              children: [
+                Text(
+                  "Mulligan Purse = ",
+                  style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold),
+                ),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.lightGreen[100],
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    _mulliganPurseDisplayText,
+                    style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
             ),
           ],
           if (selectedLeague == 'wednesday') ...[
-            SizedBox(width: 30),
+            SizedBox(width: spacing),
             Text(
               "Total Mulligan Purse = $_mulliganPurseDisplayText",
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold),
             ),
           ],
         ],
@@ -415,49 +576,104 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
 
 
   Widget _buildPayoutContent() {
+    // Get screen dimensions for responsive design
+    double screenWidth = MediaQuery.of(context).size.width;
+    double screenHeight = MediaQuery.of(context).size.height;
+    bool isLandscape = screenWidth > screenHeight;
+    bool is6InchPhoneLandscape = isLandscape && 
+        (screenWidth <= 980 || screenHeight <= 600);
+
     return Container(
       color: Colors.white,
       padding: EdgeInsets.all(10),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(child: _buildSectionContainer(0)),
-          SizedBox(width: 10),
-          Expanded(child: _buildSectionContainer(1)),
-          SizedBox(width: 10),
-          Expanded(child: _buildSectionContainer(2)),
-        ],
-      ),
+      child: is6InchPhoneLandscape 
+        ? SingleChildScrollView(
+            controller: _synchronizedScrollController,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: _buildSectionContainer(0)),
+                SizedBox(width: 10),
+                Expanded(child: _buildSectionContainer(1)),
+              ],
+            ),
+          )
+        : Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: _buildSectionContainer(0)),
+              SizedBox(width: 10),
+              Expanded(child: _buildSectionContainer(1)),
+              SizedBox(width: 10),
+              Expanded(child: _buildSectionContainer(2)),
+            ],
+          ),
     );
   }
 
   Widget _buildSectionContainer(int sectionIndex) {
     List<Widget> sectionWidgets = [];
     
-    // Each section contains 3 groups (groups 1-3, 4-6, 7-9)
-    for (int groupOffset = 0; groupOffset < 3; groupOffset++) {
-      int groupNum = sectionIndex * 3 + groupOffset + 1;
+    // Get screen dimensions for responsive design
+    double screenWidth = MediaQuery.of(context).size.width;
+    double screenHeight = MediaQuery.of(context).size.height;
+    bool isLandscape = screenWidth > screenHeight;
+    bool is6InchPhoneLandscape = isLandscape && 
+        (screenWidth <= 980 || screenHeight <= 600);
+    
+    // Determine groups per section based on screen size
+    int maxGroupOffset;
+    if (is6InchPhoneLandscape) {
+      // For horizontal distribution: Column 1 gets odd groups (1,3,5,7,9), Column 2 gets even groups (2,4,6,8,10)
+      maxGroupOffset = 5; // Both columns now have 5 groups
+    } else {
+      maxGroupOffset = 3; // Standard 3-column layout
+    }
+    
+    // Each section contains groups based on screen size
+    for (int groupOffset = 0; groupOffset < maxGroupOffset; groupOffset++) {
+      int groupNum;
+      if (is6InchPhoneLandscape) {
+        // For 6" phone landscape horizontal distribution:
+        // Section 0 (Column 1): odd groups 1,3,5,7,9
+        // Section 1 (Column 2): even groups 2,4,6,8,10
+        if (sectionIndex == 0) {
+          groupNum = (groupOffset * 2) + 1; // Groups 1,3,5,7,9
+        } else {
+          groupNum = (groupOffset * 2) + 2; // Groups 2,4,6,8,10
+        }
+      } else {
+        // Standard 3-column layout: groups 1-3, 4-6, 7-9
+        groupNum = sectionIndex * 3 + groupOffset + 1;
+      }
       
       // Group header - positioned at center of main columns
       double columnCenter = selectedLeague == 'wednesday' ? 175.0 : 70.0; // Center position for headers
       
       sectionWidgets.add(Container(
         height: 30,
-        child: Stack(
-          children: [
-            Positioned(
-              left: columnCenter - 80, // Offset to center the text (approximate half width)
+        child: is6InchPhoneLandscape 
+          ? Center(
               child: Text(
-                '------Group $groupNum------',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                '-----Group $groupNum-----',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
               ),
+            )
+          : Stack(
+              children: [
+                Positioned(
+                  left: columnCenter - 80, // Offset to center the text (approximate half width)
+                  child: Text(
+                    '------Group $groupNum------',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
       ));
       
-      // Add column headers for first group in each section
-      if (groupOffset == 0) {
+      // Add column headers for first group in each section, or for every group in 6" phone landscape
+      if (groupOffset == 0 || is6InchPhoneLandscape) {
         sectionWidgets.add(_buildColumnHeaders());
       }
       
@@ -476,27 +692,45 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
       sectionWidgets.add(SizedBox(height: 10)); // Space between groups
     }
     
-    return SingleChildScrollView(
-      child: Column(
+    // For 6" phone landscape, don't wrap in ScrollView (parent handles scrolling)
+    // For other screen sizes, use individual ScrollView per column
+    if (is6InchPhoneLandscape) {
+      return Column(
         children: sectionWidgets,
-      ),
-    );
+      );
+    } else {
+      return SingleChildScrollView(
+        child: Column(
+          children: sectionWidgets,
+        ),
+      );
+    }
   }
 
   Widget _buildColumnHeaders() {
     List<Widget> headers = [];
     
+    // Get screen dimensions for responsive design
+    double screenWidth = MediaQuery.of(context).size.width;
+    double screenHeight = MediaQuery.of(context).size.height;
+    bool isLandscape = screenWidth > screenHeight;
+    bool is6InchPhoneLandscape = isLandscape && 
+        (screenWidth <= 980 || screenHeight <= 600);
+    
+    // Responsive font size for headers
+    double headerFontSize = is6InchPhoneLandscape ? 12 : 15;
+    
     // Name header
     headers.add(Container(
       width: 120,
-      child: Text('Name', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+      child: Text('Name', style: TextStyle(fontSize: headerFontSize, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
     ));
     
     // HC header (Wednesday only, and only if groups not processed)
     if (selectedLeague == 'wednesday' && !groupsProcessed) {
       headers.add(Container(
         width: 50,
-        child: Text('HC', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+        child: Text('HC', style: TextStyle(fontSize: headerFontSize, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
       ));
     }
     
@@ -504,7 +738,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     if (!groupsProcessed && selectedLeague != 'monday') {
       headers.add(Container(
         width: 60,
-        child: Text('Gross', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+        child: Text('Gross', style: TextStyle(fontSize: headerFontSize, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
       ));
     }
     
@@ -512,7 +746,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     if (selectedLeague == 'wednesday' && groupsProcessed) {
       headers.add(Container(
         width: 60,
-        child: Text('Group#', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+        child: Text('Group#', style: TextStyle(fontSize: headerFontSize, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
       ));
     }
     
@@ -520,24 +754,24 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     if (selectedLeague == 'wednesday') {
       headers.add(Container(
         width: 40,
-        child: Text('Net', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+        child: Text('Net', style: TextStyle(fontSize: headerFontSize, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
       ));
       
       // AVG header (only when groups are processed)
       if (groupsProcessed) {
         headers.add(Container(
           width: 50,
-          child: Text('AVG', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+          child: Text('AVG', style: TextStyle(fontSize: headerFontSize, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
         ));
       }
       
       headers.add(Container(
         width: 50,
-        child: Text('Pos', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+        child: Text('Pos', style: TextStyle(fontSize: headerFontSize, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
       ));
       headers.add(Container(
         width: 80,
-        child: Text('\$\$\$', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+        child: Text('\$\$\$', style: TextStyle(fontSize: headerFontSize, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
       ));
     }
     
@@ -545,19 +779,19 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     if (selectedLeague == 'monday' && !groupsProcessed) {
       headers.add(Container(
         width: 70,
-        child: Text('SKAT#', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+        child: Text(is6InchPhoneLandscape ? 'SK #' : 'SKAT#', style: TextStyle(fontSize: headerFontSize, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
       ));
       headers.add(Container(
         width: 70,
-        child: Text('SKATS', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+        child: Text('SKATS', style: TextStyle(fontSize: headerFontSize, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
       ));
       headers.add(Container(
         width: 70,
-        child: Text('DIFF', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+        child: Text('DIFF', style: TextStyle(fontSize: headerFontSize, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
       ));
       headers.add(Container(
         width: 70,
-        child: Text('\$\$\$', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+        child: Text('\$\$\$', style: TextStyle(fontSize: headerFontSize, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
       ));
     }
     
@@ -574,6 +808,13 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
 
   Widget _buildPlayerRow(Map<String, dynamic>? player, int groupIndex, int rowIndex) {
     List<Widget> rowWidgets = [];
+    
+    // Get screen dimensions for responsive design
+    double screenWidth = MediaQuery.of(context).size.width;
+    double screenHeight = MediaQuery.of(context).size.height;
+    bool isLandscape = screenWidth > screenHeight;
+    bool is6InchPhoneLandscape = isLandscape && 
+        (screenWidth <= 980 || screenHeight <= 600);
     
     // Name field
     if (player != null) {
@@ -672,6 +913,13 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     
     return Container(
       height: 40,
+      decoration: is6InchPhoneLandscape 
+          ? BoxDecoration(
+              border: Border(
+                right: BorderSide(color: Colors.black, width: 1.0),
+              ),
+            )
+          : null,
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(
@@ -1566,23 +1814,43 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
   }
 
   Widget _buildFooter() {
+    // Get screen dimensions for responsive design
+    double screenWidth = MediaQuery.of(context).size.width;
+    double screenHeight = MediaQuery.of(context).size.height;
+    bool isLandscape = screenWidth > screenHeight;
+    
+    // More comprehensive 6" phone detection in landscape mode
+    // Consider both screen width and the shorter dimension
+    bool is6InchPhoneLandscape = isLandscape && 
+        (screenWidth <= 980 || screenHeight <= 600); // 6\" phone landscape detection
+    
+    // Determine button text based on screen size
+    String returnButtonText = is6InchPhoneLandscape ? "Return" : "Main Menu";
+    
     return Container(
-      height: 70,
+      height: is6InchPhoneLandscape ? 52 : 70,
       decoration: BoxDecoration(color: Colors.grey[200]),
-      padding: EdgeInsets.symmetric(horizontal: 5, vertical: 5),
+      padding: EdgeInsets.symmetric(horizontal: 5, vertical: is6InchPhoneLandscape ? 2 : 5),
       child: Center(
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: selectedLeague == 'monday' 
-            ? [
-                _buildFooterButton("Closest Pin", Color(0xFFB3FFB3), _processIndividuals),
-                _buildFooterButton("Main Menu", Colors.lightBlue[100]!, _returnToMainMenu),
-                _buildFooterButton("Auto Fill", Colors.orange[200]!, _autoFillGrossScores),
-                _buildSwapButton(),
-              ]
+            ? (is6InchPhoneLandscape 
+                ? [
+                    _buildFooterButton(returnButtonText, Colors.lightBlue[100]!, _returnToMainMenu),
+                    _buildFooterButton("Closest Pin", Color(0xFFB3FFB3), _processIndividuals),
+                    _buildFooterButton("Auto Fill", Colors.orange[200]!, _autoFillGrossScores),
+                    _buildSwapButton(),
+                  ]
+                : [
+                    _buildFooterButton("Closest Pin", Color(0xFFB3FFB3), _processIndividuals),
+                    _buildFooterButton(returnButtonText, Colors.lightBlue[100]!, _returnToMainMenu),
+                    _buildFooterButton("Auto Fill", Colors.orange[200]!, _autoFillGrossScores),
+                    _buildSwapButton(),
+                  ])
             : [
                 _buildFooterButton("Auto Fill", Colors.orange[200]!, _autoFillGrossScores),
-                _buildFooterButton("Main Menu", Colors.lightBlue[100]!, _returnToMainMenu),
+                _buildFooterButton(returnButtonText, Colors.lightBlue[100]!, _returnToMainMenu),
                 _buildFooterButton("Individuals", Colors.grey[300]!, _processIndividuals),
                 _buildConditionalProcessGroupsButton(),
                 _buildSwapButton(),
@@ -1596,6 +1864,12 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     bool isEnabled = individualsProcessingComplete;
     Color buttonColor = isEnabled ? Colors.green[300]! : Colors.grey[400]!;
     
+    double screenWidth = MediaQuery.of(context).size.width;
+    double screenHeight = MediaQuery.of(context).size.height;
+    bool isLandscape = screenWidth > screenHeight;
+    bool is6InchPhoneLandscape = isLandscape && 
+        (screenWidth <= 980 || screenHeight <= 600);
+    
     return Expanded(
       child: Padding(
         padding: EdgeInsets.symmetric(horizontal: 10),
@@ -1604,7 +1878,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
           style: ElevatedButton.styleFrom(
             backgroundColor: buttonColor,
             foregroundColor: isEnabled ? Colors.black : Colors.grey[600],
-            padding: EdgeInsets.symmetric(vertical: 8),
+            padding: EdgeInsets.symmetric(vertical: is6InchPhoneLandscape ? 4 : 8),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
           child: Text(
@@ -1621,6 +1895,12 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
   }
 
   Widget _buildFooterButton(String text, Color color, VoidCallback onPressed) {
+    double screenWidth = MediaQuery.of(context).size.width;
+    double screenHeight = MediaQuery.of(context).size.height;
+    bool isLandscape = screenWidth > screenHeight;
+    bool is6InchPhoneLandscape = isLandscape && 
+        (screenWidth <= 980 || screenHeight <= 600);
+    
     return Expanded(
       child: Padding(
         padding: EdgeInsets.symmetric(horizontal: 10),
@@ -1629,7 +1909,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
           style: ElevatedButton.styleFrom(
             backgroundColor: color,
             foregroundColor: Colors.black,
-            padding: EdgeInsets.symmetric(vertical: 8),
+            padding: EdgeInsets.symmetric(vertical: is6InchPhoneLandscape ? 4 : 8),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
           child: Text(text, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
@@ -1661,6 +1941,12 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     bool isEnabled = false;
     Color buttonColor = Colors.grey[400]!;
     
+    double screenWidth = MediaQuery.of(context).size.width;
+    double screenHeight = MediaQuery.of(context).size.height;
+    bool isLandscape = screenWidth > screenHeight;
+    bool is6InchPhoneLandscape = isLandscape && 
+        (screenWidth <= 980 || screenHeight <= 600);
+    
     if (selectedForSwap.length == 1) {
       String displayName = _getDisplayName(selectedForSwap[0]);
       buttonText = 'Selected: $displayName\nClick another item';
@@ -1680,7 +1966,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
           style: ElevatedButton.styleFrom(
             backgroundColor: buttonColor,
             foregroundColor: Colors.black,
-            padding: EdgeInsets.symmetric(vertical: 8),
+            padding: EdgeInsets.symmetric(vertical: is6InchPhoneLandscape ? 4 : 8),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
           child: Text(buttonText, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
@@ -3406,9 +3692,25 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
   }
 
   void _returnToMainMenu() {
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (context) => UnifiedMainMenuScreen()),
-    );
+    // Get screen dimensions for responsive design
+    double screenWidth = MediaQuery.of(context).size.width;
+    double screenHeight = MediaQuery.of(context).size.height;
+    bool isLandscape = screenWidth > screenHeight;
+    
+    // More comprehensive 6" phone detection in landscape mode
+    // Consider both screen width and the shorter dimension
+    bool is6InchPhoneLandscape = isLandscape && 
+        (screenWidth <= 980 || screenHeight <= 600); // 6\" phone landscape detection
+    
+    if (is6InchPhoneLandscape) {
+      // For 6\" phone landscape, return to previous screen (monday_player_selection_screen)
+      Navigator.pop(context);
+    } else {
+      // For other screen sizes, navigate to main menu
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => UnifiedMainMenuScreen()),
+      );
+    }
   }
 
   Future<void> _redistributePlayersRandomly() async {
@@ -4147,7 +4449,6 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
       currentPlace += groupSize;
     }
   }
-
 
 
 }
