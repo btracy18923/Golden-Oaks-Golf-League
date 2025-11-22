@@ -121,6 +121,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
   void initState() {
     super.initState();
     
+    
     // Lock to landscape mode for 6" phones
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _setOrientationForDevice();
@@ -146,29 +147,24 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
           widget.initialGroups!,
           widget.initialLeague!,
         );
-        // Position keypad in lower right corner by focusing on last player's gross score
-        _setInitialFocusToLowerRight();
       });
     }
   }
 
   void _setOrientationForDevice() {
-    // Get screen dimensions to detect 6" phone
-    double screenWidth = MediaQuery.of(context).size.width;
-    double screenHeight = MediaQuery.of(context).size.height;
-    double screenDiagonal = (screenWidth * screenWidth + screenHeight * screenHeight);
+    // Use consistent device detection with main menu screen
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+    final is6Point5Phone = isLandscape && screenWidth >= 750 && screenWidth < 900; // 6.5" phone range
     
-    // Check if it's likely a 6" phone (rough estimation based on common 6" phone resolutions)
-    bool is6InchPhone = screenDiagonal <= (980 * 980 + 600 * 600); // Approximate 6" phone detection
+    // Lock to landscape mode for all devices
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
     
-    if (is6InchPhone) {
-      // Lock to landscape mode only for 6" phones
-      SystemChrome.setPreferredOrientations([
-        DeviceOrientation.landscapeLeft,
-        DeviceOrientation.landscapeRight,
-      ]);
-      
-      // Hide status bar for 6" phones in landscape
+    if (is6Point5Phone) {
+      // Hide status bar for 6.5" phones in landscape
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     }
   }
@@ -266,33 +262,60 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
       groupControllers.clear();
       groupFocusNodes.clear();
       
+      // Auto-assign random group numbers upon entry
+      _assignRandomGroupNumbers();
+      
       updatePlayerSkatNumbers();
       updateTitleInformation();
     });
   }
 
-  // Method to position keypad in lower right corner initially
-  void _setInitialFocusToLowerRight() {
-    // Wait a bit for the UI to be fully built
-    Future.delayed(Duration(milliseconds: 500), () {
-      if (groups.isNotEmpty) {
-        // Find the last non-null player in the last group
-        for (int groupIndex = groups.length - 1; groupIndex >= 0; groupIndex--) {
-          for (int playerIndex = groups[groupIndex].length - 1; playerIndex >= 0; playerIndex--) {
-            var player = groups[groupIndex][playerIndex];
-            if (player != null) {
-              // Focus on the gross score field of the last player (lower right area)
-              String playerKey = '${player['last']}_gross';
-              FocusNode? focusNode = grossFocusNodes[playerKey];
-              if (focusNode != null && focusNode.canRequestFocus) {
-                FocusScope.of(context).requestFocus(focusNode);
-                return; // Exit once we've set focus
-              }
-            }
-          }
+  /// Automatically assigns random group numbers to all players upon screen entry
+  void _assignRandomGroupNumbers() {
+    // Get all players from all groups
+    List<Map<String, dynamic>> allPlayers = [];
+    for (var group in groups) {
+      for (var player in group) {
+        if (player != null && player['is_wild_card'] != true) {
+          allPlayers.add(player);
         }
       }
-    });
+    }
+    
+    // If no players, nothing to assign
+    if (allPlayers.isEmpty) {
+      return;
+    }
+    
+    // Randomly shuffle the players
+    final random = Random();
+    allPlayers.shuffle(random);
+    
+    // Assign group numbers sequentially (1, 2, 3, etc.)
+    int currentGroup = 1;
+    int playersInCurrentGroup = 0;
+    
+    for (var player in allPlayers) {
+      // Assign current group number
+      player['manual_group'] = currentGroup;
+      playersInCurrentGroup++;
+      
+      // Move to next group after 4 players
+      if (playersInCurrentGroup >= 4) {
+        currentGroup++;
+        playersInCurrentGroup = 0;
+      }
+    }
+    
+    
+    // Update state variables to reflect assignments
+    _groupAssignmentSequence = currentGroup;
+    _playersInCurrentGroup = playersInCurrentGroup;
+    
+    // Mark initial assignment as complete if all players assigned
+    if (allPlayers.isNotEmpty) {
+      _initialAssignmentComplete = true;
+    }
   }
 
   Future<void> updateTitleInformation() async {
@@ -934,6 +957,11 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     bool isSelected = selectedForSwap.contains(playerLast);
     bool isWildCard = player['is_wild_card'] == true;
     
+    // Check for 6.5" phone landscape mode
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+    final is6Point5Phone = isLandscape && screenWidth >= 750 && screenWidth < 900;
+    
     return GestureDetector(
       onTap: () => _onPlayerNameClick(playerLast, groupIndex),
       child: Container(
@@ -944,8 +972,13 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
           border: Border.all(),
         ),
         child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+          padding: EdgeInsets.symmetric(
+            horizontal: 4, 
+            vertical: is6Point5Phone ? 4 : 8, // Reduced vertical padding for 6.5" phone
+          ),
           child: Row(
+            mainAxisAlignment: MainAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center, // Center content vertically
             children: [
               if (isWildCard) ...[
                 Container(
@@ -969,8 +1002,13 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
               Expanded(
                 child: Text(
                   playerLast,
-                  style: TextStyle(fontSize: 16, color: Colors.black),
+                  style: TextStyle(
+                    fontSize: is6Point5Phone ? 14 : 16, // Smaller font for 6.5" phone
+                    color: Colors.black,
+                  ),
                   textAlign: TextAlign.left,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis, // Handle long names gracefully
                 ),
               ),
             ],
@@ -1677,11 +1715,6 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
       }
     }
     return count;
-  }
-  
-  int? _findIncompleteGroup() {
-    // This function is no longer used with the new wildcard strategy
-    return null;
   }
   
   void _recalculateGroupSequence() {

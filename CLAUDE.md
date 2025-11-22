@@ -159,3 +159,7 @@ If needed, create separate screen variants:
 ## Git Workflow Instructions
 
 **IMPORTANT**: Do not automatically commit changes or push changes to GitHub. The user will explicitly tell you when to commit and push. Always wait for user instructions before running git commit or git push commands.
+
+6.5" phone (720 × 1600 pixels,  20:9 ratio
+8" Fire Table: 800 x 1200 pixels
+

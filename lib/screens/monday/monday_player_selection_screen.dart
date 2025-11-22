@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../services/database_helper.dart';
 import '../../models/league.dart';
 import 'monday_enter_scores_screen.dart';
@@ -26,6 +27,34 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
   void initState() {
     super.initState();
     loadPlayers();
+    _setOrientation();
+  }
+
+  void _setOrientation() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Use consistent device detection with main menu screen
+      final screenWidth = MediaQuery.of(context).size.width;
+      final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+      final is6Point5Phone = isLandscape && screenWidth >= 750 && screenWidth < 900; // 6.5" phone range
+      
+      // Lock to landscape mode for all devices
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+    });
+  }
+
+  @override
+  void dispose() {
+    // Reset orientation when leaving the screen
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+    super.dispose();
   }
   
   Future<void> loadPlayers() async {
@@ -93,23 +122,23 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
               builder: (context) {
                 final screenWidth = MediaQuery.of(context).size.width;
                 final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
-                final is6InchPhoneLandscape = isLandscape && screenWidth <= 900;
+                final is6Point5Phone = isLandscape && screenWidth >= 750 && screenWidth < 900;
                 
                 return Column(
                   children: [
                     // Main content area with white background
                     Expanded(
                       child: Container(
-                        margin: EdgeInsets.all(is6InchPhoneLandscape ? 4 : 16), // Further reduced margin for 6" landscape
-                        padding: EdgeInsets.all(is6InchPhoneLandscape ? 4 : 16), // Further reduced padding for 6" landscape
+                        margin: EdgeInsets.all(is6Point5Phone ? 4 : 16), // Further reduced margin for 6" landscape
+                        padding: EdgeInsets.all(is6Point5Phone ? 4 : 16), // Further reduced padding for 6" landscape
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(is6InchPhoneLandscape ? 4 : 8),
+                          borderRadius: BorderRadius.circular(is6Point5Phone ? 4 : 8),
                         ),
                         child: Column(
                           children: [
                             // Selected count info (hide for 6" landscape to save space)
-                            if (!is6InchPhoneLandscape) 
+                            if (!is6Point5Phone) 
                               Container(
                                 padding: const EdgeInsets.symmetric(vertical: 8),
                                 child: Text(
@@ -121,7 +150,7 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
                                 ),
                               ),
                             
-                            if (!is6InchPhoneLandscape) const SizedBox(height: 10),
+                            if (!is6Point5Phone) const SizedBox(height: 10),
                         
                         // 4-column player grid
                         Expanded(
@@ -132,19 +161,19 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
                                     children: [
                                       Icon(
                                         Icons.people_outline,
-                                        size: is6InchPhoneLandscape ? 60 : 80,
+                                        size: is6Point5Phone ? 60 : 80,
                                         color: Colors.grey[400],
                                       ),
-                                      SizedBox(height: is6InchPhoneLandscape ? 8 : 16),
+                                      SizedBox(height: is6Point5Phone ? 8 : 16),
                                       Text(
                                         'No Monday players found\nTry importing players first',
-                                        style: TextStyle(fontSize: is6InchPhoneLandscape ? 14 : 18),
+                                        style: TextStyle(fontSize: is6Point5Phone ? 14 : 18),
                                         textAlign: TextAlign.center,
                                       ),
                                     ],
                                   ),
                                 )
-                              : is6InchPhoneLandscape
+                              : is6Point5Phone
                                   ? Scrollbar(
                                       thumbVisibility: true,
                                       child: SingleChildScrollView(
@@ -159,9 +188,9 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
                           builder: (context) {
                             final screenWidth = MediaQuery.of(context).size.width;
                             final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
-                            final is6InchPhoneLandscape = isLandscape && screenWidth <= 900;
+                            final is6Point5Phone = isLandscape && screenWidth <= 900;
                             
-                            if (is6InchPhoneLandscape) {
+                            if (is6Point5Phone) {
                               return const SizedBox.shrink(); // Hide for 6" landscape
                             }
                             
@@ -203,14 +232,14 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
                   builder: (context) {
                     final screenWidth = MediaQuery.of(context).size.width;
                     final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
-                    final is6InchPhoneLandscape = isLandscape && screenWidth <= 900;
+                    final is6Point5Phone = isLandscape && screenWidth <= 900;
                     
                     return Container(
-                      padding: EdgeInsets.all(is6InchPhoneLandscape ? 8.0 : 16.0), // 50% height reduction for 6" landscape
+                      padding: EdgeInsets.all(is6Point5Phone ? 8.0 : 16.0), // 50% height reduction for 6" landscape
                       decoration: BoxDecoration(
                         color: Colors.grey[300],
                       ),
-                      child: is6InchPhoneLandscape
+                      child: is6Point5Phone
                           ? Row(
                               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                               children: [
@@ -404,6 +433,7 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
           builder: (context) => MondayEnterScoresScreen(
             initialPlayers: selectedPlayers,
             initialGroups: groups,
+            initialLeague: 'monday',
           ),
         ),
       );
@@ -426,16 +456,16 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
       builder: (context) {
         final screenWidth = MediaQuery.of(context).size.width;
         final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
-        final is6InchPhoneLandscape = isLandscape && screenWidth <= 900;
+        final is6Point5Phone = isLandscape && screenWidth <= 900;
         
         // Choose player name format based on screen size
-        final String playerName = is6InchPhoneLandscape 
+        final String playerName = is6Point5Phone 
             ? '${player['last']}'  // Only last name for 6" landscape
             : '${player['last']}, ${player['first']}';  // Full name for other sizes
         
         return Container(
           margin: EdgeInsets.symmetric(
-            vertical: is6InchPhoneLandscape ? 0.5 : 1, 
+            vertical: is6Point5Phone ? 0.5 : 1, 
             horizontal: 2
           ),
           child: Material(
@@ -445,14 +475,14 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
               borderRadius: BorderRadius.circular(4),
               child: Padding(
                 padding: EdgeInsets.symmetric(
-                  vertical: is6InchPhoneLandscape ? 2 : 4, 
+                  vertical: is6Point5Phone ? 2 : 4, 
                   horizontal: 4
                 ),
                 child: Row(
                   children: [
                     Container(
-                      width: is6InchPhoneLandscape ? 24 : 32,
-                      height: is6InchPhoneLandscape ? 24 : 32,
+                      width: is6Point5Phone ? 24 : 32,
+                      height: is6Point5Phone ? 24 : 32,
                       decoration: BoxDecoration(
                         color: isSelected ? _leagueColor : Colors.grey[300],
                         border: Border.all(color: Colors.black, width: 1),
@@ -465,21 +495,23 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
                                 style: TextStyle(
                                   color: Colors.black,
                                   fontWeight: FontWeight.bold,
-                                  fontSize: is6InchPhoneLandscape ? 14 : 18,
+                                  fontSize: is6Point5Phone ? 14 : 18,
+                                  height: 1.0,
                                 ),
+                                textAlign: TextAlign.center,
                               ),
                             )
                           : null,
                     ),
-                    SizedBox(width: is6InchPhoneLandscape ? 6 : 8),
+                    SizedBox(width: is6Point5Phone ? 6 : 8),
                     Expanded(
                       child: Text(
                         playerName,
                         style: TextStyle(
-                          fontSize: is6InchPhoneLandscape ? 12 : 14,
+                          fontSize: is6Point5Phone ? 12 : 14,
                           fontWeight: FontWeight.w500,
                         ),
-                        maxLines: is6InchPhoneLandscape ? 1 : 2, // Single line for 6" landscape
+                        maxLines: is6Point5Phone ? 1 : 2, // Single line for 6" landscape
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),

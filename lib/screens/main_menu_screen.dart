@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:math';
 import '../models/league.dart';
-import '../services/database_helper.dart';
 import '../services/ante_manager.dart';
 import '../services/percentage_manager.dart';
 import '../services/closest_pin_manager.dart';
@@ -13,7 +12,6 @@ import 'wednesday/wednesday_parent_screen.dart';
 import 'wednesday/wednesday_player_selection_screen.dart';
 import 'admin_screen.dart';
 import 'csv_import_screen.dart';
-import 'sync_demo_screen.dart';
 import 'firebase_test_screen.dart';
 import 'test_keypad_screen.dart';
 
@@ -26,7 +24,6 @@ class UnifiedMainMenuScreen extends StatefulWidget {
 
 class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
   League? currentLeague;
-  final DatabaseHelper _dbHelper = DatabaseHelper();
   final TextEditingController _anteController = TextEditingController(text: '\$5.00');
   final TextEditingController _closestPinController = TextEditingController(text: '\$4.00');
   final TextEditingController _newFieldController = TextEditingController(text: '\$1.00');
@@ -174,79 +171,6 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
     _mondayMulligansFocusNode.requestFocus();
   }
 
-  void _formatIndividualPercent() {
-    String text = _individualPercentController.text;
-    String numericText = text.replaceAll(RegExp(r'[^\d\.]'), '');
-    
-    if (numericText.isNotEmpty) {
-      double percent = double.tryParse(numericText) ?? 40.0;
-      percent = percent.clamp(0.0, 100.0);
-      
-      String formatted = '${percent.toStringAsFixed(0)}%';
-      _individualPercentController.value = TextEditingValue(
-        text: formatted,
-        selection: TextSelection.collapsed(offset: formatted.length),
-      );
-      
-      double groupPercent = 100.0 - percent;
-      String groupFormatted = '${groupPercent.toStringAsFixed(0)}%';
-      _groupPercentController.value = TextEditingValue(
-        text: groupFormatted,
-        selection: TextSelection.collapsed(offset: groupFormatted.length),
-      );
-      
-      PercentageManager().setIndividualPercent(percent);
-    } else {
-      _individualPercentController.value = TextEditingValue(
-        text: '40%',
-        selection: TextSelection.collapsed(offset: 3),
-      );
-      _groupPercentController.value = TextEditingValue(
-        text: '60%',
-        selection: TextSelection.collapsed(offset: 3),
-      );
-      PercentageManager().setIndividualPercent(40.0);
-    }
-    
-    _individualPercentFocusNode.unfocus();
-  }
-
-  void _formatGroupPercent() {
-    String text = _groupPercentController.text;
-    String numericText = text.replaceAll(RegExp(r'[^\d\.]'), '');
-    
-    if (numericText.isNotEmpty) {
-      double percent = double.tryParse(numericText) ?? 60.0;
-      percent = percent.clamp(0.0, 100.0);
-      
-      String formatted = '${percent.toStringAsFixed(0)}%';
-      _groupPercentController.value = TextEditingValue(
-        text: formatted,
-        selection: TextSelection.collapsed(offset: formatted.length),
-      );
-      
-      double individualPercent = 100.0 - percent;
-      String individualFormatted = '${individualPercent.toStringAsFixed(0)}%';
-      _individualPercentController.value = TextEditingValue(
-        text: individualFormatted,
-        selection: TextSelection.collapsed(offset: individualFormatted.length),
-      );
-      
-      PercentageManager().setGroupPercent(percent);
-    } else {
-      _individualPercentController.value = TextEditingValue(
-        text: '40%',
-        selection: TextSelection.collapsed(offset: 3),
-      );
-      _groupPercentController.value = TextEditingValue(
-        text: '60%',
-        selection: TextSelection.collapsed(offset: 3),
-      );
-      PercentageManager().setIndividualPercent(40.0);
-    }
-    
-    _groupPercentFocusNode.unfocus();
-  }
 
   double get currentAnteAmount {
     String text = _anteController.text;
@@ -257,10 +181,26 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
   @override
   void initState() {
     super.initState();
+    
+    // Lock all devices to landscape mode only
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+    });
   }
 
   @override
   void dispose() {
+    // Reset orientation constraints when leaving main menu
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+    
     _anteController.dispose();
     _closestPinController.dispose();
     _newFieldController.dispose();
@@ -322,17 +262,31 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
     final screenHeight = MediaQuery.of(context).size.height;
     final orientation = MediaQuery.of(context).orientation;
     
-    // Define breakpoints for different screen sizes
-    // Use diagonal screen size calculation for better device detection
-    final screenDiagonal = sqrt(screenWidth * screenWidth + screenHeight * screenHeight);
-    final isPhone = screenDiagonal < 1000; // Phones typically < 1000dp diagonal
-    final isTablet8 = screenDiagonal >= 1000 && screenDiagonal < 1300; // 8" tablets
-    final isTablet10 = screenDiagonal >= 1300; // 10" tablets
+    // Define breakpoints based on logical pixel dimensions (Flutter's dp units)
+    // Your 6.5" phone: 820.57 × 411.43 logical pixels in landscape
+    // 8" tablet: Estimated ~533 × 800 logical pixels in landscape (800×1200 physical / 1.5 density)
+    // 10" tablet: Larger than both
+    final isLandscape = orientation == Orientation.landscape;
+    final is6Point5Phone = isLandscape && screenWidth >= 750 && screenWidth < 900; // 6.5" phone range
+    final is8Tablet = isLandscape && screenWidth >= 500 && screenWidth < 750; // 8" tablet range  
+    final is10Tablet = isLandscape && screenWidth >= 900; // 10" tablets (larger screens)
+    
+    // Debug output to verify device detection
+    print('DEVICE DEBUG: Screen ${screenWidth}x$screenHeight, Landscape: $isLandscape');
+    print('DEVICE DEBUG: 6.5" Phone: $is6Point5Phone, 8" Tablet: $is8Tablet, 10" Tablet: $is10Tablet');
+    
+    // For backwards compatibility, keep these variables
+    final isPhone = is6Point5Phone;
+    final isTablet8 = is8Tablet;
+    final isTablet10 = is10Tablet;
     final isPortrait = orientation == Orientation.portrait;
     
-    // Debug output
-    print('Screen width: $screenWidth, height: $screenHeight, diagonal: $screenDiagonal');
-    print('isPhone: $isPhone, isTablet8: $isTablet8, isTablet10: $isTablet10, isPortrait: $isPortrait');
+    // Hide status bar for 6" phones
+    if (isPhone) {
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    } else {
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    }
     
     return Scaffold(
       backgroundColor: Colors.grey[100],
@@ -395,7 +349,7 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
               // Right side - Image only
               Expanded(
                 flex: 1,
-                child: Container(
+                child: SizedBox(
                   width: double.infinity,
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(8),
@@ -530,7 +484,7 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
               
               // Golden Oaks Image - Fill remaining space
               Expanded(
-                child: Container(
+                child: SizedBox(
                   width: double.infinity,
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(12),
@@ -726,7 +680,7 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
                       padding: const EdgeInsets.all(16),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
-                        side: BorderSide(
+                        side: const BorderSide(
                           color: Colors.black,
                           width: 2,
                         ),
@@ -743,7 +697,7 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
                   ),
                 ),
                 
-                Container(
+                SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: selectWednesdayLeague,
@@ -755,7 +709,7 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
                       padding: const EdgeInsets.all(16),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
-                        side: BorderSide(
+                        side: const BorderSide(
                           color: Colors.black,
                           width: 2,
                         ),
@@ -788,7 +742,7 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
                         padding: const EdgeInsets.all(20),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
-                          side: BorderSide(
+                          side: const BorderSide(
                             color: Colors.black,
                             width: 2,
                           ),
@@ -819,7 +773,7 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
                         padding: const EdgeInsets.all(20),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
-                          side: BorderSide(
+                          side: const BorderSide(
                             color: Colors.black,
                             width: 2,
                           ),
@@ -1320,37 +1274,6 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
     );
   }
 
-  Widget _buildPhoneAdminButton(String title, IconData icon, Color bgColor, VoidCallback onPressed) {
-    return Container(
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: bgColor,
-          foregroundColor: Colors.black,
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-            side: const BorderSide(color: Colors.black, width: 1),
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 24),
-            const SizedBox(width: 8),
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   Widget _buildPhoneGridButton(String title, IconData icon, Color bgColor, VoidCallback onPressed) {
     return ElevatedButton(
@@ -1388,7 +1311,7 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
+        const Text(
           'Select League:',
           style: TextStyle(
             fontSize: 12,
@@ -1414,13 +1337,13 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
                   padding: const EdgeInsets.all(8),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(6),
-                    side: BorderSide(
+                    side: const BorderSide(
                       color: Colors.black,
                       width: 1,
                     ),
                   ),
                 ),
-                child: Text(
+                child: const Text(
                   'Monday',
                   style: TextStyle(
                     fontSize: 10,
@@ -1431,7 +1354,7 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
               ),
             ),
             
-            Container(
+            SizedBox(
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: selectWednesdayLeague,
@@ -1443,13 +1366,13 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
                   padding: const EdgeInsets.all(8),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(6),
-                    side: BorderSide(
+                    side: const BorderSide(
                       color: Colors.black,
                       width: 1,
                     ),
                   ),
                 ),
-                child: Text(
+                child: const Text(
                   'Wednesday',
                   style: TextStyle(
                     fontSize: 10,
@@ -1481,9 +1404,9 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
           ),
           child: Text(
             currentLeague != null 
-                ? '${currentLeague!.name.toUpperCase()}'
+                ? currentLeague!.name.toUpperCase()
                 : 'No League',
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 8,
               fontWeight: FontWeight.w600,
               color: Colors.black,
