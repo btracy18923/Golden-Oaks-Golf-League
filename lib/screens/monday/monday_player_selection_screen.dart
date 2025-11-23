@@ -430,10 +430,10 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => MondayEnterScoresScreen(
-            initialPlayers: selectedPlayers,
-            initialGroups: groups,
-            initialLeague: 'monday',
+          builder: (context) => EnterScoresScreenWithData(
+            selectedPlayers: selectedPlayers,
+            groups: groups,
+            leagueType: 'monday',
           ),
         ),
       );
