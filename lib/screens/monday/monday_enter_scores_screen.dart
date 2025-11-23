@@ -29,13 +29,11 @@ class Position {
 class MondayEnterScoresScreen extends StatefulWidget {
   final List<Map<String, dynamic>>? initialPlayers;
   final List<List<Map<String, dynamic>?>>? initialGroups;
-  final String? initialLeague;
 
   const MondayEnterScoresScreen({
     Key? key,
     this.initialPlayers,
     this.initialGroups,
-    this.initialLeague,
   }) : super(key: key);
 
   @override
@@ -46,13 +44,11 @@ class MondayEnterScoresScreen extends StatefulWidget {
 class EnterScoresScreenWithData extends StatelessWidget {
   final List<Map<String, dynamic>> selectedPlayers;
   final List<List<Map<String, dynamic>?>> groups;
-  final String leagueType;
 
   const EnterScoresScreenWithData({
     Key? key,
     required this.selectedPlayers,
     required this.groups,
-    required this.leagueType,
   }) : super(key: key);
 
   @override
@@ -60,7 +56,6 @@ class EnterScoresScreenWithData extends StatelessWidget {
     return MondayEnterScoresScreen(
       initialPlayers: selectedPlayers,
       initialGroups: groups,
-      initialLeague: leagueType,
     );
   }
 }
@@ -139,13 +134,11 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     
     // Initialize with data if provided
     if (widget.initialPlayers != null && 
-        widget.initialGroups != null && 
-        widget.initialLeague != null) {
+        widget.initialGroups != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         setPlayers(
           widget.initialPlayers!,
           widget.initialGroups!,
-          widget.initialLeague!,
         );
       });
     }
@@ -204,21 +197,14 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     super.dispose();
   }
 
-  void setLeague(String leagueType) {
-    setState(() {
-      selectedLeague = leagueType;
-      updateTitleInformation();
-    });
-  }
 
-  void setPlayers(List<Map<String, dynamic>> players, List<List<Map<String, dynamic>?>> playerGroups, String leagueType) {
+  void setPlayers(List<Map<String, dynamic>> players, List<List<Map<String, dynamic>?>> playerGroups) {
     setState(() {
       // Create mutable copies of player data to avoid read-only QueryRow issues
       selectedPlayers = players.map((player) => Map<String, dynamic>.from(player)).toList();
       groups = playerGroups.map((group) => 
         group.map((player) => player != null ? Map<String, dynamic>.from(player) : null).toList()
       ).toList();
-      selectedLeague = leagueType;
       selectedForSwap.clear();
       playerNameButtons.clear();
       scoreEntries.clear();
@@ -325,32 +311,8 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     // Calculate using different formulas based on whether groups are processed and league type
     double purseAmount;
     
-    if (selectedLeague == 'wednesday') {
-      // For Wednesday league, use CSV amounts
-      try {
-        if (groupsProcessed) {
-          // Use CSV "Groups Total" amount for group processing
-          Map<String, double> groupPayoutData = await GroupCsvPayoutService().getPayoutAmounts(numPlayers);
-          purseAmount = groupPayoutData['groups_total'] ?? 0.0;
-        } else {
-          // Use CSV "Total Individual" amount for individual processing
-          Map<String, double> payoutData = await CsvPayoutService().getPayoutAmounts(numPlayers);
-          purseAmount = payoutData['total_individual'] ?? 0.0;
-        }
-      } catch (e) {
-        // Fallback to old calculation if CSV fails
-        if (groupsProcessed) {
-          double groupPercent = PercentageManager().groupPercent;
-          purseAmount = anteAmount * numPlayers * (groupPercent / 100);
-        } else {
-          double individualPercent = PercentageManager().individualPercent;
-          purseAmount = anteAmount * numPlayers * (individualPercent / 100);
-        }
-      }
-    } else {
-      // For Monday league, use simple calculation: Skats Ante x Number of Selected Players
-      purseAmount = anteAmount * numPlayers;
-    }
+    // For Monday league, use simple calculation: Skats Ante x Number of Selected Players
+    purseAmount = anteAmount * numPlayers;
     
     // Calculate closest pin purse: Closest Pin x # of Selected Players
     double closestPinPurseAmount = closestPinAmount * numPlayers;
@@ -439,7 +401,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     
     return Container(
       height: containerHeight,
-      padding: EdgeInsets.symmetric(horizontal: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
         color: is6InchPhoneLandscape ? Colors.green[400] : Colors.grey[200],
       ),
@@ -457,9 +419,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Text(
-          selectedLeague == 'monday' 
-            ? (groupsProcessed ? "Process Groups:" : "Enter Skats:l")
-            : (groupsProcessed ? "Process Groups:" : "Enter Scores:"),
+          groupsProcessed ? "Process Groups:" : "Enter Skats:l",
           style: TextStyle(
             fontSize: fontSize,
             fontWeight: FontWeight.bold,
@@ -468,32 +428,19 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
         ),
         SizedBox(width: spacing),
         Text(
-          selectedLeague == 'monday'
-            ? (groupsProcessed ? "Total Group Purse = $_playersPurseDisplayText" : "Skat Purse = $_playersPurseDisplayText")
-            : (groupsProcessed ? "Total Group Purse = $_playersPurseDisplayText" : "Total Players' Purse = $_playersPurseDisplayText"),
+          groupsProcessed ? "Total Group Purse = $_playersPurseDisplayText" : "Skat Purse = $_playersPurseDisplayText",
           style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold),
         ),
         SizedBox(width: spacing),
         Text(
-          selectedLeague == 'monday'
-            ? "Closest Pin Purse = $_closestPinPurseDisplayText"
-            : "Total Closest Pin Purse = $_closestPinPurseDisplayText",
+          "Closest Pin Purse = $_closestPinPurseDisplayText",
           style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold),
         ),
-        if (selectedLeague == 'monday') ...[
-          SizedBox(width: spacing),
-          Text(
-            "Mulligan Purse = $_mulliganPurseDisplayText",
-            style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold),
-          ),
-        ],
-        if (selectedLeague == 'wednesday') ...[
-          SizedBox(width: spacing),
-          Text(
-            "Total Mulligan Purse = $_mulliganPurseDisplayText",
-            style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold),
-          ),
-        ],
+        SizedBox(width: spacing),
+        Text(
+          "Mulligan Purse = $_mulliganPurseDisplayText",
+          style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold),
+        ),
       ],
     );
   }
@@ -504,9 +451,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
       child: Row(
         children: [
           Text(
-            selectedLeague == 'monday' 
-              ? (groupsProcessed ? "Process Groups:" : "")
-              : (groupsProcessed ? "Process Groups:" : "Enter Scores:"),
+            groupsProcessed ? "Process Groups:" : "",
             style: TextStyle(
               fontSize: fontSize,
               fontWeight: FontWeight.bold,
@@ -517,13 +462,11 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
           Row(
             children: [
               Text(
-                selectedLeague == 'monday'
-                  ? (groupsProcessed ? "Total Group Purse = " : "Skat Purse = ")
-                  : (groupsProcessed ? "Total Group Purse = " : "Total Players' Purse = "),
+                groupsProcessed ? "Total Group Purse = " : "Skat Purse = ",
                 style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold),
               ),
               Container(
-                padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                 decoration: BoxDecoration(
                   color: Colors.lightGreen[100],
                   borderRadius: BorderRadius.circular(4),
@@ -539,13 +482,11 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
           Row(
             children: [
               Text(
-                selectedLeague == 'monday'
-                  ? "Closest Pin Purse = "
-                  : "Total Closest Pin Purse = ",
+                "Closest Pin Purse = ",
                 style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold),
               ),
               Container(
-                padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                 decoration: BoxDecoration(
                   color: Colors.lightGreen[100],
                   borderRadius: BorderRadius.circular(4),
@@ -557,35 +498,26 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
               ),
             ],
           ),
-          if (selectedLeague == 'monday') ...[
-            SizedBox(width: spacing),
-            Row(
-              children: [
-                Text(
-                  "Mulligan Purse = ",
+          SizedBox(width: spacing),
+          Row(
+            children: [
+              Text(
+                "Mulligan Purse = ",
+                style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.lightGreen[100],
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  _mulliganPurseDisplayText,
                   style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold),
                 ),
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: Colors.lightGreen[100],
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    _mulliganPurseDisplayText,
-                    style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ],
-            ),
-          ],
-          if (selectedLeague == 'wednesday') ...[
-            SizedBox(width: spacing),
-            Text(
-              "Total Mulligan Purse = $_mulliganPurseDisplayText",
-              style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold),
-            ),
-          ],
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -602,7 +534,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
 
     return Container(
       color: Colors.white,
-      padding: EdgeInsets.all(10),
+      padding: const EdgeInsets.all(10),
       child: is6InchPhoneLandscape 
         ? SingleChildScrollView(
             controller: _synchronizedScrollController,
@@ -610,7 +542,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(child: _buildSectionContainer(0)),
-                SizedBox(width: 10),
+                const SizedBox(width: 10),
                 Expanded(child: _buildSectionContainer(1)),
               ],
             ),
@@ -619,9 +551,9 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(child: _buildSectionContainer(0)),
-              SizedBox(width: 10),
+              const SizedBox(width: 10),
               Expanded(child: _buildSectionContainer(1)),
-              SizedBox(width: 10),
+              const SizedBox(width: 10),
               Expanded(child: _buildSectionContainer(2)),
             ],
           ),
@@ -665,15 +597,15 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
       }
       
       // Group header - positioned at center of main columns
-      double columnCenter = selectedLeague == 'wednesday' ? 175.0 : 70.0; // Center position for headers
+      double columnCenter = 70.0; // Center position for Monday league headers
       
-      sectionWidgets.add(Container(
+      sectionWidgets.add(SizedBox(
         height: 30,
         child: is6InchPhoneLandscape 
           ? Center(
               child: Text(
                 '-----Group $groupNum-----',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
               ),
             )
           : Stack(
@@ -682,7 +614,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
                   left: columnCenter - 80, // Offset to center the text (approximate half width)
                   child: Text(
                     '------Group $groupNum------',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                 ),
               ],
@@ -706,7 +638,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
         sectionWidgets.add(_buildPlayerRow(player, groupNum - 1, rowIndex));
       }
       
-      sectionWidgets.add(SizedBox(height: 10)); // Space between groups
+      sectionWidgets.add(const SizedBox(height: 10)); // Space between groups
     }
     
     // For 6" phone landscape, don't wrap in ScrollView (parent handles scrolling)
@@ -736,83 +668,34 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     
     // Responsive font size for headers
     double headerFontSize = is6InchPhoneLandscape ? 12 : 15;
-    
+
     // Name header
-    headers.add(Container(
+    headers.add(SizedBox(
       width: 120,
       child: Text('Name', style: TextStyle(fontSize: headerFontSize, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
     ));
     
-    // HC header (Wednesday only, and only if groups not processed)
-    if (selectedLeague == 'wednesday' && !groupsProcessed) {
-      headers.add(Container(
-        width: 50,
-        child: Text('HC', style: TextStyle(fontSize: headerFontSize, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
-      ));
-    }
-    
-    // Gross header (only if groups not processed and not Monday league)
-    if (!groupsProcessed && selectedLeague != 'monday') {
-      headers.add(Container(
-        width: 60,
-        child: Text('Gross', style: TextStyle(fontSize: headerFontSize, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
-      ));
-    }
-    
-    // Group# header (Wednesday only, and only if groups are processed)
-    if (selectedLeague == 'wednesday' && groupsProcessed) {
-      headers.add(Container(
-        width: 60,
-        child: Text('Group#', style: TextStyle(fontSize: headerFontSize, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
-      ));
-    }
-    
-    // Net header (Wednesday only)
-    if (selectedLeague == 'wednesday') {
-      headers.add(Container(
-        width: 40,
-        child: Text('Net', style: TextStyle(fontSize: headerFontSize, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
-      ));
-      
-      // AVG header (only when groups are processed)
-      if (groupsProcessed) {
-        headers.add(Container(
-          width: 50,
-          child: Text('AVG', style: TextStyle(fontSize: headerFontSize, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
-        ));
-      }
-      
-      headers.add(Container(
-        width: 50,
-        child: Text('Pos', style: TextStyle(fontSize: headerFontSize, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
-      ));
-      headers.add(Container(
-        width: 80,
-        child: Text('\$\$\$', style: TextStyle(fontSize: headerFontSize, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
-      ));
-    }
-    
     // SKAT headers (Monday only, and only if groups not processed)
-    if (selectedLeague == 'monday' && !groupsProcessed) {
-      headers.add(Container(
+    if (!groupsProcessed) {
+      headers.add(SizedBox(
         width: 70,
         child: Text(is6InchPhoneLandscape ? 'SK #' : 'SKAT#', style: TextStyle(fontSize: headerFontSize, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
       ));
-      headers.add(Container(
+      headers.add(SizedBox(
         width: 70,
         child: Text('SKATS', style: TextStyle(fontSize: headerFontSize, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
       ));
-      headers.add(Container(
+      headers.add(SizedBox(
         width: 70,
         child: Text('DIFF', style: TextStyle(fontSize: headerFontSize, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
       ));
-      headers.add(Container(
+      headers.add(SizedBox(
         width: 70,
         child: Text('\$\$\$', style: TextStyle(fontSize: headerFontSize, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
       ));
     }
     
-    return Container(
+    return SizedBox(
       height: 25,
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
@@ -841,46 +724,13 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     }
     
     if (player != null) {
-      // Handicap (Wednesday only, and only if groups not processed)
-      if (selectedLeague == 'wednesday' && !groupsProcessed) {
-        rowWidgets.add(Container(
-          width: 50,
-          height: 40,
-          decoration: BoxDecoration(border: Border.all()),
-          child: Center(child: Text(player['handicap'] != null ? player['handicap'].toStringAsFixed(1) : '', style: TextStyle(fontSize: 16))),
-        ));
-      }
-      
-      // Gross score input (only if groups not processed and not Monday league)
-      if (!groupsProcessed && selectedLeague != 'monday') {
-        rowWidgets.add(_buildScoreInput(player));
-      }
-      
-      // Group# field (Wednesday only, and only if groups are processed)
-      if (selectedLeague == 'wednesday' && groupsProcessed) {
-        rowWidgets.add(_buildGroupNumberInput(player, groupIndex));
-      }
-      
-      // Net score (Wednesday only)
-      if (selectedLeague == 'wednesday') {
-        rowWidgets.add(_buildNetScoreLabel(player));
-        
-        // AVG column (only when groups are processed)
-        if (groupsProcessed) {
-          rowWidgets.add(_buildAvgLabel(groupIndex));
-        }
-        
-        rowWidgets.add(_buildPlaceLabel(player, groupIndex));
-        rowWidgets.add(_buildIndWinLabel(player));
-      }
-      
       // SKAT fields (Monday only, and only if groups not processed)
-      if (selectedLeague == 'monday' && !groupsProcessed) {
+      if (!groupsProcessed) {
         rowWidgets.add(Container(
           width: 70,
           height: 40,
           decoration: BoxDecoration(border: Border.all()),
-          child: Center(child: Text(player['skat_number']?.toString() ?? '', style: TextStyle(fontSize: 20))),
+          child: Center(child: Text(player['skat_number']?.toString() ?? '', style: const TextStyle(fontSize: 20))),
         ));
         rowWidgets.add(_buildSkatsInput(player));
         rowWidgets.add(_buildDiffInput(player));
@@ -890,37 +740,13 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
           decoration: BoxDecoration(border: Border.all()),
           child: Center(child: Text(
             player['skat_winnings'] != null ? '\$${player['skat_winnings'].toStringAsFixed(2)}' : '',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
           )),
         ));
       }
     } else {
       // Empty placeholders
-      if (selectedLeague == 'wednesday' && !groupsProcessed) {
-        rowWidgets.add(_buildEmptyPlaceholder(50)); // HC placeholder
-      }
-      if (!groupsProcessed && selectedLeague != 'monday') {
-        rowWidgets.add(_buildEmptyPlaceholder(60)); // Gross placeholder
-      }
-      
-      // Group# placeholder (Wednesday only, and only if groups are processed)
-      if (selectedLeague == 'wednesday' && groupsProcessed) {
-        rowWidgets.add(_buildEmptyPlaceholder(60)); // Group# placeholder
-      }
-      
-      if (selectedLeague == 'wednesday') {
-        rowWidgets.add(_buildEmptyPlaceholder(50)); // Net placeholder
-        
-        // AVG placeholder (only when groups are processed)
-        if (groupsProcessed) {
-          rowWidgets.add(_buildEmptyPlaceholder(50)); // AVG placeholder
-        }
-        
-        rowWidgets.add(_buildEmptyPlaceholder(50)); // Pos placeholder
-        rowWidgets.add(_buildEmptyPlaceholder(80)); // $$$ placeholder
-      }
-      
-      if (selectedLeague == 'monday' && !groupsProcessed) {
+      if (!groupsProcessed) {
         rowWidgets.add(_buildEmptyPlaceholder(70)); // SKAT# placeholder
         rowWidgets.add(_buildEmptyPlaceholder(70)); // SKATS placeholder
         rowWidgets.add(_buildEmptyPlaceholder(70)); // DIFF placeholder
@@ -931,7 +757,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     return Container(
       height: 40,
       decoration: is6InchPhoneLandscape 
-          ? BoxDecoration(
+          ? const BoxDecoration(
               border: Border(
                 right: BorderSide(color: Colors.black, width: 1.0),
               ),
@@ -976,13 +802,13 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
             children: [
               if (isWildCard) ...[
                 Container(
-                  padding: EdgeInsets.symmetric(horizontal: 2, vertical: 1),
+                  padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
                   decoration: BoxDecoration(
                     color: Colors.orange,
                     borderRadius: BorderRadius.circular(3),
                     border: Border.all(color: Colors.black, width: 0.5),
                   ),
-                  child: Text(
+                  child: const Text(
                     'WC',
                     style: TextStyle(
                       fontSize: 10,
@@ -991,7 +817,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
                     ),
                   ),
                 ),
-                SizedBox(width: 4),
+                const SizedBox(width: 4),
               ],
               Expanded(
                 child: Text(
@@ -1052,11 +878,9 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
       controller.text = grossText;
     }
     
-    Color inputColor = selectedLeague == 'wednesday' 
-        ? Color(0xFFFFD700) // Light gold
-        : Color(0xFFB3FFB3); // Light green
+    Color inputColor = const Color(0xFFB3FFB3); // Light green for Monday league
     
-    return Container(
+    return SizedBox(
       width: 60,
       height: 40,
       child: TextField(
@@ -1066,7 +890,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
         inputFormatters: [FilteringTextInputFormatter.digitsOnly],
         maxLength: 2,
         textAlign: TextAlign.center,
-        style: TextStyle(fontSize: 16),
+        style: const TextStyle(fontSize: 16),
         onChanged: (value) {
           // Mark that results need to be recalculated (but don't clear immediately)
           if (winnersCalculated) {
@@ -1076,59 +900,16 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
             });
           }
           
-          // Calculate Net score for Wednesday league (only after 2 digits entered)
-          if (selectedLeague == 'wednesday') {
-            if (value.isNotEmpty && value.length >= 2) {
-              try {
-                int grossScore = int.parse(value);
-                player['gross_score'] = grossScore; // Store gross score
-                double handicap = player['handicap']?.toDouble() ?? 0.0;
-                int netScore = grossScore - handicap.round();
-                player['net_score'] = netScore;
-                
-                setState(() {}); // Refresh to show Net score
-              } catch (e) {
-                // Handle invalid input
-                player['net_score'] = null;
-                setState(() {});
-              }
-            } else if (value.isNotEmpty && value.length == 1) {
-              // Store gross score but don't calculate net yet
-              try {
-                int grossScore = int.parse(value);
-                player['gross_score'] = grossScore;
-                player['net_score'] = null; // Clear net score until 2nd digit
-                setState(() {});
-              } catch (e) {
-                // Handle invalid input
-                player['gross_score'] = null;
-                player['net_score'] = null;
-                setState(() {});
-              }
-            } else {
-              // Clear both gross and net scores when input is empty
-              player['gross_score'] = null;
-              player['net_score'] = null;
-              
-              // Recalculate group winnings if groups are processed
-              if (groupsProcessed) {
-                unawaited(_calculateGroupWinningsLegacy());
-              }
-              
-              setState(() {});
+          // For Monday league, just store the gross score
+          if (value.isNotEmpty) {
+            try {
+              int grossScore = int.parse(value);
+              player['gross_score'] = grossScore;
+            } catch (e) {
+              // Handle invalid input
             }
           } else {
-            // For Monday league, just store the gross score
-            if (value.isNotEmpty) {
-              try {
-                int grossScore = int.parse(value);
-                player['gross_score'] = grossScore;
-              } catch (e) {
-                // Handle invalid input
-              }
-            } else {
-              player['gross_score'] = null;
-            }
+            player['gross_score'] = null;
           }
           
           if (value.length == 2) {
@@ -1150,9 +931,9 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
           fillColor: inputColor,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(color: Colors.black, width: 2),
+            borderSide: const BorderSide(color: Colors.black, width: 2),
           ),
-          contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           counterText: '',
         ),
       ),
@@ -1169,7 +950,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
       width: 50,
       height: 40,
       decoration: BoxDecoration(border: Border.all()),
-      child: Center(child: Text(netText, style: TextStyle(fontSize: 16))),
+      child: Center(child: Text(netText, style: const TextStyle(fontSize: 16))),
     );
   }
 
@@ -1184,7 +965,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
       width: 50,
       height: 40,
       decoration: BoxDecoration(border: Border.all()),
-      child: Center(child: Text(avgText, style: TextStyle(fontSize: 16))),
+      child: Center(child: Text(avgText, style: const TextStyle(fontSize: 16))),
     );
   }
 
@@ -1195,7 +976,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
       width: 50,
       height: 40,
       decoration: BoxDecoration(border: Border.all()),
-      child: Center(child: Text(placeText, style: TextStyle(fontSize: 16))),
+      child: Center(child: Text(placeText, style: const TextStyle(fontSize: 16))),
     );
   }
 
@@ -1206,7 +987,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
       width: 80,
       height: 40,
       decoration: BoxDecoration(border: Border.all()),
-      child: Center(child: Text(indText, style: TextStyle(fontSize: 14))),
+      child: Center(child: Text(indText, style: const TextStyle(fontSize: 14))),
     );
   }
 
@@ -1233,7 +1014,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
       controller.text = skatsText;
     }
     
-    return Container(
+    return SizedBox(
       width: 70,
       height: 40,
       child: TextField(
@@ -1242,7 +1023,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
         keyboardType: TextInputType.number,
         inputFormatters: [FilteringTextInputFormatter.digitsOnly],
         textAlign: TextAlign.center,
-        style: TextStyle(fontSize: 16),
+        style: const TextStyle(fontSize: 16),
         onChanged: (value) {
           // Mark that results need to be recalculated (but don't clear immediately)
           if (winnersCalculated) {
@@ -1285,12 +1066,12 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
         },
         decoration: InputDecoration(
           filled: true,
-          fillColor: Color(0xFFB3FFB3), // Light green
+          fillColor: const Color(0xFFB3FFB3), // Light green
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(color: Colors.black, width: 2),
+            borderSide: const BorderSide(color: Colors.black, width: 2),
           ),
-          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
         ),
       ),
     );
@@ -1341,7 +1122,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
       controller.text = diffText;
     }
     
-    return Container(
+    return SizedBox(
       width: 70,
       height: 40,
       child: TextField(
@@ -1350,7 +1131,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
         keyboardType: TextInputType.number,
         inputFormatters: [FilteringTextInputFormatter.digitsOnly],
         textAlign: TextAlign.center,
-        style: TextStyle(fontSize: 16),
+        style: const TextStyle(fontSize: 16),
         onChanged: (value) {
           // Mark that results need to be recalculated (but don't clear immediately)
           if (winnersCalculated) {
@@ -1385,12 +1166,12 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
         },
         decoration: InputDecoration(
           filled: true,
-          fillColor: Color(0xFFFFD700), // Light gold
+          fillColor: const Color(0xFFFFD700), // Light gold
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(color: Colors.black, width: 2),
+            borderSide: const BorderSide(color: Colors.black, width: 2),
           ),
-          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
         ),
       ),
     );
@@ -1407,13 +1188,13 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
       width: 60,
       height: 40,
       decoration: BoxDecoration(
-        color: Color(0xFFFFD700), // Wednesday League gold color
+        color: const Color(0xFFFFD700), // Wednesday League gold color
         border: Border.all(color: Colors.black, width: 1),
       ),
       child: Center(
         child: Text(
           groupText,
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           textAlign: TextAlign.center,
         ),
       ),
@@ -1865,12 +1646,12 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
             ? (is6InchPhoneLandscape 
                 ? [
                     _buildFooterButton(returnButtonText, Colors.lightBlue[100]!, _returnToMainMenu),
-                    _buildFooterButton("Closest Pin", Color(0xFFB3FFB3), _processIndividuals),
+                    _buildFooterButton("Closest Pin", const Color(0xFFB3FFB3), _processIndividuals),
                     _buildFooterButton("Auto Fill", Colors.orange[200]!, _autoFillGrossScores),
                     _buildSwapButton(),
                   ]
                 : [
-                    _buildFooterButton("Closest Pin", Color(0xFFB3FFB3), _processIndividuals),
+                    _buildFooterButton("Closest Pin", const Color(0xFFB3FFB3), _processIndividuals),
                     _buildFooterButton(returnButtonText, Colors.lightBlue[100]!, _returnToMainMenu),
                     _buildFooterButton("Auto Fill", Colors.orange[200]!, _autoFillGrossScores),
                     _buildSwapButton(),
@@ -1899,7 +1680,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     
     return Expanded(
       child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 10),
         child: ElevatedButton(
           onPressed: isEnabled ? () async => await _navigateToPlayerPayout() : null,
           style: ElevatedButton.styleFrom(
@@ -1908,7 +1689,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
             padding: EdgeInsets.symmetric(vertical: is6InchPhoneLandscape ? 4 : 8),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
-          child: Text(
+          child: const Text(
             "Auto Process Groups", 
             style: TextStyle(
               fontSize: 16, 
@@ -1930,7 +1711,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     
     return Expanded(
       child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 10),
         child: ElevatedButton(
           onPressed: onPressed,
           style: ElevatedButton.styleFrom(
@@ -1939,7 +1720,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
             padding: EdgeInsets.symmetric(vertical: is6InchPhoneLandscape ? 4 : 8),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
-          child: Text(text, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+          child: Text(text, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
         ),
       ),
     );
@@ -1948,13 +1729,13 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
   Widget _buildFooterButtonCustom(String text, Color color, VoidCallback onPressed, double fontSize) {
     return Expanded(
       child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 10),
         child: ElevatedButton(
           onPressed: onPressed,
           style: ElevatedButton.styleFrom(
             backgroundColor: color,
             foregroundColor: Colors.black,
-            padding: EdgeInsets.symmetric(vertical: 8),
+            padding: const EdgeInsets.symmetric(vertical: 8),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
           child: Text(text, style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
@@ -1987,7 +1768,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     
     return Expanded(
       child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 10),
         child: ElevatedButton(
           onPressed: _manualProcessGroups,
           style: ElevatedButton.styleFrom(
@@ -1996,7 +1777,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
             padding: EdgeInsets.symmetric(vertical: is6InchPhoneLandscape ? 4 : 8),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
-          child: Text(buttonText, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+          child: Text(buttonText, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
         ),
       ),
     );
@@ -2004,8 +1785,8 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
 
   Color _getLeagueColor() {
     return selectedLeague == 'monday' 
-        ? Color(0xFFB3FFB3) // Light green
-        : Color(0xFFFFD700); // Light gold
+        ? const Color(0xFFB3FFB3) // Light green
+        : const Color(0xFFFFD700); // Light gold
   }
 
   String _getDisplayName(String selectedItem) {
@@ -2028,12 +1809,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
           int grossScore = int.parse(value);
           playerData['gross_score'] = grossScore;
           
-          if (selectedLeague == 'wednesday') {
-            // Calculate and display net score for Wednesday league
-            double handicap = playerData['handicap']?.toDouble() ?? 0.0;
-            int netScore = grossScore - handicap.round();
-            playerData['net_score'] = netScore;
-          }
+          // Monday league doesn't use net scores
           
           setState(() {}); // Refresh to show updates
         } catch (e) {
@@ -2042,9 +1818,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
       } else {
         // Clear scores when input is empty
         playerData['gross_score'] = null;
-        if (selectedLeague == 'wednesday') {
-          playerData['net_score'] = null;
-        }
+        // Monday league doesn't use net scores
         setState(() {});
       }
     }
@@ -2144,7 +1918,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
       // Handle error silently
     } finally {
       // Reset the flag after a short delay
-      Future.delayed(Duration(milliseconds: 100), () {
+      Future.delayed(const Duration(milliseconds: 100), () {
         _isMovingFocus = false;
       });
     }
@@ -2168,7 +1942,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
       }
     }
     
-    // For Wednesday League or processed groups, move to next player's gross
+    // For processed groups, move to next player's gross
     return _findNextPlayerGross(currentGroupIndex, currentRowIndex + 1);
   }
   
@@ -2235,12 +2009,6 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
   }
 
   void _onPlayerNameClick(String playerLast, int groupIndex) {
-    // If groups are processed, handle group number assignment
-    if (groupsProcessed && selectedLeague == 'wednesday') {
-      _assignGroupNumber(playerLast);
-      return;
-    }
-    
     // Original swap functionality when groups not processed
     setState(() {
       if (selectedForSwap.contains(playerLast)) {
@@ -2332,9 +2100,9 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
       
       // Manual Process Groups functionality removed
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Manual Process Groups screen was removed')),
+        const SnackBar(content: Text('Manual Process Groups screen was removed')),
       );
-      final result = null;
+      const result = null;
 
       // Handle result from the Manual Process Groups screen
       if (result != null) {
@@ -2447,9 +2215,9 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     // Navigate to Auto Process Groups screen with wildcard auto-filling
     // Manual Process Groups functionality removed
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Manual Process Groups screen was removed')),
+      const SnackBar(content: Text('Manual Process Groups screen was removed')),
     );
-    final result = null;
+    const result = null;
 
     // Handle result from the Auto Process Groups screen
     if (result != null && result['groupsProcessed'] == true) {
@@ -2474,9 +2242,9 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     
     // Manual Process Groups functionality removed
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Manual Process Groups screen was removed')),
+      const SnackBar(content: Text('Manual Process Groups screen was removed')),
     );
-    final result = null;
+    const result = null;
 
     // Handle result from the Auto Process Groups screen
     if (result != null) {
@@ -2552,7 +2320,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
               await dbHelper.updateGroupWinnings(
                 playerRecord['id'] as int, 
                 individualGroupShare, 
-                selectedLeague == 'monday' ? League.monday : League.wednesday
+                League.monday
               );
             }
           } catch (e) {
@@ -2615,7 +2383,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: Text('Select Name of Player for Closest Pin (${players.length} players)'),
-          content: Container(
+          content: SizedBox(
             width: double.maxFinite,
             height: MediaQuery.of(context).size.height * 0.7, // 70% of screen height - adaptive
             child: GridView.builder(
@@ -2841,7 +2609,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
           String playerName = player['last'] ?? 'Unknown';
           
           return Padding(
-            padding: EdgeInsets.symmetric(vertical: 2),
+            padding: const EdgeInsets.symmetric(vertical: 2),
             child: Row(
               children: [
                 // Player name with increased width for longer names - clickable to increment
@@ -2864,7 +2632,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
                       }
                     },
                     child: Container(
-                      padding: EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+                      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
                       decoration: BoxDecoration(
                         color: Colors.blue.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(4),
@@ -2882,7 +2650,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
                     ),
                   ),
                 ),
-                SizedBox(width: 8), // Padding between name and value display
+                const SizedBox(width: 8), // Padding between name and value display
                 // Value display (read-only, shows current value)
                 Container(
                   width: 30,
@@ -2895,7 +2663,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
                   child: Center(
                     child: Text(
                       playerValues[playerName]! > 0 ? playerValues[playerName]!.toString() : '',
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                         color: Colors.black87,
@@ -2939,7 +2707,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
         return AlertDialog(
           title: Text(
             'Closest Pin Winners - ${selectedLeague == 'monday' ? 'Monday' : 'Wednesday'} League',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           content: IntrinsicWidth(
             child: Column(
@@ -2947,7 +2715,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 if (winnersData.isEmpty)
-                  Padding(
+                  const Padding(
                     padding: EdgeInsets.all(20),
                     child: Text(
                       'No winners selected',
@@ -2960,10 +2728,10 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
                     style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                     textAlign: TextAlign.center,
                   ),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   ...winnersData.map((winner) {
                     return Padding(
-                      padding: EdgeInsets.symmetric(vertical: 2),
+                      padding: const EdgeInsets.symmetric(vertical: 2),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -2972,26 +2740,26 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
                             width: 80,
                             child: Text(
                               winner['name'],
-                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           // Calculation part - always starts at same position
                           Text(
                             '${winner['value']} × \$${prizePerPoint.toStringAsFixed(2)} = \$${winner['winnings'].toStringAsFixed(2)}',
-                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                           ),
                         ],
                       ),
                     );
                   }).toList(),
-                  SizedBox(height: 12),
+                  const SizedBox(height: 12),
                   Container(
                     height: 1,
                     width: 200,
                     color: Colors.grey.shade400,
                   ),
-                  SizedBox(height: 8),
+                  const SizedBox(height: 8),
                   Text(
                     'Total Paid: \$${winnersData.fold(0.0, (sum, winner) => sum + winner['winnings']).toStringAsFixed(2)}',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.green.shade600),
@@ -3008,7 +2776,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
                 _calculateAndDistributeSkatAmounts();
                 Navigator.of(context).pop(true); // Return true to indicate SKAT calculation was performed
               },
-              child: Text('OK'),
+              child: const Text('OK'),
             ),
           ],
         );
@@ -3050,16 +2818,16 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
                 children: [
                   Text(
                     'Process Individuals - ${selectedLeague == 'monday' ? 'Monday' : 'Wednesday'} League',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
-                  SizedBox(height: 8),
+                  const SizedBox(height: 8),
                   Text(
                     'Target: \$${targetTotal.toStringAsFixed(0)} | Current Total: $runningTotal',
                     style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: runningTotal == targetTotal ? Colors.green : Colors.blue),
                   ),
                 ],
               ),
-              content: Container(
+              content: SizedBox(
                 width: double.maxFinite,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -3072,12 +2840,12 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
                         Expanded(
                           child: _buildPlayerClickColumn(playerScores, 0, playerValues, setState, updateTotal, targetTotal),
                         ),
-                        SizedBox(width: 8),
+                        const SizedBox(width: 8),
                         // Column 2
                         Expanded(
                           child: _buildPlayerClickColumn(playerScores, 1, playerValues, setState, updateTotal, targetTotal),
                         ),
-                        SizedBox(width: 8),
+                        const SizedBox(width: 8),
                         // Column 3
                         Expanded(
                           child: _buildPlayerClickColumn(playerScores, 2, playerValues, setState, updateTotal, targetTotal),
@@ -3099,7 +2867,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
                       runningTotal = 0;
                     });
                   },
-                  child: Text('Clear'),
+                  child: const Text('Clear'),
                 ),
                 ElevatedButton(
                   onPressed: () async {
@@ -3158,7 +2926,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
                     // Close this dialog and return true to indicate completion
                     Navigator.of(context).pop(true);
                   },
-                  child: Text('Continue'),
+                  child: const Text('Continue'),
                 ),
               ],
             );
@@ -3325,39 +3093,26 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
             bool hasValidScore = false;
             
             try {
-              if (selectedLeague == 'wednesday') {
-                // For Wednesday League, check gross scores
-                String playerKey = '${player['last']}_gross';
-                TextEditingController? controller = grossControllers[playerKey];
+              // For Monday League, check SKATS scores
+              String skatsKey = '${player['last']}_skats';
+              TextEditingController? skatsController = skatsControllers[skatsKey];
+              
+              if (skatsController != null && skatsController.text.isNotEmpty) {
+                playerData['skats_score'] = int.parse(skatsController.text);
+                hasValidScore = true;
                 
-                if (controller != null && controller.text.isNotEmpty) {
-                  playerData['gross_score'] = int.parse(controller.text);
-                  double handicap = playerData['handicap']?.toDouble() ?? 0.0;
-                  playerData['net_score'] = playerData['gross_score'] - handicap.round();
-                  hasValidScore = true;
+                // Also collect DIFF score for Monday League if available
+                String diffKey = '${player['last']}_diff';
+                TextEditingController? diffController = diffControllers[diffKey];
+                if (diffController != null && diffController.text.isNotEmpty) {
+                  playerData['diff_score'] = int.parse(diffController.text);
                 }
-              } else {
-                // For Monday League, check SKATS scores
-                String skatsKey = '${player['last']}_skats';
-                TextEditingController? skatsController = skatsControllers[skatsKey];
                 
-                if (skatsController != null && skatsController.text.isNotEmpty) {
-                  playerData['skats_score'] = int.parse(skatsController.text);
-                  hasValidScore = true;
-                  
-                  // Also collect DIFF score for Monday League if available
-                  String diffKey = '${player['last']}_diff';
-                  TextEditingController? diffController = diffControllers[diffKey];
-                  if (diffController != null && diffController.text.isNotEmpty) {
-                    playerData['diff_score'] = int.parse(diffController.text);
-                  }
-                  
-                  // Also collect gross score if available for Monday League
-                  String grossKey = '${player['last']}_gross';
-                  TextEditingController? grossController = grossControllers[grossKey];
-                  if (grossController != null && grossController.text.isNotEmpty) {
-                    playerData['gross_score'] = int.parse(grossController.text);
-                  }
+                // Also collect gross score if available for Monday League
+                String grossKey = '${player['last']}_gross';
+                TextEditingController? grossController = grossControllers[grossKey];
+                if (grossController != null && grossController.text.isNotEmpty) {
+                  playerData['gross_score'] = int.parse(grossController.text);
                 }
               }
               
@@ -3555,7 +3310,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
       totalSelectedPlayers += group.where((player) => player != null && player['is_wild_card'] != true).length;
     }
     
-    League currentLeague = selectedLeague == 'monday' ? League.monday : League.wednesday;
+    League currentLeague = League.monday;
     
     try {
       PayoutValidationResult result = await PayoutValidationService().validateIndividualPayouts(
@@ -3573,7 +3328,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(result.description),
-              duration: Duration(seconds: 4),
+              duration: const Duration(seconds: 4),
             ),
           );
         }
@@ -3712,7 +3467,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     // After SKAT calculations are complete, trigger individuals processing for Monday League
     // Only trigger if individuals processing is not already complete
     if (!individualsProcessingComplete) {
-      Future.delayed(Duration(milliseconds: 500), () {
+      Future.delayed(const Duration(milliseconds: 500), () {
         _processIndividuals();
       });
     }
@@ -3735,7 +3490,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     } else {
       // For other screen sizes, navigate to main menu
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => UnifiedMainMenuScreen()),
+        MaterialPageRoute(builder: (context) => const UnifiedMainMenuScreen()),
       );
     }
   }
@@ -3911,7 +3666,9 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
   }
 
   Future<void> _calculateGroupWinningsLegacy() async {
-    if (!groupsProcessed || selectedLeague != 'wednesday') return;
+    if (!groupsProcessed) return;
+    // Monday league doesn't use group winnings - return early
+    return;
     
     // Clear previous group winnings
     for (var group in groups) {
@@ -4025,10 +3782,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
       logicalPosition++; // Increment logical position for next place
     }
     
-    // Balance mulligan purse for group overage/underage (Wednesday league only)
-    if (selectedLeague == 'wednesday') {
-      await _balanceMulliganPurseForGroups();
-    }
+    // Monday league doesn't use mulligan purse balancing
     
     // After calculating group winnings, save them to the database
     _saveGroupWinningsToDatabase();
@@ -4041,7 +3795,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
       totalSelectedPlayers += group.where((player) => player != null && player['is_wild_card'] != true).length;
     }
     
-    League currentLeague = selectedLeague == 'monday' ? League.monday : League.wednesday;
+    League currentLeague = League.monday;
     
     try {
       PayoutValidationResult result = await PayoutValidationService().validateGroupPayouts(
@@ -4059,7 +3813,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(result.description),
-              duration: Duration(seconds: 4),
+              duration: const Duration(seconds: 4),
             ),
           );
         }
@@ -4080,7 +3834,9 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
   }
 
   Future<void> _saveGroupWinningsToDatabase() async {
-    if (!groupsProcessed || selectedLeague != 'wednesday') return;
+    if (!groupsProcessed) return;
+    // Monday league doesn't use group winnings - return early
+    return;
     
     final dbHelper = DatabaseHelper();
     
@@ -4110,7 +3866,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
               await dbHelper.updateGroupWinnings(
                 playerId, 
                 roundedGroupWinnings.toDouble(), 
-                League.wednesday
+                League.monday
               );
             }
           } catch (e) {
@@ -4126,16 +3882,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     
     // For Monday League individual processing, closest pin winnings are already set in player data
     // For Wednesday League single winner, add closest pin winnings to the appropriate player
-    if (selectedLeague == 'wednesday' && closestPinWinnerName != null && closestPinWinnings > 0) {
-      for (var player in playerScores) {
-        String playerFullName = '${player['first']} ${player['last']}';
-        if (playerFullName == closestPinWinnerName) {
-          // Add closest pin winnings to the player's data (only to close_pin_winnings field)
-          player['close_pin_winnings'] = closestPinWinnings;
-          break;
-        }
-      }
-    }
+    // Monday league doesn't use Wednesday closest pin logic
     // For Monday League, individual winnings are already set in the processing dialog
     
     for (var player in playerScores) {
@@ -4184,7 +3931,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
         }
         
         // Save to the appropriate league table (this will automatically limit to 20 scores and lock the row)
-        League league = selectedLeague == 'monday' ? League.monday : League.wednesday;
+        League league = League.monday;
         await dbHelper.insertScoreLeague(scoreData, league);
       }
     }
@@ -4237,7 +3984,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     
     if (playerResults.isNotEmpty) {
       // Determine league and ante amount
-      League league = selectedLeague == 'monday' ? League.monday : League.wednesday;
+      League league = League.monday;
       double anteAmount = AnteManager().currentAnteAmount;
       
       // Save to legacy game system
@@ -4352,7 +4099,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     // For Wednesday League, automatically process individuals after auto fill
     if (selectedLeague == 'wednesday') {
       // Small delay to ensure UI updates complete
-      Future.delayed(Duration(milliseconds: 100), () {
+      Future.delayed(const Duration(milliseconds: 100), () {
         _processIndividuals();
       });
     }
@@ -4390,16 +4137,15 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
 
   // Automatically calculate positions and prize money when all scores are filled
   void _checkAndAutoCalculateWednesday() {
-    if (selectedLeague == 'wednesday' && !individualsProcessingComplete && _areAllGrossScoresFilled()) {
-      // Small delay to ensure UI updates complete
-      Future.delayed(Duration(milliseconds: 200), () {
-        _processIndividuals();
-      });
-    }
+    // Monday league doesn't use auto-calculate - method disabled
+    return;
   }
 
   // Calculate positions and winnings for Wednesday League based on net scores
   Future<void> _calculateWednesdayWinnings(List<Map<String, dynamic>> playerScores) async {
+    // Monday league doesn't use Wednesday winnings - method disabled
+    return;
+    
     // Import the CSV payout service
     CsvPayoutService csvPayoutService = CsvPayoutService();
     
