@@ -175,34 +175,9 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
                   if (isLandscape && constraints.maxWidth < 1000) {
                     // Check if this is a 6" phone (screenWidth <= 850)
                     if (screenWidth <= 850) {
-                      // Special layout for 6" phones - two columns under Monday League
+                      // Special layout for 6" phones - two columns without Monday League title
                       return Column(
                         children: [
-                          // League Title
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
-                            decoration: BoxDecoration(
-                              color: Colors.green[300],
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: Colors.black,
-                                width: 2,
-                              ),
-                            ),
-                            child: const Text(
-                              'MONDAY LEAGUE',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                          
-                          const SizedBox(height: 8),
-                          
                           // Two-column layout
                           Expanded(
                             child: Row(
