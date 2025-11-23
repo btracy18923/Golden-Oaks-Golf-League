@@ -202,6 +202,7 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
                                           ),
                                           child: Row(
                                             mainAxisAlignment: MainAxisAlignment.center,
+                                            crossAxisAlignment: CrossAxisAlignment.center,
                                             children: [
                                               const Text(
                                                 'Players Ante',
@@ -261,6 +262,7 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
                                           ),
                                           child: Row(
                                             mainAxisAlignment: MainAxisAlignment.center,
+                                            crossAxisAlignment: CrossAxisAlignment.center,
                                             children: [
                                               const Text(
                                                 'Closest Pin',
@@ -320,6 +322,7 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
                                           ),
                                           child: Row(
                                             mainAxisAlignment: MainAxisAlignment.center,
+                                            crossAxisAlignment: CrossAxisAlignment.center,
                                             children: [
                                               const Text(
                                                 'Mulligans',
@@ -378,6 +381,7 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
                                             ),
                                           ),
                                           child: Column(
+                                            mainAxisAlignment: MainAxisAlignment.center,
                                             children: [
                                               const Text(
                                                 'Select Course',
@@ -399,6 +403,7 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
                                                       width: 1,
                                                     ),
                                                   ),
+                                                  alignment: Alignment.center,
                                                   child: isLoadingCourses 
                                                     ? const Center(
                                                         child: SizedBox(
@@ -541,6 +546,7 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
                                           ),
                                           child: Row(
                                             mainAxisAlignment: MainAxisAlignment.center,
+                                            crossAxisAlignment: CrossAxisAlignment.center,
                                             children: [
                                               const Text(
                                                 'Skats Ante',
@@ -600,6 +606,7 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
                                           ),
                                           child: Row(
                                             mainAxisAlignment: MainAxisAlignment.center,
+                                            crossAxisAlignment: CrossAxisAlignment.center,
                                             children: [
                                               const Text(
                                                 'Closest Pin',
@@ -659,6 +666,7 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
                                           ),
                                           child: Row(
                                             mainAxisAlignment: MainAxisAlignment.center,
+                                            crossAxisAlignment: CrossAxisAlignment.center,
                                             children: [
                                               const Text(
                                                 'Mulligans',
@@ -738,6 +746,7 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
                                                       width: 1,
                                                     ),
                                                   ),
+                                                  alignment: Alignment.center,
                                                   child: isLoadingCourses 
                                                     ? const Center(
                                                         child: SizedBox(
