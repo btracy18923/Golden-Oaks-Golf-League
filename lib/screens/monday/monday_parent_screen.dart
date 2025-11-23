@@ -189,6 +189,7 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
                                     children: [
                                       // Players Ante (Skats Ante)
                                       Expanded(
+                                        flex: 3, // 25% smaller than Select Course
                                         child: Container(
                                           padding: const EdgeInsets.all(6),
                                           decoration: BoxDecoration(
@@ -247,6 +248,7 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
                                       
                                       // Closest Pin
                                       Expanded(
+                                        flex: 3, // 25% smaller than Select Course
                                         child: Container(
                                           padding: const EdgeInsets.all(6),
                                           decoration: BoxDecoration(
@@ -305,6 +307,7 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
                                       
                                       // Mulligans
                                       Expanded(
+                                        flex: 3, // 25% smaller than Select Course
                                         child: Container(
                                           padding: const EdgeInsets.all(6),
                                           decoration: BoxDecoration(
@@ -363,6 +366,7 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
                                       
                                       // Select Course
                                       Expanded(
+                                        flex: 4, // Larger than other widgets
                                         child: Container(
                                           padding: const EdgeInsets.all(4),
                                           decoration: BoxDecoration(
