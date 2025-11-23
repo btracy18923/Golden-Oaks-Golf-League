@@ -245,94 +245,6 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
                                       
                                       const SizedBox(height: 8),
                                       
-                                      // Select Course
-                                      Expanded(
-                                        child: Container(
-                                          padding: const EdgeInsets.all(4),
-                                          decoration: BoxDecoration(
-                                            color: Colors.green[200],
-                                            borderRadius: BorderRadius.circular(8),
-                                            border: Border.all(
-                                              color: Colors.black,
-                                              width: 2,
-                                            ),
-                                          ),
-                                          child: Column(
-                                            children: [
-                                              const Text(
-                                                'Select Course',
-                                                style: TextStyle(
-                                                  fontSize: 10,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: Colors.black,
-                                                ),
-                                              ),
-                                              Expanded(
-                                                flex: 8,
-                                                child: Container(
-                                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-                                                  decoration: BoxDecoration(
-                                                    color: Colors.green[100],
-                                                    borderRadius: BorderRadius.circular(4),
-                                                    border: Border.all(
-                                                      color: Colors.black,
-                                                      width: 1,
-                                                    ),
-                                                  ),
-                                                  child: isLoadingCourses 
-                                                    ? const Center(
-                                                        child: SizedBox(
-                                                          height: 12,
-                                                          width: 12,
-                                                          child: CircularProgressIndicator(strokeWidth: 2),
-                                                        ),
-                                                      )
-                                                    : DropdownButton<String>(
-                                                        value: selectedGolfCourse,
-                                                        hint: const Text(
-                                                          'Choose Course',
-                                                          style: TextStyle(
-                                                            fontSize: 10,
-                                                            color: Colors.black54,
-                                                          ),
-                                                        ),
-                                                        isExpanded: true,
-                                                        underline: Container(),
-                                                        style: const TextStyle(
-                                                          fontSize: 8,
-                                                          fontWeight: FontWeight.bold,
-                                                          color: Colors.black,
-                                                        ),
-                                                        items: golfCourses.map<DropdownMenuItem<String>>((course) {
-                                                          return DropdownMenuItem<String>(
-                                                            value: course['name'],
-                                                            child: Text(
-                                                              course['name'],
-                                                              style: const TextStyle(fontSize: 10),
-                                                            ),
-                                                          );
-                                                        }).toList(),
-                                                        onChanged: (String? newValue) {
-                                                          setState(() {
-                                                            selectedGolfCourse = newValue;
-                                                          });
-                                                        },
-                                                      ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                
-                                // Right Column: Closest Pin & Mulligans
-                                Expanded(
-                                  flex: 2, // More width for 6" phone landscape
-                                  child: Column(
-                                    children: [
                                       // Closest Pin
                                       Expanded(
                                         child: Container(
@@ -446,7 +358,121 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
                                           ),
                                         ),
                                       ),
+                                      
+                                      const SizedBox(height: 8),
+                                      
+                                      // Select Course
+                                      Expanded(
+                                        child: Container(
+                                          padding: const EdgeInsets.all(4),
+                                          decoration: BoxDecoration(
+                                            color: Colors.green[200],
+                                            borderRadius: BorderRadius.circular(8),
+                                            border: Border.all(
+                                              color: Colors.black,
+                                              width: 2,
+                                            ),
+                                          ),
+                                          child: Column(
+                                            children: [
+                                              const Text(
+                                                'Select Course',
+                                                style: TextStyle(
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: Colors.black,
+                                                ),
+                                              ),
+                                              Expanded(
+                                                flex: 8,
+                                                child: Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.green[100],
+                                                    borderRadius: BorderRadius.circular(4),
+                                                    border: Border.all(
+                                                      color: Colors.black,
+                                                      width: 1,
+                                                    ),
+                                                  ),
+                                                  child: isLoadingCourses 
+                                                    ? const Center(
+                                                        child: SizedBox(
+                                                          height: 12,
+                                                          width: 12,
+                                                          child: CircularProgressIndicator(strokeWidth: 2),
+                                                        ),
+                                                      )
+                                                    : DropdownButton<String>(
+                                                        value: selectedGolfCourse,
+                                                        hint: const Text(
+                                                          'Choose Course',
+                                                          style: TextStyle(
+                                                            fontSize: 10,
+                                                            color: Colors.black54,
+                                                          ),
+                                                        ),
+                                                        isExpanded: true,
+                                                        underline: Container(),
+                                                        style: const TextStyle(
+                                                          fontSize: 8,
+                                                          fontWeight: FontWeight.bold,
+                                                          color: Colors.black,
+                                                        ),
+                                                        items: golfCourses.map<DropdownMenuItem<String>>((course) {
+                                                          return DropdownMenuItem<String>(
+                                                            value: course['name'],
+                                                            child: Text(
+                                                              course['name'],
+                                                              style: const TextStyle(fontSize: 10),
+                                                            ),
+                                                          );
+                                                        }).toList(),
+                                                        onChanged: (String? newValue) {
+                                                          setState(() {
+                                                            selectedGolfCourse = newValue;
+                                                          });
+                                                        },
+                                                      ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
                                     ],
+                                  ),
+                                ),
+                                
+                                const SizedBox(width: 8),
+                                
+                                // Right Column: GoldenOaks Image  
+                                Expanded(
+                                  flex: 3, // More width for image
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: Image.asset(
+                                      'assets/images/GoldenOaks.png',
+                                      fit: BoxFit.contain,
+                                      width: double.infinity,
+                                      height: double.infinity,
+                                      errorBuilder: (context, error, stackTrace) {
+                                        return Container(
+                                          decoration: BoxDecoration(
+                                            color: Colors.green[50],
+                                            borderRadius: BorderRadius.circular(12),
+                                            border: Border.all(color: Colors.green[200]!),
+                                          ),
+                                          child: Center(
+                                            child: Icon(
+                                              Icons.park,
+                                              size: 60,
+                                              color: Colors.green[600],
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
                                   ),
                                 ),
                               ],
