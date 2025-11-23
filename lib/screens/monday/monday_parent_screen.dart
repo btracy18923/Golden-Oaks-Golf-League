@@ -173,8 +173,8 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
               child: LayoutBuilder(
                 builder: (context, constraints) {
                   if (isLandscape && constraints.maxWidth < 1000) {
-                    // Check if this is a 6" phone (screenWidth <= 850)
-                    if (screenWidth <= 850) {
+                    // Check if this is a 6.5" phone (screenWidth <= 950)
+                    if (screenWidth <= 950) {
                       // Special layout for 6" phones - two columns without Monday League title
                       return Column(
                         children: [
@@ -455,7 +455,7 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
                         ],
                       );
                     } else {
-                      // Original layout for 8" tablets (screenWidth > 850)
+                      // Original layout for 8" tablets (screenWidth > 950)
                       return Column(
                         children: [
                           // Compact settings row and image
