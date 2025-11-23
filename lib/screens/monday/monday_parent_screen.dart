@@ -32,10 +32,21 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
   @override
   void initState() {
     super.initState();
+    _setOrientation();
     _loadGolfCourses();
     _skatsAnteController.text = skatsAnte.toStringAsFixed(2);
     _closestPinController.text = closestPin.toStringAsFixed(2);
     _mulligansController.text = mulligans.toStringAsFixed(2);
+  }
+
+  void _setOrientation() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Lock to landscape mode for Monday League
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+    });
   }
   
   @override

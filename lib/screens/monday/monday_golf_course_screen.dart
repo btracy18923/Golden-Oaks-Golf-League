@@ -36,7 +36,18 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
   @override
   void initState() {
     super.initState();
+    _setOrientation();
     _refreshCourseList();
+  }
+
+  void _setOrientation() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Lock to landscape mode for Monday League
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+    });
   }
 
   @override

@@ -47,13 +47,7 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
 
   @override
   void dispose() {
-    // Reset orientation when leaving the screen
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
+    // Keep landscape mode locked for Monday screens
     super.dispose();
   }
   

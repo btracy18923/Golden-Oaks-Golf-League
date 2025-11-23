@@ -171,13 +171,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
 
   @override
   void dispose() {
-    // Reset orientation constraints and status bar when leaving the screen
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
+    // Keep landscape mode locked - don't reset orientation
     
     // Restore status bar
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: [

@@ -61,39 +61,16 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
   }
 
   void _setOrientation() {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final screenHeight = MediaQuery.of(context).size.height;
-    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
-    
-    // Detect 6" phone (typically around 400-450px width in portrait)
-    final is6InchPhone = (isLandscape && screenWidth <= 900) || (!isLandscape && screenWidth <= 600);
-    
-    if (is6InchPhone) {
-      // Force landscape orientation for 6" phones
-      SystemChrome.setPreferredOrientations([
-        DeviceOrientation.landscapeLeft,
-        DeviceOrientation.landscapeRight,
-      ]);
-    } else {
-      // Allow all orientations for larger devices
-      SystemChrome.setPreferredOrientations([
-        DeviceOrientation.portraitUp,
-        DeviceOrientation.portraitDown,
-        DeviceOrientation.landscapeLeft,
-        DeviceOrientation.landscapeRight,
-      ]);
-    }
+    // Force landscape orientation for ALL Monday League screens
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
   }
 
   @override
   void dispose() {
-    // Restore all orientations when leaving the screen
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
+    // Keep landscape mode locked for Monday screens
     
     _grossScoreController.dispose();
     _skatsController.dispose();
