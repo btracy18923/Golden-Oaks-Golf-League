@@ -172,7 +172,7 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
               flex: 2,
               child: LayoutBuilder(
                 builder: (context, constraints) {
-                  if (isLandscape && constraints.maxWidth < 1000) {
+                  if (isLandscape) {
                     // Check if this is a 6.5" phone (screenWidth <= 950)
                     if (screenWidth <= 950) {
                       // Special layout for 6" phones - two columns without Monday League title
