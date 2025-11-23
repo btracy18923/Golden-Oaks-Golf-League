@@ -29,11 +29,13 @@ class Position {
 class MondayEnterScoresScreen extends StatefulWidget {
   final List<Map<String, dynamic>>? initialPlayers;
   final List<List<Map<String, dynamic>?>>? initialGroups;
+  final String? initialLeague;
 
   const MondayEnterScoresScreen({
     Key? key,
     this.initialPlayers,
     this.initialGroups,
+    this.initialLeague,
   }) : super(key: key);
 
   @override
@@ -44,11 +46,13 @@ class MondayEnterScoresScreen extends StatefulWidget {
 class EnterScoresScreenWithData extends StatelessWidget {
   final List<Map<String, dynamic>> selectedPlayers;
   final List<List<Map<String, dynamic>?>> groups;
+  final String leagueType;
 
   const EnterScoresScreenWithData({
     Key? key,
     required this.selectedPlayers,
     required this.groups,
+    required this.leagueType,
   }) : super(key: key);
 
   @override
@@ -56,6 +60,7 @@ class EnterScoresScreenWithData extends StatelessWidget {
     return MondayEnterScoresScreen(
       initialPlayers: selectedPlayers,
       initialGroups: groups,
+      initialLeague: leagueType,
     );
   }
 }
@@ -134,11 +139,13 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     
     // Initialize with data if provided
     if (widget.initialPlayers != null && 
-        widget.initialGroups != null) {
+        widget.initialGroups != null && 
+        widget.initialLeague != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         setPlayers(
           widget.initialPlayers!,
           widget.initialGroups!,
+          widget.initialLeague!,
         );
       });
     }
@@ -197,14 +204,21 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     super.dispose();
   }
 
+  void setLeague(String leagueType) {
+    setState(() {
+      selectedLeague = leagueType;
+      updateTitleInformation();
+    });
+  }
 
-  void setPlayers(List<Map<String, dynamic>> players, List<List<Map<String, dynamic>?>> playerGroups) {
+  void setPlayers(List<Map<String, dynamic>> players, List<List<Map<String, dynamic>?>> playerGroups, String leagueType) {
     setState(() {
       // Create mutable copies of player data to avoid read-only QueryRow issues
       selectedPlayers = players.map((player) => Map<String, dynamic>.from(player)).toList();
       groups = playerGroups.map((group) => 
         group.map((player) => player != null ? Map<String, dynamic>.from(player) : null).toList()
       ).toList();
+      selectedLeague = leagueType;
       selectedForSwap.clear();
       playerNameButtons.clear();
       scoreEntries.clear();
@@ -311,8 +325,32 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     // Calculate using different formulas based on whether groups are processed and league type
     double purseAmount;
     
-    // For Monday league, use simple calculation: Skats Ante x Number of Selected Players
-    purseAmount = anteAmount * numPlayers;
+    if (selectedLeague == 'wednesday') {
+      // For Wednesday league, use CSV amounts
+      try {
+        if (groupsProcessed) {
+          // Use CSV "Groups Total" amount for group processing
+          Map<String, double> groupPayoutData = await GroupCsvPayoutService().getPayoutAmounts(numPlayers);
+          purseAmount = groupPayoutData['groups_total'] ?? 0.0;
+        } else {
+          // Use CSV "Total Individual" amount for individual processing
+          Map<String, double> payoutData = await CsvPayoutService().getPayoutAmounts(numPlayers);
+          purseAmount = payoutData['total_individual'] ?? 0.0;
+        }
+      } catch (e) {
+        // Fallback to old calculation if CSV fails
+        if (groupsProcessed) {
+          double groupPercent = PercentageManager().groupPercent;
+          purseAmount = anteAmount * numPlayers * (groupPercent / 100);
+        } else {
+          double individualPercent = PercentageManager().individualPercent;
+          purseAmount = anteAmount * numPlayers * (individualPercent / 100);
+        }
+      }
+    } else {
+      // For Monday league, use simple calculation: Skats Ante x Number of Selected Players
+      purseAmount = anteAmount * numPlayers;
+    }
     
     // Calculate closest pin purse: Closest Pin x # of Selected Players
     double closestPinPurseAmount = closestPinAmount * numPlayers;
@@ -419,7 +457,9 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Text(
-          groupsProcessed ? "Process Groups:" : "Enter Skats:l",
+          selectedLeague == 'monday' 
+            ? (groupsProcessed ? "Process Groups:" : "Enter Skats:l")
+            : (groupsProcessed ? "Process Groups:" : "Enter Scores:"),
           style: TextStyle(
             fontSize: fontSize,
             fontWeight: FontWeight.bold,
@@ -428,19 +468,32 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
         ),
         SizedBox(width: spacing),
         Text(
-          groupsProcessed ? "Total Group Purse = $_playersPurseDisplayText" : "Skat Purse = $_playersPurseDisplayText",
+          selectedLeague == 'monday'
+            ? (groupsProcessed ? "Total Group Purse = $_playersPurseDisplayText" : "Skat Purse = $_playersPurseDisplayText")
+            : (groupsProcessed ? "Total Group Purse = $_playersPurseDisplayText" : "Total Players' Purse = $_playersPurseDisplayText"),
           style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold),
         ),
         SizedBox(width: spacing),
         Text(
-          "Closest Pin Purse = $_closestPinPurseDisplayText",
+          selectedLeague == 'monday'
+            ? "Closest Pin Purse = $_closestPinPurseDisplayText"
+            : "Total Closest Pin Purse = $_closestPinPurseDisplayText",
           style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold),
         ),
-        SizedBox(width: spacing),
-        Text(
-          "Mulligan Purse = $_mulliganPurseDisplayText",
-          style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold),
-        ),
+        if (selectedLeague == 'monday') ...[
+          SizedBox(width: spacing),
+          Text(
+            "Mulligan Purse = $_mulliganPurseDisplayText",
+            style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold),
+          ),
+        ],
+        if (selectedLeague == 'wednesday') ...[
+          SizedBox(width: spacing),
+          Text(
+            "Total Mulligan Purse = $_mulliganPurseDisplayText",
+            style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold),
+          ),
+        ],
       ],
     );
   }
@@ -451,7 +504,9 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
       child: Row(
         children: [
           Text(
-            groupsProcessed ? "Process Groups:" : "",
+            selectedLeague == 'monday' 
+              ? (groupsProcessed ? "Process Groups:" : "")
+              : (groupsProcessed ? "Process Groups:" : "Enter Scores:"),
             style: TextStyle(
               fontSize: fontSize,
               fontWeight: FontWeight.bold,
@@ -462,7 +517,9 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
           Row(
             children: [
               Text(
-                groupsProcessed ? "Total Group Purse = " : "Skat Purse = ",
+                selectedLeague == 'monday'
+                  ? (groupsProcessed ? "Total Group Purse = " : "Skat Purse = ")
+                  : (groupsProcessed ? "Total Group Purse = " : "Total Players' Purse = "),
                 style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold),
               ),
               Container(
@@ -482,7 +539,9 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
           Row(
             children: [
               Text(
-                "Closest Pin Purse = ",
+                selectedLeague == 'monday'
+                  ? "Closest Pin Purse = "
+                  : "Total Closest Pin Purse = ",
                 style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold),
               ),
               Container(
@@ -498,26 +557,35 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
               ),
             ],
           ),
-          SizedBox(width: spacing),
-          Row(
-            children: [
-              Text(
-                "Mulligan Purse = ",
-                style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Colors.lightGreen[100],
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  _mulliganPurseDisplayText,
+          if (selectedLeague == 'monday') ...[
+            SizedBox(width: spacing),
+            Row(
+              children: [
+                Text(
+                  "Mulligan Purse = ",
                   style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold),
                 ),
-              ),
-            ],
-          ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.lightGreen[100],
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    _mulliganPurseDisplayText,
+                    style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+          ],
+          if (selectedLeague == 'wednesday') ...[
+            SizedBox(width: spacing),
+            Text(
+              "Total Mulligan Purse = $_mulliganPurseDisplayText",
+              style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold),
+            ),
+          ],
         ],
       ),
     );
@@ -597,7 +665,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
       }
       
       // Group header - positioned at center of main columns
-      double columnCenter = 70.0; // Center position for Monday league headers
+      double columnCenter = selectedLeague == 'wednesday' ? 175.0 : 70.0; // Center position for headers
       
       sectionWidgets.add(SizedBox(
         height: 30,
@@ -675,8 +743,57 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
       child: Text('Name', style: TextStyle(fontSize: headerFontSize, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
     ));
     
+    // HC header (Wednesday only, and only if groups not processed)
+    if (selectedLeague == 'wednesday' && !groupsProcessed) {
+      headers.add(SizedBox(
+        width: 50,
+        child: Text('HC', style: TextStyle(fontSize: headerFontSize, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+      ));
+    }
+    
+    // Gross header (only if groups not processed and not Monday league)
+    if (!groupsProcessed && selectedLeague != 'monday') {
+      headers.add(SizedBox(
+        width: 60,
+        child: Text('Gross', style: TextStyle(fontSize: headerFontSize, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+      ));
+    }
+    
+    // Group# header (Wednesday only, and only if groups are processed)
+    if (selectedLeague == 'wednesday' && groupsProcessed) {
+      headers.add(SizedBox(
+        width: 60,
+        child: Text('Group#', style: TextStyle(fontSize: headerFontSize, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+      ));
+    }
+    
+    // Net header (Wednesday only)
+    if (selectedLeague == 'wednesday') {
+      headers.add(SizedBox(
+        width: 40,
+        child: Text('Net', style: TextStyle(fontSize: headerFontSize, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+      ));
+      
+      // AVG header (only when groups are processed)
+      if (groupsProcessed) {
+        headers.add(SizedBox(
+          width: 50,
+          child: Text('AVG', style: TextStyle(fontSize: headerFontSize, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+        ));
+      }
+      
+      headers.add(SizedBox(
+        width: 50,
+        child: Text('Pos', style: TextStyle(fontSize: headerFontSize, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+      ));
+      headers.add(SizedBox(
+        width: 80,
+        child: Text('\$\$\$', style: TextStyle(fontSize: headerFontSize, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+      ));
+    }
+    
     // SKAT headers (Monday only, and only if groups not processed)
-    if (!groupsProcessed) {
+    if (selectedLeague == 'monday' && !groupsProcessed) {
       headers.add(SizedBox(
         width: 70,
         child: Text(is6InchPhoneLandscape ? 'SK #' : 'SKAT#', style: TextStyle(fontSize: headerFontSize, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
@@ -724,8 +841,41 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     }
     
     if (player != null) {
+      // Handicap (Wednesday only, and only if groups not processed)
+      if (selectedLeague == 'wednesday' && !groupsProcessed) {
+        rowWidgets.add(Container(
+          width: 50,
+          height: 40,
+          decoration: BoxDecoration(border: Border.all()),
+          child: Center(child: Text(player['handicap'] != null ? player['handicap'].toStringAsFixed(1) : '', style: const TextStyle(fontSize: 16))),
+        ));
+      }
+      
+      // Gross score input (only if groups not processed and not Monday league)
+      if (!groupsProcessed && selectedLeague != 'monday') {
+        rowWidgets.add(_buildScoreInput(player));
+      }
+      
+      // Group# field (Wednesday only, and only if groups are processed)
+      if (selectedLeague == 'wednesday' && groupsProcessed) {
+        rowWidgets.add(_buildGroupNumberInput(player, groupIndex));
+      }
+      
+      // Net score (Wednesday only)
+      if (selectedLeague == 'wednesday') {
+        rowWidgets.add(_buildNetScoreLabel(player));
+        
+        // AVG column (only when groups are processed)
+        if (groupsProcessed) {
+          rowWidgets.add(_buildAvgLabel(groupIndex));
+        }
+        
+        rowWidgets.add(_buildPlaceLabel(player, groupIndex));
+        rowWidgets.add(_buildIndWinLabel(player));
+      }
+      
       // SKAT fields (Monday only, and only if groups not processed)
-      if (!groupsProcessed) {
+      if (selectedLeague == 'monday' && !groupsProcessed) {
         rowWidgets.add(Container(
           width: 70,
           height: 40,
@@ -746,7 +896,31 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
       }
     } else {
       // Empty placeholders
-      if (!groupsProcessed) {
+      if (selectedLeague == 'wednesday' && !groupsProcessed) {
+        rowWidgets.add(_buildEmptyPlaceholder(50)); // HC placeholder
+      }
+      if (!groupsProcessed && selectedLeague != 'monday') {
+        rowWidgets.add(_buildEmptyPlaceholder(60)); // Gross placeholder
+      }
+      
+      // Group# placeholder (Wednesday only, and only if groups are processed)
+      if (selectedLeague == 'wednesday' && groupsProcessed) {
+        rowWidgets.add(_buildEmptyPlaceholder(60)); // Group# placeholder
+      }
+      
+      if (selectedLeague == 'wednesday') {
+        rowWidgets.add(_buildEmptyPlaceholder(50)); // Net placeholder
+        
+        // AVG placeholder (only when groups are processed)
+        if (groupsProcessed) {
+          rowWidgets.add(_buildEmptyPlaceholder(50)); // AVG placeholder
+        }
+        
+        rowWidgets.add(_buildEmptyPlaceholder(50)); // Pos placeholder
+        rowWidgets.add(_buildEmptyPlaceholder(80)); // $$$ placeholder
+      }
+      
+      if (selectedLeague == 'monday' && !groupsProcessed) {
         rowWidgets.add(_buildEmptyPlaceholder(70)); // SKAT# placeholder
         rowWidgets.add(_buildEmptyPlaceholder(70)); // SKATS placeholder
         rowWidgets.add(_buildEmptyPlaceholder(70)); // DIFF placeholder
@@ -878,7 +1052,9 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
       controller.text = grossText;
     }
     
-    Color inputColor = const Color(0xFFB3FFB3); // Light green for Monday league
+    Color inputColor = selectedLeague == 'wednesday' 
+        ? const Color(0xFFFFD700) // Light gold
+        : const Color(0xFFB3FFB3); // Light green
     
     return SizedBox(
       width: 60,
@@ -900,16 +1076,59 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
             });
           }
           
-          // For Monday league, just store the gross score
-          if (value.isNotEmpty) {
-            try {
-              int grossScore = int.parse(value);
-              player['gross_score'] = grossScore;
-            } catch (e) {
-              // Handle invalid input
+          // Calculate Net score for Wednesday league (only after 2 digits entered)
+          if (selectedLeague == 'wednesday') {
+            if (value.isNotEmpty && value.length >= 2) {
+              try {
+                int grossScore = int.parse(value);
+                player['gross_score'] = grossScore; // Store gross score
+                double handicap = player['handicap']?.toDouble() ?? 0.0;
+                int netScore = grossScore - handicap.round();
+                player['net_score'] = netScore;
+                
+                setState(() {}); // Refresh to show Net score
+              } catch (e) {
+                // Handle invalid input
+                player['net_score'] = null;
+                setState(() {});
+              }
+            } else if (value.isNotEmpty && value.length == 1) {
+              // Store gross score but don't calculate net yet
+              try {
+                int grossScore = int.parse(value);
+                player['gross_score'] = grossScore;
+                player['net_score'] = null; // Clear net score until 2nd digit
+                setState(() {});
+              } catch (e) {
+                // Handle invalid input
+                player['gross_score'] = null;
+                player['net_score'] = null;
+                setState(() {});
+              }
+            } else {
+              // Clear both gross and net scores when input is empty
+              player['gross_score'] = null;
+              player['net_score'] = null;
+              
+              // Recalculate group winnings if groups are processed
+              if (groupsProcessed) {
+                unawaited(_calculateGroupWinningsLegacy());
+              }
+              
+              setState(() {});
             }
           } else {
-            player['gross_score'] = null;
+            // For Monday league, just store the gross score
+            if (value.isNotEmpty) {
+              try {
+                int grossScore = int.parse(value);
+                player['gross_score'] = grossScore;
+              } catch (e) {
+                // Handle invalid input
+              }
+            } else {
+              player['gross_score'] = null;
+            }
           }
           
           if (value.length == 2) {
@@ -1809,7 +2028,12 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
           int grossScore = int.parse(value);
           playerData['gross_score'] = grossScore;
           
-          // Monday league doesn't use net scores
+          if (selectedLeague == 'wednesday') {
+            // Calculate and display net score for Wednesday league
+            double handicap = playerData['handicap']?.toDouble() ?? 0.0;
+            int netScore = grossScore - handicap.round();
+            playerData['net_score'] = netScore;
+          }
           
           setState(() {}); // Refresh to show updates
         } catch (e) {
@@ -1818,7 +2042,9 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
       } else {
         // Clear scores when input is empty
         playerData['gross_score'] = null;
-        // Monday league doesn't use net scores
+        if (selectedLeague == 'wednesday') {
+          playerData['net_score'] = null;
+        }
         setState(() {});
       }
     }
@@ -1942,7 +2168,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
       }
     }
     
-    // For processed groups, move to next player's gross
+    // For Wednesday League or processed groups, move to next player's gross
     return _findNextPlayerGross(currentGroupIndex, currentRowIndex + 1);
   }
   
@@ -2009,6 +2235,12 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
   }
 
   void _onPlayerNameClick(String playerLast, int groupIndex) {
+    // If groups are processed, handle group number assignment
+    if (groupsProcessed && selectedLeague == 'wednesday') {
+      _assignGroupNumber(playerLast);
+      return;
+    }
+    
     // Original swap functionality when groups not processed
     setState(() {
       if (selectedForSwap.contains(playerLast)) {
@@ -2320,7 +2552,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
               await dbHelper.updateGroupWinnings(
                 playerRecord['id'] as int, 
                 individualGroupShare, 
-                League.monday
+                selectedLeague == 'monday' ? League.monday : League.wednesday
               );
             }
           } catch (e) {
@@ -3093,26 +3325,39 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
             bool hasValidScore = false;
             
             try {
-              // For Monday League, check SKATS scores
-              String skatsKey = '${player['last']}_skats';
-              TextEditingController? skatsController = skatsControllers[skatsKey];
-              
-              if (skatsController != null && skatsController.text.isNotEmpty) {
-                playerData['skats_score'] = int.parse(skatsController.text);
-                hasValidScore = true;
+              if (selectedLeague == 'wednesday') {
+                // For Wednesday League, check gross scores
+                String playerKey = '${player['last']}_gross';
+                TextEditingController? controller = grossControllers[playerKey];
                 
-                // Also collect DIFF score for Monday League if available
-                String diffKey = '${player['last']}_diff';
-                TextEditingController? diffController = diffControllers[diffKey];
-                if (diffController != null && diffController.text.isNotEmpty) {
-                  playerData['diff_score'] = int.parse(diffController.text);
+                if (controller != null && controller.text.isNotEmpty) {
+                  playerData['gross_score'] = int.parse(controller.text);
+                  double handicap = playerData['handicap']?.toDouble() ?? 0.0;
+                  playerData['net_score'] = playerData['gross_score'] - handicap.round();
+                  hasValidScore = true;
                 }
+              } else {
+                // For Monday League, check SKATS scores
+                String skatsKey = '${player['last']}_skats';
+                TextEditingController? skatsController = skatsControllers[skatsKey];
                 
-                // Also collect gross score if available for Monday League
-                String grossKey = '${player['last']}_gross';
-                TextEditingController? grossController = grossControllers[grossKey];
-                if (grossController != null && grossController.text.isNotEmpty) {
-                  playerData['gross_score'] = int.parse(grossController.text);
+                if (skatsController != null && skatsController.text.isNotEmpty) {
+                  playerData['skats_score'] = int.parse(skatsController.text);
+                  hasValidScore = true;
+                  
+                  // Also collect DIFF score for Monday League if available
+                  String diffKey = '${player['last']}_diff';
+                  TextEditingController? diffController = diffControllers[diffKey];
+                  if (diffController != null && diffController.text.isNotEmpty) {
+                    playerData['diff_score'] = int.parse(diffController.text);
+                  }
+                  
+                  // Also collect gross score if available for Monday League
+                  String grossKey = '${player['last']}_gross';
+                  TextEditingController? grossController = grossControllers[grossKey];
+                  if (grossController != null && grossController.text.isNotEmpty) {
+                    playerData['gross_score'] = int.parse(grossController.text);
+                  }
                 }
               }
               
@@ -3310,7 +3555,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
       totalSelectedPlayers += group.where((player) => player != null && player['is_wild_card'] != true).length;
     }
     
-    League currentLeague = League.monday;
+    League currentLeague = selectedLeague == 'monday' ? League.monday : League.wednesday;
     
     try {
       PayoutValidationResult result = await PayoutValidationService().validateIndividualPayouts(
@@ -3666,9 +3911,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
   }
 
   Future<void> _calculateGroupWinningsLegacy() async {
-    if (!groupsProcessed) return;
-    // Monday league doesn't use group winnings - return early
-    return;
+    if (!groupsProcessed || selectedLeague != 'wednesday') return;
     
     // Clear previous group winnings
     for (var group in groups) {
@@ -3782,7 +4025,10 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
       logicalPosition++; // Increment logical position for next place
     }
     
-    // Monday league doesn't use mulligan purse balancing
+    // Balance mulligan purse for group overage/underage (Wednesday league only)
+    if (selectedLeague == 'wednesday') {
+      await _balanceMulliganPurseForGroups();
+    }
     
     // After calculating group winnings, save them to the database
     _saveGroupWinningsToDatabase();
@@ -3795,7 +4041,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
       totalSelectedPlayers += group.where((player) => player != null && player['is_wild_card'] != true).length;
     }
     
-    League currentLeague = League.monday;
+    League currentLeague = selectedLeague == 'monday' ? League.monday : League.wednesday;
     
     try {
       PayoutValidationResult result = await PayoutValidationService().validateGroupPayouts(
@@ -3834,9 +4080,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
   }
 
   Future<void> _saveGroupWinningsToDatabase() async {
-    if (!groupsProcessed) return;
-    // Monday league doesn't use group winnings - return early
-    return;
+    if (!groupsProcessed || selectedLeague != 'wednesday') return;
     
     final dbHelper = DatabaseHelper();
     
@@ -3866,7 +4110,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
               await dbHelper.updateGroupWinnings(
                 playerId, 
                 roundedGroupWinnings.toDouble(), 
-                League.monday
+                League.wednesday
               );
             }
           } catch (e) {
@@ -3882,7 +4126,16 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     
     // For Monday League individual processing, closest pin winnings are already set in player data
     // For Wednesday League single winner, add closest pin winnings to the appropriate player
-    // Monday league doesn't use Wednesday closest pin logic
+    if (selectedLeague == 'wednesday' && closestPinWinnerName != null && closestPinWinnings > 0) {
+      for (var player in playerScores) {
+        String playerFullName = '${player['first']} ${player['last']}';
+        if (playerFullName == closestPinWinnerName) {
+          // Add closest pin winnings to the player's data (only to close_pin_winnings field)
+          player['close_pin_winnings'] = closestPinWinnings;
+          break;
+        }
+      }
+    }
     // For Monday League, individual winnings are already set in the processing dialog
     
     for (var player in playerScores) {
@@ -3931,7 +4184,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
         }
         
         // Save to the appropriate league table (this will automatically limit to 20 scores and lock the row)
-        League league = League.monday;
+        League league = selectedLeague == 'monday' ? League.monday : League.wednesday;
         await dbHelper.insertScoreLeague(scoreData, league);
       }
     }
@@ -3984,7 +4237,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     
     if (playerResults.isNotEmpty) {
       // Determine league and ante amount
-      League league = League.monday;
+      League league = selectedLeague == 'monday' ? League.monday : League.wednesday;
       double anteAmount = AnteManager().currentAnteAmount;
       
       // Save to legacy game system
@@ -4137,15 +4390,16 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
 
   // Automatically calculate positions and prize money when all scores are filled
   void _checkAndAutoCalculateWednesday() {
-    // Monday league doesn't use auto-calculate - method disabled
-    return;
+    if (selectedLeague == 'wednesday' && !individualsProcessingComplete && _areAllGrossScoresFilled()) {
+      // Small delay to ensure UI updates complete
+      Future.delayed(const Duration(milliseconds: 200), () {
+        _processIndividuals();
+      });
+    }
   }
 
   // Calculate positions and winnings for Wednesday League based on net scores
   Future<void> _calculateWednesdayWinnings(List<Map<String, dynamic>> playerScores) async {
-    // Monday league doesn't use Wednesday winnings - method disabled
-    return;
-    
     // Import the CSV payout service
     CsvPayoutService csvPayoutService = CsvPayoutService();
     

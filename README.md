@@ -30,3 +30,5 @@ Firebase browser key: AIzaSyCNbOi-C2QsZIa9H6XTzQw62BNVNx5_nkQ
 - Monday Tablet: Local SQLite + manual Firebase upload capability
 - Wednesday Tablet: Local SQLite + manual Firebase upload capability
 - Web Interface: Can read from Firebase (via your Netlify site)
+
+6.5" phone resolution: 720 x 1600 px; 412 x 915 dp

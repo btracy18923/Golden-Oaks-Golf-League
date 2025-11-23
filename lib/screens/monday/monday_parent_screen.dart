@@ -213,29 +213,33 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
                                                 ),
                                               ),
                                               const SizedBox(width: 8),
-                                              Container(
-                                                padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 4),
-                                                decoration: BoxDecoration(
-                                                  color: Colors.green[100],
-                                                  borderRadius: BorderRadius.circular(4),
-                                                  border: Border.all(
-                                                    color: Colors.black,
-                                                    width: 1,
-                                                  ),
-                                                ),
-                                                child: GestureDetector(
-                                                  onTap: () => _editValue('Players Ante', _skatsAnteController, (value) {
-                                                    setState(() {
-                                                      skatsAnte = value;
-                                                      _skatsAnteController.text = value.toStringAsFixed(2);
-                                                    });
-                                                  }),
-                                                  child: Text(
-                                                    '\$${skatsAnte.toStringAsFixed(2)}',
-                                                    style: const TextStyle(
-                                                      fontSize: 18,
-                                                      fontWeight: FontWeight.bold,
+                                              Expanded(
+                                                child: Container(
+                                                  height: double.infinity,
+                                                  padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 4),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.green[100],
+                                                    borderRadius: BorderRadius.circular(4),
+                                                    border: Border.all(
                                                       color: Colors.black,
+                                                      width: 1,
+                                                    ),
+                                                  ),
+                                                  alignment: Alignment.center,
+                                                  child: GestureDetector(
+                                                    onTap: () => _editValue('Players Ante', _skatsAnteController, (value) {
+                                                      setState(() {
+                                                        skatsAnte = value;
+                                                        _skatsAnteController.text = value.toStringAsFixed(2);
+                                                      });
+                                                    }),
+                                                    child: Text(
+                                                      '\$${skatsAnte.toStringAsFixed(2)}',
+                                                      style: const TextStyle(
+                                                        fontSize: 18,
+                                                        fontWeight: FontWeight.bold,
+                                                        color: Colors.black,
+                                                      ),
                                                     ),
                                                   ),
                                                 ),
@@ -273,29 +277,33 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
                                                 ),
                                               ),
                                               const SizedBox(width: 8),
-                                              Container(
-                                                padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 4),
-                                                decoration: BoxDecoration(
-                                                  color: Colors.green[100],
-                                                  borderRadius: BorderRadius.circular(4),
-                                                  border: Border.all(
-                                                    color: Colors.black,
-                                                    width: 1,
-                                                  ),
-                                                ),
-                                                child: GestureDetector(
-                                                  onTap: () => _editValue('Closest Pin', _closestPinController, (value) {
-                                                    setState(() {
-                                                      closestPin = value;
-                                                      _closestPinController.text = value.toStringAsFixed(2);
-                                                    });
-                                                  }),
-                                                  child: Text(
-                                                    '\$${closestPin.toStringAsFixed(2)}',
-                                                    style: const TextStyle(
-                                                      fontSize: 18,
-                                                      fontWeight: FontWeight.bold,
+                                              Expanded(
+                                                child: Container(
+                                                  height: double.infinity,
+                                                  padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 4),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.green[100],
+                                                    borderRadius: BorderRadius.circular(4),
+                                                    border: Border.all(
                                                       color: Colors.black,
+                                                      width: 1,
+                                                    ),
+                                                  ),
+                                                  alignment: Alignment.center,
+                                                  child: GestureDetector(
+                                                    onTap: () => _editValue('Closest Pin', _closestPinController, (value) {
+                                                      setState(() {
+                                                        closestPin = value;
+                                                        _closestPinController.text = value.toStringAsFixed(2);
+                                                      });
+                                                    }),
+                                                    child: Text(
+                                                      '\$${closestPin.toStringAsFixed(2)}',
+                                                      style: const TextStyle(
+                                                        fontSize: 18,
+                                                        fontWeight: FontWeight.bold,
+                                                        color: Colors.black,
+                                                      ),
                                                     ),
                                                   ),
                                                 ),
@@ -333,29 +341,33 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
                                                 ),
                                               ),
                                               const SizedBox(width: 8),
-                                              Container(
-                                                padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 4),
-                                                decoration: BoxDecoration(
-                                                  color: Colors.green[100],
-                                                  borderRadius: BorderRadius.circular(4),
-                                                  border: Border.all(
-                                                    color: Colors.black,
-                                                    width: 1,
-                                                  ),
-                                                ),
-                                                child: GestureDetector(
-                                                  onTap: () => _editValue('Mulligans', _mulligansController, (value) {
-                                                    setState(() {
-                                                      mulligans = value;
-                                                      _mulligansController.text = value.toStringAsFixed(2);
-                                                    });
-                                                  }),
-                                                  child: Text(
-                                                    '\$${mulligans.toStringAsFixed(2)}',
-                                                    style: const TextStyle(
-                                                      fontSize: 18,
-                                                      fontWeight: FontWeight.bold,
+                                              Expanded(
+                                                child: Container(
+                                                  height: double.infinity,
+                                                  padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 4),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.green[100],
+                                                    borderRadius: BorderRadius.circular(4),
+                                                    border: Border.all(
                                                       color: Colors.black,
+                                                      width: 1,
+                                                    ),
+                                                  ),
+                                                  alignment: Alignment.center,
+                                                  child: GestureDetector(
+                                                    onTap: () => _editValue('Mulligans', _mulligansController, (value) {
+                                                      setState(() {
+                                                        mulligans = value;
+                                                        _mulligansController.text = value.toStringAsFixed(2);
+                                                      });
+                                                    }),
+                                                    child: Text(
+                                                      '\$${mulligans.toStringAsFixed(2)}',
+                                                      style: const TextStyle(
+                                                        fontSize: 18,
+                                                        fontWeight: FontWeight.bold,
+                                                        color: Colors.black,
+                                                      ),
                                                     ),
                                                   ),
                                                 ),
