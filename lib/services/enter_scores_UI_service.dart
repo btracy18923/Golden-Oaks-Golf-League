@@ -480,6 +480,7 @@ class EnterScoresUIService {
             padding: EdgeInsets.symmetric(vertical: padding.top / 2),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(8.0),
+              side: const BorderSide(color: Colors.black, width: 1),
             ),
           ),
           child: Text(
