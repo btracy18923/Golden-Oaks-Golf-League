@@ -1,9 +1,8 @@
 import '../models/league.dart';
 import 'csv_payout_service.dart';
 import 'group_csv_payout_service.dart';
-import 'ante_manager.dart';
-import 'percentage_manager.dart';
 import 'database_helper.dart';
+import 'shared/league_purse_service.dart';
 
 class PayoutValidationResult {
   final double totalActualPayouts;
@@ -227,7 +226,7 @@ class PayoutValidationService {
         totalActualPayouts += (roundedSkatWinnings + roundedClosestPinWinnings).toDouble();
       }
 
-      // Get expected purse for Monday league (individual percent of total ante pool)
+      // Get expected purse for Monday league from Skat purse
       double expectedPurse = await _getExpectedIndividualPurse(League.monday, totalSelectedPlayers);
       
       // Calculate difference (actual - expected)
@@ -275,12 +274,11 @@ class PayoutValidationService {
       print('Expected individual purse from CSV: \$${expectedPurse.toStringAsFixed(2)}');
       return expectedPurse;
     } else {
-      // Use percentage-based calculation for Monday league
-      double anteAmount = AnteManager().currentAnteAmount;
-      double individualPercent = PercentageManager().individualPercent;
-      double expectedPurse = anteAmount * totalSelectedPlayers * (individualPercent / 100);
-      print('Monday league calculation: \$${anteAmount.toStringAsFixed(2)} × $totalSelectedPlayers × ${individualPercent}% = \$${expectedPurse.toStringAsFixed(2)}');
-      return expectedPurse;
+      // Use Skat Purse calculation for Monday league
+      double skatPurse = LeaguePurseService.skatPurse;
+      print('Monday league Skat purse: \$${skatPurse.toStringAsFixed(2)}');
+      print('Expected individual purse equals Skat purse: \$${skatPurse.toStringAsFixed(2)}');
+      return skatPurse;
     }
   }
 
@@ -296,12 +294,9 @@ class PayoutValidationService {
       print('Expected group purse from CSV: \$${expectedPurse.toStringAsFixed(2)}');
       return expectedPurse;
     } else {
-      // Use percentage-based calculation for Monday league
-      double anteAmount = AnteManager().currentAnteAmount;
-      double groupPercent = PercentageManager().groupPercent;
-      double expectedPurse = anteAmount * totalSelectedPlayers * (groupPercent / 100);
-      print('Monday league group calculation: \$${anteAmount.toStringAsFixed(2)} × $totalSelectedPlayers × ${groupPercent}% = \$${expectedPurse.toStringAsFixed(2)}');
-      return expectedPurse;
+      // Monday league doesn't use group payouts - return 0
+      print('Monday league does not use group payouts');
+      return 0.0;
     }
   }
 
