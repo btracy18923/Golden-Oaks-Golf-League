@@ -51,6 +51,10 @@ class _NewMondayEnterScoresScreenState extends State<NewMondayEnterScoresScreen>
     // Calculate Skat Purse based on selected players count
     if (widget.selectedPlayers != null) {
       LeaguePurseService.calculateSkatPurseFromCount(widget.selectedPlayers!.length);
+      // Calculate Closest Pin Purse based on selected players count
+      LeaguePurseService.calculateClosestPinPurseFromCount(widget.selectedPlayers!.length);
+      // Calculate Mulligan Purse based on selected players count
+      LeaguePurseService.calculateMulliganPurseFromCount(widget.selectedPlayers!.length);
     }
     
     // Set orientation preferences based on device type after build

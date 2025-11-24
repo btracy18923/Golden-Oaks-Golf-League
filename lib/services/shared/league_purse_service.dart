@@ -159,6 +159,12 @@ class LeaguePurseService {
   // Current Players Ante amount for calculation
   static double _playersAnte = 5.0; // Default value
   
+  // Current Closest Pin amount for calculation
+  static double _closestPinAmount = 4.0; // Default value
+  
+  // Current Mulligan amount for calculation
+  static double _mulliganAmount = 2.0; // Default value
+  
   /// Sets the current Players Ante amount
   static void setPlayersAnte(double amount) {
     _playersAnte = amount;
@@ -166,6 +172,22 @@ class LeaguePurseService {
   
   /// Gets the current Players Ante amount
   static double get playersAnte => _playersAnte;
+  
+  /// Sets the current Closest Pin amount
+  static void setClosestPinAmount(double amount) {
+    _closestPinAmount = amount;
+  }
+  
+  /// Gets the current Closest Pin amount
+  static double get closestPinAmount => _closestPinAmount;
+  
+  /// Sets the current Mulligan amount
+  static void setMulliganAmount(double amount) {
+    _mulliganAmount = amount;
+  }
+  
+  /// Gets the current Mulligan amount
+  static double get mulliganAmount => _mulliganAmount;
   
   /// Calculates and sets the Skat Purse based on Players Ante and selected players count
   static void calculateSkatPurse(double playersAnte, int selectedPlayersCount) {
@@ -175,6 +197,26 @@ class LeaguePurseService {
   /// Calculates and sets the Skat Purse based on current Players Ante and selected players count
   static void calculateSkatPurseFromCount(int selectedPlayersCount) {
     _skatPurse = _playersAnte * selectedPlayersCount;
+  }
+  
+  /// Calculates and sets the Closest Pin Purse based on Closest Pin amount and selected players count
+  static void calculateClosestPinPurse(double closestPinAmount, int selectedPlayersCount) {
+    _closestPinPurse = closestPinAmount * selectedPlayersCount;
+  }
+  
+  /// Calculates and sets the Closest Pin Purse based on current Closest Pin amount and selected players count
+  static void calculateClosestPinPurseFromCount(int selectedPlayersCount) {
+    _closestPinPurse = _closestPinAmount * selectedPlayersCount;
+  }
+  
+  /// Calculates and sets the Mulligan Purse based on Mulligan amount and selected players count
+  static void calculateMulliganPurse(double mulliganAmount, int selectedPlayersCount) {
+    _mulliganPurse = mulliganAmount * selectedPlayersCount;
+  }
+  
+  /// Calculates and sets the Mulligan Purse based on current Mulligan amount and selected players count
+  static void calculateMulliganPurseFromCount(int selectedPlayersCount) {
+    _mulliganPurse = _mulliganAmount * selectedPlayersCount;
   }
   
   /// Gets all purse amounts as a map for debugging or export

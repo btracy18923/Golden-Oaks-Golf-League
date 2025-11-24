@@ -42,6 +42,10 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
     
     // Set the initial Players Ante value in the league service
     LeaguePurseService.setPlayersAnte(skatsAnte);
+    // Set the initial Closest Pin amount in the league service
+    LeaguePurseService.setClosestPinAmount(closestPin);
+    // Set the initial Mulligan amount in the league service
+    LeaguePurseService.setMulliganAmount(mulligans);
   }
 
   void _setOrientation() {
@@ -299,6 +303,8 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
                                                       setState(() {
                                                         closestPin = value;
                                                         _closestPinController.text = value.toStringAsFixed(2);
+                                                        // Update the Closest Pin amount in the league service
+                                                        LeaguePurseService.setClosestPinAmount(value);
                                                       });
                                                     }),
                                                     child: Text(
@@ -363,6 +369,8 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
                                                       setState(() {
                                                         mulligans = value;
                                                         _mulligansController.text = value.toStringAsFixed(2);
+                                                        // Update the Mulligan amount in the league service
+                                                        LeaguePurseService.setMulliganAmount(value);
                                                       });
                                                     }),
                                                     child: Text(
@@ -650,6 +658,8 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
                                                     setState(() {
                                                       closestPin = value;
                                                       _closestPinController.text = value.toStringAsFixed(2);
+                                                      // Update the Closest Pin amount in the league service
+                                                      LeaguePurseService.setClosestPinAmount(value);
                                                     });
                                                   }),
                                                   child: Text(
@@ -710,6 +720,8 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
                                                     setState(() {
                                                       mulligans = value;
                                                       _mulligansController.text = value.toStringAsFixed(2);
+                                                      // Update the Mulligan amount in the league service
+                                                      LeaguePurseService.setMulliganAmount(value);
                                                     });
                                                   }),
                                                   child: Text(
@@ -993,6 +1005,8 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
                                           setState(() {
                                             closestPin = value;
                                             _closestPinController.text = value.toStringAsFixed(2);
+                                            // Update the Closest Pin amount in the league service
+                                            LeaguePurseService.setClosestPinAmount(value);
                                           });
                                         }),
                                         child: Text(
@@ -1050,6 +1064,8 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
                                           setState(() {
                                             mulligans = value;
                                             _mulligansController.text = value.toStringAsFixed(2);
+                                            // Update the Mulligan amount in the league service
+                                            LeaguePurseService.setMulliganAmount(value);
                                           });
                                         }),
                                         child: Text(
@@ -1412,6 +1428,8 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
                                                 setState(() {
                                                   closestPin = value;
                                                   _closestPinController.text = value.toStringAsFixed(2);
+                                                  // Update the Closest Pin amount in the league service
+                                                  LeaguePurseService.setClosestPinAmount(value);
                                                 });
                                               }),
                                               child: Text(
@@ -1471,6 +1489,8 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
                                                 setState(() {
                                                   mulligans = value;
                                                   _mulligansController.text = value.toStringAsFixed(2);
+                                                  // Update the Mulligan amount in the league service
+                                                  LeaguePurseService.setMulliganAmount(value);
                                                 });
                                               }),
                                               child: Text(
@@ -1710,6 +1730,8 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
                                                   setState(() {
                                                     closestPin = value;
                                                     _closestPinController.text = value.toStringAsFixed(2);
+                                                    // Update the Closest Pin amount in the league service
+                                                    LeaguePurseService.setClosestPinAmount(value);
                                                   });
                                                 }),
                                                 child: Text(
@@ -1767,6 +1789,8 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
                                                   setState(() {
                                                     mulligans = value;
                                                     _mulligansController.text = value.toStringAsFixed(2);
+                                                    // Update the Mulligan amount in the league service
+                                                    LeaguePurseService.setMulliganAmount(value);
                                                   });
                                                 }),
                                                 child: Text(
