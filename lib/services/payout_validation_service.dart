@@ -321,4 +321,50 @@ class PayoutValidationService {
       return await _getExpectedIndividualPurse(league, totalSelectedPlayers);
     }
   }
+
+  /// Calculates Skat money payouts based on positive DIFF values
+  /// Skat Purse / sum of positive DIFF values = Skat Value
+  /// Each player's payout = Skat Value * their positive DIFF value
+  Map<String, double> calculateSkatPayouts(List<List<dynamic>> groups) {
+    Map<String, double> payouts = {};
+    
+    // Get the Skat Purse amount
+    double skatPurse = LeaguePurseService.skatPurse;
+    
+    // Calculate sum of all positive DIFF values
+    double totalPositiveDiff = 0.0;
+    List<Map<String, dynamic>> playersWithPositiveDiff = [];
+    
+    for (var group in groups) {
+      for (var player in group) {
+        if (player != null && player.diff.isNotEmpty) {
+          // Parse the DIFF value (remove + sign if present)
+          String diffStr = player.diff.replaceAll('+', '');
+          double diffValue = double.tryParse(diffStr) ?? 0.0;
+          
+          if (diffValue > 0) {
+            totalPositiveDiff += diffValue;
+            playersWithPositiveDiff.add({
+              'name': player.name,
+              'diff': diffValue,
+            });
+          }
+        }
+      }
+    }
+    
+    // Calculate Skat Value (Skat Purse / sum of positive DIFF values)
+    if (totalPositiveDiff > 0) {
+      double skatValue = skatPurse / totalPositiveDiff;
+      
+      // Calculate each player's payout
+      for (var playerData in playersWithPositiveDiff) {
+        double playerDiff = playerData['diff'];
+        double payout = skatValue * playerDiff;
+        payouts[playerData['name']] = payout;
+      }
+    }
+    
+    return payouts;
+  }
 }

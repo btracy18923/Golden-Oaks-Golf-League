@@ -5,6 +5,7 @@ import '../../services/UI/enter_scores_UI_service.dart';
 import '../../services/factories/auto_fill_factory.dart';
 import '../../services/shared/swap_service.dart';
 import '../../services/shared/league_purse_service.dart';
+import '../../services/payout_validation_service.dart';
 import '../../models/league.dart';
 
 class MondayEnterScoresScreen extends StatefulWidget {
@@ -250,6 +251,45 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     print("Groups after auto fill: ${groups.map((g) => g.map((p) => "${p.name}: ${p.skats}").toList()).toList()}");
   }
 
+  /// Calculates Skat money payouts for players with positive DIFF values
+  void _handleSkatMoney() {
+    print("Skat \$\$\$ button pressed!");
+    
+    // Calculate payouts using the payout validation service
+    final payoutService = PayoutValidationService();
+    Map<String, double> payouts = payoutService.calculateSkatPayouts(groups);
+    
+    print("Calculated Skat payouts: $payouts");
+    
+    // Update the money field for each player
+    setState(() {
+      for (int groupIndex = 0; groupIndex < groups.length; groupIndex++) {
+        for (int playerIndex = 0; playerIndex < groups[groupIndex].length; playerIndex++) {
+          var player = groups[groupIndex][playerIndex];
+          double payout = payouts[player.name] ?? 0.0;
+          
+          // Format the payout amount
+          String moneyValue = payout > 0 ? '\$${payout.toStringAsFixed(2)}' : '';
+          
+          // Update the player data with the calculated money value
+          groups[groupIndex][playerIndex] = PlayerData(
+            name: player.name,
+            skNumber: player.skNumber,
+            skats: player.skats,
+            diff: player.diff,
+            money: moneyValue,
+          );
+          
+          if (payout > 0) {
+            print("Updated ${player.name}: money = $moneyValue (diff: ${player.diff})");
+          }
+        }
+      }
+    });
+    
+    print("Skat money calculation completed");
+  }
+
   /// Handles the swap players functionality
   void _handleSwapPlayers() {
     print("Swap Players button pressed!");
@@ -290,7 +330,48 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     return _swapService.isEmptySlotSelected(slotKey);
   }
 
+  /// Checks if any player has money calculated (indicates Skat $$$ button was used)
+  bool _hasMoneyCalculations() {
+    for (var group in groups) {
+      for (var player in group) {
+        if (player.money.isNotEmpty && player.money.contains('\$')) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  /// Recalculates all money fields using current DIFF values
+  void _recalculateMoneyFields() {
+    final payoutService = PayoutValidationService();
+    Map<String, double> payouts = payoutService.calculateSkatPayouts(groups);
+    
+    print("Recalculating money fields with new DIFF values");
+    
+    // Update money fields for all players
+    for (int groupIndex = 0; groupIndex < groups.length; groupIndex++) {
+      for (int playerIndex = 0; playerIndex < groups[groupIndex].length; playerIndex++) {
+        var player = groups[groupIndex][playerIndex];
+        double payout = payouts[player.name] ?? 0.0;
+        
+        // Format the payout amount
+        String moneyValue = payout > 0 ? '\$${payout.toStringAsFixed(2)}' : '';
+        
+        // Update the player data with the calculated money value
+        groups[groupIndex][playerIndex] = PlayerData(
+          name: player.name,
+          skNumber: player.skNumber,
+          skats: player.skats,
+          diff: player.diff,
+          money: moneyValue,
+        );
+      }
+    }
+  }
+
   /// Handles SKATS input change and calculates DIFF automatically
+  /// Also recalculates money fields if Skat $$$ button was previously used
   void _onSkatsChanged(PlayerData player, String skatValue) {
     print("SKATS changed for ${player.name}: $skatValue");
     
@@ -315,6 +396,9 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
           }
         }
         
+        // Check if money calculations are active before updating
+        bool shouldRecalculateMoney = _hasMoneyCalculations();
+        
         // Find and update the player in groups, then move focus
         setState(() {
           for (int groupIndex = 0; groupIndex < groups.length; groupIndex++) {
@@ -328,6 +412,12 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
                   money: player.money,
                 );
                 print("Updated ${player.name}: SKATS=$skatValue, DIFF=$diffValue");
+                
+                // If money calculations were previously done, recalculate all money fields
+                if (shouldRecalculateMoney) {
+                  print("Recalculating money fields due to SKATS change");
+                  _recalculateMoneyFields();
+                }
                 
                 // Move focus to next SKATS field after a short delay
                 Future.delayed(Duration(milliseconds: 100), () {
@@ -377,7 +467,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
         children: [
           _buildCustomButton(context, 'Return', Colors.blue[200]!, _handleReturn),
           _buildCustomButton(context, 'ClosePin \$\$\$', Colors.green[200]!, () {}),
-          _buildCustomButton(context, 'Skat \$\$\$', Colors.green[200]!, () {}),
+          _buildCustomButton(context, 'Skat \$\$\$', Colors.green[200]!, _handleSkatMoney),
           _buildCustomButton(context, 'Auto Fill', Colors.orange[200]!, _handleAutoFill),
           _buildCustomButton(context, _swapService.getSwapButtonText(), _getSwapButtonColor(), _handleSwapPlayers),
         ],
