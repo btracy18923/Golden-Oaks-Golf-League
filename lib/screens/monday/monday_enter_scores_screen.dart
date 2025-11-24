@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../services/UI/enter_scores_UI_service.dart';
+import '../../services/UI/custom_keypad_service.dart';
 import '../../services/factories/auto_fill_factory.dart';
 import '../../services/shared/swap_service.dart';
 import '../../services/shared/league_purse_service.dart';
@@ -35,6 +36,12 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
   // Swap service instance
   final SwapService _swapService = SwapService();
 
+  // Custom keypad controller
+  late CustomKeypadController _keypadController;
+  
+  // Currently focused player for keypad input
+  PlayerData? _currentFocusedPlayer;
+  
   // Focus nodes for SKATS input fields - organized by group and player index
   List<List<FocusNode?>> _skatsFocusNodes = [
     [null, null, null, null], // Group 0 (Group 1)
@@ -53,6 +60,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
   @override
   void initState() {
     super.initState();
+    _keypadController = CustomKeypadService.createController();
     _initializeFocusNodes();
     _populateGroupsWithSelectedPlayers();
     
@@ -197,7 +205,18 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
   void _initializeFocusNodes() {
     for (int groupIndex = 0; groupIndex < _skatsFocusNodes.length; groupIndex++) {
       for (int playerIndex = 0; playerIndex < _skatsFocusNodes[groupIndex].length; playerIndex++) {
-        _skatsFocusNodes[groupIndex][playerIndex] = FocusNode();
+        final focusNode = FocusNode();
+        
+        // Add focus listener to show/hide keypad
+        focusNode.addListener(() {
+          if (focusNode.hasFocus) {
+            _showKeypadForPlayer(groupIndex, playerIndex);
+          } else {
+            _hideKeypad();
+          }
+        });
+        
+        _skatsFocusNodes[groupIndex][playerIndex] = focusNode;
       }
     }
   }
@@ -208,6 +227,62 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
       for (int playerIndex = 0; playerIndex < _skatsFocusNodes[groupIndex].length; playerIndex++) {
         _skatsFocusNodes[groupIndex][playerIndex]?.dispose();
         _skatsFocusNodes[groupIndex][playerIndex] = null;
+      }
+    }
+  }
+
+  /// Shows the keypad for a specific player's SKATS input
+  void _showKeypadForPlayer(int groupIndex, int playerIndex) {
+    if (groupIndex < groups.length && playerIndex < groups[groupIndex].length) {
+      _currentFocusedPlayer = groups[groupIndex][playerIndex];
+      _keypadController.setInput(_currentFocusedPlayer?.skats ?? '');
+      setState(() {
+        _keypadController.show();
+      });
+      print("Showing keypad for ${_currentFocusedPlayer?.name}");
+    }
+  }
+  
+  /// Hides the keypad
+  void _hideKeypad() {
+    setState(() {
+      _keypadController.hide();
+      _currentFocusedPlayer = null;
+    });
+    print("Hiding keypad");
+  }
+  
+  /// Handles keypad input
+  void _handleKeypadInput(String key) {
+    if (_currentFocusedPlayer == null) return;
+    
+    print("Keypad key pressed: $key");
+    
+    if (key == 'enter') {
+      // Apply current input and move to next field
+      String currentInput = _keypadController.currentInput;
+      if (currentInput.isNotEmpty) {
+        _onSkatsChanged(_currentFocusedPlayer!, currentInput);
+      }
+      
+      // Find current player position and move to next
+      for (int groupIndex = 0; groupIndex < groups.length; groupIndex++) {
+        for (int playerIndex = 0; playerIndex < groups[groupIndex].length; playerIndex++) {
+          if (groups[groupIndex][playerIndex].name == _currentFocusedPlayer!.name) {
+            _moveToNextSkatsField(groupIndex, playerIndex);
+            return;
+          }
+        }
+      }
+    } else {
+      // Handle digit or backspace input
+      String? newInput = _keypadController.handleKeyPress(key);
+      if (newInput != null) {
+        setState(() {
+          // Update the display but don't trigger DIFF calculation yet
+          // Only update when Enter is pressed or field loses focus
+        });
+        print("Current keypad input: ${_keypadController.currentInput}");
       }
     }
   }
@@ -234,7 +309,8 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
       }
     }
     
-    // If we reach here, we're at the end - could implement wrap-around or just unfocus
+    // If we reach here, we're at the end - hide keypad
+    _hideKeypad();
     print("Reached end of SKATS input fields");
   }
 
@@ -526,20 +602,36 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
 
     return Scaffold(
       backgroundColor: Colors.grey[100],
-      body: Column(
+      body: Stack(
         children: [
-          EnterScoresUIService.buildPurseHeader(context, League.monday),
-          EnterScoresUIService.buildGroupsGrid(
-            context, 
-            groups,
-            onPlayerTap: _onPlayerTap,
-            onEmptySlotTap: _onEmptySlotTap,
-            isPlayerSelected: _isPlayerSelected,
-            isEmptySlotSelected: _isEmptySlotSelected,
-            onSkatsChanged: _onSkatsChanged,
-            skatsFocusNodes: _skatsFocusNodes,
+          // Main content
+          Column(
+            children: [
+              EnterScoresUIService.buildPurseHeader(context, League.monday),
+              EnterScoresUIService.buildGroupsGrid(
+                context, 
+                groups,
+                onPlayerTap: _onPlayerTap,
+                onEmptySlotTap: _onEmptySlotTap,
+                isPlayerSelected: _isPlayerSelected,
+                isEmptySlotSelected: _isEmptySlotSelected,
+                onSkatsChanged: _onSkatsChanged,
+                skatsFocusNodes: _skatsFocusNodes,
+              ),
+              _buildBottomButtonsWithSwap(),
+            ],
           ),
-          _buildBottomButtonsWithSwap(),
+          // Custom keypad overlay
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: CustomKeypadService.buildCustomKeypad(
+              context: context,
+              onKeyPress: _handleKeypadInput,
+              isVisible: _keypadController.isVisible,
+            ),
+          ),
         ],
       ),
     );
