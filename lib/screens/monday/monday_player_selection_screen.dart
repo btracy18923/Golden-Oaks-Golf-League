@@ -4,7 +4,6 @@ import 'package:flutter/services.dart';
 import '../../services/database_helper.dart';
 import '../../models/league.dart';
 import 'monday_enter_scores_screen.dart';
-import 'new_monday_enter_scores_screen.dart';
 
 class MondayPlayerSelectionScreen extends StatefulWidget {
   final double? playersAnte;
@@ -321,31 +320,6 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
                                     ),
                                   ),
                                 ),
-                                // New button
-                                Expanded(
-                                  child: Container(
-                                    margin: const EdgeInsets.symmetric(horizontal: 4),
-                                    child: ElevatedButton(
-                                      onPressed: _navigateToNewEnterScores,
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.blue[200],
-                                        foregroundColor: Colors.black,
-                                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(8),
-                                          side: const BorderSide(color: Colors.black, width: 1),
-                                        ),
-                                      ),
-                                      child: const Text(
-                                        "New",
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
                               ],
                             )
                           : Row(
@@ -387,22 +361,6 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
                                     style: TextStyle(fontWeight: FontWeight.bold),
                                   ),
                                 ),
-                                ElevatedButton(
-                                  onPressed: _navigateToNewEnterScores,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.blue[200],
-                                    foregroundColor: Colors.black,
-                                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                      side: const BorderSide(color: Colors.black, width: 1),
-                                    ),
-                                  ),
-                                  child: const Text(
-                                    "New",
-                                    style: TextStyle(fontWeight: FontWeight.bold),
-                                  ),
-                                ),
                               ],
                             ),
                     );
@@ -435,22 +393,6 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
     );
   }
   
-  void _navigateToNewEnterScores() {
-    // Get selected players
-    List<Map<String, dynamic>> selectedPlayers = players
-        .where((player) => selectedPlayerIds.contains(player['id'] as int))
-        .toList();
-    
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => NewMondayEnterScoresScreen(
-          selectedPlayers: selectedPlayers,
-          playersAnte: widget.playersAnte, // Pass through the Players Ante value
-        ),
-      ),
-    );
-  }
 
   void _navigateToEnterScores() {
     try {
@@ -485,10 +427,9 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => EnterScoresScreenWithData(
+          builder: (context) => MondayEnterScoresScreen(
             selectedPlayers: selectedPlayers,
-            groups: groups,
-            leagueType: 'monday',
+            playersAnte: widget.playersAnte,
           ),
         ),
       );
