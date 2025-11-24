@@ -1,8 +1,9 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../services/enter_scores_UI_service.dart';
-import '../../services/auto_fill_service.dart';
+import '../../services/UI/enter_scores_UI_service.dart';
+import '../../services/factories/auto_fill_factory.dart';
+import '../../models/league.dart';
 
 class NewMondayEnterScoresScreen extends StatefulWidget {
   final List<Map<String, dynamic>>? selectedPlayers;
@@ -157,7 +158,8 @@ class _NewMondayEnterScoresScreenState extends State<NewMondayEnterScoresScreen>
     print("Groups before auto fill: ${groups.map((g) => g.map((p) => "${p.name}: ${p.skats}").toList()).toList()}");
     
     setState(() {
-      groups = AutoFillService.autoFillSkats(groups);
+      final autoFillService = AutoFillFactory.create(League.monday);
+      groups = autoFillService.autoFillData(groups);
     });
     
     print("Groups after auto fill: ${groups.map((g) => g.map((p) => "${p.name}: ${p.skats}").toList()).toList()}");

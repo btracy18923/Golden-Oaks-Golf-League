@@ -43,9 +43,9 @@ class EnterScoresUIService {
       case DeviceType.phone6_5:
         return isHeader ? 10.0 : 11.0;
       case DeviceType.tablet8:
-        return isHeader ? 12.0 : 11.0;
+        return isHeader ? 12.0 : 13.0;
       case DeviceType.tablet10:
-        return isHeader ? 14.0 : 13.0;
+        return isHeader ? 14.0 : 15.0;
     }
   }
   
@@ -123,7 +123,7 @@ class EnterScoresUIService {
           Expanded(
             child: Center(
               child: Text(
-                'Skat Purse = \$5.00',
+                'Skat Purse = \$0.00',
                 style: TextStyle(
                   fontSize: fontSize,
                   fontWeight: FontWeight.bold,
@@ -135,7 +135,7 @@ class EnterScoresUIService {
           Expanded(
             child: Center(
               child: Text(
-                'Closest Pin Purse = \$4.00',
+                'Closest Pin Purse = \$0.00',
                 style: TextStyle(
                   fontSize: fontSize,
                   fontWeight: FontWeight.bold,
@@ -147,7 +147,7 @@ class EnterScoresUIService {
           Expanded(
             child: Center(
               child: Text(
-                'Mulligan Purse = \$2.00',
+                'Mulligan Purse = \$0.00',
                 style: TextStyle(
                   fontSize: fontSize,
                   fontWeight: FontWeight.bold,
