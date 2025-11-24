@@ -327,8 +327,8 @@ class EnterScoresUIService {
         children: [
           buildPlayerCell(context, player.name, flex: 2, hasLeftBorder: true),
           buildPlayerCell(context, player.skNumber, flex: 1),
-          buildInputCell(context, player.skats, Colors.green[200], flex: 1),
-          buildInputCell(context, player.diff, Colors.yellow[200], flex: 1),
+          buildInputCell(context, player.skats, Colors.green[200], flex: 1, keyValue: '${player.name}_skats'),
+          buildInputCell(context, player.diff, Colors.yellow[200], flex: 1, keyValue: '${player.name}_diff'),
           buildPlayerCell(context, player.money, flex: 1, isCurrency: true), // Format money as currency
         ],
       ),
@@ -400,7 +400,7 @@ class EnterScoresUIService {
 
   /// Builds an input cell for editable data (skats, diff)
   /// Responsive design adapts padding and font size, with bold formatting for data fields
-  static Widget buildInputCell(BuildContext context, String value, Color? backgroundColor, {int flex = 1}) {
+  static Widget buildInputCell(BuildContext context, String value, Color? backgroundColor, {int flex = 1, String? keyValue}) {
     final deviceType = getDeviceType(context);
     final fontSize = getResponsiveFontSize(deviceType);
     final padding = getResponsivePadding(deviceType);
@@ -412,19 +412,24 @@ class EnterScoresUIService {
           border: const Border(right: BorderSide(color: Colors.black, width: 1)),
           color: backgroundColor,
         ),
-        child: TextFormField(
-          initialValue: value,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: fontSize,
-            fontWeight: FontWeight.bold, // Make input fields bold
+        child: Center(
+          child: TextFormField(
+            key: keyValue != null ? Key('${keyValue}_$value') : null,
+            initialValue: value,
+            textAlign: TextAlign.center,
+            textAlignVertical: TextAlignVertical.center,
+            style: TextStyle(
+              fontSize: fontSize,
+              fontWeight: FontWeight.bold, // Make input fields bold
+            ),
+            decoration: InputDecoration(
+              border: InputBorder.none,
+              contentPadding: EdgeInsets.zero,
+              isDense: true,
+            ),
+            keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
           ),
-          decoration: InputDecoration(
-            border: InputBorder.none,
-            contentPadding: EdgeInsets.all(padding.left / 2),
-          ),
-          keyboardType: TextInputType.number,
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
         ),
       ),
     );

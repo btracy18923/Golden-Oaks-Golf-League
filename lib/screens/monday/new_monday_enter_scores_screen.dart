@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../services/enter_scores_UI_service.dart';
+import '../../services/auto_fill_service.dart';
 
 class NewMondayEnterScoresScreen extends StatefulWidget {
   final List<Map<String, dynamic>>? selectedPlayers;
@@ -40,8 +41,8 @@ class _NewMondayEnterScoresScreenState extends State<NewMondayEnterScoresScreen>
   
   @override
   void dispose() {
-    // Reset orientation when leaving the screen
-    EnterScoresUIService.resetOrientation();
+    // Don't reset orientation here since we handle it in the Return button
+    // This prevents brief portrait flash when returning to player selection
     super.dispose();
   }
 
@@ -84,6 +85,29 @@ class _NewMondayEnterScoresScreenState extends State<NewMondayEnterScoresScreen>
       }
     }
   }
+
+  /// Auto fills SKATS data with random values between 30-40 for all players
+  void _handleAutoFill() {
+    print("Auto Fill button pressed!");
+    print("Groups before auto fill: ${groups.map((g) => g.map((p) => "${p.name}: ${p.skats}").toList()).toList()}");
+    
+    setState(() {
+      groups = AutoFillService.autoFillSkats(groups);
+    });
+    
+    print("Groups after auto fill: ${groups.map((g) => g.map((p) => "${p.name}: ${p.skats}").toList()).toList()}");
+  }
+
+  /// Handles the Return button press with proper orientation management
+  void _handleReturn() {
+    // Set landscape orientation before popping to prevent brief portrait flash
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+    Navigator.pop(context);
+  }
+
 //************************************************************************************************
   @override
   Widget build(BuildContext context) {
@@ -97,7 +121,11 @@ class _NewMondayEnterScoresScreenState extends State<NewMondayEnterScoresScreen>
         children: [
           EnterScoresUIService.buildPurseHeader(context),
           EnterScoresUIService.buildGroupsGrid(context, groups),
-          EnterScoresUIService.buildBottomButtons(context),
+          EnterScoresUIService.buildBottomButtons(
+            context,
+            onReturn: _handleReturn,
+            onAutoFill: _handleAutoFill,
+          ),
         ],
       ),
     );
