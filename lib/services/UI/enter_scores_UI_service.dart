@@ -242,6 +242,8 @@ class EnterScoresUIService {
     Function(int groupIndex, int playerIndex)? onEmptySlotTap,
     bool Function(PlayerData player)? isPlayerSelected,
     bool Function(int groupIndex, int playerIndex)? isEmptySlotSelected,
+    Function(PlayerData, String)? onSkatsChanged,
+    List<List<FocusNode?>>? skatsFocusNodes,
   }) {
     final deviceType = getDeviceType(context);
     final padding = getResponsivePadding(deviceType);
@@ -264,6 +266,8 @@ class EnterScoresUIService {
                 onEmptySlotTap: onEmptySlotTap,
                 isPlayerSelected: isPlayerSelected,
                 isEmptySlotSelected: isEmptySlotSelected,
+                onSkatsChanged: onSkatsChanged,
+                skatsFocusNodes: skatsFocusNodes,
               ),
               SizedBox(height: spacing),
               buildGroupRow(
@@ -277,6 +281,8 @@ class EnterScoresUIService {
                 onEmptySlotTap: onEmptySlotTap,
                 isPlayerSelected: isPlayerSelected,
                 isEmptySlotSelected: isEmptySlotSelected,
+                onSkatsChanged: onSkatsChanged,
+                skatsFocusNodes: skatsFocusNodes,
               ),
               SizedBox(height: spacing),
               buildGroupRow(
@@ -290,6 +296,8 @@ class EnterScoresUIService {
                 onEmptySlotTap: onEmptySlotTap,
                 isPlayerSelected: isPlayerSelected,
                 isEmptySlotSelected: isEmptySlotSelected,
+                onSkatsChanged: onSkatsChanged,
+                skatsFocusNodes: skatsFocusNodes,
               ),
               SizedBox(height: spacing),
               buildGroupRow(
@@ -303,6 +311,8 @@ class EnterScoresUIService {
                 onEmptySlotTap: onEmptySlotTap,
                 isPlayerSelected: isPlayerSelected,
                 isEmptySlotSelected: isEmptySlotSelected,
+                onSkatsChanged: onSkatsChanged,
+                skatsFocusNodes: skatsFocusNodes,
               ),
               SizedBox(height: spacing),
               buildGroupRow(
@@ -316,6 +326,8 @@ class EnterScoresUIService {
                 onEmptySlotTap: onEmptySlotTap,
                 isPlayerSelected: isPlayerSelected,
                 isEmptySlotSelected: isEmptySlotSelected,
+                onSkatsChanged: onSkatsChanged,
+                skatsFocusNodes: skatsFocusNodes,
               ),
             ],
           ),
@@ -337,6 +349,8 @@ class EnterScoresUIService {
     Function(int groupIndex, int playerIndex)? onEmptySlotTap,
     bool Function(PlayerData player)? isPlayerSelected,
     bool Function(int groupIndex, int playerIndex)? isEmptySlotSelected,
+    Function(PlayerData, String)? onSkatsChanged,
+    List<List<FocusNode?>>? skatsFocusNodes,
   }) {
     final deviceType = getDeviceType(context);
     final spacing = deviceType == DeviceType.phone6_5 ? 4.0 : 8.0;
@@ -353,6 +367,8 @@ class EnterScoresUIService {
             onEmptySlotTap: onEmptySlotTap,
             isPlayerSelected: isPlayerSelected,
             isEmptySlotSelected: isEmptySlotSelected,
+            onSkatsChanged: onSkatsChanged,
+            skatsFocusNodes: skatsFocusNodes,
           ),
         ),
         SizedBox(width: spacing),
@@ -366,6 +382,8 @@ class EnterScoresUIService {
             onEmptySlotTap: onEmptySlotTap,
             isPlayerSelected: isPlayerSelected,
             isEmptySlotSelected: isEmptySlotSelected,
+            onSkatsChanged: onSkatsChanged,
+            skatsFocusNodes: skatsFocusNodes,
           ),
         ),
       ],
@@ -383,6 +401,8 @@ class EnterScoresUIService {
     Function(int groupIndex, int playerIndex)? onEmptySlotTap,
     bool Function(PlayerData player)? isPlayerSelected,
     bool Function(int groupIndex, int playerIndex)? isEmptySlotSelected,
+    Function(PlayerData, String)? onSkatsChanged,
+    List<List<FocusNode?>>? skatsFocusNodes,
   }) {
     final deviceType = getDeviceType(context);
     final groupHeight = getResponsiveGroupHeight(deviceType);
@@ -418,6 +438,8 @@ class EnterScoresUIService {
               onEmptySlotTap: onEmptySlotTap,
               isPlayerSelected: isPlayerSelected,
               isEmptySlotSelected: isEmptySlotSelected,
+              onSkatsChanged: onSkatsChanged,
+              skatsFocusNodes: skatsFocusNodes,
             ),
           ),
         ],
@@ -492,6 +514,8 @@ class EnterScoresUIService {
     Function(int groupIndex, int playerIndex)? onEmptySlotTap,
     bool Function(PlayerData player)? isPlayerSelected,
     bool Function(int groupIndex, int playerIndex)? isEmptySlotSelected,
+    Function(PlayerData, String)? onSkatsChanged,
+    List<List<FocusNode?>>? skatsFocusNodes,
   }) {
     return Column(
       children: List.generate(4, (rowIndex) {
@@ -506,6 +530,8 @@ class EnterScoresUIService {
               ? () => onPlayerTap(groupIndex, rowIndex, player)
               : null,
             isSelected: isSelected,
+            onSkatsChanged: onSkatsChanged,
+            skatsFocusNode: skatsFocusNodes?[groupIndex]?[rowIndex],
           );
         } else {
           final isSelected = isEmptySlotSelected?.call(groupIndex, rowIndex) ?? false;
@@ -527,6 +553,8 @@ class EnterScoresUIService {
   static Widget buildPlayerRow(BuildContext context, PlayerData player, {
     VoidCallback? onPlayerTap,
     bool isSelected = false,
+    Function(PlayerData, String)? onSkatsChanged,
+    FocusNode? skatsFocusNode,
   }) {
     final deviceType = getDeviceType(context);
     final rowHeight = getResponsiveRowHeight(deviceType);
@@ -540,8 +568,22 @@ class EnterScoresUIService {
         children: [
           buildClickablePlayerCell(context, player.name, flex: 2, hasLeftBorder: true, onTap: onPlayerTap, isSelected: isSelected),
           buildPlayerCell(context, player.skNumber, flex: 1),
-          buildInputCell(context, player.skats, Colors.green[200], flex: 1, keyValue: '${player.name}_skats'),
-          buildInputCell(context, player.diff, Colors.yellow[200], flex: 1, keyValue: '${player.name}_diff'),
+          buildInputCell(
+            context, 
+            player.skats, 
+            Colors.green[200], 
+            flex: 1, 
+            keyValue: '${player.name}_skats',
+            onChanged: onSkatsChanged != null ? (value) => onSkatsChanged(player, value) : null,
+            focusNode: skatsFocusNode,
+          ),
+          buildInputCell(
+            context, 
+            player.diff, 
+            getDiffBackgroundColor(player.diff), 
+            flex: 1, 
+            keyValue: '${player.name}_diff'
+          ),
           buildPlayerCell(context, player.money, flex: 1, isCurrency: true), // Format money as currency
         ],
       ),
@@ -669,9 +711,37 @@ class EnterScoresUIService {
     );
   }
 
+  /// Gets the background color for DIFF field based on the difference value
+  /// Returns light green for positive, light red for negative and zero, yellow for empty
+  static Color getDiffBackgroundColor(String diffValue) {
+    if (diffValue.isEmpty) {
+      return Colors.yellow[200]!; // Default yellow for empty
+    }
+    
+    // Remove the sign and parse the number
+    String cleanValue = diffValue.replaceAll('+', '').replaceAll('-', '');
+    if (cleanValue == '0') {
+      return Colors.red[200]!; // Light red for zero
+    }
+    
+    // Check if it's positive or negative
+    if (diffValue.startsWith('+')) {
+      return Colors.lightGreen[200]!; // Light green for positive
+    } else if (diffValue.startsWith('-')) {
+      return Colors.red[200]!; // Light red for negative
+    } else {
+      return Colors.yellow[200]!; // Default yellow
+    }
+  }
+
   /// Builds an input cell for editable data (skats, diff)
   /// Responsive design adapts padding and font size, with bold formatting for data fields
-  static Widget buildInputCell(BuildContext context, String value, Color? backgroundColor, {int flex = 1, String? keyValue}) {
+  static Widget buildInputCell(BuildContext context, String value, Color? backgroundColor, {
+    int flex = 1, 
+    String? keyValue,
+    Function(String)? onChanged,
+    FocusNode? focusNode,
+  }) {
     final deviceType = getDeviceType(context);
     final fontSize = getResponsiveFontSize(deviceType);
     final padding = getResponsivePadding(deviceType);
@@ -687,6 +757,7 @@ class EnterScoresUIService {
           child: TextFormField(
             key: keyValue != null ? Key('${keyValue}_$value') : null,
             initialValue: value,
+            focusNode: focusNode,
             textAlign: TextAlign.center,
             textAlignVertical: TextAlignVertical.center,
             style: TextStyle(
@@ -700,6 +771,7 @@ class EnterScoresUIService {
             ),
             keyboardType: TextInputType.number,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            onChanged: onChanged,
           ),
         ),
       ),

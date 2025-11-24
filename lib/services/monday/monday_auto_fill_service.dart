@@ -27,11 +27,32 @@ class MondayAutoFillService extends BaseAutoFillService {
           int randomSkats = 30 + random.nextInt(11); // nextInt(11) gives 0-10, so 30-40
           logFillAction(player.name, "SKATS", randomSkats.toString());
           
+          // Calculate DIFF (SKATS - SK #)
+          String diffValue = '';
+          if (player.skNumber.isNotEmpty) {
+            try {
+              int skNumber = int.parse(player.skNumber);
+              int difference = randomSkats - skNumber;
+              
+              // Format with appropriate sign
+              if (difference > 0) {
+                diffValue = '+$difference';
+              } else if (difference < 0) {
+                diffValue = '$difference'; // negative sign already included
+              } else {
+                diffValue = '0';
+              }
+            } catch (e) {
+              // If SK number is not a valid integer, leave DIFF empty
+              diffValue = '';
+            }
+          }
+          
           updatedGroups[groupIndex][playerIndex] = PlayerData(
             name: player.name,
             skNumber: player.skNumber,
             skats: randomSkats.toString(),
-            diff: player.diff,
+            diff: diffValue,
             money: player.money,
           );
         }
@@ -52,11 +73,32 @@ class MondayAutoFillService extends BaseAutoFillService {
         int randomSkats = 30 + random.nextInt(11);
         logFillAction(player.name, "SKATS", randomSkats.toString());
         
+        // Calculate DIFF (SKATS - SK #)
+        String diffValue = '';
+        if (player.skNumber.isNotEmpty) {
+          try {
+            int skNumber = int.parse(player.skNumber);
+            int difference = randomSkats - skNumber;
+            
+            // Format with appropriate sign
+            if (difference > 0) {
+              diffValue = '+$difference';
+            } else if (difference < 0) {
+              diffValue = '$difference'; // negative sign already included
+            } else {
+              diffValue = '0';
+            }
+          } catch (e) {
+            // If SK number is not a valid integer, leave DIFF empty
+            diffValue = '';
+          }
+        }
+        
         return PlayerData(
           name: player.name,
           skNumber: player.skNumber,
           skats: randomSkats.toString(),
-          diff: player.diff,
+          diff: diffValue,
           money: player.money,
         );
       } else {

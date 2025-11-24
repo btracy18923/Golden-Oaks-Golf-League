@@ -34,10 +34,25 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
   // Swap service instance
   final SwapService _swapService = SwapService();
 
+  // Focus nodes for SKATS input fields - organized by group and player index
+  List<List<FocusNode?>> _skatsFocusNodes = [
+    [null, null, null, null], // Group 0 (Group 1)
+    [null, null, null, null], // Group 1 (Group 2)
+    [null, null, null, null], // Group 2 (Group 3)
+    [null, null, null, null], // Group 3 (Group 4)
+    [null, null, null, null], // Group 4 (Group 5)
+    [null, null, null, null], // Group 5 (Group 6)
+    [null, null, null, null], // Group 6 (Group 7)
+    [null, null, null, null], // Group 7 (Group 8)
+    [null, null, null, null], // Group 8 (Group 9)
+    [null, null, null, null], // Group 9 (Group 10)
+  ];
+
 
   @override
   void initState() {
     super.initState();
+    _initializeFocusNodes();
     _populateGroupsWithSelectedPlayers();
     
     // Set the Players Ante value if it was passed as a parameter
@@ -65,6 +80,8 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
   
   @override
   void dispose() {
+    // Dispose of all focus nodes
+    _disposeFocusNodes();
     // Don't reset orientation here since we handle it in the Return button
     // This prevents brief portrait flash when returning to player selection
     super.dispose();
@@ -175,6 +192,51 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     }
   }
 
+  /// Initializes focus nodes for all SKATS input fields
+  void _initializeFocusNodes() {
+    for (int groupIndex = 0; groupIndex < _skatsFocusNodes.length; groupIndex++) {
+      for (int playerIndex = 0; playerIndex < _skatsFocusNodes[groupIndex].length; playerIndex++) {
+        _skatsFocusNodes[groupIndex][playerIndex] = FocusNode();
+      }
+    }
+  }
+
+  /// Disposes of all focus nodes to prevent memory leaks
+  void _disposeFocusNodes() {
+    for (int groupIndex = 0; groupIndex < _skatsFocusNodes.length; groupIndex++) {
+      for (int playerIndex = 0; playerIndex < _skatsFocusNodes[groupIndex].length; playerIndex++) {
+        _skatsFocusNodes[groupIndex][playerIndex]?.dispose();
+        _skatsFocusNodes[groupIndex][playerIndex] = null;
+      }
+    }
+  }
+
+  /// Moves focus to the next available SKATS input field
+  void _moveToNextSkatsField(int currentGroupIndex, int currentPlayerIndex) {
+    // First, try to move to next player in the same group
+    for (int playerIndex = currentPlayerIndex + 1; playerIndex < groups[currentGroupIndex].length; playerIndex++) {
+      FocusNode? nextFocus = _skatsFocusNodes[currentGroupIndex][playerIndex];
+      if (nextFocus != null) {
+        nextFocus.requestFocus();
+        return;
+      }
+    }
+    
+    // If no more players in current group, move to next group
+    for (int groupIndex = currentGroupIndex + 1; groupIndex < groups.length; groupIndex++) {
+      for (int playerIndex = 0; playerIndex < groups[groupIndex].length; playerIndex++) {
+        FocusNode? nextFocus = _skatsFocusNodes[groupIndex][playerIndex];
+        if (nextFocus != null) {
+          nextFocus.requestFocus();
+          return;
+        }
+      }
+    }
+    
+    // If we reach here, we're at the end - could implement wrap-around or just unfocus
+    print("Reached end of SKATS input fields");
+  }
+
   /// Auto fills SKATS data with random values between 30-40 for all players
   void _handleAutoFill() {
     print("Auto Fill button pressed!");
@@ -226,6 +288,61 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
   bool _isEmptySlotSelected(int groupIndex, int playerIndex) {
     String slotKey = 'empty_${groupIndex + 1}_$playerIndex';
     return _swapService.isEmptySlotSelected(slotKey);
+  }
+
+  /// Handles SKATS input change and calculates DIFF automatically
+  void _onSkatsChanged(PlayerData player, String skatValue) {
+    print("SKATS changed for ${player.name}: $skatValue");
+    
+    // Only process if we have a 2-digit number
+    if (skatValue.length == 2) {
+      try {
+        int skatsNum = int.parse(skatValue);
+        
+        // Calculate DIFF (SKATS - SK #)
+        String diffValue = '';
+        if (player.skNumber.isNotEmpty) {
+          int skNumber = int.parse(player.skNumber);
+          int difference = skatsNum - skNumber;
+          
+          // Format with appropriate sign
+          if (difference > 0) {
+            diffValue = '+$difference';
+          } else if (difference < 0) {
+            diffValue = '$difference'; // negative sign already included
+          } else {
+            diffValue = '0';
+          }
+        }
+        
+        // Find and update the player in groups, then move focus
+        setState(() {
+          for (int groupIndex = 0; groupIndex < groups.length; groupIndex++) {
+            for (int playerIndex = 0; playerIndex < groups[groupIndex].length; playerIndex++) {
+              if (groups[groupIndex][playerIndex].name == player.name) {
+                groups[groupIndex][playerIndex] = PlayerData(
+                  name: player.name,
+                  skNumber: player.skNumber,
+                  skats: skatValue,
+                  diff: diffValue,
+                  money: player.money,
+                );
+                print("Updated ${player.name}: SKATS=$skatValue, DIFF=$diffValue");
+                
+                // Move focus to next SKATS field after a short delay
+                Future.delayed(Duration(milliseconds: 100), () {
+                  _moveToNextSkatsField(groupIndex, playerIndex);
+                });
+                return; // Exit once found and updated
+              }
+            }
+          }
+        });
+        
+      } catch (e) {
+        print("Error parsing SKATS value: $skatValue");
+      }
+    }
   }
 
   /// Gets the color for the SWAP button based on selection state
@@ -328,6 +445,8 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
             onEmptySlotTap: _onEmptySlotTap,
             isPlayerSelected: _isPlayerSelected,
             isEmptySlotSelected: _isEmptySlotSelected,
+            onSkatsChanged: _onSkatsChanged,
+            skatsFocusNodes: _skatsFocusNodes,
           ),
           _buildBottomButtonsWithSwap(),
         ],
