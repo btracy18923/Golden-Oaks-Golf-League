@@ -376,7 +376,8 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
           _buildCustomButton(context, 'Return', Colors.blue[200]!, _handleReturn),
-          _buildCustomButton(context, 'Closest Pin', Colors.green[200]!, () {}),
+          _buildCustomButton(context, 'ClosePin \$\$\$', Colors.green[200]!, () {}),
+          _buildCustomButton(context, 'Skat \$\$\$', Colors.green[200]!, () {}),
           _buildCustomButton(context, 'Auto Fill', Colors.orange[200]!, _handleAutoFill),
           _buildCustomButton(context, _swapService.getSwapButtonText(), _getSwapButtonColor(), _handleSwapPlayers),
         ],

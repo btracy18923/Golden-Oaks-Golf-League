@@ -571,7 +571,7 @@ class EnterScoresUIService {
           buildInputCell(
             context, 
             player.skats, 
-            Colors.green[200], 
+            Colors.yellow[200], 
             flex: 1, 
             keyValue: '${player.name}_skats',
             onChanged: onSkatsChanged != null ? (value) => onSkatsChanged(player, value) : null,
