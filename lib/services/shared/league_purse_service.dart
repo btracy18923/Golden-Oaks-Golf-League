@@ -1,0 +1,182 @@
+import 'package:flutter/material.dart';
+import '../../models/league.dart';
+
+/// Service for managing league-specific purse information
+/// Handles purse amounts for both Monday and Wednesday leagues
+class LeaguePurseService {
+  
+  // Purse amounts (in dollars)
+  static double _closestPinPurse = 0.0;
+  static double _mulliganPurse = 0.0;
+  static double _skatPurse = 0.0; // Monday league specific
+  static double _antePurse = 0.0; // Wednesday league specific
+  
+  /// Gets the closest pin purse amount
+  static double get closestPinPurse => _closestPinPurse;
+  
+  /// Gets the mulligan purse amount
+  static double get mulliganPurse => _mulliganPurse;
+  
+  /// Gets the skat purse amount (Monday league)
+  static double get skatPurse => _skatPurse;
+  
+  /// Gets the ante purse amount (Wednesday league)
+  static double get antePurse => _antePurse;
+  
+  /// Sets the closest pin purse amount
+  static void setClosestPinPurse(double amount) {
+    _closestPinPurse = amount;
+  }
+  
+  /// Sets the mulligan purse amount
+  static void setMulliganPurse(double amount) {
+    _mulliganPurse = amount;
+  }
+  
+  /// Sets the skat purse amount (Monday league)
+  static void setSkatPurse(double amount) {
+    _skatPurse = amount;
+  }
+  
+  /// Sets the ante purse amount (Wednesday league)
+  static void setAntePurse(double amount) {
+    _antePurse = amount;
+  }
+  
+  /// Gets the league-specific primary purse amount
+  static double getPrimaryPurse(League league) {
+    switch (league) {
+      case League.monday:
+        return _skatPurse;
+      case League.wednesday:
+        return _antePurse;
+    }
+  }
+  
+  /// Gets the league-specific primary purse label
+  static String getPrimaryPurseLabel(League league) {
+    switch (league) {
+      case League.monday:
+        return 'Skat Purse';
+      case League.wednesday:
+        return 'Ante Purse';
+    }
+  }
+  
+  /// Sets the league-specific primary purse amount
+  static void setPrimaryPurse(League league, double amount) {
+    switch (league) {
+      case League.monday:
+        setSkatPurse(amount);
+        break;
+      case League.wednesday:
+        setAntePurse(amount);
+        break;
+    }
+  }
+  
+  /// Formats a purse amount as currency string
+  static String formatPurseAmount(double amount) {
+    return '\$${amount.toStringAsFixed(2)}';
+  }
+  
+  /// Gets the complete purse header text for a specific league
+  static Map<String, String> getPurseHeaderData(League league) {
+    return {
+      'primary': '${getPrimaryPurseLabel(league)} = ${formatPurseAmount(getPrimaryPurse(league))}',
+      'closestPin': 'Closest Pin Purse = ${formatPurseAmount(_closestPinPurse)}',
+      'mulligan': 'Mulligan Purse = ${formatPurseAmount(_mulliganPurse)}',
+    };
+  }
+  
+  /// Resets all purse amounts to zero
+  static void resetAllPurses() {
+    _closestPinPurse = 0.0;
+    _mulliganPurse = 0.0;
+    _skatPurse = 0.0;
+    _antePurse = 0.0;
+  }
+  
+  /// Loads purse amounts from database or storage
+  /// TODO: Implement database loading logic
+  static Future<void> loadPurseAmounts(League league) async {
+    // Placeholder for database loading
+    // This would typically load from SQLite or Firebase
+    print('Loading purse amounts for ${league.name} league...');
+    
+    // For now, set some default values for demonstration
+    switch (league) {
+      case League.monday:
+        setSkatPurse(25.0);
+        break;
+      case League.wednesday:
+        setAntePurse(30.0);
+        break;
+    }
+    
+    setClosestPinPurse(15.0);
+    setMulliganPurse(20.0);
+  }
+  
+  /// Saves purse amounts to database or storage
+  /// TODO: Implement database saving logic
+  static Future<void> savePurseAmounts(League league) async {
+    // Placeholder for database saving
+    print('Saving purse amounts for ${league.name} league...');
+    print('Primary Purse: ${formatPurseAmount(getPrimaryPurse(league))}');
+    print('Closest Pin Purse: ${formatPurseAmount(_closestPinPurse)}');
+    print('Mulligan Purse: ${formatPurseAmount(_mulliganPurse)}');
+  }
+  
+  /// Updates a specific purse amount by type
+  static void updatePurseAmount(League league, String purseType, double amount) {
+    switch (purseType.toLowerCase()) {
+      case 'skat':
+        setSkatPurse(amount);
+        break;
+      case 'ante':
+        setAntePurse(amount);
+        break;
+      case 'closest_pin':
+      case 'closestpin':
+        setClosestPinPurse(amount);
+        break;
+      case 'mulligan':
+        setMulliganPurse(amount);
+        break;
+      default:
+        throw ArgumentError('Unknown purse type: $purseType');
+    }
+  }
+  
+  // Current Players Ante amount for calculation
+  static double _playersAnte = 5.0; // Default value
+  
+  /// Sets the current Players Ante amount
+  static void setPlayersAnte(double amount) {
+    _playersAnte = amount;
+  }
+  
+  /// Gets the current Players Ante amount
+  static double get playersAnte => _playersAnte;
+  
+  /// Calculates and sets the Skat Purse based on Players Ante and selected players count
+  static void calculateSkatPurse(double playersAnte, int selectedPlayersCount) {
+    _skatPurse = playersAnte * selectedPlayersCount;
+  }
+  
+  /// Calculates and sets the Skat Purse based on current Players Ante and selected players count
+  static void calculateSkatPurseFromCount(int selectedPlayersCount) {
+    _skatPurse = _playersAnte * selectedPlayersCount;
+  }
+  
+  /// Gets all purse amounts as a map for debugging or export
+  static Map<String, double> getAllPurseAmounts() {
+    return {
+      'skatPurse': _skatPurse,
+      'antePurse': _antePurse,
+      'closestPinPurse': _closestPinPurse,
+      'mulliganPurse': _mulliganPurse,
+    };
+  }
+}

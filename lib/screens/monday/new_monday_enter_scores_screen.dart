@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../services/UI/enter_scores_UI_service.dart';
 import '../../services/factories/auto_fill_factory.dart';
 import '../../services/shared/swap_service.dart';
+import '../../services/shared/league_purse_service.dart';
 import '../../models/league.dart';
 
 class NewMondayEnterScoresScreen extends StatefulWidget {
@@ -37,6 +38,14 @@ class _NewMondayEnterScoresScreenState extends State<NewMondayEnterScoresScreen>
   void initState() {
     super.initState();
     _populateGroupsWithSelectedPlayers();
+    
+    // Load purse amounts for Monday league
+    LeaguePurseService.loadPurseAmounts(League.monday);
+    
+    // Calculate Skat Purse based on selected players count
+    if (widget.selectedPlayers != null) {
+      LeaguePurseService.calculateSkatPurseFromCount(widget.selectedPlayers!.length);
+    }
     
     // Set orientation preferences based on device type after build
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -292,7 +301,7 @@ class _NewMondayEnterScoresScreenState extends State<NewMondayEnterScoresScreen>
       backgroundColor: Colors.grey[100],
       body: Column(
         children: [
-          EnterScoresUIService.buildPurseHeader(context),
+          EnterScoresUIService.buildPurseHeader(context, League.monday),
           EnterScoresUIService.buildGroupsGrid(
             context, 
             groups,

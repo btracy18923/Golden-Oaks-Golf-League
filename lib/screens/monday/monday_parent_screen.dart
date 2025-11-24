@@ -7,6 +7,7 @@ import 'monday_golf_course_screen.dart';
 import '../admin_screen.dart';
 import '../../models/league.dart';
 import '../../services/database_helper.dart';
+import '../../services/shared/league_purse_service.dart';
 
 class MondayParentScreen extends StatefulWidget {
   const MondayParentScreen({super.key});
@@ -38,6 +39,9 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
     _skatsAnteController.text = skatsAnte.toStringAsFixed(2);
     _closestPinController.text = closestPin.toStringAsFixed(2);
     _mulligansController.text = mulligans.toStringAsFixed(2);
+    
+    // Set the initial Players Ante value in the league service
+    LeaguePurseService.setPlayersAnte(skatsAnte);
   }
 
   void _setOrientation() {
@@ -584,6 +588,8 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
                                                     setState(() {
                                                       skatsAnte = value;
                                                       _skatsAnteController.text = value.toStringAsFixed(2);
+                                                      // Update the Players Ante value in the league service
+                                                      LeaguePurseService.setPlayersAnte(value);
                                                     });
                                                   }),
                                                   child: Text(
@@ -928,6 +934,8 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
                                           setState(() {
                                             skatsAnte = value;
                                             _skatsAnteController.text = value.toStringAsFixed(2);
+                                            // Update the Players Ante value in the league service
+                                            LeaguePurseService.setPlayersAnte(value);
                                           });
                                         }),
                                         child: Text(
@@ -1343,6 +1351,8 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
                                                 setState(() {
                                                   skatsAnte = value;
                                                   _skatsAnteController.text = value.toStringAsFixed(2);
+                                                  // Update the Players Ante value in the league service
+                                                  LeaguePurseService.setPlayersAnte(value);
                                                 });
                                               }),
                                               child: Text(
@@ -1641,6 +1651,8 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
                                                   setState(() {
                                                     skatsAnte = value;
                                                     _skatsAnteController.text = value.toStringAsFixed(2);
+                                                    // Update the Players Ante value in the league service
+                                                    LeaguePurseService.setPlayersAnte(value);
                                                   });
                                                 }),
                                                 child: Text(

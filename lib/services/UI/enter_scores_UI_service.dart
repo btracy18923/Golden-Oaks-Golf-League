@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../models/league.dart';
+import '../shared/league_purse_service.dart';
 
 /// Device type enumeration for responsive design
 enum DeviceType { phone6_5, tablet8, tablet10 }
@@ -102,13 +104,17 @@ class EnterScoresUIService {
     ]);
   }
   
-  /// Builds the purse header displaying skat, closest pin, and mulligan purse amounts
+  /// Builds the purse header displaying league-specific purse amounts
   /// Responsive design adapts to different screen sizes
-  static Widget buildPurseHeader(BuildContext context) {
-    print("Using UI Service");
+  /// Uses LeaguePurseService for dynamic purse management
+  static Widget buildPurseHeader(BuildContext context, League league) {
+    print("Using UI Service for ${league.name} league");
     final deviceType = getDeviceType(context);
     final fontSize = getResponsiveFontSize(deviceType, isHeader: true);
     final padding = getResponsivePadding(deviceType);
+    
+    // Get purse data from the league service
+    final purseData = LeaguePurseService.getPurseHeaderData(league);
     
     return Container(
       width: double.infinity,
@@ -122,37 +128,103 @@ class EnterScoresUIService {
         children: [
           Expanded(
             child: Center(
-              child: Text(
-                'Skat Purse = \$0.00',
-                style: TextStyle(
-                  fontSize: fontSize,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text(
+                    '${LeaguePurseService.getPrimaryPurseLabel(league)} = ',
+                    style: TextStyle(
+                      fontSize: fontSize,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
+                  ),
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
+                    decoration: BoxDecoration(
+                      color: Colors.lightGreen[200],
+                      borderRadius: BorderRadius.circular(4.0),
+                    ),
+                    child: Text(
+                      LeaguePurseService.formatPurseAmount(LeaguePurseService.getPrimaryPurse(league)),
+                      style: TextStyle(
+                        fontSize: fontSize,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
           Expanded(
             child: Center(
-              child: Text(
-                'Closest Pin Purse = \$0.00',
-                style: TextStyle(
-                  fontSize: fontSize,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text(
+                    'Closest Pin Purse = ',
+                    style: TextStyle(
+                      fontSize: fontSize,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
+                  ),
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
+                    decoration: BoxDecoration(
+                      color: Colors.lightGreen[200],
+                      borderRadius: BorderRadius.circular(4.0),
+                    ),
+                    child: Text(
+                      LeaguePurseService.formatPurseAmount(LeaguePurseService.closestPinPurse),
+                      style: TextStyle(
+                        fontSize: fontSize,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
           Expanded(
             child: Center(
-              child: Text(
-                'Mulligan Purse = \$0.00',
-                style: TextStyle(
-                  fontSize: fontSize,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text(
+                    'Mulligan Purse = ',
+                    style: TextStyle(
+                      fontSize: fontSize,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
+                  ),
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
+                    decoration: BoxDecoration(
+                      color: Colors.lightGreen[200],
+                      borderRadius: BorderRadius.circular(4.0),
+                    ),
+                    child: Text(
+                      LeaguePurseService.formatPurseAmount(LeaguePurseService.mulliganPurse),
+                      style: TextStyle(
+                        fontSize: fontSize,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
