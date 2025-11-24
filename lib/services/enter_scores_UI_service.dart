@@ -41,7 +41,7 @@ class EnterScoresUIService {
   static double getResponsiveFontSize(DeviceType deviceType, {bool isHeader = false}) {
     switch (deviceType) {
       case DeviceType.phone6_5:
-        return isHeader ? 10.0 : 9.0;
+        return isHeader ? 10.0 : 11.0;
       case DeviceType.tablet8:
         return isHeader ? 12.0 : 11.0;
       case DeviceType.tablet10:
@@ -97,8 +97,8 @@ class EnterScoresUIService {
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.landscapeLeft,
       DeviceOrientation.landscapeRight,
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
+      //DeviceOrientation.portraitUp,
+      //DeviceOrientation.portraitDown,
     ]);
   }
   
