@@ -47,7 +47,7 @@ class _NewMondayEnterScoresScreenState extends State<NewMondayEnterScoresScreen>
   }
 
   /// Populates the group rows with randomly shuffled selected players from monday_player_selection_screen
-  /// Randomly shuffles players before filling groups starting with Group 1, adding up to 4 players per group
+  /// Randomly shuffles players before filling groups starting with Group 1, ensuring each group has at least 3 players
   /// Uses player last names and SK numbers from the selected players list
   void _populateGroupsWithSelectedPlayers() {
     if (widget.selectedPlayers != null && widget.selectedPlayers!.isNotEmpty) {
@@ -56,32 +56,85 @@ class _NewMondayEnterScoresScreenState extends State<NewMondayEnterScoresScreen>
         groups[i].clear();
       }
 
+      final totalPlayers = widget.selectedPlayers!.length;
+      
+      // Handle edge cases where we can't ensure 3+ players per group
+      if (totalPlayers < 3) {
+        // If less than 3 players, put all in Group 1
+        for (var player in widget.selectedPlayers!) {
+          groups[0].add(PlayerData(
+            name: player['last'] ?? '',
+            skNumber: player['skat_number']?.toString() ?? '',
+          ));
+        }
+        return;
+      }
+      
+      if (totalPlayers == 5) {
+        // Special case: 5 players can't be evenly distributed with 3+ per group
+        // Put all 5 in Group 1
+        for (var player in widget.selectedPlayers!) {
+          groups[0].add(PlayerData(
+            name: player['last'] ?? '',
+            skNumber: player['skat_number']?.toString() ?? '',
+          ));
+        }
+        return;
+      }
+
       // Create a copy of selected players and randomly shuffle them
       List<Map<String, dynamic>> shuffledPlayers = List.from(widget.selectedPlayers!);
       final random = Random();
       shuffledPlayers.shuffle(random);
 
-      // Populate groups starting with Group 1 (index 0)
-      int currentGroupIndex = 0;
-      int playersInCurrentGroup = 0;
+      // Calculate optimal group distribution ensuring 3+ players per group
+      int numGroups;
+      if (totalPlayers <= 4) {
+        numGroups = 1;
+      } else if (totalPlayers <= 8) {
+        numGroups = 2;
+      } else if (totalPlayers <= 12) {
+        numGroups = 3;
+      } else if (totalPlayers <= 16) {
+        numGroups = 4;
+      } else if (totalPlayers <= 20) {
+        numGroups = 5;
+      } else if (totalPlayers <= 24) {
+        numGroups = 6;
+      } else if (totalPlayers <= 28) {
+        numGroups = 7;
+      } else if (totalPlayers <= 32) {
+        numGroups = 8;
+      } else if (totalPlayers <= 36) {
+        numGroups = 9;
+      } else {
+        numGroups = 10;
+      }
+
+      // Distribute players evenly across calculated number of groups
+      int playersPerGroup = totalPlayers ~/ numGroups;
+      int remainingPlayers = totalPlayers % numGroups;
       
-      for (var player in shuffledPlayers) {
-        // If current group is full (4 players), move to next group
-        if (playersInCurrentGroup >= 4) {
-          currentGroupIndex++;
-          playersInCurrentGroup = 0;
-          
-          // Stop if we've filled all 10 groups
-          if (currentGroupIndex >= 10) break;
+      int playerIndex = 0;
+      for (int groupIndex = 0; groupIndex < numGroups; groupIndex++) {
+        int playersInThisGroup = playersPerGroup;
+        
+        // Distribute remaining players to first groups
+        if (groupIndex < remainingPlayers) {
+          playersInThisGroup++;
         }
         
-        // Add player to current group using last name and SKAT number from database
-        groups[currentGroupIndex].add(PlayerData(
-          name: player['last'] ?? '',
-          skNumber: player['skat_number']?.toString() ?? '', // Using skat_number field from player profile database
-        ));
-        
-        playersInCurrentGroup++;
+        // Add players to this group
+        for (int i = 0; i < playersInThisGroup; i++) {
+          if (playerIndex < shuffledPlayers.length) {
+            var player = shuffledPlayers[playerIndex];
+            groups[groupIndex].add(PlayerData(
+              name: player['last'] ?? '',
+              skNumber: player['skat_number']?.toString() ?? '',
+            ));
+            playerIndex++;
+          }
+        }
       }
     }
   }
