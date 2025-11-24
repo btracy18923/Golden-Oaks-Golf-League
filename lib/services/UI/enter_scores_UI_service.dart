@@ -163,7 +163,14 @@ class EnterScoresUIService {
 
   /// Builds the scrollable groups grid containing all group rows
   /// Responsive design adapts spacing and layout to different screen sizes
-  static Widget buildGroupsGrid(BuildContext context, List<List<PlayerData>> groups) {
+  static Widget buildGroupsGrid(
+    BuildContext context, 
+    List<List<PlayerData>> groups, {
+    Function(int groupIndex, int playerIndex, PlayerData player)? onPlayerTap,
+    Function(int groupIndex, int playerIndex)? onEmptySlotTap,
+    bool Function(PlayerData player)? isPlayerSelected,
+    bool Function(int groupIndex, int playerIndex)? isEmptySlotSelected,
+  }) {
     final deviceType = getDeviceType(context);
     final padding = getResponsivePadding(deviceType);
     final spacing = deviceType == DeviceType.phone6_5 ? 4.0 : 8.0;
@@ -174,15 +181,70 @@ class EnterScoresUIService {
         child: SingleChildScrollView(
           child: Column(
             children: [
-              buildGroupRow(context, groups, 0, 1, 'Group 1', 'Group 2'),
+              buildGroupRow(
+                context, 
+                groups, 
+                0, 
+                1, 
+                'Group 1', 
+                'Group 2',
+                onPlayerTap: onPlayerTap,
+                onEmptySlotTap: onEmptySlotTap,
+                isPlayerSelected: isPlayerSelected,
+                isEmptySlotSelected: isEmptySlotSelected,
+              ),
               SizedBox(height: spacing),
-              buildGroupRow(context, groups, 2, 3, 'Group 3', 'Group 4'),
+              buildGroupRow(
+                context, 
+                groups, 
+                2, 
+                3, 
+                'Group 3', 
+                'Group 4',
+                onPlayerTap: onPlayerTap,
+                onEmptySlotTap: onEmptySlotTap,
+                isPlayerSelected: isPlayerSelected,
+                isEmptySlotSelected: isEmptySlotSelected,
+              ),
               SizedBox(height: spacing),
-              buildGroupRow(context, groups, 4, 5, 'Group 5', 'Group 6'),
+              buildGroupRow(
+                context, 
+                groups, 
+                4, 
+                5, 
+                'Group 5', 
+                'Group 6',
+                onPlayerTap: onPlayerTap,
+                onEmptySlotTap: onEmptySlotTap,
+                isPlayerSelected: isPlayerSelected,
+                isEmptySlotSelected: isEmptySlotSelected,
+              ),
               SizedBox(height: spacing),
-              buildGroupRow(context, groups, 6, 7, 'Group 7', 'Group 8'),
+              buildGroupRow(
+                context, 
+                groups, 
+                6, 
+                7, 
+                'Group 7', 
+                'Group 8',
+                onPlayerTap: onPlayerTap,
+                onEmptySlotTap: onEmptySlotTap,
+                isPlayerSelected: isPlayerSelected,
+                isEmptySlotSelected: isEmptySlotSelected,
+              ),
               SizedBox(height: spacing),
-              buildGroupRow(context, groups, 8, 9, 'Group 9', 'Group 10'),
+              buildGroupRow(
+                context, 
+                groups, 
+                8, 
+                9, 
+                'Group 9', 
+                'Group 10',
+                onPlayerTap: onPlayerTap,
+                onEmptySlotTap: onEmptySlotTap,
+                isPlayerSelected: isPlayerSelected,
+                isEmptySlotSelected: isEmptySlotSelected,
+              ),
             ],
           ),
         ),
@@ -192,22 +254,64 @@ class EnterScoresUIService {
 
   /// Builds a row containing two groups side by side
   /// Responsive design adapts spacing between groups
-  static Widget buildGroupRow(BuildContext context, List<List<PlayerData>> groups, int leftIndex, int rightIndex, String leftTitle, String rightTitle) {
+  static Widget buildGroupRow(
+    BuildContext context, 
+    List<List<PlayerData>> groups, 
+    int leftIndex, 
+    int rightIndex, 
+    String leftTitle, 
+    String rightTitle, {
+    Function(int groupIndex, int playerIndex, PlayerData player)? onPlayerTap,
+    Function(int groupIndex, int playerIndex)? onEmptySlotTap,
+    bool Function(PlayerData player)? isPlayerSelected,
+    bool Function(int groupIndex, int playerIndex)? isEmptySlotSelected,
+  }) {
     final deviceType = getDeviceType(context);
     final spacing = deviceType == DeviceType.phone6_5 ? 4.0 : 8.0;
     
     return Row(
       children: [
-        Expanded(child: buildGroup(context, groups, leftIndex, leftTitle)),
+        Expanded(
+          child: buildGroup(
+            context, 
+            groups, 
+            leftIndex, 
+            leftTitle,
+            onPlayerTap: onPlayerTap,
+            onEmptySlotTap: onEmptySlotTap,
+            isPlayerSelected: isPlayerSelected,
+            isEmptySlotSelected: isEmptySlotSelected,
+          ),
+        ),
         SizedBox(width: spacing),
-        Expanded(child: buildGroup(context, groups, rightIndex, rightTitle)),
+        Expanded(
+          child: buildGroup(
+            context, 
+            groups, 
+            rightIndex, 
+            rightTitle,
+            onPlayerTap: onPlayerTap,
+            onEmptySlotTap: onEmptySlotTap,
+            isPlayerSelected: isPlayerSelected,
+            isEmptySlotSelected: isEmptySlotSelected,
+          ),
+        ),
       ],
     );
   }
 
   /// Builds an individual group container with header and player rows
   /// Responsive design adapts height, padding, and font sizes
-  static Widget buildGroup(BuildContext context, List<List<PlayerData>> groups, int groupIndex, String groupTitle) {
+  static Widget buildGroup(
+    BuildContext context, 
+    List<List<PlayerData>> groups, 
+    int groupIndex, 
+    String groupTitle, {
+    Function(int groupIndex, int playerIndex, PlayerData player)? onPlayerTap,
+    Function(int groupIndex, int playerIndex)? onEmptySlotTap,
+    bool Function(PlayerData player)? isPlayerSelected,
+    bool Function(int groupIndex, int playerIndex)? isEmptySlotSelected,
+  }) {
     final deviceType = getDeviceType(context);
     final groupHeight = getResponsiveGroupHeight(deviceType);
     final fontSize = getResponsiveFontSize(deviceType, isHeader: true);
@@ -234,7 +338,15 @@ class EnterScoresUIService {
           ),
           buildGroupHeader(context),
           Expanded(
-            child: buildGroupRows(context, groups, groupIndex),
+            child: buildGroupRows(
+              context, 
+              groups, 
+              groupIndex,
+              onPlayerTap: onPlayerTap,
+              onEmptySlotTap: onEmptySlotTap,
+              isPlayerSelected: isPlayerSelected,
+              isEmptySlotSelected: isEmptySlotSelected,
+            ),
           ),
         ],
       ),
@@ -300,13 +412,39 @@ class EnterScoresUIService {
 
   /// Builds the rows for a specific group showing players or empty rows
   /// Responsive design adapts row generation
-  static Widget buildGroupRows(BuildContext context, List<List<PlayerData>> groups, int groupIndex) {
+  static Widget buildGroupRows(
+    BuildContext context, 
+    List<List<PlayerData>> groups, 
+    int groupIndex, {
+    Function(int groupIndex, int playerIndex, PlayerData player)? onPlayerTap,
+    Function(int groupIndex, int playerIndex)? onEmptySlotTap,
+    bool Function(PlayerData player)? isPlayerSelected,
+    bool Function(int groupIndex, int playerIndex)? isEmptySlotSelected,
+  }) {
     return Column(
       children: List.generate(4, (rowIndex) {
         if (rowIndex < groups[groupIndex].length) {
-          return buildPlayerRow(context, groups[groupIndex][rowIndex]);
+          final player = groups[groupIndex][rowIndex];
+          final isSelected = isPlayerSelected?.call(player) ?? false;
+          
+          return buildPlayerRow(
+            context, 
+            player,
+            onPlayerTap: onPlayerTap != null 
+              ? () => onPlayerTap(groupIndex, rowIndex, player)
+              : null,
+            isSelected: isSelected,
+          );
         } else {
-          return buildEmptyRow(context);
+          final isSelected = isEmptySlotSelected?.call(groupIndex, rowIndex) ?? false;
+          
+          return buildEmptyRow(
+            context,
+            onTap: onEmptySlotTap != null 
+              ? () => onEmptySlotTap(groupIndex, rowIndex)
+              : null,
+            isSelected: isSelected,
+          );
         }
       }),
     );
@@ -314,7 +452,10 @@ class EnterScoresUIService {
 
   /// Builds a row for a specific player with their data
   /// Responsive design adapts height and cell styling
-  static Widget buildPlayerRow(BuildContext context, PlayerData player) {
+  static Widget buildPlayerRow(BuildContext context, PlayerData player, {
+    VoidCallback? onPlayerTap,
+    bool isSelected = false,
+  }) {
     final deviceType = getDeviceType(context);
     final rowHeight = getResponsiveRowHeight(deviceType);
     
@@ -325,7 +466,7 @@ class EnterScoresUIService {
       ),
       child: Row(
         children: [
-          buildPlayerCell(context, player.name, flex: 2, hasLeftBorder: true),
+          buildClickablePlayerCell(context, player.name, flex: 2, hasLeftBorder: true, onTap: onPlayerTap, isSelected: isSelected),
           buildPlayerCell(context, player.skNumber, flex: 1),
           buildInputCell(context, player.skats, Colors.green[200], flex: 1, keyValue: '${player.name}_skats'),
           buildInputCell(context, player.diff, Colors.yellow[200], flex: 1, keyValue: '${player.name}_diff'),
@@ -337,23 +478,33 @@ class EnterScoresUIService {
 
   /// Builds an empty row when no player is assigned to that position
   /// Responsive design adapts height and cell styling
-  static Widget buildEmptyRow(BuildContext context) {
+  static Widget buildEmptyRow(BuildContext context, {
+    VoidCallback? onTap,
+    bool isSelected = false,
+  }) {
     final deviceType = getDeviceType(context);
     final rowHeight = getResponsiveRowHeight(deviceType);
     
-    return Container(
-      height: rowHeight,
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: Colors.black, width: 1)),
-      ),
-      child: Row(
-        children: [
-          buildPlayerCell(context, '', flex: 2, hasLeftBorder: true),
-          buildPlayerCell(context, '', flex: 1),
-          buildPlayerCell(context, '', flex: 1),
-          buildPlayerCell(context, '', flex: 1),
-          buildPlayerCell(context, '', flex: 1),
-        ],
+    // Selection background color
+    Color? backgroundColor = isSelected ? Colors.orange[100] : null;
+    
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: rowHeight,
+        decoration: BoxDecoration(
+          border: const Border(bottom: BorderSide(color: Colors.black, width: 1)),
+          color: backgroundColor,
+        ),
+        child: Row(
+          children: [
+            buildPlayerCell(context, '', flex: 2, hasLeftBorder: true),
+            buildPlayerCell(context, '', flex: 1),
+            buildPlayerCell(context, '', flex: 1),
+            buildPlayerCell(context, '', flex: 1),
+            buildPlayerCell(context, '', flex: 1),
+          ],
+        ),
       ),
     );
   }
@@ -392,6 +543,54 @@ class EnterScoresUIService {
           style: TextStyle(
             fontSize: fontSize,
             fontWeight: FontWeight.bold, // Make all data fields bold
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Builds a clickable cell for displaying player data (name, SK number, money)
+  /// Responsive design adapts padding and font size, with bold formatting for data fields
+  static Widget buildClickablePlayerCell(BuildContext context, String text, {int flex = 1, bool hasLeftBorder = false, bool isCurrency = false, VoidCallback? onTap, bool isSelected = false}) {
+    final deviceType = getDeviceType(context);
+    final fontSize = getResponsiveFontSize(deviceType);
+    final padding = getResponsivePadding(deviceType);
+    
+    // Format currency if this is a money field
+    String displayText = text;
+    if (isCurrency && text.isNotEmpty) {
+      // Remove any existing currency symbols and parse as number
+      final cleanText = text.replaceAll(RegExp(r'[^\d.-]'), '');
+      if (cleanText.isNotEmpty) {
+        final amount = double.tryParse(cleanText) ?? 0.0;
+        displayText = '\$${amount.toStringAsFixed(2)}';
+      }
+    }
+    
+    // Selection background color for the cell
+    Color? backgroundColor = isSelected ? Colors.blue[100] : null;
+    
+    return Expanded(
+      flex: flex,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: EdgeInsets.all(padding.left / 2),
+          decoration: BoxDecoration(
+            border: Border(
+              left: hasLeftBorder ? const BorderSide(color: Colors.black, width: 1) : BorderSide.none,
+              right: const BorderSide(color: Colors.black, width: 1),
+            ),
+            color: backgroundColor,
+          ),
+          child: Text(
+            displayText,
+            textAlign: flex == 2 ? TextAlign.left : TextAlign.center, // Left align for Name column (flex: 2), center for others
+            style: TextStyle(
+              fontSize: fontSize,
+              fontWeight: FontWeight.bold, // Make all data fields bold
+              color: onTap != null ? Colors.blue[700] : Colors.black, // Blue color for clickable text
+            ),
           ),
         ),
       ),

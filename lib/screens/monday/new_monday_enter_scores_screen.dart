@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../services/UI/enter_scores_UI_service.dart';
 import '../../services/factories/auto_fill_factory.dart';
+import '../../services/shared/swap_service.dart';
 import '../../models/league.dart';
 
 class NewMondayEnterScoresScreen extends StatefulWidget {
@@ -27,6 +28,9 @@ class _NewMondayEnterScoresScreenState extends State<NewMondayEnterScoresScreen>
     [],
     []
   ];
+
+  // Swap service instance
+  final SwapService _swapService = SwapService();
 
 
   @override
@@ -165,6 +169,46 @@ class _NewMondayEnterScoresScreenState extends State<NewMondayEnterScoresScreen>
     print("Groups after auto fill: ${groups.map((g) => g.map((p) => "${p.name}: ${p.skats}").toList()).toList()}");
   }
 
+  /// Handles the swap players functionality
+  void _handleSwapPlayers() {
+    print("Swap Players button pressed!");
+    final updatedGroups = _swapService.handleSwapButtonPress(context, groups);
+    if (updatedGroups != null) {
+      setState(() {
+        groups = updatedGroups;
+      });
+      print("Players swapped successfully");
+    }
+  }
+
+  /// Handles player tap for swap selection
+  void _onPlayerTap(int groupIndex, int playerIndex, PlayerData player) {
+    print("Player tapped: ${player.name}");
+    setState(() {
+      _swapService.handlePlayerSelection(player.name);
+    });
+  }
+
+  /// Handles empty slot tap for swap selection
+  void _onEmptySlotTap(int groupIndex, int playerIndex) {
+    String slotKey = 'empty_${groupIndex + 1}_$playerIndex';
+    print("Empty slot tapped: $slotKey");
+    setState(() {
+      _swapService.handleEmptySlotSelection(slotKey);
+    });
+  }
+
+  /// Checks if a player is selected for swapping
+  bool _isPlayerSelected(PlayerData player) {
+    return _swapService.isPlayerSelected(player.name);
+  }
+
+  /// Checks if an empty slot is selected for swapping
+  bool _isEmptySlotSelected(int groupIndex, int playerIndex) {
+    String slotKey = 'empty_${groupIndex + 1}_$playerIndex';
+    return _swapService.isEmptySlotSelected(slotKey);
+  }
+
   /// Handles the Return button press with proper orientation management
   void _handleReturn() {
     // Set landscape orientation before popping to prevent brief portrait flash
@@ -173,6 +217,68 @@ class _NewMondayEnterScoresScreenState extends State<NewMondayEnterScoresScreen>
       DeviceOrientation.landscapeRight,
     ]);
     Navigator.pop(context);
+  }
+
+  /// Builds bottom buttons with dynamic SWAP button text
+  Widget _buildBottomButtonsWithSwap() {
+    final deviceType = EnterScoresUIService.getDeviceType(context);
+    final padding = EnterScoresUIService.getResponsivePadding(deviceType);
+    
+    return Container(
+      color: Colors.grey[300],
+      padding: EdgeInsets.all(padding.left / 2),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          _buildCustomButton(context, 'Return', Colors.blue[200]!, _handleReturn),
+          _buildCustomButton(context, 'Closest Pin', Colors.green[200]!, () {}),
+          _buildCustomButton(context, 'Auto Fill', Colors.orange[200]!, _handleAutoFill),
+          _buildCustomButton(context, _swapService.getSwapButtonText(), Colors.grey[400]!, _handleSwapPlayers),
+        ],
+      ),
+    );
+  }
+
+  /// Builds a custom button with dynamic text support
+  Widget _buildCustomButton(BuildContext context, String text, Color color, VoidCallback onPressed) {
+    final deviceType = EnterScoresUIService.getDeviceType(context);
+    final fontSize = EnterScoresUIService.getResponsiveFontSize(deviceType, isHeader: true);
+    final padding = EnterScoresUIService.getResponsivePadding(deviceType);
+    
+    // Adjust button text for smaller screens
+    String displayText = text;
+    if (deviceType == DeviceType.phone6_5) {
+      if (text == 'Closest Pin') displayText = 'ClosePin';
+      if (text.startsWith('SWAP') && text != 'SWAP Players') displayText = 'SWAP'; // Keep swap service text short on phones
+    }
+    
+    return Expanded(
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: padding.left / 2),
+        child: ElevatedButton(
+          onPressed: onPressed,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: color,
+            padding: EdgeInsets.symmetric(vertical: padding.top / 2),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8.0),
+              side: const BorderSide(color: Colors.black, width: 1),
+            ),
+          ),
+          child: Text(
+            displayText,
+            style: TextStyle(
+              fontSize: fontSize,
+              fontWeight: FontWeight.bold,
+              color: Colors.black,
+            ),
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ),
+    );
   }
 
 //************************************************************************************************
@@ -187,12 +293,15 @@ class _NewMondayEnterScoresScreenState extends State<NewMondayEnterScoresScreen>
       body: Column(
         children: [
           EnterScoresUIService.buildPurseHeader(context),
-          EnterScoresUIService.buildGroupsGrid(context, groups),
-          EnterScoresUIService.buildBottomButtons(
-            context,
-            onReturn: _handleReturn,
-            onAutoFill: _handleAutoFill,
+          EnterScoresUIService.buildGroupsGrid(
+            context, 
+            groups,
+            onPlayerTap: _onPlayerTap,
+            onEmptySlotTap: _onEmptySlotTap,
+            isPlayerSelected: _isPlayerSelected,
+            isEmptySlotSelected: _isEmptySlotSelected,
           ),
+          _buildBottomButtonsWithSwap(),
         ],
       ),
     );
