@@ -58,9 +58,9 @@ class _NewMondayEnterScoresScreenState extends State<NewMondayEnterScoresScreen>
 
       final totalPlayers = widget.selectedPlayers!.length;
       
-      // Handle edge cases where we can't ensure 3+ players per group
-      if (totalPlayers < 3) {
-        // If less than 3 players, put all in Group 1
+      // Handle edge cases
+      if (totalPlayers < 4) {
+        // If less than 4 players, put all in Group 1
         for (var player in widget.selectedPlayers!) {
           groups[0].add(PlayerData(
             name: player['last'] ?? '',
@@ -71,12 +71,24 @@ class _NewMondayEnterScoresScreenState extends State<NewMondayEnterScoresScreen>
       }
       
       if (totalPlayers == 5) {
-        // Special case: 5 players can't be evenly distributed with 3+ per group
-        // Put all 5 in Group 1
-        for (var player in widget.selectedPlayers!) {
+        // Special case: 5 players - put 3 in first group, 2 in second group
+        List<Map<String, dynamic>> shuffledPlayers = List.from(widget.selectedPlayers!);
+        final random = Random();
+        shuffledPlayers.shuffle(random);
+        
+        // Add first 3 players to Group 1
+        for (int i = 0; i < 3; i++) {
           groups[0].add(PlayerData(
-            name: player['last'] ?? '',
-            skNumber: player['skat_number']?.toString() ?? '',
+            name: shuffledPlayers[i]['last'] ?? '',
+            skNumber: shuffledPlayers[i]['skat_number']?.toString() ?? '',
+          ));
+        }
+        
+        // Add remaining 2 players to Group 2
+        for (int i = 3; i < 5; i++) {
+          groups[1].add(PlayerData(
+            name: shuffledPlayers[i]['last'] ?? '',
+            skNumber: shuffledPlayers[i]['skat_number']?.toString() ?? '',
           ));
         }
         return;
