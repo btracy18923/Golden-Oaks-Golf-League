@@ -107,7 +107,8 @@ class EnterScoresUIService {
   /// Builds the purse header displaying league-specific purse amounts
   /// Responsive design adapts to different screen sizes
   /// Uses LeaguePurseService for dynamic purse management
-  static Widget buildPurseHeader(BuildContext context, League league) {
+  /// [onReturn] - Optional callback for left arrow return functionality
+  static Widget buildPurseHeader(BuildContext context, League league, {VoidCallback? onReturn}) {
     print("Using UI Service for ${league.name} league");
     final deviceType = getDeviceType(context);
     final fontSize = getResponsiveFontSize(deviceType, isHeader: true);
@@ -124,9 +125,34 @@ class EnterScoresUIService {
       ),
       color: Colors.green[300],
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
+          // Left arrow return button (if callback provided)
+          if (onReturn != null)
+            GestureDetector(
+              onTap: onReturn,
+              child: Container(
+                width: fontSize * 3.0, // Wider touch target
+                height: fontSize * 2.0, // Taller touch target
+                margin: EdgeInsets.only(right: padding.left / 2),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.black, width: 1),
+                  borderRadius: BorderRadius.circular(4.0),
+                ),
+                child: Center(
+                  child: Icon(
+                    Icons.arrow_back_ios,
+                    color: Colors.black,
+                    size: fontSize * 1.5,
+                  ),
+                ),
+              ),
+            ),
+          // Purse information section
           Expanded(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                Expanded(
             child: Center(
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -228,6 +254,9 @@ class EnterScoresUIService {
               ),
             ),
           ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -244,6 +273,7 @@ class EnterScoresUIService {
     bool Function(int groupIndex, int playerIndex)? isEmptySlotSelected,
     Function(PlayerData, String)? onSkatsChanged,
     List<List<FocusNode?>>? skatsFocusNodes,
+    bool Function(PlayerData player)? isPlayerFocused,
   }) {
     final deviceType = getDeviceType(context);
     final padding = getResponsivePadding(deviceType);
@@ -268,6 +298,7 @@ class EnterScoresUIService {
                 isEmptySlotSelected: isEmptySlotSelected,
                 onSkatsChanged: onSkatsChanged,
                 skatsFocusNodes: skatsFocusNodes,
+                isPlayerFocused: isPlayerFocused,
               ),
               SizedBox(height: spacing),
               buildGroupRow(
@@ -283,6 +314,7 @@ class EnterScoresUIService {
                 isEmptySlotSelected: isEmptySlotSelected,
                 onSkatsChanged: onSkatsChanged,
                 skatsFocusNodes: skatsFocusNodes,
+                isPlayerFocused: isPlayerFocused,
               ),
               SizedBox(height: spacing),
               buildGroupRow(
@@ -298,6 +330,7 @@ class EnterScoresUIService {
                 isEmptySlotSelected: isEmptySlotSelected,
                 onSkatsChanged: onSkatsChanged,
                 skatsFocusNodes: skatsFocusNodes,
+                isPlayerFocused: isPlayerFocused,
               ),
               SizedBox(height: spacing),
               buildGroupRow(
@@ -313,6 +346,7 @@ class EnterScoresUIService {
                 isEmptySlotSelected: isEmptySlotSelected,
                 onSkatsChanged: onSkatsChanged,
                 skatsFocusNodes: skatsFocusNodes,
+                isPlayerFocused: isPlayerFocused,
               ),
               SizedBox(height: spacing),
               buildGroupRow(
@@ -328,6 +362,7 @@ class EnterScoresUIService {
                 isEmptySlotSelected: isEmptySlotSelected,
                 onSkatsChanged: onSkatsChanged,
                 skatsFocusNodes: skatsFocusNodes,
+                isPlayerFocused: isPlayerFocused,
               ),
             ],
           ),
@@ -351,6 +386,7 @@ class EnterScoresUIService {
     bool Function(int groupIndex, int playerIndex)? isEmptySlotSelected,
     Function(PlayerData, String)? onSkatsChanged,
     List<List<FocusNode?>>? skatsFocusNodes,
+    bool Function(PlayerData player)? isPlayerFocused,
   }) {
     final deviceType = getDeviceType(context);
     final spacing = deviceType == DeviceType.phone6_5 ? 4.0 : 8.0;
@@ -369,6 +405,7 @@ class EnterScoresUIService {
             isEmptySlotSelected: isEmptySlotSelected,
             onSkatsChanged: onSkatsChanged,
             skatsFocusNodes: skatsFocusNodes,
+            isPlayerFocused: isPlayerFocused,
           ),
         ),
         SizedBox(width: spacing),
@@ -384,6 +421,7 @@ class EnterScoresUIService {
             isEmptySlotSelected: isEmptySlotSelected,
             onSkatsChanged: onSkatsChanged,
             skatsFocusNodes: skatsFocusNodes,
+            isPlayerFocused: isPlayerFocused,
           ),
         ),
       ],
@@ -403,6 +441,7 @@ class EnterScoresUIService {
     bool Function(int groupIndex, int playerIndex)? isEmptySlotSelected,
     Function(PlayerData, String)? onSkatsChanged,
     List<List<FocusNode?>>? skatsFocusNodes,
+    bool Function(PlayerData player)? isPlayerFocused,
   }) {
     final deviceType = getDeviceType(context);
     final groupHeight = getResponsiveGroupHeight(deviceType);
@@ -440,6 +479,7 @@ class EnterScoresUIService {
               isEmptySlotSelected: isEmptySlotSelected,
               onSkatsChanged: onSkatsChanged,
               skatsFocusNodes: skatsFocusNodes,
+              isPlayerFocused: isPlayerFocused,
             ),
           ),
         ],
@@ -516,6 +556,7 @@ class EnterScoresUIService {
     bool Function(int groupIndex, int playerIndex)? isEmptySlotSelected,
     Function(PlayerData, String)? onSkatsChanged,
     List<List<FocusNode?>>? skatsFocusNodes,
+    bool Function(PlayerData player)? isPlayerFocused,
   }) {
     return Column(
       children: List.generate(4, (rowIndex) {
@@ -532,6 +573,7 @@ class EnterScoresUIService {
             isSelected: isSelected,
             onSkatsChanged: onSkatsChanged,
             skatsFocusNode: skatsFocusNodes?[groupIndex]?[rowIndex],
+            showSkatsFocus: isPlayerFocused?.call(player) ?? false,
           );
         } else {
           final isSelected = isEmptySlotSelected?.call(groupIndex, rowIndex) ?? false;
@@ -555,6 +597,7 @@ class EnterScoresUIService {
     bool isSelected = false,
     Function(PlayerData, String)? onSkatsChanged,
     FocusNode? skatsFocusNode,
+    bool showSkatsFocus = false,
   }) {
     final deviceType = getDeviceType(context);
     final rowHeight = getResponsiveRowHeight(deviceType);
@@ -576,6 +619,7 @@ class EnterScoresUIService {
             keyValue: '${player.name}_skats',
             onChanged: onSkatsChanged != null ? (value) => onSkatsChanged(player, value) : null,
             focusNode: skatsFocusNode,
+            showFocus: showSkatsFocus,
           ),
           buildInputCell(
             context, 
@@ -741,6 +785,7 @@ class EnterScoresUIService {
     String? keyValue,
     Function(String)? onChanged,
     FocusNode? focusNode,
+    bool showFocus = false,
   }) {
     final deviceType = getDeviceType(context);
     final fontSize = getResponsiveFontSize(deviceType);
@@ -750,7 +795,12 @@ class EnterScoresUIService {
       flex: flex,
       child: Container(
         decoration: BoxDecoration(
-          border: const Border(right: BorderSide(color: Colors.black, width: 1)),
+          border: Border(
+            right: showFocus ? const BorderSide(color: Colors.blue, width: 3) : const BorderSide(color: Colors.black, width: 1),
+            top: showFocus ? const BorderSide(color: Colors.blue, width: 3) : BorderSide.none,
+            bottom: showFocus ? const BorderSide(color: Colors.blue, width: 3) : BorderSide.none,
+            left: showFocus ? const BorderSide(color: Colors.blue, width: 3) : BorderSide.none,
+          ),
           color: backgroundColor,
         ),
         child: Center(
@@ -758,6 +808,8 @@ class EnterScoresUIService {
             key: keyValue != null ? Key('${keyValue}_$value') : null,
             initialValue: value,
             focusNode: focusNode,
+            readOnly: true, // Disable system keyboard
+            enableInteractiveSelection: false, // Disable text selection
             textAlign: TextAlign.center,
             textAlignVertical: TextAlignVertical.center,
             style: TextStyle(
@@ -769,8 +821,6 @@ class EnterScoresUIService {
               contentPadding: EdgeInsets.zero,
               isDense: true,
             ),
-            keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
             onChanged: onChanged,
           ),
         ),

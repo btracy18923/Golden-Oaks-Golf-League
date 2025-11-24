@@ -57,10 +57,10 @@ class CustomKeypadService {
             padding: padding,
             backgroundColor: Colors.red[200],
           ),
-          // Enter key (checkmark)
+          // Enter key (text)
           _buildKeypadKey(
             context: context,
-            icon: Icons.check,
+            text: 'Enter',
             fontSize: fontSize,
             onPressed: () => onKeyPress('enter'),
             deviceType: deviceType,

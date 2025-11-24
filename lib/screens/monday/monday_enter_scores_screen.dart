@@ -42,6 +42,9 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
   // Currently focused player for keypad input
   PlayerData? _currentFocusedPlayer;
   
+  // Counter for consecutive backspace key presses
+  int _consecutiveBackspacePresses = 0;
+  
   // Focus nodes for SKATS input fields - organized by group and player index
   List<List<FocusNode?>> _skatsFocusNodes = [
     [null, null, null, null], // Group 0 (Group 1)
@@ -236,6 +239,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     if (groupIndex < groups.length && playerIndex < groups[groupIndex].length) {
       _currentFocusedPlayer = groups[groupIndex][playerIndex];
       _keypadController.setInput(_currentFocusedPlayer?.skats ?? '');
+      _consecutiveBackspacePresses = 0; // Reset backspace counter when showing keypad for new player
       setState(() {
         _keypadController.show();
       });
@@ -252,17 +256,97 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     print("Hiding keypad");
   }
   
+  /// Programmatically updates a SKATS field value and recalculates DIFF
+  void _updateSkatsField(PlayerData player, String newValue) {
+    // Find the player in groups and update both SKATS and DIFF
+    for (int groupIndex = 0; groupIndex < groups.length; groupIndex++) {
+      for (int playerIndex = 0; playerIndex < groups[groupIndex].length; playerIndex++) {
+        if (groups[groupIndex][playerIndex].name == player.name) {
+          // Calculate DIFF only for 2-digit numbers
+          String diffValue = '';
+          if (newValue.length == 2 && player.skNumber.isNotEmpty) {
+            try {
+              int skatsNum = int.parse(newValue);
+              int skNumber = int.parse(player.skNumber);
+              int difference = skatsNum - skNumber;
+              
+              if (difference > 0) {
+                diffValue = '+$difference';
+              } else if (difference < 0) {
+                diffValue = '$difference';
+              } else {
+                diffValue = '0';
+              }
+            } catch (e) {
+              print("Error parsing values: $e");
+            }
+          }
+          // For 1-digit numbers, keep existing DIFF value or empty if new entry
+          else if (newValue.length == 1) {
+            // Keep DIFF empty for partial input
+            diffValue = '';
+          }
+          
+          // Check if money calculations are active (only recalculate for complete 2-digit input)
+          bool shouldRecalculateMoney = _hasMoneyCalculations() && newValue.length == 2;
+          
+          // Update the player data
+          groups[groupIndex][playerIndex] = PlayerData(
+            name: player.name,
+            skNumber: player.skNumber,
+            skats: newValue,
+            diff: diffValue,
+            money: player.money,
+          );
+          
+          // Recalculate money fields if needed
+          if (shouldRecalculateMoney) {
+            _recalculateMoneyFields();
+          }
+          
+          print("Updated ${player.name}: SKATS=$newValue, DIFF=$diffValue");
+          return;
+        }
+      }
+    }
+  }
+
   /// Handles keypad input
   void _handleKeypadInput(String key) {
     if (_currentFocusedPlayer == null) return;
     
     print("Keypad key pressed: $key");
     
-    if (key == 'enter') {
+    if (key == 'backspace') {
+      // Increment consecutive backspace press counter
+      _consecutiveBackspacePresses++;
+      print("Backspace pressed $_consecutiveBackspacePresses times consecutively");
+      
+      // Hide keypad if backspace pressed 3 times in a row
+      if (_consecutiveBackspacePresses >= 3) {
+        print("3 consecutive backspace presses detected - hiding keypad");
+        _hideKeypad();
+        _consecutiveBackspacePresses = 0; // Reset counter
+        return;
+      }
+      
+      // Handle normal backspace functionality
+      String? newInput = _keypadController.handleKeyPress(key);
+      if (newInput != null) {
+        setState(() {
+          // Live update the display while typing
+          _updateSkatsField(_currentFocusedPlayer!, _keypadController.currentInput);
+        });
+        print("Current keypad input: ${_keypadController.currentInput}");
+      }
+    } else if (key == 'enter') {
+      // Reset consecutive backspace counter for Enter key
+      _consecutiveBackspacePresses = 0;
+      
       // Apply current input and move to next field
       String currentInput = _keypadController.currentInput;
       if (currentInput.isNotEmpty) {
-        _onSkatsChanged(_currentFocusedPlayer!, currentInput);
+        _updateSkatsField(_currentFocusedPlayer!, currentInput);
       }
       
       // Find current player position and move to next
@@ -275,14 +359,33 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
         }
       }
     } else {
+      // Reset consecutive backspace counter for any digit key
+      _consecutiveBackspacePresses = 0;
       // Handle digit or backspace input
       String? newInput = _keypadController.handleKeyPress(key);
       if (newInput != null) {
         setState(() {
-          // Update the display but don't trigger DIFF calculation yet
-          // Only update when Enter is pressed or field loses focus
+          // Live update the display while typing
+          _updateSkatsField(_currentFocusedPlayer!, _keypadController.currentInput);
         });
         print("Current keypad input: ${_keypadController.currentInput}");
+        
+        // Auto-advance when 2 digits are entered
+        if (_keypadController.currentInput.length == 2) {
+          print("Auto-advancing to next field after 2 digits");
+          
+          // Find current player position and move to next after a short delay
+          Future.delayed(Duration(milliseconds: 300), () {
+            for (int groupIndex = 0; groupIndex < groups.length; groupIndex++) {
+              for (int playerIndex = 0; playerIndex < groups[groupIndex].length; playerIndex++) {
+                if (groups[groupIndex][playerIndex].name == _currentFocusedPlayer!.name) {
+                  _moveToNextSkatsField(groupIndex, playerIndex);
+                  return;
+                }
+              }
+            }
+          });
+        }
       }
     }
   }
@@ -406,6 +509,11 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     return _swapService.isEmptySlotSelected(slotKey);
   }
 
+  /// Checks if a specific player is currently focused for SKATS input
+  bool _isPlayerFocused(PlayerData player) {
+    return _currentFocusedPlayer?.name == player.name;
+  }
+
   /// Checks if any player has money calculated (indicates Skat $$$ button was used)
   bool _hasMoneyCalculations() {
     for (var group in groups) {
@@ -509,6 +617,26 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
         print("Error parsing SKATS value: $skatValue");
       }
     }
+    // For 1-digit input, update SKATS field but don't calculate DIFF yet
+    else if (skatValue.length == 1) {
+      setState(() {
+        for (int groupIndex = 0; groupIndex < groups.length; groupIndex++) {
+          for (int playerIndex = 0; playerIndex < groups[groupIndex].length; playerIndex++) {
+            if (groups[groupIndex][playerIndex].name == player.name) {
+              groups[groupIndex][playerIndex] = PlayerData(
+                name: player.name,
+                skNumber: player.skNumber,
+                skats: skatValue,
+                diff: '', // Keep DIFF empty for 1-digit input
+                money: player.money,
+              );
+              print("Updated ${player.name}: SKATS=$skatValue, DIFF='' (waiting for 2nd digit)");
+              return; // Exit once found and updated
+            }
+          }
+        }
+      });
+    }
   }
 
   /// Gets the color for the SWAP button based on selection state
@@ -607,7 +735,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
           // Main content
           Column(
             children: [
-              EnterScoresUIService.buildPurseHeader(context, League.monday),
+              EnterScoresUIService.buildPurseHeader(context, League.monday, onReturn: _handleReturn),
               EnterScoresUIService.buildGroupsGrid(
                 context, 
                 groups,
@@ -617,6 +745,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
                 isEmptySlotSelected: _isEmptySlotSelected,
                 onSkatsChanged: _onSkatsChanged,
                 skatsFocusNodes: _skatsFocusNodes,
+                isPlayerFocused: _isPlayerFocused,
               ),
               _buildBottomButtonsWithSwap(),
             ],
