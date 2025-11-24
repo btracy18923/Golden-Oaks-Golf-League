@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import '../../models/league.dart';
 
 /// Service for managing league-specific purse information
@@ -114,6 +113,14 @@ class LeaguePurseService {
         break;
     }
     
+    setClosestPinPurse(15.0);
+    setMulliganPurse(20.0);
+  }
+  
+  /// Loads secondary purse amounts (Closest Pin, Mulligan) without overwriting primary purse
+  /// Used when Players Ante is already set and we don't want to reset it
+  static Future<void> loadSecondaryPurseAmounts() async {
+    // Only load Closest Pin and Mulligan purses, preserve existing primary purse values
     setClosestPinPurse(15.0);
     setMulliganPurse(20.0);
   }

@@ -9,8 +9,9 @@ import '../../models/league.dart';
 
 class NewMondayEnterScoresScreen extends StatefulWidget {
   final List<Map<String, dynamic>>? selectedPlayers;
+  final double? playersAnte;
   
-  const NewMondayEnterScoresScreen({Key? key, this.selectedPlayers}) : super(key: key);
+  const NewMondayEnterScoresScreen({Key? key, this.selectedPlayers, this.playersAnte}) : super(key: key);
 
   @override
   _NewMondayEnterScoresScreenState createState() => _NewMondayEnterScoresScreenState();
@@ -39,8 +40,13 @@ class _NewMondayEnterScoresScreenState extends State<NewMondayEnterScoresScreen>
     super.initState();
     _populateGroupsWithSelectedPlayers();
     
-    // Load purse amounts for Monday league
-    LeaguePurseService.loadPurseAmounts(League.monday);
+    // Set the Players Ante value if it was passed as a parameter
+    if (widget.playersAnte != null) {
+      LeaguePurseService.setPlayersAnte(widget.playersAnte!);
+    }
+    
+    // Load secondary purse amounts (Closest Pin, Mulligan) without overwriting Players Ante
+    LeaguePurseService.loadSecondaryPurseAmounts();
     
     // Calculate Skat Purse based on selected players count
     if (widget.selectedPlayers != null) {

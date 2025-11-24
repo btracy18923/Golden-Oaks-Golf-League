@@ -7,7 +7,9 @@ import 'monday_enter_scores_screen.dart';
 import 'new_monday_enter_scores_screen.dart';
 
 class MondayPlayerSelectionScreen extends StatefulWidget {
-  const MondayPlayerSelectionScreen({super.key});
+  final double? playersAnte;
+  
+  const MondayPlayerSelectionScreen({super.key, this.playersAnte});
 
   @override
   State<MondayPlayerSelectionScreen> createState() => _MondayPlayerSelectionScreenState();
@@ -444,6 +446,7 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
       MaterialPageRoute(
         builder: (context) => NewMondayEnterScoresScreen(
           selectedPlayers: selectedPlayers,
+          playersAnte: widget.playersAnte, // Pass through the Players Ante value
         ),
       ),
     );

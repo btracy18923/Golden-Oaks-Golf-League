@@ -1861,7 +1861,7 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
         'Player Selection',
         Icons.people,
         selectedGolfCourse != null ? Colors.green[300]! : Colors.grey[400]!,
-        selectedGolfCourse != null ? () => navigateToScreen(const MondayPlayerSelectionScreen()) : null,
+        selectedGolfCourse != null ? () => navigateToScreen(MondayPlayerSelectionScreen(playersAnte: skatsAnte)) : null,
         isCompact: is6InchPhoneLandscape || is6InchPhonePortrait,
       ),
       _buildNavigationButton(
