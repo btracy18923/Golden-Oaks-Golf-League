@@ -7,7 +7,9 @@ import '../../services/factories/auto_fill_factory.dart';
 import '../../services/shared/swap_service.dart';
 import '../../services/shared/league_purse_service.dart';
 import '../../services/payout_validation_service.dart';
+import '../../services/database_helper.dart';
 import '../../models/league.dart';
+import 'monday_closest_pin_screen.dart';
 
 class MondayEnterScoresScreen extends StatefulWidget {
   final List<Map<String, dynamic>>? selectedPlayers;
@@ -45,6 +47,12 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
   // Counter for consecutive backspace key presses
   int _consecutiveBackspacePresses = 0;
   
+  // Track if players have been shuffled in this session
+  bool _shuffledInCurrentSession = false;
+  
+  // Track if players were previously shuffled (from navigation/storage)
+  bool _hasBeenShuffled = false;
+  
   // Focus nodes for SKATS input fields - organized by group and player index
   List<List<FocusNode?>> _skatsFocusNodes = [
     [null, null, null, null], // Group 0 (Group 1)
@@ -65,7 +73,9 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     super.initState();
     _keypadController = CustomKeypadService.createController();
     _initializeFocusNodes();
-    _populateGroupsWithSelectedPlayers();
+    
+    // Reset distribution state for fresh calculations
+    LeaguePurseService.resetDistributionState();
     
     // Set the Players Ante value if it was passed as a parameter
     if (widget.playersAnte != null) {
@@ -75,14 +85,28 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     // Load secondary purse amounts (Closest Pin, Mulligan) without overwriting Players Ante
     LeaguePurseService.loadSecondaryPurseAmounts();
     
-    // Calculate Skat Purse based on selected players count
-    if (widget.selectedPlayers != null) {
-      LeaguePurseService.calculateSkatPurseFromCount(widget.selectedPlayers!.length);
-      // Calculate Closest Pin Purse based on selected players count
+    // Recalculate Skat Purse fresh every time: # of players × Player Ante
+    if (widget.selectedPlayers != null && widget.playersAnte != null) {
+      double freshSkatPurse = widget.selectedPlayers!.length * widget.playersAnte!;
+      LeaguePurseService.setSkatPurse(freshSkatPurse);
+      
+      print("Fresh Skat Purse calculation:");
+      print("  Players: ${widget.selectedPlayers!.length}");
+      print("  Player Ante: \$${widget.playersAnte!.toStringAsFixed(2)}");
+      print("  Skat Purse: \$${freshSkatPurse.toStringAsFixed(2)}");
+      
+      // Calculate other purses based on selected players count
       LeaguePurseService.calculateClosestPinPurseFromCount(widget.selectedPlayers!.length);
-      // Calculate Mulligan Purse based on selected players count
+      LeaguePurseService.calculateMulliganPurseFromCount(widget.selectedPlayers!.length);
+    } else if (widget.selectedPlayers != null) {
+      // Fallback to existing method if playersAnte is not provided
+      LeaguePurseService.calculateSkatPurseFromCount(widget.selectedPlayers!.length);
+      LeaguePurseService.calculateClosestPinPurseFromCount(widget.selectedPlayers!.length);
       LeaguePurseService.calculateMulliganPurseFromCount(widget.selectedPlayers!.length);
     }
+    
+    // Check if shuffle was previously done first, then populate if no saved order
+    _initializePlayerGroups();
     
     // Set orientation preferences based on device type after build
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -147,10 +171,8 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
         return;
       }
 
-      // Create a copy of selected players and randomly shuffle them
+      // Create a copy of selected players
       List<Map<String, dynamic>> shuffledPlayers = List.from(widget.selectedPlayers!);
-      final random = Random();
-      shuffledPlayers.shuffle(random);
 
       // Calculate optimal group distribution ensuring 3+ players per group
       int numGroups;
@@ -248,12 +270,37 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
   }
   
   /// Hides the keypad
-  void _hideKeypad() {
+  void _hideKeypad({bool keepFocus = false}) {
     setState(() {
       _keypadController.hide();
-      _currentFocusedPlayer = null;
+      if (!keepFocus) {
+        // Unfocus the current field properly
+        if (_currentFocusedPlayer != null) {
+          _unfocusCurrentField();
+        }
+        _currentFocusedPlayer = null;
+      }
     });
-    print("Hiding keypad");
+    print("Hiding keypad${keepFocus ? ' (keeping focus)' : ''}");
+  }
+
+  /// Properly unfocuses the current SKATS field
+  void _unfocusCurrentField() {
+    if (_currentFocusedPlayer == null) return;
+    
+    // Find and unfocus the current field's focus node
+    for (int groupIndex = 0; groupIndex < groups.length; groupIndex++) {
+      for (int playerIndex = 0; playerIndex < groups[groupIndex].length; playerIndex++) {
+        if (groups[groupIndex][playerIndex].name == _currentFocusedPlayer!.name) {
+          final focusNode = _skatsFocusNodes[groupIndex][playerIndex];
+          if (focusNode != null && focusNode.hasFocus) {
+            focusNode.unfocus();
+            print("Unfocused field for ${_currentFocusedPlayer!.name}");
+          }
+          return;
+        }
+      }
+    }
   }
   
   /// Programmatically updates a SKATS field value and recalculates DIFF
@@ -322,10 +369,17 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
       _consecutiveBackspacePresses++;
       print("Backspace pressed $_consecutiveBackspacePresses times consecutively");
       
-      // Hide keypad if backspace pressed 3 times in a row
-      if (_consecutiveBackspacePresses >= 3) {
-        print("3 consecutive backspace presses detected - hiding keypad");
-        _hideKeypad();
+      // Run AutoFill if backspace pressed 3 times in a row
+      if (_consecutiveBackspacePresses == 3) {
+        print("3 consecutive backspace presses detected - running AutoFill");
+        _handleAutoFill();
+        return;
+      }
+      
+      // Hide keypad if backspace pressed 4 times in a row
+      if (_consecutiveBackspacePresses >= 4) {
+        print("4 consecutive backspace presses detected - hiding keypad");
+        _hideKeypad(); // Remove focus completely
         _consecutiveBackspacePresses = 0; // Reset counter
         return;
       }
@@ -447,8 +501,8 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
           var player = groups[groupIndex][playerIndex];
           double payout = payouts[player.name] ?? 0.0;
           
-          // Format the payout amount
-          String moneyValue = payout > 0 ? '\$${payout.toStringAsFixed(2)}' : '';
+          // Format the payout amount - rounded to whole dollars
+          String moneyValue = payout > 0 ? '\$${payout.round().toString()}' : '';
           
           // Update the player data with the calculated money value
           groups[groupIndex][playerIndex] = PlayerData(
@@ -466,7 +520,41 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
       }
     });
     
+    // Calculate total distributed money and update the Skat Purse
+    double totalDistributed = _calculateTotalDistributedMoney();
+    double remainingSkatPurse = LeaguePurseService.skatPurse - totalDistributed;
+    double currentMulligan = LeaguePurseService.mulliganPurse;
+    
+    if (remainingSkatPurse > 0) {
+      // Positive remaining: transfer to Mulligan Purse
+      double newMulliganPurse = currentMulligan + remainingSkatPurse;
+      LeaguePurseService.setMulliganPurse(newMulliganPurse);
+      LeaguePurseService.setRemainingPurse(0.0);
+      
+      print("Transferred remaining Skat Purse (\$${remainingSkatPurse.toStringAsFixed(2)}) to Mulligan Purse");
+      print("New Mulligan Purse: \$${newMulliganPurse.toStringAsFixed(2)}");
+      print("Skat Purse now: \$0");
+    } else if (remainingSkatPurse < 0) {
+      // Negative remaining: take deficit from Mulligan Purse
+      double deficit = -remainingSkatPurse; // Make positive
+      double newMulliganPurse = currentMulligan - deficit;
+      LeaguePurseService.setMulliganPurse(newMulliganPurse);
+      LeaguePurseService.setRemainingPurse(0.0);
+      
+      print("Skat Purse was short by \$${deficit.toStringAsFixed(2)}, taken from Mulligan Purse");
+      print("New Mulligan Purse: \$${newMulliganPurse.toStringAsFixed(2)}");
+      print("Skat Purse now: \$0");
+    } else {
+      // Exactly 0 remaining
+      LeaguePurseService.setRemainingPurse(0.0);
+      print("Skat Purse exactly balanced at \$0");
+    }
+    
+    // Set Skat Purse to 0.0 after winnings are distributed
+    LeaguePurseService.setSkatPurse(0.0);
+    
     print("Skat money calculation completed");
+    print("Total distributed: \$${totalDistributed.toStringAsFixed(2)}");
   }
 
   /// Handles the swap players functionality
@@ -526,6 +614,22 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     return false;
   }
 
+  /// Calculates the total amount of money distributed to all players
+  double _calculateTotalDistributedMoney() {
+    double total = 0.0;
+    for (var group in groups) {
+      for (var player in group) {
+        if (player.money.isNotEmpty && player.money.contains('\$')) {
+          // Remove $ symbol and parse as double
+          String cleanMoney = player.money.replaceAll('\$', '');
+          double amount = double.tryParse(cleanMoney) ?? 0.0;
+          total += amount;
+        }
+      }
+    }
+    return total;
+  }
+
   /// Recalculates all money fields using current DIFF values
   void _recalculateMoneyFields() {
     final payoutService = PayoutValidationService();
@@ -539,8 +643,8 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
         var player = groups[groupIndex][playerIndex];
         double payout = payouts[player.name] ?? 0.0;
         
-        // Format the payout amount
-        String moneyValue = payout > 0 ? '\$${payout.toStringAsFixed(2)}' : '';
+        // Format the payout amount - rounded to whole dollars
+        String moneyValue = payout > 0 ? '\$${payout.round().toString()}' : '';
         
         // Update the player data with the calculated money value
         groups[groupIndex][playerIndex] = PlayerData(
@@ -552,6 +656,30 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
         );
       }
     }
+    
+    // Calculate total distributed money and update the Skat Purse
+    double totalDistributed = _calculateTotalDistributedMoney();
+    double remainingSkatPurse = LeaguePurseService.skatPurse - totalDistributed;
+    double currentMulligan = LeaguePurseService.mulliganPurse;
+    
+    if (remainingSkatPurse > 0) {
+      // Positive remaining: transfer to Mulligan Purse
+      double newMulliganPurse = currentMulligan + remainingSkatPurse;
+      LeaguePurseService.setMulliganPurse(newMulliganPurse);
+      LeaguePurseService.setRemainingPurse(0.0);
+    } else if (remainingSkatPurse < 0) {
+      // Negative remaining: take deficit from Mulligan Purse
+      double deficit = -remainingSkatPurse; // Make positive
+      double newMulliganPurse = currentMulligan - deficit;
+      LeaguePurseService.setMulliganPurse(newMulliganPurse);
+      LeaguePurseService.setRemainingPurse(0.0);
+    } else {
+      // Exactly 0 remaining
+      LeaguePurseService.setRemainingPurse(0.0);
+    }
+    
+    // Set Skat Purse to 0.0 after winnings are recalculated
+    LeaguePurseService.setSkatPurse(0.0);
   }
 
   /// Handles SKATS input change and calculates DIFF automatically
@@ -648,14 +776,330 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     }
   }
 
+  /// Initializes player groups - either from saved order or fresh population
+  Future<void> _initializePlayerGroups() async {
+    try {
+      final shuffleState = await DatabaseHelper().getSetting('monday_players_shuffled', league: League.monday);
+      final playerOrder = await DatabaseHelper().getSetting('monday_player_order', league: League.monday);
+      
+      _hasBeenShuffled = (shuffleState == 'true');
+      
+      // If shuffled and we have saved order, restore it
+      if (_hasBeenShuffled && playerOrder != null && playerOrder.isNotEmpty) {
+        _deserializePlayerOrder(playerOrder);
+        
+        // Validate and sync with current selected players
+        _validateAndSyncWithSelectedPlayers();
+        
+        print("Restored and synchronized shuffled player order from previous session");
+      } else {
+        // No saved order, populate normally
+        _populateGroupsWithSelectedPlayers();
+        print("Populated groups with fresh player selection");
+      }
+      
+      setState(() {
+        // Trigger UI update after loading/populating
+      });
+    } catch (e) {
+      print("Error initializing player groups: $e");
+      // Fallback to normal population
+      _hasBeenShuffled = false;
+      _populateGroupsWithSelectedPlayers();
+    }
+  }
+
+  /// Saves the shuffle state and player order when leaving the screen
+  Future<void> _saveShuffleState() async {
+    try {
+      if (_shuffledInCurrentSession) {
+        await DatabaseHelper().setSetting('monday_players_shuffled', 'true', league: League.monday);
+        
+        // Save the current player order
+        String playerOrder = _serializePlayerOrder();
+        await DatabaseHelper().setSetting('monday_player_order', playerOrder, league: League.monday);
+        
+        print("Shuffle state and player order saved");
+      }
+    } catch (e) {
+      print("Error saving shuffle state: $e");
+    }
+  }
+
+  /// Serializes the current player order to a string for storage
+  String _serializePlayerOrder() {
+    List<Map<String, dynamic>> orderData = [];
+    
+    for (int groupIndex = 0; groupIndex < groups.length; groupIndex++) {
+      for (int playerIndex = 0; playerIndex < groups[groupIndex].length; playerIndex++) {
+        PlayerData player = groups[groupIndex][playerIndex];
+        orderData.add({
+          'groupIndex': groupIndex,
+          'playerIndex': playerIndex,
+          'name': player.name,
+          'skNumber': player.skNumber,
+          'skats': player.skats,
+          'diff': player.diff,
+          'money': player.money,
+        });
+      }
+    }
+    
+    // Convert to JSON string
+    return orderData.map((player) => 
+      '${player['groupIndex']}|${player['playerIndex']}|${player['name']}|${player['skNumber']}|${player['skats']}|${player['diff']}|${player['money']}'
+    ).join(';;');
+  }
+
+  /// Deserializes and restores player order from storage
+  void _deserializePlayerOrder(String orderData) {
+    try {
+      // Clear existing groups
+      for (int i = 0; i < groups.length; i++) {
+        groups[i].clear();
+      }
+      
+      if (orderData.isEmpty) return;
+      
+      List<String> playerEntries = orderData.split(';;');
+      for (String entry in playerEntries) {
+        List<String> parts = entry.split('|');
+        if (parts.length >= 7) {
+          int groupIndex = int.parse(parts[0]);
+          String name = parts[2];
+          String skNumber = parts[3];
+          String skats = parts[4];
+          String diff = parts[5];
+          String money = parts[6];
+          
+          if (groupIndex >= 0 && groupIndex < groups.length) {
+            groups[groupIndex].add(PlayerData(
+              name: name,
+              skNumber: skNumber,
+              skats: skats,
+              diff: diff,
+              money: money,
+            ));
+          }
+        }
+      }
+      
+      print("Player order restored from saved data");
+    } catch (e) {
+      print("Error deserializing player order: $e");
+    }
+  }
+
+  /// Validates and synchronizes restored groups with current selected players
+  void _validateAndSyncWithSelectedPlayers() {
+    if (widget.selectedPlayers == null || widget.selectedPlayers!.isEmpty) return;
+    
+    // Get list of players currently in groups
+    Set<String> playersInGroups = {};
+    for (var group in groups) {
+      for (var player in group) {
+        playersInGroups.add(player.name);
+      }
+    }
+    
+    // Get list of currently selected players
+    Set<String> selectedPlayerNames = {};
+    for (var player in widget.selectedPlayers!) {
+      String playerName = player['last'] ?? '';
+      selectedPlayerNames.add(playerName);
+    }
+    
+    print("Players in restored groups: $playersInGroups");
+    print("Currently selected players: $selectedPlayerNames");
+    
+    // Find players that need to be added (in selection but not in groups)
+    Set<String> playersToAdd = selectedPlayerNames.difference(playersInGroups);
+    
+    // Find players that need to be removed (in groups but not in selection)
+    Set<String> playersToRemove = playersInGroups.difference(selectedPlayerNames);
+    
+    // Remove players that are no longer selected
+    for (String playerName in playersToRemove) {
+      _removePlayerFromGroups(playerName);
+      print("Removed deselected player: $playerName");
+    }
+    
+    // Add newly selected players
+    for (String playerName in playersToAdd) {
+      var playerData = widget.selectedPlayers!.firstWhere(
+        (p) => p['last'] == playerName,
+        orElse: () => {},
+      );
+      if (playerData.isNotEmpty) {
+        _addPlayerToGroups(playerName, playerData['skat_number']?.toString() ?? '');
+        print("Added newly selected player: $playerName");
+      }
+    }
+  }
+
+  /// Removes a player from all groups
+  void _removePlayerFromGroups(String playerName) {
+    for (int groupIndex = 0; groupIndex < groups.length; groupIndex++) {
+      groups[groupIndex].removeWhere((player) => player.name == playerName);
+    }
+  }
+
+  /// Adds a player to the group with the fewest players
+  void _addPlayerToGroups(String playerName, String skNumber) {
+    // Find group with fewest players
+    int targetGroupIndex = 0;
+    int minPlayerCount = groups[0].length;
+    
+    for (int i = 1; i < groups.length; i++) {
+      if (groups[i].length < minPlayerCount) {
+        minPlayerCount = groups[i].length;
+        targetGroupIndex = i;
+      }
+    }
+    
+    // If all groups have 4+ players, find first group with less than 4
+    if (minPlayerCount >= 4) {
+      for (int i = 0; i < groups.length; i++) {
+        if (groups[i].length < 4) {
+          targetGroupIndex = i;
+          break;
+        }
+      }
+    }
+    
+    // Add player to the target group
+    groups[targetGroupIndex].add(PlayerData(
+      name: playerName,
+      skNumber: skNumber,
+      skats: '',
+      diff: '',
+      money: '',
+    ));
+  }
+
+  /// Clears the shuffle state (call this when starting a new game session)
+  static Future<void> clearShuffleState() async {
+    try {
+      await DatabaseHelper().setSetting('monday_players_shuffled', 'false', league: League.monday);
+      await DatabaseHelper().setSetting('monday_player_order', '', league: League.monday);
+      print("Shuffle state cleared for new game session");
+    } catch (e) {
+      print("Error clearing shuffle state: $e");
+    }
+  }
+
   /// Handles the Return button press with proper orientation management
-  void _handleReturn() {
+  void _handleReturn() async {
+    // Save shuffle state if shuffling occurred in this session
+    await _saveShuffleState();
+    
     // Set landscape orientation before popping to prevent brief portrait flash
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.landscapeLeft,
       DeviceOrientation.landscapeRight,
     ]);
     Navigator.pop(context);
+  }
+
+  /// Handles the Shuffle button press to randomize player order
+  void _handleShuffle() {
+    print("Shuffle button pressed!");
+    
+    // Collect all players from all groups
+    List<PlayerData> allPlayers = [];
+    List<int> groupSizes = [];
+    
+    // Store original group sizes and collect all players
+    for (int groupIndex = 0; groupIndex < groups.length; groupIndex++) {
+      int groupSize = groups[groupIndex].length;
+      if (groupSize > 0) {
+        groupSizes.add(groupSize);
+        allPlayers.addAll(groups[groupIndex]);
+      } else {
+        groupSizes.add(0);
+      }
+    }
+    
+    if (allPlayers.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No players to shuffle'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+    
+    // Shuffle all players randomly
+    final random = Random();
+    allPlayers.shuffle(random);
+    
+    setState(() {
+      // Clear all groups
+      for (int i = 0; i < groups.length; i++) {
+        groups[i].clear();
+      }
+      
+      // Redistribute shuffled players back into groups with original sizes
+      int playerIndex = 0;
+      for (int groupIndex = 0; groupIndex < groupSizes.length; groupIndex++) {
+        int groupSize = groupSizes[groupIndex];
+        for (int i = 0; i < groupSize && playerIndex < allPlayers.length; i++) {
+          groups[groupIndex].add(allPlayers[playerIndex]);
+          playerIndex++;
+        }
+      }
+      
+      // Mark that shuffling occurred in this session
+      _shuffledInCurrentSession = true;
+    });
+    
+    print("Players shuffled successfully! Total players redistributed: ${allPlayers.length}");
+  }
+
+  /// Handles the Closest Pin button press and navigates to the closest pin screen
+  void _handleClosestPin() async {
+    if (widget.selectedPlayers != null && widget.selectedPlayers!.isNotEmpty) {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => MondayClosestPinScreen(
+            selectedPlayers: widget.selectedPlayers!,
+          ),
+        ),
+      );
+      // Refresh the UI to reflect any changes to the Closest Pin Purse
+      setState(() {
+        // Trigger UI rebuild to show updated purse amounts
+      });
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No players selected for closest pin contest'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  /// Gets the color for the shuffle button based on navigation state
+  Color _getShuffleButtonColor() {
+    return _hasBeenShuffled ? Colors.grey[400]! : Colors.purple[200]!;
+  }
+
+  /// Gets the handler for the shuffle button based on navigation state
+  VoidCallback _getShuffleButtonHandler() {
+    return _hasBeenShuffled ? _handleShuffleDisabled : _handleShuffle;
+  }
+
+  /// Handles when shuffle button is pressed but disabled
+  void _handleShuffleDisabled() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Players were already shuffled in a previous session'),
+        duration: Duration(seconds: 2),
+      ),
+    );
   }
 
   /// Builds bottom buttons with dynamic SWAP button text
@@ -670,9 +1114,9 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
           _buildCustomButton(context, 'Return', Colors.blue[200]!, _handleReturn),
-          _buildCustomButton(context, 'ClosePin \$\$\$', Colors.green[200]!, () {}),
-          _buildCustomButton(context, 'Skat \$\$\$', Colors.green[200]!, _handleSkatMoney),
-          _buildCustomButton(context, 'Auto Fill', Colors.orange[200]!, _handleAutoFill),
+          _buildCustomButton(context, 'Shuffle', _getShuffleButtonColor(), _getShuffleButtonHandler()),
+          _buildCustomButton(context, 'ClosePin \$\$\$', _getClosestPinButtonColor(), _getClosestPinButtonHandler()),
+          _buildCustomButton(context, _getSkatButtonText(), _getSkatButtonColor(), _getSkatButtonHandler()),
           _buildCustomButton(context, _swapService.getSwapButtonText(), _getSwapButtonColor(), _handleSwapPlayers),
         ],
       ),
@@ -762,6 +1206,63 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// Gets the color for the Closest Pin button based on purse amount
+  Color _getClosestPinButtonColor() {
+    return LeaguePurseService.closestPinPurse > 0 ? Colors.green[200]! : Colors.grey[400]!;
+  }
+
+  /// Gets the handler for the Closest Pin button based on purse amount
+  VoidCallback _getClosestPinButtonHandler() {
+    return LeaguePurseService.closestPinPurse > 0 ? _handleClosestPin : () {};
+  }
+
+  /// Gets the text for the Skat/Results button based on purse amounts
+  String _getSkatButtonText() {
+    if (LeaguePurseService.skatPurse > 0) {
+      return 'Skat \$\$\$';
+    } else if (LeaguePurseService.skatPurse <= 0 && LeaguePurseService.closestPinPurse <= 0) {
+      return 'RESULTS';
+    } else {
+      return 'Skat \$\$\$';
+    }
+  }
+
+  /// Gets the color for the Skat/Results button based on purse amounts
+  Color _getSkatButtonColor() {
+    if (LeaguePurseService.skatPurse > 0) {
+      return Colors.green[200]!;
+    } else if (LeaguePurseService.skatPurse <= 0 && LeaguePurseService.closestPinPurse <= 0) {
+      return Colors.orange[200]!;
+    } else {
+      return Colors.grey[400]!;
+    }
+  }
+
+  /// Gets the handler for the Skat/Results button based on purse amounts
+  VoidCallback _getSkatButtonHandler() {
+    if (LeaguePurseService.skatPurse > 0) {
+      return _handleSkatMoney;
+    } else if (LeaguePurseService.skatPurse <= 0 && LeaguePurseService.closestPinPurse <= 0) {
+      return _handleResults;
+    } else {
+      return () {}; // Empty function when Skat is done but ClosePin is still active
+    }
+  }
+
+  /// Handles the RESULTS button press to show game results
+  void _handleResults() {
+    print("RESULTS button pressed!");
+    
+    // TODO: Navigate to results screen or show results dialog
+    // For now, show a simple message
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Results functionality coming soon'),
+        duration: Duration(seconds: 2),
       ),
     );
   }
