@@ -756,10 +756,10 @@ class EnterScoresUIService {
   }
 
   /// Gets the background color for DIFF field based on the difference value
-  /// Returns light green for positive, light red for negative and zero, yellow for empty
+  /// Returns light green for positive, light red for negative and zero, white for empty
   static Color getDiffBackgroundColor(String diffValue) {
     if (diffValue.isEmpty) {
-      return Colors.yellow[200]!; // Default yellow for empty
+      return Colors.white; // Default white for empty
     }
     
     // Remove the sign and parse the number
@@ -774,7 +774,7 @@ class EnterScoresUIService {
     } else if (diffValue.startsWith('-')) {
       return Colors.red[200]!; // Light red for negative
     } else {
-      return Colors.yellow[200]!; // Default yellow
+      return Colors.white; // Default white
     }
   }
 
