@@ -132,12 +132,11 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
             SizedBox(height: is6InchPhone ? 8 : 16),
             
             // Return to Main Menu Button
-            Container(
-              width: double.infinity,
-              padding: EdgeInsets.symmetric(
-                horizontal: is6InchPhone ? 16 : 32,
-              ),
-              child: ElevatedButton(
+            Align(
+              alignment: Alignment.centerRight,
+              child: SizedBox(
+                width: screenSize.width * 0.3,
+                child: ElevatedButton(
                 onPressed: _returnToMainMenu,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue[600],
@@ -165,6 +164,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
                   ],
                 ),
               ),
+            ),
             ),
           ],
         ),
@@ -445,11 +445,43 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
 
     final playersWithMoney = allPlayers.length;
 
+    // Calculate Skat Value: $$$ / DIFF (prefer whole numbers, fallback to rounded)
+    double skatValue = 0.0;
+    double? fallbackValue;
+    
+    for (var player in allPlayers) {
+      if (player.money.isNotEmpty && player.money.contains('\$') && 
+          player.diff.isNotEmpty && player.diff != '-') {
+        try {
+          final moneyValue = double.parse(player.money.replaceAll('\$', '').replaceAll(',', ''));
+          final diffValue = double.parse(player.diff.replaceAll('+', ''));
+          if (diffValue > 0) {
+            final calculation = moneyValue / diffValue;
+            // Check if division results in a whole number (no remainder)
+            if (calculation == calculation.truncate()) {
+              skatValue = calculation;
+              break; // Use the first valid whole number calculation
+            } else if (fallbackValue == null) {
+              // Store first calculation with remainder as fallback
+              fallbackValue = calculation;
+            }
+          }
+        } catch (e) {
+          // Skip if parsing fails
+        }
+      }
+    }
+    
+    // If no whole number found, use rounded fallback value
+    if (skatValue == 0.0 && fallbackValue != null) {
+      skatValue = fallbackValue.round().toDouble();
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'SKAT Winners: $playersWithMoney',
+          'SKAT Winners: $playersWithMoney     Skat Value: \$${skatValue.toStringAsFixed(2)}',
           style: const TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,

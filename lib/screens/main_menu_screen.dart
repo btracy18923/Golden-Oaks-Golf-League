@@ -490,7 +490,7 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: currentLeague == League.monday 
                           ? Colors.green[300] 
-                          : Colors.green[100],
+                          : Colors.green[200],
                       foregroundColor: Colors.black,
                       padding: const EdgeInsets.all(16),
                       shape: RoundedRectangleBorder(
@@ -519,7 +519,7 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: currentLeague == League.wednesday 
                           ? Colors.orange[300] 
-                          : Colors.orange[100],
+                          : Colors.orange[200],
                       foregroundColor: Colors.black,
                       padding: const EdgeInsets.all(16),
                       shape: RoundedRectangleBorder(
@@ -552,7 +552,7 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: currentLeague == League.monday 
                             ? Colors.green[300] 
-                            : Colors.green[100],
+                            : Colors.green[200],
                         foregroundColor: Colors.black,
                         padding: const EdgeInsets.all(20),
                         shape: RoundedRectangleBorder(
@@ -583,7 +583,7 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: currentLeague == League.wednesday 
                             ? Colors.orange[300] 
-                            : Colors.orange[100],
+                            : Colors.orange[200],
                         foregroundColor: Colors.black,
                         padding: const EdgeInsets.all(20),
                         shape: RoundedRectangleBorder(
@@ -965,7 +965,7 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: currentLeague == League.monday 
                           ? Colors.green[300] 
-                          : Colors.green[100],
+                          : Colors.green[200],
                       foregroundColor: Colors.black,
                       padding: const EdgeInsets.all(8),
                       shape: RoundedRectangleBorder(
@@ -999,7 +999,7 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: currentLeague == League.wednesday 
                           ? Colors.orange[300] 
-                          : Colors.orange[100],
+                          : Colors.orange[200],
                       foregroundColor: Colors.black,
                       padding: const EdgeInsets.all(8),
                       shape: RoundedRectangleBorder(
