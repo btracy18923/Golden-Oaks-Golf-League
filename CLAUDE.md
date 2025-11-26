@@ -156,8 +156,12 @@ If needed, create separate screen variants:
 - `player_selection_phone.dart` for smaller screens
 - Route based on screen size in navigation logic
 
-## Git Workflow Instructions
+## Development Workflow Instructions
 
+### Code Changes and Testing
+**IMPORTANT**: When code changes are made, prompt the user to perform a hot restart in their Flutter development environment instead of Claude running tests and syntax error checks. The user will handle verification through their IDE's hot restart functionality.
+
+### Git Workflow Instructions
 **IMPORTANT**: Do not automatically commit changes or push changes to GitHub. The user will explicitly tell you when to commit and push. Always wait for user instructions before running git commit or git push commands.
 
 6.5" phone (720 × 1600 pixels,  20:9 ratio

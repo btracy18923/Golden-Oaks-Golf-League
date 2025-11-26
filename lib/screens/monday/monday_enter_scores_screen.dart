@@ -490,6 +490,17 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
   void _handleSkatMoney() {
     print("Skat \$\$\$ button pressed!");
     
+    // Check if all SKATS data is entered before proceeding
+    if (!_areAllSkatsFieldsComplete()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter SKATS data for all players before calculating money'),
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+    
     // Calculate payouts using the payout validation service
     final payoutService = PayoutValidationService();
     Map<String, double> payouts = payoutService.calculateSkatPayouts(groups);
@@ -574,6 +585,13 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
   /// Handles player tap for swap selection
   void _onPlayerTap(int groupIndex, int playerIndex, PlayerData player) {
     print("Player tapped: ${player.name}");
+    
+    // Prevent any swap functionality if SKATS data exists
+    if (_hasAnySkatsData()) {
+      print("Swap disabled due to SKATS data - ignoring player tap");
+      return;
+    }
+    
     setState(() {
       _swapService.handlePlayerSelection(player.name);
     });
@@ -583,6 +601,13 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
   void _onEmptySlotTap(int groupIndex, int playerIndex) {
     String slotKey = 'empty_${groupIndex + 1}_$playerIndex';
     print("Empty slot tapped: $slotKey");
+    
+    // Prevent any swap functionality if SKATS data exists
+    if (_hasAnySkatsData()) {
+      print("Swap disabled due to SKATS data - ignoring empty slot tap");
+      return;
+    }
+    
     setState(() {
       _swapService.handleEmptySlotSelection(slotKey);
     });
@@ -590,11 +615,19 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
 
   /// Checks if a player is selected for swapping
   bool _isPlayerSelected(PlayerData player) {
+    // Prevent highlighting if SKATS data exists
+    if (_hasAnySkatsData()) {
+      return false;
+    }
     return _swapService.isPlayerSelected(player.name);
   }
 
   /// Checks if an empty slot is selected for swapping
   bool _isEmptySlotSelected(int groupIndex, int playerIndex) {
+    // Prevent highlighting if SKATS data exists
+    if (_hasAnySkatsData()) {
+      return false;
+    }
     String slotKey = 'empty_${groupIndex + 1}_$playerIndex';
     return _swapService.isEmptySlotSelected(slotKey);
   }
@@ -609,6 +642,42 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     for (var group in groups) {
       for (var player in group) {
         if (player.money.isNotEmpty && player.money.contains('\$')) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  /// Checks if all players have complete SKATS data (2-digit numbers)
+  bool _areAllSkatsFieldsComplete() {
+    for (var group in groups) {
+      for (var player in group) {
+        // Check if player has a name (is not empty slot) and SKATS field is incomplete
+        if (player.name.isNotEmpty) {
+          if (player.skats.length != 2) {
+            print("Player ${player.name} has incomplete SKATS: '${player.skats}'");
+            return false;
+          }
+          // Additional validation: check if it's a valid 2-digit number
+          try {
+            int.parse(player.skats);
+          } catch (e) {
+            print("Player ${player.name} has invalid SKATS: '${player.skats}'");
+            return false;
+          }
+        }
+      }
+    }
+    print("All SKATS fields are complete");
+    return true;
+  }
+
+  /// Checks if any player has SKATS data entered
+  bool _hasAnySkatsData() {
+    for (var group in groups) {
+      for (var player in group) {
+        if (player.name.isNotEmpty && player.skats.isNotEmpty) {
           return true;
         }
       }
@@ -769,9 +838,11 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     }
   }
 
-  /// Gets the color for the SWAP button based on selection state
+  /// Gets the color for the SWAP button based on selection state and SKATS data
   Color _getSwapButtonColor() {
-    if (_swapService.selectionCount == 2) {
+    if (_hasAnySkatsData()) {
+      return Colors.grey[400]!; // Grey when disabled due to SKATS data
+    } else if (_swapService.selectionCount == 2) {
       return Colors.green[400]!; // Medium green when 2nd player is selected
     } else {
       return Colors.grey[400]!; // Grey for default state and after swap is completed
@@ -1084,14 +1155,22 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     }
   }
 
-  /// Gets the color for the shuffle button based on navigation state
+  /// Gets the color for the shuffle button based on navigation state and SKATS data
   Color _getShuffleButtonColor() {
-    return _hasBeenShuffled ? Colors.grey[400]! : Colors.purple[200]!;
+    if (_hasBeenShuffled || _hasAnySkatsData()) {
+      return Colors.grey[400]!;
+    }
+    return Colors.purple[200]!;
   }
 
-  /// Gets the handler for the shuffle button based on navigation state
+  /// Gets the handler for the shuffle button based on navigation state and SKATS data
   VoidCallback _getShuffleButtonHandler() {
-    return _hasBeenShuffled ? _handleShuffleDisabled : _handleShuffle;
+    if (_hasBeenShuffled) {
+      return _handleShuffleDisabled;
+    } else if (_hasAnySkatsData()) {
+      return _handleShuffleDisabledDueToSkats;
+    }
+    return _handleShuffle;
   }
 
   /// Handles when shuffle button is pressed but disabled
@@ -1099,6 +1178,34 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Players were already shuffled in a previous session'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
+  /// Handles when shuffle button is pressed but disabled due to SKATS data
+  void _handleShuffleDisabledDueToSkats() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Cannot shuffle players after SKATS data has been entered'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
+  /// Gets the handler for the SWAP button based on SKATS data
+  VoidCallback _getSwapButtonHandler() {
+    if (_hasAnySkatsData()) {
+      return _handleSwapDisabled;
+    }
+    return _handleSwapPlayers;
+  }
+
+  /// Handles when swap button is pressed but disabled due to SKATS data
+  void _handleSwapDisabled() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Cannot swap players after SKATS data has been entered'),
         duration: Duration(seconds: 2),
       ),
     );
@@ -1119,7 +1226,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
           _buildCustomButton(context, 'Shuffle', _getShuffleButtonColor(), _getShuffleButtonHandler()),
           _buildCustomButton(context, 'ClosePin \$\$\$', _getClosestPinButtonColor(), _getClosestPinButtonHandler()),
           _buildCustomButton(context, _getSkatButtonText(), _getSkatButtonColor(), _getSkatButtonHandler()),
-          _buildCustomButton(context, _swapService.getSwapButtonText(), _getSwapButtonColor(), _handleSwapPlayers),
+          _buildCustomButton(context, _swapService.getSwapButtonText(), _getSwapButtonColor(), _getSwapButtonHandler()),
         ],
       ),
     );
@@ -1236,7 +1343,8 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
   /// Gets the color for the Skat/Results button based on purse amounts
   Color _getSkatButtonColor() {
     if (LeaguePurseService.skatPurse > 0) {
-      return Colors.green[200]!;
+      // Only show green if all SKATS data is complete
+      return _areAllSkatsFieldsComplete() ? Colors.green[200]! : Colors.grey[400]!;
     } else if (LeaguePurseService.skatPurse <= 0 && LeaguePurseService.closestPinPurse <= 0) {
       return Colors.orange[200]!;
     } else {

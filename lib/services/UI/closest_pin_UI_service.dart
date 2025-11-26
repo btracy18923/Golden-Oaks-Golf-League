@@ -265,8 +265,8 @@ class ClosestPinUIService {
   /// Builds the bottom buttons section
   static Widget buildBottomButtons(
     BuildContext context, {
-    required VoidCallback onReturn,
-    required VoidCallback onSaveResults,
+    required VoidCallback onClear,
+    required VoidCallback onSaveAndReturn,
   }) {
     final screenSize = MediaQuery.of(context).size;
     final deviceType = getDeviceType(screenSize);
@@ -283,7 +283,7 @@ class ClosestPinUIService {
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: padding.left / 2),
               child: ElevatedButton(
-                onPressed: onReturn,
+                onPressed: onClear,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue[200]!,
                   padding: EdgeInsets.symmetric(vertical: padding.top * 0.4),
@@ -293,7 +293,7 @@ class ClosestPinUIService {
                   ),
                 ),
                 child: Text(
-                  'Return',
+                  'Undo',
                   style: TextStyle(
                     fontSize: fontSize * 0.8,
                     fontWeight: FontWeight.bold,
@@ -307,7 +307,7 @@ class ClosestPinUIService {
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: padding.left / 2),
               child: ElevatedButton(
-                onPressed: onSaveResults,
+                onPressed: onSaveAndReturn,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.green[200]!,
                   padding: EdgeInsets.symmetric(vertical: padding.top * 0.4),
@@ -317,7 +317,7 @@ class ClosestPinUIService {
                   ),
                 ),
                 child: Text(
-                  'Save Results',
+                  'Save and Return',
                   style: TextStyle(
                     fontSize: fontSize * 0.8,
                     fontWeight: FontWeight.bold,

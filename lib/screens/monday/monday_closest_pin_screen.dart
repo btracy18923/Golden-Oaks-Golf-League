@@ -51,15 +51,25 @@ class _MondayClosestPinScreenState extends State<MondayClosestPinScreen> {
     });
   }
 
-  void _handleReturn() {
-    // Update the LeaguePurseService with the remaining purse amount
-    // This mirrors the current state to the enter scores screen
-    LeaguePurseService.setClosestPinPurse(_remainingPurseAmount);
-    
-    ClosestPinUIService.handleReturn(context);
+  void _handleClear() {
+    setState(() {
+      // Reset to initial state values
+      double closestPinAmount = LeaguePurseService.closestPinAmount;
+      _totalClosestPins = (closestPinAmount / 1.0).round();
+      _remainingClosestPins = _totalClosestPins;
+      _closestPinValue = LeaguePurseService.closestPinPurse / _totalClosestPins;
+      _remainingPurseAmount = LeaguePurseService.closestPinPurse;
+      
+      // Reset all player counts and winnings to 0
+      for (var player in widget.selectedPlayers) {
+        String lastName = player['last'] ?? 'Unknown';
+        _playerClosestPinCounts[lastName] = 0;
+        _playerWinnings[lastName] = 0.0;
+      }
+    });
   }
 
-  void _handleSaveResults() {
+  void _handleSaveAndReturn() {
     // Capture data in the retention service before saving
     ScreenDataRetentionService().captureClosestPinData(
       playerClosestPinCounts: _playerClosestPinCounts,
@@ -73,7 +83,8 @@ class _MondayClosestPinScreenState extends State<MondayClosestPinScreen> {
     // This mirrors the current state to the enter scores screen
     LeaguePurseService.setClosestPinPurse(_remainingPurseAmount);
     
-    ClosestPinUIService.handleSaveResults(context);
+    // Return to the monday_enter_scores_screen
+    Navigator.pop(context);
   }
 
   void _handlePlayerTap(String lastName) {
@@ -292,8 +303,8 @@ class _MondayClosestPinScreenState extends State<MondayClosestPinScreen> {
           ),
           ClosestPinUIService.buildBottomButtons(
             context,
-            onReturn: _handleReturn,
-            onSaveResults: _handleSaveResults,
+            onClear: _handleClear,
+            onSaveAndReturn: _handleSaveAndReturn,
           ),
         ],
       ),

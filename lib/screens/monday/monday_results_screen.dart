@@ -32,10 +32,8 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
 
   @override
   void dispose() {
-    // Allow all orientations when leaving
+    // Keep landscape mode locked when leaving
     SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
       DeviceOrientation.landscapeLeft,
       DeviceOrientation.landscapeRight,
     ]);
@@ -47,9 +45,24 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
     // Clear all retained data for a fresh session
     _retentionService.clearAllData();
     
+    // Immediately lock to landscape mode
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+    
     // Navigate back to main menu, removing all previous screens from stack
     Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (context) => const UnifiedMainMenuScreen()),
+      MaterialPageRoute(builder: (context) {
+        // Ensure orientation is locked again after navigation
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          SystemChrome.setPreferredOrientations([
+            DeviceOrientation.landscapeLeft,
+            DeviceOrientation.landscapeRight,
+          ]);
+        });
+        return const UnifiedMainMenuScreen();
+      }),
       (Route<dynamic> route) => false,
     );
   }

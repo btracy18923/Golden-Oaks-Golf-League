@@ -193,13 +193,7 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
 
   @override
   void dispose() {
-    // Reset orientation constraints when leaving main menu
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
+    // Keep landscape mode locked - don't reset orientation constraints
     
     _anteController.dispose();
     _closestPinController.dispose();

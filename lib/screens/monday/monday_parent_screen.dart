@@ -10,6 +10,7 @@ import '../../services/database_helper.dart';
 import '../../services/shared/league_purse_service.dart';
 import '../../services/screen_data_retention_service.dart';
 import '../../services/UI/parent_screen.dart';
+import '../../services/UI/custom_keypad_service.dart';
 
 class MondayParentScreen extends StatefulWidget {
   const MondayParentScreen({super.key});
@@ -32,12 +33,19 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
   final TextEditingController _skatsAnteController = TextEditingController();
   final TextEditingController _closestPinController = TextEditingController();
   final TextEditingController _mulligansController = TextEditingController();
+  
+  // Custom keypad controller for amount editing
+  late CustomKeypadController _keypadController;
+  
+  // Currently focused field for amount editing
+  String? _currentEditField; // 'ante', 'closestPin', 'mulligans'
 
   @override
   void initState() {
     super.initState();
     _setOrientation();
     _loadGolfCourses();
+    _keypadController = CustomKeypadService.createController();
     _skatsAnteController.text = skatsAnte.toStringAsFixed(2);
     _closestPinController.text = closestPin.toStringAsFixed(2);
     _mulligansController.text = mulligans.toStringAsFixed(2);
@@ -108,57 +116,119 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
     navigateToScreen(MondayPlayerSelectionScreen(playersAnte: skatsAnte));
   }
   
-  void _editValue(String title, TextEditingController controller, Function(double) onSave) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Edit $title'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: controller,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: InputDecoration(
-                  labelText: 'Amount (\$)',
-                  border: const OutlineInputBorder(),
-                  prefixText: '\$',
-                ),
-                autofocus: true,
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                final value = double.tryParse(controller.text);
-                if (value != null && value >= 0) {
-                  onSave(value);
-                  Navigator.of(context).pop();
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Please enter a valid positive number'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green[600],
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('Save'),
-            ),
-          ],
-        );
-      },
-    );
+  /// Shows keypad for editing amount field
+  void _showKeypadForAmount(String fieldType) {
+    _currentEditField = fieldType;
+    
+    // Set current input based on field type
+    String currentValue = '';
+    switch (fieldType) {
+      case 'ante':
+        currentValue = skatsAnte.toStringAsFixed(2);
+        break;
+      case 'closestPin':
+        currentValue = closestPin.toStringAsFixed(2);
+        break;
+      case 'mulligans':
+        currentValue = mulligans.toStringAsFixed(2);
+        break;
+    }
+    
+    // Remove decimal point and leading zeros for input
+    currentValue = currentValue.replaceAll('.', '').replaceAll(RegExp(r'^0+'), '');
+    if (currentValue.isEmpty) currentValue = '0';
+    
+    _keypadController.setInput(currentValue);
+    setState(() {
+      _keypadController.show();
+    });
+  }
+  
+  /// Hides keypad for amount editing
+  void _hideKeypadForAmount() {
+    setState(() {
+      _keypadController.hide();
+      _currentEditField = null;
+    });
+  }
+  
+  /// Handles keypad input for amount fields
+  void _handleAmountKeypadInput(String key) {
+    if (_currentEditField == null) return;
+    
+    if (key == 'backspace') {
+      String? newInput = _keypadController.handleKeyPress(key);
+      if (newInput != null) {
+        setState(() {
+          // Live update display while typing
+        });
+      }
+    } else if (key == 'enter') {
+      // Apply current input and hide keypad
+      String currentInput = _keypadController.currentInput;
+      if (currentInput.isNotEmpty) {
+        _applyAmountInput(currentInput);
+      }
+      _hideKeypadForAmount();
+    } else {
+      // Handle digit input
+      String? newInput = _keypadController.handleKeyPress(key);
+      if (newInput != null) {
+        setState(() {
+          // Live update display while typing  
+        });
+      }
+    }
+  }
+  
+  /// Applies the amount input to the appropriate field
+  void _applyAmountInput(String input) {
+    if (_currentEditField == null) return;
+    
+    // Convert input to dollars (divide by 100 since input is in cents)
+    double amount = double.tryParse(input) ?? 0.0;
+    amount = amount / 100.0;
+    
+    // Ensure minimum value
+    if (amount < 0.01) amount = 0.01;
+    
+    switch (_currentEditField) {
+      case 'ante':
+        setState(() {
+          skatsAnte = amount;
+          _skatsAnteController.text = amount.toStringAsFixed(2);
+          LeaguePurseService.setPlayersAnte(amount);
+        });
+        break;
+      case 'closestPin':
+        setState(() {
+          closestPin = amount;
+          _closestPinController.text = amount.toStringAsFixed(2);
+          LeaguePurseService.setClosestPinAmount(amount);
+        });
+        break;
+      case 'mulligans':
+        setState(() {
+          mulligans = amount;
+          _mulligansController.text = amount.toStringAsFixed(2);
+          LeaguePurseService.setMulliganAmount(amount);
+        });
+        break;
+    }
+  }
+  
+  /// Gets the display value for amount field during editing
+  String _getAmountDisplayValue(String fieldType, double originalValue) {
+    if (_currentEditField == fieldType && _keypadController.isVisible) {
+      // Show input as currency during editing
+      String input = _keypadController.currentInput;
+      if (input.isEmpty) return '\$0.00';
+      
+      double amount = double.tryParse(input) ?? 0.0;
+      amount = amount / 100.0;
+      return '\$${amount.toStringAsFixed(2)}';
+    }
+    return '\$${originalValue.toStringAsFixed(2)}';
   }
 
   @override
@@ -185,63 +255,67 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
           const SizedBox(width: 16),
         ],
       ),
-      body: Column(
+      body: Stack(
         children: [
-          // League Info Section
-          Expanded(
-            flex: 2,
-            child: Padding(
-              padding: EdgeInsets.all(isTablet ? 16.0 : 8.0),
-              child: ParentScreenUI(
-                selectedGolfCourse: selectedGolfCourse,
-                golfCourses: golfCourses,
-                isLoadingCourses: isLoadingCourses,
-                skatsAnte: skatsAnte,
-                closestPin: closestPin,
-                mulligans: mulligans,
-                leagueTitle: 'MONDAY LEAGUE',
-                anteLabel: 'Players Ante ',
-                onSkatsAnteEdit: () => _editValue('Players Ante', _skatsAnteController, (value) {
-                  setState(() {
-                    skatsAnte = value;
-                    _skatsAnteController.text = value.toStringAsFixed(2);
-                    LeaguePurseService.setPlayersAnte(value);
-                  });
-                }),
-                onClosestPinEdit: () => _editValue('Closest Pin', _closestPinController, (value) {
-                  setState(() {
-                    closestPin = value;
-                    _closestPinController.text = value.toStringAsFixed(2);
-                    LeaguePurseService.setClosestPinAmount(value);
-                  });
-                }),
-                onMulligansEdit: () => _editValue('Mulligans', _mulligansController, (value) {
-                  setState(() {
-                    mulligans = value;
-                    _mulligansController.text = value.toStringAsFixed(2);
-                    LeaguePurseService.setMulliganAmount(value);
-                  });
-                }),
-                onGolfCourseChanged: (String? newValue) {
-                  setState(() {
-                    selectedGolfCourse = newValue;
-                  });
-                },
+          // Main content
+          Column(
+            children: [
+              // League Info Section
+              Expanded(
+                flex: 2,
+                child: Padding(
+                  padding: EdgeInsets.all(isTablet ? 16.0 : 8.0),
+                  child: ParentScreenUI(
+                    selectedGolfCourse: selectedGolfCourse,
+                    golfCourses: golfCourses,
+                    isLoadingCourses: isLoadingCourses,
+                    skatsAnte: skatsAnte,
+                    closestPin: closestPin,
+                    mulligans: mulligans,
+                    leagueTitle: 'MONDAY LEAGUE',
+                    anteLabel: 'Players Ante ',
+                    onSkatsAnteEdit: () => _showKeypadForAmount('ante'),
+                    onClosestPinEdit: () => _showKeypadForAmount('closestPin'),
+                    onMulligansEdit: () => _showKeypadForAmount('mulligans'),
+                    onGolfCourseChanged: (String? newValue) {
+                      setState(() {
+                        selectedGolfCourse = newValue;
+                      });
+                    },
+                    // Pass additional parameters for custom keypad display
+                    skatsAnteDisplayValue: _getAmountDisplayValue('ante', skatsAnte),
+                    closestPinDisplayValue: _getAmountDisplayValue('closestPin', closestPin),
+                    mulligansDisplayValue: _getAmountDisplayValue('mulligans', mulligans),
+                    isEditingAmount: _keypadController.isVisible,
+                    currentEditField: _currentEditField,
+                  ),
+                ),
               ),
-            ),
+              
+              const SizedBox(height: 12),
+              
+              // Navigation Buttons Footer - Full Width
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(4), // Reduced by 50%
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(0),
+                ),
+                child: _buildFooterButtons(screenWidth),
+              ),
+            ],
           ),
-          
-          const SizedBox(height: 12),
-          
-          // Navigation Buttons Footer - Full Width
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(4), // Reduced by 50%
-            decoration: BoxDecoration(
-              color: Colors.grey[300],
-              borderRadius: BorderRadius.circular(0),
+          // Custom keypad overlay - positioned over the button bar
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: CustomKeypadService.buildCustomKeypad(
+              context: context,
+              onKeyPress: _handleAmountKeypadInput,
+              isVisible: _keypadController.isVisible,
             ),
-            child: _buildFooterButtons(screenWidth),
           ),
         ],
       ),
@@ -263,17 +337,17 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
         isCompact: is6InchPhoneLandscape,
       ),
       _buildNavigationButton(
-        'Player Scores',
-        Icons.score,
-        Colors.green[200]!,
-        () => navigateToScreen(const MondayPlayerScoresScreen()),
+        'Player Profiles',
+        Icons.person,
+        Colors.green[100]!,
+        () => navigateToScreen(const MondayPlayerProfileScreen()),
         isCompact: is6InchPhoneLandscape,
       ),
       _buildNavigationButton(
-        'Player Profiles',
-        Icons.person,
-        Colors.green[300]!,
-        () => navigateToScreen(const MondayPlayerProfileScreen()),
+        'Player Scores',
+        Icons.score,
+        Colors.green[100]!,
+        () => navigateToScreen(const MondayPlayerScoresScreen()),
         isCompact: is6InchPhoneLandscape,
       ),
       _buildNavigationButton(
@@ -302,7 +376,12 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
     if (is6InchPhoneLandscape) {
       // Single row for phone landscape
       return Row(
-        children: buttons.map((button) => Expanded(child: button)).toList(),
+        children: [
+          Expanded(flex: 2, child: buttons[0]), // Player Selection - 2x wider
+          Expanded(flex: 1, child: buttons[1]), // Player Scores
+          Expanded(flex: 1, child: buttons[2]), // Player Profiles  
+          Expanded(flex: 1, child: buttons[3]), // Golf Courses
+        ],
       );
     } else {
       // Default wrap layout for other screen sizes
