@@ -9,7 +9,7 @@ import '../../models/league.dart';
 import '../../services/database_helper.dart';
 import '../../services/shared/league_purse_service.dart';
 import '../../services/screen_data_retention_service.dart';
-import '../../services/UI/parent_screen.dart';
+import '../../services/UI/parent_screen_service.dart';
 import '../../services/UI/custom_keypad_service.dart';
 
 class MondayParentScreen extends StatefulWidget {

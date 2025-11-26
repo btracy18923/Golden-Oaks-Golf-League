@@ -116,49 +116,13 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
                       
                       SizedBox(height: is6InchPhone ? 16 : 24),
                       
-                      // Parent Screen Data Section
+                      // Single unified section with all data
                       _buildDataSection(
-                        'League Setup',
-                        _buildParentScreenData(),
-                        Icons.settings,
+                        'Session Results',
+                        _buildUnifiedData(),
+                        Icons.summarize,
                         is6InchPhone,
                       ),
-                      
-                      SizedBox(height: is6InchPhone ? 12 : 16),
-                      
-                      // Player Selection Data Section
-                      _buildDataSection(
-                        'Player Selection',
-                        _buildPlayerSelectionData(),
-                        Icons.people,
-                        is6InchPhone,
-                      ),
-                      
-                      SizedBox(height: is6InchPhone ? 12 : 16),
-                      
-                      // Enter Scores Data Section
-                      _buildDataSection(
-                        'Game Results',
-                        _buildEnterScoresData(),
-                        Icons.scoreboard,
-                        is6InchPhone,
-                      ),
-                      
-                      SizedBox(height: is6InchPhone ? 12 : 16),
-                      
-                      // Closest Pin Data Section
-                      _buildDataSection(
-                        'Closest Pin Results',
-                        _buildClosestPinData(),
-                        Icons.flag,
-                        is6InchPhone,
-                      ),
-                      
-                      SizedBox(height: is6InchPhone ? 16 : 24),
-                      
-                      // Player Details Table
-                      if (_retentionService.hasEnterScoresData())
-                        _buildPlayerDetailsTable(is6InchPhone),
                     ],
                   ),
                 ),
@@ -242,6 +206,45 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
     );
   }
 
+  /// Builds unified data display combining all sections
+  Widget _buildUnifiedData() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // League Setup Data
+        if (_retentionService.hasParentScreenData()) 
+          _buildParentScreenData(),
+        
+        // Player Selection and Game Results Data (combined row)
+        if (_retentionService.hasPlayerSelectionData() || _retentionService.hasEnterScoresData()) ...[
+          _buildPlayerAndGameResultsData(),
+          const SizedBox(height: 16),
+        ],
+        
+        // Closest Pin Data
+        if (_retentionService.hasClosestPinData()) ...[
+          _buildClosestPinData(),
+          const SizedBox(height: 16),
+        ],
+        
+        // Player Details Table
+        if (_retentionService.hasEnterScoresData()) ...[
+          _buildPlayerDetailsTableContent(),
+        ],
+        
+        // Show message if no data available
+        if (!_retentionService.hasParentScreenData() &&
+            !_retentionService.hasPlayerSelectionData() &&
+            !_retentionService.hasEnterScoresData() &&
+            !_retentionService.hasClosestPinData())
+          const Text(
+            'No session data available',
+            style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic),
+          ),
+      ],
+    );
+  }
+
   /// Builds the parent screen data display
   Widget _buildParentScreenData() {
     if (!_retentionService.hasParentScreenData()) {
@@ -254,11 +257,81 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildDataRow('Players Ante', '\$${_retentionService.playersAnte?.toStringAsFixed(2) ?? 'N/A'}'),
-        _buildDataRow('Closest Pin', '\$${_retentionService.closestPinAmount?.toStringAsFixed(2) ?? 'N/A'}'),
-        _buildDataRow('Mulligan Amount', '\$${_retentionService.mulliganAmount?.toStringAsFixed(2) ?? 'N/A'}'),
-        _buildDataRow('Golf Course', _retentionService.selectedGolfCourse ?? 'Not Selected'),
+        // Single row with all three money amounts
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Players Ante: \$${_retentionService.playersAnte?.toStringAsFixed(2) ?? 'N/A'}',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Text(
+                  'Closest Pin: \$${_retentionService.closestPinAmount?.toStringAsFixed(2) ?? 'N/A'}',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              Expanded(
+                child: Text(
+                  'Mulligan: \$${_retentionService.mulliganAmount?.toStringAsFixed(2) ?? 'N/A'}',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                  ),
+                  textAlign: TextAlign.end,
+                ),
+              ),
+            ],
+          ),
+        ),
+        // Golf Course row
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Text(
+            'Golf Course: ${_retentionService.selectedGolfCourse ?? 'Not Selected'}',
+            style: const TextStyle(
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
+          ),
+        ),
       ],
+    );
+  }
+
+  /// Builds combined player selection and game results data in one row
+  Widget _buildPlayerAndGameResultsData() {
+    final selectedPlayers = _retentionService.selectedPlayers ?? [];
+    final selectedCount = selectedPlayers.length;
+    
+    final playerGroups = _retentionService.playerGroups ?? [];
+    final playersWithMoney = _countPlayersWithMoney(playerGroups);
+    
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              'Total Players Selected: $selectedCount',
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -274,12 +347,15 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
     final selectedPlayers = _retentionService.selectedPlayers ?? [];
     final selectedCount = selectedPlayers.length;
     
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildDataRow('Total Players Selected', '$selectedCount'),
-        _buildDataRow('Player Names', _buildPlayerNamesList(selectedPlayers)),
-      ],
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Text(
+        'Total Players Selected: $selectedCount',
+        style: const TextStyle(
+          fontWeight: FontWeight.w600,
+          color: Colors.black87,
+        ),
+      ),
     );
   }
 
@@ -300,12 +376,17 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildDataRow('Active Groups', '$groupsWithPlayers'),
-        _buildDataRow('Total Players', '$totalPlayers'),
-        _buildDataRow('Players Shuffled', _retentionService.playersShuffled == true ? 'Yes' : 'No'),
-        _buildDataRow('Money Calculated', _retentionService.hasMoneyCalculations == true ? 'Yes' : 'No'),
         if (_retentionService.hasMoneyCalculations == true)
-          _buildDataRow('Winners (with money)', '$playersWithMoney'),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Text(
+              'Winners (with money): $playersWithMoney',
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+            ),
+          ),
       ],
     );
   }
@@ -331,16 +412,91 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildDataRow('Total Closest Pins', '$totalPins'),
-        _buildDataRow('Pins Awarded', '${totalPins - remainingPins}'),
-        _buildDataRow('Remaining Pins', '$remainingPins'),
-        _buildDataRow('Remaining Purse', '\$${remainingPurse.toStringAsFixed(2)}'),
-        _buildDataRow('Winners', '$winnersCount'),
-        _buildDataRow('Total Winnings', '\$${totalWinnings.toStringAsFixed(2)}'),
-        if (winnersCount > 0) ...[
-          const SizedBox(height: 8),
+        if (winnersCount > 0)
           _buildClosestPinWinnersTable(),
-        ],
+      ],
+    );
+  }
+
+  /// Builds player details table content without the outer container
+  Widget _buildPlayerDetailsTableContent() {
+    final playerGroups = _retentionService.playerGroups ?? [];
+    if (playerGroups.isEmpty) return const SizedBox.shrink();
+
+    // Flatten all players from all groups and filter for positive DIFF
+    List<PlayerData> allPlayers = [];
+    for (int groupIndex = 0; groupIndex < playerGroups.length; groupIndex++) {
+      for (var player in playerGroups[groupIndex]) {
+        // Only include players with positive DIFF
+        if (player.diff.isNotEmpty && player.diff != '-') {
+          try {
+            final diffValue = double.parse(player.diff.replaceAll('+', ''));
+            if (diffValue > 0) {
+              allPlayers.add(player);
+            }
+          } catch (e) {
+            // If parsing fails, skip this player
+          }
+        }
+      }
+    }
+
+    if (allPlayers.isEmpty) return const SizedBox.shrink();
+
+    final playersWithMoney = allPlayers.length;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'SKAT Winners: $playersWithMoney',
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 8),
+        
+        // Table
+        Table(
+          border: TableBorder.all(color: Colors.grey[400]!, width: 1),
+          columnWidths: const {
+            0: FlexColumnWidth(2), // Name
+            1: FlexColumnWidth(1), // SK#
+            2: FlexColumnWidth(1), // Skats
+            3: FlexColumnWidth(1), // Diff
+            4: FlexColumnWidth(1), // Money
+          },
+          children: [
+            // Header row
+            TableRow(
+              decoration: BoxDecoration(color: Colors.grey[200]),
+              children: [
+                _buildTableCell('Player', isHeader: true, isCompact: false),
+                _buildTableCell('SK#', isHeader: true, isCompact: false),
+                _buildTableCell('Skats', isHeader: true, isCompact: false),
+                _buildTableCell('Diff', isHeader: true, isCompact: false),
+                _buildTableCell('\$\$\$', isHeader: true, isCompact: false),
+              ],
+            ),
+            
+            // Player data rows
+            ...allPlayers.map((player) => TableRow(
+              children: [
+                _buildTableCell(player.name, isCompact: false),
+                _buildTableCell(player.skNumber, isCompact: false),
+                _buildTableCell(player.skats.isEmpty ? '-' : player.skats, isCompact: false),
+                _buildTableCell(player.diff.isEmpty ? '-' : player.diff, isCompact: false),
+                _buildTableCell(
+                  player.money.isEmpty ? '-' : player.money, 
+                  isCompact: false,
+                  isMoneyColumn: true,
+                ),
+              ],
+            )).toList(),
+          ],
+        ),
       ],
     );
   }
@@ -543,8 +699,8 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
             ),
             child: const Row(
               children: [
-                Expanded(flex: 2, child: Text('Player', style: TextStyle(fontWeight: FontWeight.bold))),
-                Expanded(flex: 1, child: Text('Pins', style: TextStyle(fontWeight: FontWeight.bold), textAlign: TextAlign.center)),
+                Expanded(flex: 2, child: Text('Closest Pin Winners', style: TextStyle(fontWeight: FontWeight.bold))),
+                Expanded(flex: 1, child: Text('Pins Won', style: TextStyle(fontWeight: FontWeight.bold), textAlign: TextAlign.center)),
                 Expanded(flex: 1, child: Text('Winnings', style: TextStyle(fontWeight: FontWeight.bold), textAlign: TextAlign.center)),
               ],
             ),
