@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../services/UI/closest_pin_UI_service.dart';
 import '../../services/shared/league_purse_service.dart';
+import '../../services/screen_data_retention_service.dart';
 
 class MondayClosestPinScreen extends StatefulWidget {
   final List<Map<String, dynamic>> selectedPlayers;
@@ -51,10 +52,27 @@ class _MondayClosestPinScreenState extends State<MondayClosestPinScreen> {
   }
 
   void _handleReturn() {
+    // Update the LeaguePurseService with the remaining purse amount
+    // This mirrors the current state to the enter scores screen
+    LeaguePurseService.setClosestPinPurse(_remainingPurseAmount);
+    
     ClosestPinUIService.handleReturn(context);
   }
 
   void _handleSaveResults() {
+    // Capture data in the retention service before saving
+    ScreenDataRetentionService().captureClosestPinData(
+      playerClosestPinCounts: _playerClosestPinCounts,
+      playerClosestPinWinnings: _playerWinnings,
+      remainingClosestPinPurse: _remainingPurseAmount,
+      totalClosestPins: _totalClosestPins,
+      remainingClosestPins: _remainingClosestPins,
+    );
+    
+    // Update the LeaguePurseService with the remaining purse amount
+    // This mirrors the current state to the enter scores screen
+    LeaguePurseService.setClosestPinPurse(_remainingPurseAmount);
+    
     ClosestPinUIService.handleSaveResults(context);
   }
 

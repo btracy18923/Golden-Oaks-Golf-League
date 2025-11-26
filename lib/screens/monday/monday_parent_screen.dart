@@ -8,6 +8,7 @@ import '../admin_screen.dart';
 import '../../models/league.dart';
 import '../../services/database_helper.dart';
 import '../../services/shared/league_purse_service.dart';
+import '../../services/screen_data_retention_service.dart';
 
 class MondayParentScreen extends StatefulWidget {
   const MondayParentScreen({super.key});
@@ -90,6 +91,20 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
       context,
       MaterialPageRoute(builder: (context) => screen),
     );
+  }
+  
+  /// Captures parent screen data and navigates to player selection
+  void _navigateToPlayerSelection() {
+    // Capture data in the retention service before navigation
+    ScreenDataRetentionService().captureParentScreenData(
+      playersAnte: skatsAnte,
+      closestPinAmount: closestPin,
+      mulliganAmount: mulligans,
+      selectedGolfCourse: selectedGolfCourse,
+    );
+    
+    // Navigate to player selection screen
+    navigateToScreen(MondayPlayerSelectionScreen(playersAnte: skatsAnte));
   }
   
   void _editValue(String title, TextEditingController controller, Function(double) onSave) {
@@ -1885,7 +1900,7 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
         'Player Selection',
         Icons.people,
         selectedGolfCourse != null ? Colors.green[300]! : Colors.grey[400]!,
-        selectedGolfCourse != null ? () => navigateToScreen(MondayPlayerSelectionScreen(playersAnte: skatsAnte)) : null,
+        selectedGolfCourse != null ? () => _navigateToPlayerSelection() : null,
         isCompact: is6InchPhoneLandscape || is6InchPhonePortrait,
       ),
       _buildNavigationButton(

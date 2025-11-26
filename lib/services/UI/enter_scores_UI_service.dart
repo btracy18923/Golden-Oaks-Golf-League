@@ -681,7 +681,7 @@ class EnterScoresUIService {
       final cleanText = text.replaceAll(RegExp(r'[^\d.-]'), '');
       if (cleanText.isNotEmpty) {
         final amount = double.tryParse(cleanText) ?? 0.0;
-        displayText = '\$${amount.toStringAsFixed(2)}';
+        displayText = '\$${amount.round()}';
       }
     }
     
@@ -721,7 +721,7 @@ class EnterScoresUIService {
       final cleanText = text.replaceAll(RegExp(r'[^\d.-]'), '');
       if (cleanText.isNotEmpty) {
         final amount = double.tryParse(cleanText) ?? 0.0;
-        displayText = '\$${amount.toStringAsFixed(2)}';
+        displayText = '\$${amount.round()}';
       }
     }
     
@@ -895,19 +895,84 @@ class EnterScoresUIService {
   }
 }
 
-/// Data class representing a player in a group
+/// Data model for representing player data in golf league scoring
 class PlayerData {
-  String name;
-  String skNumber;
-  String skats;
-  String diff;
-  String money;
+  final String name;
+  final String skNumber;
+  final String skats;
+  final String diff;
+  final String money;
 
-  PlayerData({
+  const PlayerData({
     required this.name,
     required this.skNumber,
     this.skats = '',
     this.diff = '',
     this.money = '',
   });
+
+  @override
+  String toString() {
+    return 'PlayerData(name: $name, skNumber: $skNumber, skats: $skats, diff: $diff, money: $money)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is PlayerData &&
+        other.name == name &&
+        other.skNumber == skNumber &&
+        other.skats == skats &&
+        other.diff == diff &&
+        other.money == money;
+  }
+
+  @override
+  int get hashCode {
+    return name.hashCode ^
+        skNumber.hashCode ^
+        skats.hashCode ^
+        diff.hashCode ^
+        money.hashCode;
+  }
+
+  /// Creates a copy of this PlayerData with updated values
+  PlayerData copyWith({
+    String? name,
+    String? skNumber,
+    String? skats,
+    String? diff,
+    String? money,
+  }) {
+    return PlayerData(
+      name: name ?? this.name,
+      skNumber: skNumber ?? this.skNumber,
+      skats: skats ?? this.skats,
+      diff: diff ?? this.diff,
+      money: money ?? this.money,
+    );
+  }
+
+  /// Creates a PlayerData instance from a map (useful for database operations)
+  factory PlayerData.fromMap(Map<String, dynamic> map) {
+    return PlayerData(
+      name: map['name'] ?? '',
+      skNumber: map['skNumber'] ?? '',
+      skats: map['skats'] ?? '',
+      diff: map['diff'] ?? '',
+      money: map['money'] ?? '',
+    );
+  }
+
+  /// Converts this PlayerData to a map (useful for database operations)
+  Map<String, dynamic> toMap() {
+    return {
+      'name': name,
+      'skNumber': skNumber,
+      'skats': skats,
+      'diff': diff,
+      'money': money,
+    };
+  }
 }
+

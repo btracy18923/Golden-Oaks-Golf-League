@@ -9,6 +9,8 @@ class LeaguePurseService {
   static double _mulliganPurse = 0.0;
   static double _skatPurse = 0.0; // Monday league specific
   static double _antePurse = 0.0; // Wednesday league specific
+  static double _remainingSkatPurse = 0.0; // Remaining skat purse after distributions
+  static bool _hasDistributedMoney = false; // Flag to track if money has been distributed
   
   /// Gets the closest pin purse amount
   static double get closestPinPurse => _closestPinPurse;
@@ -42,11 +44,25 @@ class LeaguePurseService {
     _antePurse = amount;
   }
   
+  /// Sets the remaining skat purse amount (after distributions)
+  static void setRemainingPurse(double amount) {
+    _remainingSkatPurse = amount;
+    _hasDistributedMoney = true;
+  }
+  
+  /// Resets the distribution state (useful for new game sessions)
+  static void resetDistributionState() {
+    _remainingSkatPurse = 0.0;
+    _hasDistributedMoney = false;
+  }
+  
   /// Gets the league-specific primary purse amount
+  /// For Monday league, returns remaining purse if money has been distributed
   static double getPrimaryPurse(League league) {
     switch (league) {
       case League.monday:
-        return _skatPurse;
+        // Return remaining purse if distributions have been made, otherwise original amount
+        return _hasDistributedMoney ? _remainingSkatPurse : _skatPurse;
       case League.wednesday:
         return _antePurse;
     }

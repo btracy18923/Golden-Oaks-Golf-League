@@ -8,8 +8,10 @@ import '../../services/shared/swap_service.dart';
 import '../../services/shared/league_purse_service.dart';
 import '../../services/payout_validation_service.dart';
 import '../../services/database_helper.dart';
+import '../../services/screen_data_retention_service.dart';
 import '../../models/league.dart';
 import 'monday_closest_pin_screen.dart';
+import 'monday_results_screen.dart';
 
 class MondayEnterScoresScreen extends StatefulWidget {
   final List<Map<String, dynamic>>? selectedPlayers;
@@ -1257,12 +1259,21 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
   void _handleResults() {
     print("RESULTS button pressed!");
     
-    // TODO: Navigate to results screen or show results dialog
-    // For now, show a simple message
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Results functionality coming soon'),
-        duration: Duration(seconds: 2),
+    // Capture data in the retention service before transitioning to results
+    ScreenDataRetentionService().captureEnterScoresData(
+      playerGroups: groups,
+      hasMoneyCalculations: _hasMoneyCalculations(),
+      playersShuffled: _shuffledInCurrentSession || _hasBeenShuffled,
+    );
+    
+    // Save shuffle state before navigating to results
+    _saveShuffleState();
+    
+    // Navigate to Results Screen
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const MondayResultsScreen(),
       ),
     );
   }
