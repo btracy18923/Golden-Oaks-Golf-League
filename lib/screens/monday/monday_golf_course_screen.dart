@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../services/database_helper.dart';
 import '../../models/league.dart';
+import '../../services/UI/custom_keypad_service.dart';
 
 class MondayGolfCourseScreen extends StatefulWidget {
   final League? league;
@@ -32,12 +33,19 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
   final FocusNode _teesFocus = FocusNode();
   final FocusNode _slopeFocus = FocusNode();
   final FocusNode _travelTimeFocus = FocusNode();
+  
+  // Custom keypad controller
+  late CustomKeypadController _keypadController;
+  
+  // Currently focused field for numeric input
+  String? _currentEditField; // 'holes', 'slope'
 
   @override
   void initState() {
     super.initState();
     _setOrientation();
     _refreshCourseList();
+    _keypadController = CustomKeypadService.createController();
   }
 
   void _setOrientation() {
@@ -495,7 +503,7 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
                 ]) : [
                   _buildHeaderCell('Name', 180),
                   _buildHeaderCell('Phone', 100),
-                  _buildHeaderCell('Holes', 70),
+                  _buildHeaderCell('Par3s', 70),
                   _buildHeaderCell('Tees', 80),
                   _buildHeaderCell('Slope', 70),
                   _buildHeaderCell('Travel', 80),
@@ -858,7 +866,7 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
           ),
           Expanded(
             flex: 1,
-            child: _buildCompactFormField('# Holes', _holesController, _holesFocus, _teesFocus, 
+            child: _buildCompactFormField('# Par3s', _holesController, _holesFocus, _teesFocus, 
               keyboardType: TextInputType.number, 
               inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
           ),
@@ -886,7 +894,7 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
             _buildCompactFormField('Name', _nameController, _nameFocus, _phoneFocus),
             _buildCompactFormField('Phone', _phoneController, _phoneFocus, _holesFocus, 
               keyboardType: TextInputType.phone),
-            _buildCompactFormField('# Holes', _holesController, _holesFocus, _teesFocus, 
+            _buildCompactFormField('# Par3s', _holesController, _holesFocus, _teesFocus, 
               keyboardType: TextInputType.number, 
               inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
             _buildCompactFormField('Tees', _teesController, _teesFocus, _slopeFocus),
@@ -908,7 +916,7 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
     if (is6InchPhoneLandscape) {
       // Convert long labels to short labels for landscape mode
       String displayLabel = label;
-      if (label == '# Holes') displayLabel = 'Holes';
+      if (label == '# Par3s') displayLabel = 'Par3s';
       else if (label == 'Travel Time') displayLabel = 'Travel';
       
       // Horizontal layout for 6" landscape mode
@@ -1148,7 +1156,7 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
         _buildFormField('Name', _nameController, _nameFocus, _phoneFocus),
         _buildFormField('Phone', _phoneController, _phoneFocus, _holesFocus, 
           keyboardType: TextInputType.phone),
-        _buildFormField('# Holes', _holesController, _holesFocus, _teesFocus, 
+        _buildFormField('# Par3s', _holesController, _holesFocus, _teesFocus, 
           keyboardType: TextInputType.number, 
           inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
         _buildFormField('Tees', _teesController, _teesFocus, _slopeFocus),

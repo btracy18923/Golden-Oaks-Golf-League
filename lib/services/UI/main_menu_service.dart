@@ -1,295 +1,273 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../models/league.dart';
-import '../services/ante_manager.dart';
-import '../services/percentage_manager.dart';
-import '../services/closest_pin_manager.dart';
-import '../services/mulligan_manager.dart';
-import 'monday/monday_parent_screen.dart';
-import 'wednesday/wednesday_parent_screen.dart';
-import 'firebase_test_screen.dart';
+import '../../models/league.dart';
 
-class UnifiedMainMenuScreen extends StatefulWidget {
-  const UnifiedMainMenuScreen({super.key});
-
-  @override
-  State<UnifiedMainMenuScreen> createState() => _UnifiedMainMenuScreenState();
+/// Device type enumeration for responsive design
+enum MainMenuDeviceType {
+  phone,       // 6.5" phones (up to 800px)
+  tabletSmall, // 8" tablets (801-1000px) 
+  tabletLarge, // 10" tablets (1001px+)
 }
 
-class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
-  League? currentLeague;
-  final TextEditingController _anteController = TextEditingController(text: '\$5.00');
-  final TextEditingController _closestPinController = TextEditingController(text: '\$4.00');
-  final TextEditingController _newFieldController = TextEditingController(text: '\$1.00');
-  final TextEditingController _mondayMulligansController = TextEditingController(text: '\$2.00');
-  final TextEditingController _individualPercentController = TextEditingController(text: '40%');
-  final TextEditingController _groupPercentController = TextEditingController(text: '60%');
-  final FocusNode _anteFocusNode = FocusNode();
-  final FocusNode _closestPinFocusNode = FocusNode();
-  final FocusNode _newFieldFocusNode = FocusNode();
-  final FocusNode _mondayMulligansFocusNode = FocusNode();
-  final FocusNode _individualPercentFocusNode = FocusNode();
-  final FocusNode _groupPercentFocusNode = FocusNode();
-
-  void _formatCurrency() {
-    String text = _anteController.text;
-    String numericText = text.replaceAll(RegExp(r'[^\d\.]'), '');
-    
-    if (numericText.isNotEmpty) {
-      double amount = double.tryParse(numericText) ?? 0.0;
-      String formatted = '\$${amount.toStringAsFixed(2)}';
-      
-      if (formatted != _anteController.text) {
-        _anteController.value = TextEditingValue(
-          text: formatted,
-          selection: TextSelection.collapsed(offset: formatted.length),
-        );
-      }
-      
-      AnteManager().setAnteAmount(amount);
-    } else if (text.isEmpty) {
-      String defaultAmount = currentLeague == League.monday ? '\$5.00' : '\$5.00';
-      double defaultValue = currentLeague == League.monday ? 5.0 : 5.0;
-      
-      _anteController.value = TextEditingValue(
-        text: defaultAmount,
-        selection: TextSelection.collapsed(offset: defaultAmount.length),
-      );
-      
-      AnteManager().setAnteAmount(defaultValue);
+/// Responsive configuration for main menu layouts
+class MainMenuResponsiveConfig {
+  final MainMenuDeviceType deviceType;
+  final Orientation orientation;
+  final double screenWidth;
+  final double screenHeight;
+  final bool isLandscape;
+  
+  MainMenuResponsiveConfig({
+    required this.deviceType,
+    required this.orientation, 
+    required this.screenWidth,
+    required this.screenHeight,
+    required this.isLandscape,
+  });
+  
+  // Layout configuration
+  bool get useCompactLayout {
+    return deviceType == MainMenuDeviceType.phone && isLandscape;
+  }
+  
+  int get adminButtonCrossAxisCount {
+    // Since we only have one Firebase button now, always return 1
+    return 1;
+  }
+  
+  double get adminButtonAspectRatio {
+    switch (deviceType) {
+      case MainMenuDeviceType.phone:
+        return isLandscape ? 4.0 : 2.0; // Wider for single button
+      case MainMenuDeviceType.tabletSmall:
+        return isLandscape ? 4.0 : 2.5;
+      case MainMenuDeviceType.tabletLarge:
+        return 3.0; // More rectangular for single button
     }
-    
-    _anteFocusNode.unfocus();
   }
-
-  void _formatClosestPinCurrency() {
-    String text = _closestPinController.text;
-    String numericText = text.replaceAll(RegExp(r'[^\d\.]'), '');
-    
-    if (numericText.isNotEmpty) {
-      double amount = double.tryParse(numericText) ?? 0.0;
-      String formatted = '\$${amount.toStringAsFixed(2)}';
-      
-      if (formatted != _closestPinController.text) {
-        _closestPinController.value = TextEditingValue(
-          text: formatted,
-          selection: TextSelection.collapsed(offset: formatted.length),
-        );
-      }
-      
-      ClosestPinManager().setClosestPinAmount(amount);
-    } else if (text.isEmpty) {
-      String defaultAmount = currentLeague == League.monday ? '\$4.00' : '\$1.00';
-      double defaultValue = currentLeague == League.monday ? 4.0 : 1.0;
-      
-      _closestPinController.value = TextEditingValue(
-        text: defaultAmount,
-        selection: TextSelection.collapsed(offset: defaultAmount.length),
-      );
-      
-      ClosestPinManager().setClosestPinAmount(defaultValue);
+  
+  // Font sizes
+  double get titleFontSize {
+    switch (deviceType) {
+      case MainMenuDeviceType.phone:
+        return isLandscape ? 12 : 18;
+      case MainMenuDeviceType.tabletSmall:
+        return 19;
+      case MainMenuDeviceType.tabletLarge:
+        return 20;
     }
-    
-    _closestPinFocusNode.unfocus();
   }
-
-  void _formatNewFieldCurrency() {
-    String text = _newFieldController.text;
-    String numericText = text.replaceAll(RegExp(r'[^\d\.]'), '');
-    
-    if (numericText.isNotEmpty) {
-      double amount = double.tryParse(numericText) ?? 0.0;
-      String formatted = '\$${amount.toStringAsFixed(2)}';
-      
-      if (formatted != _newFieldController.text) {
-        _newFieldController.value = TextEditingValue(
-          text: formatted,
-          selection: TextSelection.collapsed(offset: formatted.length),
-        );
-      }
-    } else if (text.isEmpty) {
-      String defaultAmount = '\$1.00';
-      
-      _newFieldController.value = TextEditingValue(
-        text: defaultAmount,
-        selection: TextSelection.collapsed(offset: defaultAmount.length),
-      );
+  
+  double get buttonFontSize {
+    switch (deviceType) {
+      case MainMenuDeviceType.phone:
+        return isLandscape ? 10 : 16;
+      case MainMenuDeviceType.tabletSmall:
+        return 17;
+      case MainMenuDeviceType.tabletLarge:
+        return 18;
     }
-    
-    _newFieldFocusNode.unfocus();
   }
-
-  void _onNewFieldTap() {
-    _newFieldController.clear();
-    _newFieldFocusNode.requestFocus();
-  }
-
-  void _onAnteTap() {
-    _anteController.clear();
-    _anteFocusNode.requestFocus();
-  }
-
-  void _onClosestPinTap() {
-    _closestPinController.clear();
-    _closestPinFocusNode.requestFocus();
-  }
-
-  void _formatMondayMulligansCurrency() {
-    String text = _mondayMulligansController.text;
-    String numericText = text.replaceAll(RegExp(r'[^\d\.]'), '');
-    
-    if (numericText.isNotEmpty) {
-      double amount = double.tryParse(numericText) ?? 0.0;
-      String formatted = '\$${amount.toStringAsFixed(2)}';
-      
-      if (formatted != _mondayMulligansController.text) {
-        _mondayMulligansController.value = TextEditingValue(
-          text: formatted,
-          selection: TextSelection.collapsed(offset: formatted.length),
-        );
-      }
-    } else if (text.isEmpty) {
-      String defaultAmount = '\$2.00';
-      
-      _mondayMulligansController.value = TextEditingValue(
-        text: defaultAmount,
-        selection: TextSelection.collapsed(offset: defaultAmount.length),
-      );
+  
+  double get statusFontSize {
+    switch (deviceType) {
+      case MainMenuDeviceType.phone:
+        return isLandscape ? 8 : 14;
+      case MainMenuDeviceType.tabletSmall:
+        return 15;
+      case MainMenuDeviceType.tabletLarge:
+        return 16;
     }
-    
-    _mondayMulligansFocusNode.unfocus();
   }
-
-  void _onMondayMulligansTap() {
-    _mondayMulligansController.clear();
-    _mondayMulligansFocusNode.requestFocus();
+  
+  double get configLabelFontSize {
+    switch (deviceType) {
+      case MainMenuDeviceType.phone:
+        return isLandscape ? 8 : 14;
+      case MainMenuDeviceType.tabletSmall:
+        return 15;
+      case MainMenuDeviceType.tabletLarge:
+        return 16;
+    }
   }
-
-
-  double get currentAnteAmount {
-    String text = _anteController.text;
-    String numericText = text.replaceAll(RegExp(r'[^\d\.]'), '');
-    return double.tryParse(numericText) ?? (currentLeague == League.monday ? 5.0 : 5.0);
+  
+  double get configInputFontSize {
+    switch (deviceType) {
+      case MainMenuDeviceType.phone:
+        return isLandscape ? 8 : 14;
+      case MainMenuDeviceType.tabletSmall:
+        return 15;
+      case MainMenuDeviceType.tabletLarge:
+        return 16;
+    }
   }
-
-  @override
-  void initState() {
-    super.initState();
-    
-    // Lock all devices to landscape mode only
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      SystemChrome.setPreferredOrientations([
-        DeviceOrientation.landscapeLeft,
-        DeviceOrientation.landscapeRight,
-      ]);
-    });
+  
+  double get adminButtonFontSize {
+    switch (deviceType) {
+      case MainMenuDeviceType.phone:
+        return isLandscape ? 8 : 10;
+      case MainMenuDeviceType.tabletSmall:
+        return 10;
+      case MainMenuDeviceType.tabletLarge:
+        return 10;
+    }
   }
-
-  @override
-  void dispose() {
-    // Keep landscape mode locked - don't reset orientation constraints
-    
-    _anteController.dispose();
-    _closestPinController.dispose();
-    _newFieldController.dispose();
-    _mondayMulligansController.dispose();
-    _individualPercentController.dispose();
-    _groupPercentController.dispose();
-    _anteFocusNode.dispose();
-    _closestPinFocusNode.dispose();
-    _newFieldFocusNode.dispose();
-    _mondayMulligansFocusNode.dispose();
-    _individualPercentFocusNode.dispose();
-    _groupPercentFocusNode.dispose();
-    super.dispose();
+  
+  double get adminIconSize {
+    switch (deviceType) {
+      case MainMenuDeviceType.phone:
+        return isLandscape ? 14 : 18;
+      case MainMenuDeviceType.tabletSmall:
+        return 18;
+      case MainMenuDeviceType.tabletLarge:
+        return 18;
+    }
   }
-
-  void selectMondayLeague() async {
-    AnteManager().setAnteAmount(5.0);
-    ClosestPinManager().setClosestPinAmount(4.0);
-    MulliganManager().setMulliganAmount(2.0);
-    
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const MondayParentScreen()),
-    );
+  
+  // Padding and margins
+  double get containerPadding {
+    switch (deviceType) {
+      case MainMenuDeviceType.phone:
+        return isLandscape ? 4 : 12;
+      case MainMenuDeviceType.tabletSmall:
+        return 12;
+      case MainMenuDeviceType.tabletLarge:
+        return 16;
+    }
   }
-
-  void selectWednesdayLeague() async {
-    AnteManager().setAnteAmount(5.0);
-    ClosestPinManager().setClosestPinAmount(1.0);
-    MulliganManager().setMulliganAmount(1.0);
-    PercentageManager().setIndividualPercent(40.0);
-    
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const WednesdayParentScreen()),
-    );
+  
+  EdgeInsets get buttonPadding {
+    switch (deviceType) {
+      case MainMenuDeviceType.phone:
+        return isLandscape 
+          ? const EdgeInsets.all(8)
+          : const EdgeInsets.all(16);
+      case MainMenuDeviceType.tabletSmall:
+        return const EdgeInsets.all(20);
+      case MainMenuDeviceType.tabletLarge:
+        return const EdgeInsets.all(20);
+    }
   }
+  
+  double get configInputHeight {
+    switch (deviceType) {
+      case MainMenuDeviceType.phone:
+        return isLandscape ? 24 : 40;
+      case MainMenuDeviceType.tabletSmall:
+        return 44;
+      case MainMenuDeviceType.tabletLarge:
+        return 48;
+    }
+  }
+  
+  double get borderRadius {
+    switch (deviceType) {
+      case MainMenuDeviceType.phone:
+        return isLandscape ? 6 : 12;
+      case MainMenuDeviceType.tabletSmall:
+        return 12;
+      case MainMenuDeviceType.tabletLarge:
+        return 12;
+    }
+  }
+  
+  // Spacing
+  double get verticalSpacing {
+    switch (deviceType) {
+      case MainMenuDeviceType.phone:
+        return isLandscape ? 6 : 12;
+      case MainMenuDeviceType.tabletSmall:
+        return 14;
+      case MainMenuDeviceType.tabletLarge:
+        return 16;
+    }
+  }
+  
+  double get horizontalSpacing {
+    switch (deviceType) {
+      case MainMenuDeviceType.phone:
+        return isLandscape ? 8 : 12;
+      case MainMenuDeviceType.tabletSmall:
+        return 16;
+      case MainMenuDeviceType.tabletLarge:
+        return 20;
+    }
+  }
+  
+  double get adminGridSpacing {
+    switch (deviceType) {
+      case MainMenuDeviceType.phone:
+        return isLandscape ? 2 : 4;
+      case MainMenuDeviceType.tabletSmall:
+        return 4;
+      case MainMenuDeviceType.tabletLarge:
+        return 8;
+    }
+  }
+  
+  // Image configuration
+  double get logoIconSize {
+    switch (deviceType) {
+      case MainMenuDeviceType.phone:
+        return 40;
+      case MainMenuDeviceType.tabletSmall:
+        return 80;
+      case MainMenuDeviceType.tabletLarge:
+        return 120;
+    }
+  }
+  
+  double get imageBorderRadius {
+    switch (deviceType) {
+      case MainMenuDeviceType.phone:
+        return 8;
+      case MainMenuDeviceType.tabletSmall:
+        return 10;
+      case MainMenuDeviceType.tabletLarge:
+        return 12;
+    }
+  }
+}
 
-
-  @override
-  Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final screenHeight = MediaQuery.of(context).size.height;
+class MainMenuUIService {
+  // Device breakpoints based on screen width
+  static const double _phoneMaxWidth = 800;      // 6.5" phones
+  static const double _tabletSmallMaxWidth = 1000; // 8" tablets
+  
+  /// Determines the device type and responsive configuration
+  static MainMenuResponsiveConfig getResponsiveConfig(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    final orientation = MediaQuery.of(context).orientation;
+    final width = screenSize.width;
+    final height = screenSize.height;
     
-    // Define breakpoints based on logical pixel dimensions (Flutter's dp units)
-    // All devices are in landscape mode
-    // Your 6.5" phone: 820.57 × 411.43 logical pixels in landscape
-    // 8" tablet: Estimated ~533 × 800 logical pixels in landscape (800×1200 physical / 1.5 density)
-    // 10" tablet: Larger than both
-    final is6Point5Phone = screenWidth >= 750 && screenWidth < 900; // 6.5" phone range
-    final is8Tablet = screenWidth >= 500 && screenWidth < 750; // 8" tablet range  
-    final is10Tablet = screenWidth >= 900; // 10" tablets (larger screens)
-    
-    // Debug output to verify device detection
-    print('DEVICE DEBUG: Screen ${screenWidth}x$screenHeight');
-    print('DEVICE DEBUG: 6.5" Phone: $is6Point5Phone, 8" Tablet: $is8Tablet, 10" Tablet: $is10Tablet');
-    
-    // For backwards compatibility, keep these variables
-    final isPhone = is6Point5Phone;
-    final isTablet8 = is8Tablet;
-    final isTablet10 = is10Tablet;
-    
-    // Hide status bar for 6" phones
-    if (isPhone) {
-      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    // Determine device type based on screen width
+    MainMenuDeviceType deviceType;
+    if (width <= _phoneMaxWidth) {
+      deviceType = MainMenuDeviceType.phone;
+    } else if (width <= _tabletSmallMaxWidth) {
+      deviceType = MainMenuDeviceType.tabletSmall;
     } else {
-      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+      deviceType = MainMenuDeviceType.tabletLarge;
     }
     
-    return Scaffold(
-      backgroundColor: Colors.grey[100],
-      appBar: AppBar(
-        title: Text(
-          'Golden Oaks Golf League',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: isPhone ? 18 : 20,
-          ),
-        ),
-        backgroundColor: Colors.green[700],
-        foregroundColor: Colors.white,
-        centerTitle: true,
-        actions: [
-          Icon(
-            Icons.storage,
-            color: Colors.white,
-            size: isPhone ? 24 : 28,
-          ),
-          SizedBox(width: isPhone ? 12 : 16),
-        ],
-      ),
-      body: Padding(
-        padding: EdgeInsets.all(isPhone ? 8.0 : 16.0),
-        child: isPhone 
-          ? _buildPhoneLandscapeLayout(context)
-          : _buildTabletLayout(context, isTablet10, isTablet8),
-      ),
+    return MainMenuResponsiveConfig(
+      deviceType: deviceType,
+      orientation: orientation,
+      screenWidth: width,
+      screenHeight: height,
+      isLandscape: orientation == Orientation.landscape,
     );
   }
-
-  Widget _buildPhoneLandscapeLayout(BuildContext context) {
+  static Widget buildPhoneLandscapeLayout(
+    BuildContext context, {
+    required League? currentLeague,
+    required Widget Function(BuildContext) buildLeagueSelectionCompact,
+    required Widget Function(BuildContext) buildLeagueConfigurationCompact,
+    required Widget Function(String, IconData, Color, VoidCallback) buildCompactAdminButton,
+    required VoidCallback onFirebasePressed,
+  }) {
+    final config = getResponsiveConfig(context);
     return Column(
       children: [
         // Top area - League selection, config, and image
@@ -302,17 +280,17 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
                 child: SingleChildScrollView(
                   child: Column(
                     children: [
-                      _buildLeagueSelectionCompact(context),
+                      buildLeagueSelectionCompact(context),
                       
-                      const SizedBox(height: 6),
+                      SizedBox(height: config.verticalSpacing / 2),
                       
-                      if (currentLeague != null) _buildLeagueConfigurationCompact(context),
+                      if (currentLeague != null) buildLeagueConfigurationCompact(context),
                     ],
                   ),
                 ),
               ),
               
-              const SizedBox(width: 12),
+              SizedBox(width: config.horizontalSpacing),
               
               // Right side - Image only
               Expanded(
@@ -320,7 +298,7 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
                 child: SizedBox(
                   width: double.infinity,
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(config.imageBorderRadius),
                     child: Image.asset(
                       'assets/images/GoldenOaks.png',
                       fit: BoxFit.contain,
@@ -328,13 +306,13 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
                         return Container(
                           decoration: BoxDecoration(
                             color: Colors.green[50],
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(config.imageBorderRadius),
                             border: Border.all(color: Colors.green[200]!),
                           ),
                           child: Center(
                             child: Icon(
                               Icons.park,
-                              size: 40,
+                              size: config.logoIconSize,
                               color: Colors.green[600],
                             ),
                           ),
@@ -348,26 +326,24 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
           ),
         ),
         
-        const SizedBox(height: 8),
+        SizedBox(height: config.verticalSpacing),
         
         // Bottom row - Admin Functions
         Container(
-          height: 40, // Fixed height - about 10% of typical screen height
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Row(
+          padding: EdgeInsets.all(config.containerPadding / 2),
+          decoration: BoxDecoration(
+            color: Colors.grey[300],
+            borderRadius: BorderRadius.circular(config.borderRadius),
+          ),
+          child: GridView.count(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisCount: config.adminButtonCrossAxisCount,
+            mainAxisSpacing: config.adminGridSpacing,
+            crossAxisSpacing: config.adminGridSpacing,
+            childAspectRatio: config.adminButtonAspectRatio,
             children: [
-              Expanded(
-                flex: 20, // 20% of available width
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: _buildCompactAdminButton('Firebase', Icons.cloud_upload, Colors.red[200]!, 
-                    () => Navigator.push(context, MaterialPageRoute(builder: (context) => const FirebaseTestScreen()))),
-                ),
-              ),
-              Expanded(flex: 80, child: Container()), // Remaining 80% empty space
+              buildCompactAdminButton('Firebase', Icons.cloud_upload, Colors.red[200]!, onFirebasePressed),
             ],
           ),
         ),
@@ -375,9 +351,16 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
     );
   }
 
-
-
-  Widget _buildTabletLayout(BuildContext context, bool isTablet10, bool isTablet8) {
+  static Widget buildTabletLayout(
+    BuildContext context, {
+    required bool isTablet10, // Keep for backward compatibility
+    required bool isTablet8,  // Keep for backward compatibility
+    required League? currentLeague,
+    required Widget Function(BuildContext, bool) buildLeagueSelection,
+    required Widget Function(BuildContext, bool) buildLeagueConfiguration,
+    required Widget Function(BuildContext, bool, bool) buildAdminFunctionsTablet,
+  }) {
+    final config = getResponsiveConfig(context);
     return Column(
       children: [
         Expanded(
@@ -390,23 +373,23 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      _buildLeagueSelection(context, false),
+                      buildLeagueSelection(context, false),
                       if (currentLeague != null) ...[
-                        const SizedBox(height: 16),
-                        _buildLeagueConfiguration(context, false),
+                        SizedBox(height: config.verticalSpacing),
+                        buildLeagueConfiguration(context, false),
                       ],
-                      const SizedBox(height: 20),
+                      SizedBox(height: config.verticalSpacing + 4),
                     ],
                   ),
                 ),
               ),
               
-              const SizedBox(width: 20),
+              SizedBox(width: config.horizontalSpacing),
               
               Expanded(
                 flex: 7,
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(config.imageBorderRadius),
                   child: Image.asset(
                     'assets/images/GoldenOaks.png',
                     fit: BoxFit.contain,
@@ -416,13 +399,13 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
                       return Container(
                         decoration: BoxDecoration(
                           color: Colors.green[50],
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(config.imageBorderRadius),
                           border: Border.all(color: Colors.green[200]!),
                         ),
                         child: Center(
                           child: Icon(
                             Icons.park,
-                            size: 120,
+                            size: config.logoIconSize,
                             color: Colors.green[600],
                           ),
                         ),
@@ -435,51 +418,35 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
           ),
         ),
         
-        const SizedBox(height: 12),
+        SizedBox(height: config.verticalSpacing),
         
-        Container(
-          height: 60, // Fixed height - about 10% of typical tablet screen height
-          padding: const EdgeInsets.symmetric(horizontal: 40),
-          child: Row(
-            children: [
-              Expanded(
-                flex: 20, // 20% of available width
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: _buildAdminButton(
-                    'Firebase Upload',
-                    Icons.cloud_upload,
-                    Colors.red[200]!,
-                    () => Navigator.push(context, MaterialPageRoute(builder: (context) => const FirebaseTestScreen())),
-                  ),
-                ),
-              ),
-              Expanded(flex: 80, child: Container()), // Remaining 80% empty space
-            ],
-          ),
-        ),
+        buildAdminFunctionsTablet(context, isTablet10, isTablet8),
       ],
     );
   }
 
-  Widget _buildLeagueSelection(BuildContext context, bool isPhone) {
+  static Widget buildLeagueSelection(
+    BuildContext context, {
+    required bool isPhone, // Keep for backward compatibility
+    required League? currentLeague,
+    required VoidCallback selectMondayLeague,
+    required VoidCallback selectWednesdayLeague,
+  }) {
+    final config = getResponsiveConfig(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
           'Select Your League:',
           style: TextStyle(
-            fontSize: isPhone ? 18 : 20,
+            fontSize: config.titleFontSize,
             fontWeight: FontWeight.bold,
           ),
           textAlign: TextAlign.center,
         ),
-        SizedBox(height: isPhone ? 12 : 16),
+        SizedBox(height: config.verticalSpacing),
         
-        isPhone 
+        config.useCompactLayout || (config.deviceType == MainMenuDeviceType.phone) 
           ? Column(
               children: [
                 Container(
@@ -492,9 +459,9 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
                           ? Colors.green[300] 
                           : Colors.green[100],
                       foregroundColor: Colors.black,
-                      padding: const EdgeInsets.all(16),
+                      padding: config.buttonPadding,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(config.borderRadius),
                         side: const BorderSide(
                           color: Colors.black,
                           width: 2,
@@ -504,7 +471,7 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
                     child: Text(
                       'Monday Group',
                       style: TextStyle(
-                        fontSize: isPhone ? 16 : 18,
+                        fontSize: config.buttonFontSize,
                         fontWeight: FontWeight.bold,
                       ),
                       textAlign: TextAlign.center,
@@ -521,9 +488,9 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
                           ? Colors.orange[300] 
                           : Colors.orange[100],
                       foregroundColor: Colors.black,
-                      padding: const EdgeInsets.all(16),
+                      padding: config.buttonPadding,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(config.borderRadius),
                         side: const BorderSide(
                           color: Colors.black,
                           width: 2,
@@ -533,7 +500,7 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
                     child: Text(
                       'Wednesday Group',
                       style: TextStyle(
-                        fontSize: isPhone ? 16 : 18,
+                        fontSize: config.buttonFontSize,
                         fontWeight: FontWeight.bold,
                       ),
                       textAlign: TextAlign.center,
@@ -554,19 +521,19 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
                             ? Colors.green[300] 
                             : Colors.green[100],
                         foregroundColor: Colors.black,
-                        padding: const EdgeInsets.all(20),
+                        padding: config.buttonPadding,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(config.borderRadius),
                           side: const BorderSide(
                             color: Colors.black,
                             width: 2,
                           ),
                         ),
                       ),
-                      child: const Text(
+                      child: Text(
                         'Monday Group',
                         style: TextStyle(
-                          fontSize: 18,
+                          fontSize: config.buttonFontSize,
                           fontWeight: FontWeight.bold,
                         ),
                         textAlign: TextAlign.center,
@@ -585,19 +552,19 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
                             ? Colors.orange[300] 
                             : Colors.orange[100],
                         foregroundColor: Colors.black,
-                        padding: const EdgeInsets.all(20),
+                        padding: config.buttonPadding,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(config.borderRadius),
                           side: const BorderSide(
                             color: Colors.black,
                             width: 2,
                           ),
                         ),
                       ),
-                      child: const Text(
+                      child: Text(
                         'Wednesday Group',
                         style: TextStyle(
-                          fontSize: 18,
+                          fontSize: config.buttonFontSize,
                           fontWeight: FontWeight.bold,
                         ),
                         textAlign: TextAlign.center,
@@ -608,17 +575,17 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
               ],
             ),
         
-        SizedBox(height: isPhone ? 8 : 12),
+        SizedBox(height: config.verticalSpacing),
         
         Container(
-          padding: EdgeInsets.all(isPhone ? 8 : 12),
+          padding: EdgeInsets.all(config.containerPadding),
           decoration: BoxDecoration(
             color: currentLeague == League.monday 
                 ? Colors.green[300] 
                 : currentLeague == League.wednesday 
                     ? Colors.orange[300] 
                     : Colors.grey[200],
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(config.borderRadius),
             border: Border.all(
               color: Colors.black,
               width: 2,
@@ -626,10 +593,10 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
           ),
           child: Text(
             currentLeague != null 
-                ? 'Active League: ${currentLeague!.name.toUpperCase()}'
+                ? 'Active League: ${currentLeague.name.toUpperCase()}'
                 : 'No League Selected',
             style: TextStyle(
-              fontSize: isPhone ? 14 : 16,
+              fontSize: config.statusFontSize,
               fontWeight: FontWeight.w600,
               color: Colors.black,
             ),
@@ -640,7 +607,28 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
     );
   }
 
-  Widget _buildLeagueConfiguration(BuildContext context, bool isPhone) {
+  static Widget buildLeagueConfiguration(
+    BuildContext context, {
+    required bool isPhone, // Keep for backward compatibility
+    required League? currentLeague,
+    required TextEditingController anteController,
+    required TextEditingController closestPinController,
+    required TextEditingController newFieldController,
+    required TextEditingController mondayMulligansController,
+    required FocusNode anteFocusNode,
+    required FocusNode closestPinFocusNode,
+    required FocusNode newFieldFocusNode,
+    required FocusNode mondayMulligansFocusNode,
+    required VoidCallback onAnteTap,
+    required VoidCallback onClosestPinTap,
+    required VoidCallback onNewFieldTap,
+    required VoidCallback onMondayMulligansTap,
+    required VoidCallback formatCurrency,
+    required VoidCallback formatClosestPinCurrency,
+    required VoidCallback formatNewFieldCurrency,
+    required VoidCallback formatMondayMulligansCurrency,
+  }) {
+    final config = getResponsiveConfig(context);
     return Column(
       children: [
         Row(
@@ -648,7 +636,7 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
             Expanded(
               flex: 2,
               child: Container(
-                padding: EdgeInsets.all(isPhone ? 8 : 12),
+                padding: EdgeInsets.all(config.containerPadding),
                 decoration: BoxDecoration(
                   color: currentLeague == League.monday 
                       ? Colors.green[200] 
@@ -664,7 +652,7 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
                 child: Text(
                   currentLeague == League.monday ? 'Skats Ante' : 'Player\'s Ante',
                   style: TextStyle(
-                    fontSize: isPhone ? 14 : 16,
+                    fontSize: config.configLabelFontSize,
                     fontWeight: FontWeight.w600,
                     color: Colors.black,
                   ),
@@ -678,7 +666,7 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
             Expanded(
               flex: 1,
               child: Container(
-                height: isPhone ? 40 : 48,
+                height: config.configInputHeight,
                 decoration: BoxDecoration(
                   color: currentLeague == League.monday 
                       ? Colors.green[100] 
@@ -692,20 +680,20 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
                   ),
                 ),
                 child: TextField(
-                  controller: _anteController,
-                  focusNode: _anteFocusNode,
+                  controller: anteController,
+                  focusNode: anteFocusNode,
                   keyboardType: TextInputType.number,
                   inputFormatters: [
                     FilteringTextInputFormatter.allow(RegExp(r'[\d\$\.]')),
                   ],
                   style: TextStyle(
-                    fontSize: isPhone ? 14 : 16,
+                    fontSize: config.configLabelFontSize,
                     fontWeight: FontWeight.w600,
                     color: Colors.black,
                   ),
                   textAlign: TextAlign.center,
-                  onTap: _onAnteTap,
-                  onEditingComplete: _formatCurrency,
+                  onTap: onAnteTap,
+                  onEditingComplete: formatCurrency,
                   enabled: true,
                   decoration: const InputDecoration(
                     border: InputBorder.none,
@@ -717,14 +705,14 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
           ],
         ),
         
-        SizedBox(height: isPhone ? 12 : 16),
+        SizedBox(height: config.verticalSpacing),
         
         Row(
           children: [
             Expanded(
               flex: 2,
               child: Container(
-                padding: EdgeInsets.all(isPhone ? 8 : 12),
+                padding: EdgeInsets.all(config.containerPadding),
                 decoration: BoxDecoration(
                   color: currentLeague == League.monday 
                       ? Colors.green[200] 
@@ -740,7 +728,7 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
                 child: Text(
                   'Closest Pin',
                   style: TextStyle(
-                    fontSize: isPhone ? 14 : 16,
+                    fontSize: config.configLabelFontSize,
                     fontWeight: FontWeight.w600,
                     color: Colors.black,
                   ),
@@ -754,7 +742,7 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
             Expanded(
               flex: 1,
               child: Container(
-                height: isPhone ? 40 : 48,
+                height: config.configInputHeight,
                 decoration: BoxDecoration(
                   color: currentLeague == League.monday 
                       ? Colors.green[100] 
@@ -768,20 +756,20 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
                   ),
                 ),
                 child: TextField(
-                  controller: _closestPinController,
-                  focusNode: _closestPinFocusNode,
+                  controller: closestPinController,
+                  focusNode: closestPinFocusNode,
                   keyboardType: TextInputType.number,
                   inputFormatters: [
                     FilteringTextInputFormatter.allow(RegExp(r'[\d\$\.]')),
                   ],
                   style: TextStyle(
-                    fontSize: isPhone ? 14 : 16,
+                    fontSize: config.configLabelFontSize,
                     fontWeight: FontWeight.w600,
                     color: Colors.black,
                   ),
                   textAlign: TextAlign.center,
-                  onTap: _onClosestPinTap,
-                  onEditingComplete: _formatClosestPinCurrency,
+                  onTap: onClosestPinTap,
+                  onEditingComplete: formatClosestPinCurrency,
                   enabled: true,
                   decoration: const InputDecoration(
                     border: InputBorder.none,
@@ -794,13 +782,13 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
         ),
         
         if (currentLeague == League.monday) ...[
-          SizedBox(height: isPhone ? 8 : 12),
+          SizedBox(height: config.verticalSpacing / 2),
           Row(
             children: [
               Expanded(
                 flex: 2,
                 child: Container(
-                  padding: EdgeInsets.all(isPhone ? 8 : 12),
+                  padding: EdgeInsets.all(config.containerPadding),
                   decoration: BoxDecoration(
                     color: Colors.green[200],
                     borderRadius: BorderRadius.circular(8),
@@ -812,7 +800,7 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
                   child: Text(
                     'Mulligans',
                     style: TextStyle(
-                      fontSize: isPhone ? 14 : 16,
+                      fontSize: config.configLabelFontSize,
                       fontWeight: FontWeight.w600,
                       color: Colors.black,
                     ),
@@ -826,7 +814,7 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
               Expanded(
                 flex: 1,
                 child: Container(
-                  height: isPhone ? 40 : 48,
+                  height: config.configInputHeight,
                   decoration: BoxDecoration(
                     color: Colors.green[100],
                     borderRadius: BorderRadius.circular(8),
@@ -836,20 +824,20 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
                     ),
                   ),
                   child: TextField(
-                    controller: _mondayMulligansController,
-                    focusNode: _mondayMulligansFocusNode,
+                    controller: mondayMulligansController,
+                    focusNode: mondayMulligansFocusNode,
                     keyboardType: TextInputType.number,
                     inputFormatters: [
                       FilteringTextInputFormatter.allow(RegExp(r'[\d\$\.]')),
                     ],
                     style: TextStyle(
-                      fontSize: isPhone ? 14 : 16,
+                      fontSize: config.configLabelFontSize,
                       fontWeight: FontWeight.w600,
                       color: Colors.black,
                     ),
                     textAlign: TextAlign.center,
-                    onTap: _onMondayMulligansTap,
-                    onEditingComplete: _formatMondayMulligansCurrency,
+                    onTap: onMondayMulligansTap,
+                    onEditingComplete: formatMondayMulligansCurrency,
                     enabled: true,
                     decoration: const InputDecoration(
                       border: InputBorder.none,
@@ -863,13 +851,13 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
         ],
         
         if (currentLeague == League.wednesday) ...[
-          SizedBox(height: isPhone ? 8 : 12),
+          SizedBox(height: config.verticalSpacing / 2),
           Row(
             children: [
               Expanded(
                 flex: 2,
                 child: Container(
-                  padding: EdgeInsets.all(isPhone ? 8 : 12),
+                  padding: EdgeInsets.all(config.containerPadding),
                   decoration: BoxDecoration(
                     color: Colors.orange[200],
                     borderRadius: BorderRadius.circular(8),
@@ -881,7 +869,7 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
                   child: Text(
                     'Mulligans',
                     style: TextStyle(
-                      fontSize: isPhone ? 14 : 16,
+                      fontSize: config.configLabelFontSize,
                       fontWeight: FontWeight.w600,
                       color: Colors.black,
                     ),
@@ -895,7 +883,7 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
               Expanded(
                 flex: 1,
                 child: Container(
-                  height: isPhone ? 40 : 48,
+                  height: config.configInputHeight,
                   decoration: BoxDecoration(
                     color: Colors.orange[100],
                     borderRadius: BorderRadius.circular(8),
@@ -905,20 +893,20 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
                     ),
                   ),
                   child: TextField(
-                    controller: _newFieldController,
-                    focusNode: _newFieldFocusNode,
+                    controller: newFieldController,
+                    focusNode: newFieldFocusNode,
                     keyboardType: TextInputType.number,
                     inputFormatters: [
                       FilteringTextInputFormatter.allow(RegExp(r'[\d\$\.]')),
                     ],
                     style: TextStyle(
-                      fontSize: isPhone ? 14 : 16,
+                      fontSize: config.configLabelFontSize,
                       fontWeight: FontWeight.w600,
                       color: Colors.black,
                     ),
                     textAlign: TextAlign.center,
-                    onTap: _onNewFieldTap,
-                    onEditingComplete: _formatNewFieldCurrency,
+                    onTap: onNewFieldTap,
+                    onEditingComplete: formatNewFieldCurrency,
                     enabled: true,
                     decoration: const InputDecoration(
                       border: InputBorder.none,
@@ -934,129 +922,169 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
     );
   }
 
+  static Widget buildAdminFunctionsTablet(
+    BuildContext context, {
+    required bool isTablet10, // Keep for backward compatibility
+    required bool isTablet8,  // Keep for backward compatibility
+    required League? currentLeague,
+    required Widget Function(String, IconData, Color, VoidCallback) buildAdminButton,
+    required VoidCallback onFirebasePressed,
+  }) {
+    final config = getResponsiveConfig(context);
+    return Container(
+      padding: EdgeInsets.all(config.containerPadding),
+      decoration: BoxDecoration(
+        color: Colors.grey[300],
+        borderRadius: BorderRadius.circular(config.borderRadius),
+      ),
+      child: GridView.count(
+        shrinkWrap: true,
+        crossAxisCount: config.adminButtonCrossAxisCount,
+        mainAxisSpacing: config.adminGridSpacing,
+        crossAxisSpacing: config.adminGridSpacing,
+        childAspectRatio: config.adminButtonAspectRatio,
+        children: [
+          buildAdminButton(
+            'Firebase Upload',
+            Icons.cloud_upload,
+            Colors.red[200]!,
+            onFirebasePressed,
+          ),
+        ],
+      ),
+    );
+  }
 
-
-
-
-  Widget _buildLeagueSelectionCompact(BuildContext context) {
+  static Widget buildLeagueSelectionCompact(
+    BuildContext context, {
+    required League? currentLeague,
+    required VoidCallback selectMondayLeague,
+    required VoidCallback selectWednesdayLeague,
+  }) {
+    final config = getResponsiveConfig(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text(
+        Text(
           'Select League:',
           style: TextStyle(
-            fontSize: 12,
+            fontSize: config.titleFontSize,
             fontWeight: FontWeight.bold,
           ),
           textAlign: TextAlign.center,
         ),
-        const SizedBox(height: 6),
+        SizedBox(height: config.verticalSpacing / 2),
         
-        // Compact league buttons - horizontal layout with square aspect ratio
-        Row(
+        // Compact league buttons - stacked for narrow space
+        Column(
           children: [
-            Expanded(
-              child: Container(
-                margin: const EdgeInsets.only(right: 2),
-                child: AspectRatio(
-                  aspectRatio: 2.0,
-                  child: ElevatedButton(
-                    onPressed: selectMondayLeague,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: currentLeague == League.monday 
-                          ? Colors.green[300] 
-                          : Colors.green[100],
-                      foregroundColor: Colors.black,
-                      padding: const EdgeInsets.all(8),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(6),
-                        side: const BorderSide(
-                          color: Colors.black,
-                          width: 1,
-                        ),
-                      ),
-                    ),
-                    child: const Text(
-                      'Monday',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      textAlign: TextAlign.center,
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.only(bottom: 4),
+              child: ElevatedButton(
+                onPressed: selectMondayLeague,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: currentLeague == League.monday 
+                      ? Colors.green[300] 
+                      : Colors.green[100],
+                  foregroundColor: Colors.black,
+                  padding: EdgeInsets.all(config.containerPadding),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(config.borderRadius),
+                    side: const BorderSide(
+                      color: Colors.black,
+                      width: 1,
                     ),
                   ),
+                ),
+                child: Text(
+                  'Monday',
+                  style: TextStyle(
+                    fontSize: config.buttonFontSize,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
                 ),
               ),
             ),
             
-            Expanded(
-              child: Container(
-                margin: const EdgeInsets.only(left: 2),
-                child: AspectRatio(
-                  aspectRatio: 2.0,
-                  child: ElevatedButton(
-                    onPressed: selectWednesdayLeague,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: currentLeague == League.wednesday 
-                          ? Colors.orange[300] 
-                          : Colors.orange[100],
-                      foregroundColor: Colors.black,
-                      padding: const EdgeInsets.all(8),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(6),
-                        side: const BorderSide(
-                          color: Colors.black,
-                          width: 1,
-                        ),
-                      ),
-                    ),
-                    child: const Text(
-                      'Wednesday',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      textAlign: TextAlign.center,
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: selectWednesdayLeague,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: currentLeague == League.wednesday 
+                      ? Colors.orange[300] 
+                      : Colors.orange[100],
+                  foregroundColor: Colors.black,
+                  padding: EdgeInsets.all(config.containerPadding),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(config.borderRadius),
+                    side: const BorderSide(
+                      color: Colors.black,
+                      width: 1,
                     ),
                   ),
+                ),
+                child: Text(
+                  'Wednesday',
+                  style: TextStyle(
+                    fontSize: config.buttonFontSize,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
                 ),
               ),
             ),
           ],
         ),
         
-        if (currentLeague != null) ...[
-          const SizedBox(height: 6),
-          
-          // Compact status
-          Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: currentLeague == League.monday 
-                  ? Colors.green[300] 
-                  : Colors.orange[300],
-              borderRadius: BorderRadius.circular(4),
-              border: Border.all(
-                color: Colors.black,
-                width: 1,
-              ),
-            ),
-            child: Text(
-              currentLeague!.name.toUpperCase(),
-              style: const TextStyle(
-                fontSize: 8,
-                fontWeight: FontWeight.w600,
-                color: Colors.black,
-              ),
-              textAlign: TextAlign.center,
+        SizedBox(height: config.verticalSpacing / 2),
+        
+        // Compact status
+        Container(
+          padding: EdgeInsets.all(config.containerPadding / 2),
+          decoration: BoxDecoration(
+            color: currentLeague == League.monday 
+                ? Colors.green[300] 
+                : currentLeague == League.wednesday 
+                    ? Colors.orange[300] 
+                    : Colors.grey[200],
+            borderRadius: BorderRadius.circular(config.borderRadius / 2),
+            border: Border.all(
+              color: Colors.black,
+              width: 1,
             ),
           ),
-        ],
+          child: Text(
+            currentLeague != null 
+                ? currentLeague.name.toUpperCase()
+                : 'No League',
+            style: TextStyle(
+              fontSize: config.statusFontSize,
+              fontWeight: FontWeight.w600,
+              color: Colors.black,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ),
       ],
     );
   }
 
-  Widget _buildLeagueConfigurationCompact(BuildContext context) {
+  static Widget buildLeagueConfigurationCompact(
+    BuildContext context, {
+    required League? currentLeague,
+    required TextEditingController anteController,
+    required TextEditingController closestPinController,
+    required FocusNode anteFocusNode,
+    required FocusNode closestPinFocusNode,
+    required VoidCallback onAnteTap,
+    required VoidCallback onClosestPinTap,
+    required VoidCallback formatCurrency,
+    required VoidCallback formatClosestPinCurrency,
+  }) {
+    final config = getResponsiveConfig(context);
     return Column(
       children: [
         // Compact ante section
@@ -1065,19 +1093,19 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
             Expanded(
               flex: 2,
               child: Container(
-                padding: const EdgeInsets.all(4),
+                padding: EdgeInsets.all(config.containerPadding / 3),
                 decoration: BoxDecoration(
                   color: currentLeague == League.monday 
                       ? Colors.green[200] 
                       : currentLeague == League.wednesday 
                           ? Colors.orange[200] 
                           : Colors.grey[200],
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(config.borderRadius / 3),
                   border: Border.all(color: Colors.black, width: 1),
                 ),
                 child: Text(
                   currentLeague == League.monday ? 'Ante' : 'Ante',
-                  style: const TextStyle(fontSize: 8, fontWeight: FontWeight.w600),
+                  style: TextStyle(fontSize: config.configLabelFontSize, fontWeight: FontWeight.w600),
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -1086,25 +1114,25 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
             Expanded(
               flex: 1,
               child: Container(
-                height: 24,
+                height: config.configInputHeight / 2,
                 decoration: BoxDecoration(
                   color: currentLeague == League.monday 
                       ? Colors.green[100] 
                       : currentLeague == League.wednesday 
                           ? Colors.orange[100] 
                           : Colors.grey[100],
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(config.borderRadius / 3),
                   border: Border.all(color: Colors.black, width: 1),
                 ),
                 child: TextField(
-                  controller: _anteController,
-                  focusNode: _anteFocusNode,
+                  controller: anteController,
+                  focusNode: anteFocusNode,
                   keyboardType: TextInputType.number,
                   inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[\d\$\.]'))],
-                  style: const TextStyle(fontSize: 8, fontWeight: FontWeight.w600),
+                  style: TextStyle(fontSize: config.configLabelFontSize, fontWeight: FontWeight.w600),
                   textAlign: TextAlign.center,
-                  onTap: _onAnteTap,
-                  onEditingComplete: _formatCurrency,
+                  onTap: onAnteTap,
+                  onEditingComplete: formatCurrency,
                   decoration: const InputDecoration(
                     border: InputBorder.none,
                     contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 4),
@@ -1115,7 +1143,7 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
           ],
         ),
         
-        const SizedBox(height: 4),
+        SizedBox(height: config.verticalSpacing / 3),
         
         // Compact closest pin section
         Row(
@@ -1123,17 +1151,17 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
             Expanded(
               flex: 2,
               child: Container(
-                padding: const EdgeInsets.all(4),
+                padding: EdgeInsets.all(config.containerPadding / 3),
                 decoration: BoxDecoration(
                   color: currentLeague == League.monday 
                       ? Colors.green[200] 
                       : currentLeague == League.wednesday 
                           ? Colors.orange[200] 
                           : Colors.grey[200],
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(config.borderRadius / 3),
                   border: Border.all(color: Colors.black, width: 1),
                 ),
-                child: const Text(
+                child: Text(
                   'Pin',
                   style: TextStyle(fontSize: 8, fontWeight: FontWeight.w600),
                   textAlign: TextAlign.center,
@@ -1144,25 +1172,25 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
             Expanded(
               flex: 1,
               child: Container(
-                height: 24,
+                height: config.configInputHeight / 2,
                 decoration: BoxDecoration(
                   color: currentLeague == League.monday 
                       ? Colors.green[100] 
                       : currentLeague == League.wednesday 
                           ? Colors.orange[100] 
                           : Colors.grey[100],
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(config.borderRadius / 3),
                   border: Border.all(color: Colors.black, width: 1),
                 ),
                 child: TextField(
-                  controller: _closestPinController,
-                  focusNode: _closestPinFocusNode,
+                  controller: closestPinController,
+                  focusNode: closestPinFocusNode,
                   keyboardType: TextInputType.number,
                   inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[\d\$\.]'))],
-                  style: const TextStyle(fontSize: 8, fontWeight: FontWeight.w600),
+                  style: TextStyle(fontSize: config.configLabelFontSize, fontWeight: FontWeight.w600),
                   textAlign: TextAlign.center,
-                  onTap: _onClosestPinTap,
-                  onEditingComplete: _formatClosestPinCurrency,
+                  onTap: onClosestPinTap,
+                  onEditingComplete: formatClosestPinCurrency,
                   decoration: const InputDecoration(
                     border: InputBorder.none,
                     contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 4),
@@ -1176,51 +1204,19 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
     );
   }
 
-  Widget _buildCompactAdminButton(String title, IconData icon, Color bgColor, VoidCallback onPressed) {
+  static Widget buildCompactAdminButton(String title, IconData icon, Color bgColor, VoidCallback onPressed, [BuildContext? context]) {
+    final config = context != null ? getResponsiveConfig(context) : null;
     return ElevatedButton(
       onPressed: onPressed,
       style: ElevatedButton.styleFrom(
         backgroundColor: bgColor,
         foregroundColor: Colors.black,
-        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(6),
-          side: const BorderSide(color: Colors.black, width: 1),
+        padding: EdgeInsets.symmetric(
+          vertical: config?.containerPadding ?? 4, 
+          horizontal: config?.containerPadding ?? 2
         ),
-      ),
-      child: FittedBox(
-        fit: BoxFit.scaleDown,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 14),
-            const SizedBox(height: 1),
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 8,
-                fontWeight: FontWeight.w600,
-              ),
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAdminButton(String title, IconData icon, Color bgColor, VoidCallback onPressed) {
-    return ElevatedButton(
-      onPressed: onPressed,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: bgColor,
-        foregroundColor: Colors.black,
-        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(config?.borderRadius ?? 6),
           side: const BorderSide(color: Colors.black, width: 1),
         ),
       ),
@@ -1228,12 +1224,49 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, size: 18),
-          const SizedBox(height: 2),
+          Icon(icon, size: config?.adminIconSize ?? 14),
+          SizedBox(height: config?.verticalSpacing ?? 1),
           Text(
             title,
-            style: const TextStyle(
-              fontSize: 10,
+            style: TextStyle(
+              fontSize: config?.adminButtonFontSize ?? 8,
+              fontWeight: FontWeight.w600,
+            ),
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+
+  static Widget buildAdminButton(String title, IconData icon, Color bgColor, VoidCallback onPressed, [BuildContext? context]) {
+    final config = context != null ? getResponsiveConfig(context) : null;
+    return ElevatedButton(
+      onPressed: onPressed,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: bgColor,
+        foregroundColor: Colors.black,
+        padding: EdgeInsets.symmetric(
+          vertical: config?.containerPadding ?? 8, 
+          horizontal: config?.containerPadding ?? 6
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(config?.borderRadius ?? 8),
+          side: const BorderSide(color: Colors.black, width: 1),
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: config?.adminIconSize ?? 18),
+          SizedBox(height: config?.verticalSpacing ?? 2),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: config?.adminButtonFontSize ?? 10,
               fontWeight: FontWeight.w600,
             ),
             textAlign: TextAlign.center,
