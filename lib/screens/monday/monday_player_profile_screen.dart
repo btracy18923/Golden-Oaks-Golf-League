@@ -178,8 +178,8 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
         'email': _emailController.text.trim(),
       });
       
-      _clearForm();
       _refreshPlayerList();
+      _clearForm();
       _showSuccessDialog('Player updated successfully!');
     } catch (e) {
       _showErrorDialog('Error updating player: $e');

@@ -73,6 +73,7 @@ class PlayerProfileService {
                 onFieldSubmitted: (_) {
                   if (onUpdatePlayer != null) {
                     onUpdatePlayer();
+                    FocusScope.of(context).unfocus();
                   } else {
                     FocusScope.of(context).unfocus();
                   }
@@ -115,8 +116,13 @@ class PlayerProfileService {
                     onFieldSubmitted: (_) {
                       if (onUpdatePlayer != null) {
                         onUpdatePlayer();
-                      } else {
                         FocusScope.of(context).unfocus();
+                      } else {
+                        if (nextFocus != null) {
+                          FocusScope.of(context).requestFocus(nextFocus);
+                        } else {
+                          FocusScope.of(context).unfocus();
+                        }
                       }
                     },
                   ),
@@ -168,12 +174,15 @@ class PlayerProfileService {
                   ),
                   style: TextStyle(fontSize: fontSize, height: 1.2),
                   onFieldSubmitted: (_) {
-                    if (nextFocus != null) {
-                      FocusScope.of(context).requestFocus(nextFocus);
-                    } else if (onUpdatePlayer != null) {
+                    if (onUpdatePlayer != null) {
                       onUpdatePlayer();
-                    } else {
                       FocusScope.of(context).unfocus();
+                    } else {
+                      if (nextFocus != null) {
+                        FocusScope.of(context).requestFocus(nextFocus);
+                      } else {
+                        FocusScope.of(context).unfocus();
+                      }
                     }
                   },
                 ),
@@ -218,11 +227,14 @@ class PlayerProfileService {
                 contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 12),
               ),
               onFieldSubmitted: (_) {
-                if (nextFocus != null) {
-                  FocusScope.of(context).requestFocus(nextFocus);
+                if (onUpdatePlayer != null) {
+                  onUpdatePlayer();
+                  FocusScope.of(context).unfocus();
                 } else {
-                  if (onUpdatePlayer != null) {
-                    onUpdatePlayer();
+                  if (nextFocus != null) {
+                    FocusScope.of(context).requestFocus(nextFocus);
+                  } else {
+                    FocusScope.of(context).unfocus();
                   }
                 }
               },

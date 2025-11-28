@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'dart:async';
 import '../../services/database_helper.dart';
 import '../../models/league.dart';
-import '../../services/UI/custom_keypad_service.dart';
 
 class MondayGolfCourseScreen extends StatefulWidget {
   final League? league;
@@ -35,11 +34,6 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
   final FocusNode _slopeFocus = FocusNode();
   final FocusNode _travelTimeFocus = FocusNode();
   
-  // Custom keypad controller
-  late CustomKeypadController _keypadController;
-  
-  // Currently focused field for numeric input
-  String? _currentEditField; // 'holes', 'slope'
   
   // Auto-save timer
   Timer? _autoSaveTimer;
@@ -49,7 +43,6 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
     super.initState();
     _setOrientation();
     _refreshCourseList();
-    _keypadController = CustomKeypadService.createController();
     _setupAutoSaveListeners();
   }
 
@@ -203,31 +196,6 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
     }
   }
 
-  Future<void> _updateCourse() async {
-    if (_selectedCourse == null) {
-      _showErrorDialog('Please select a course to update');
-      return;
-    }
-    
-    if (!_validateForm()) return;
-    
-    try {
-      await _databaseHelper.updateGolfCourse(_selectedCourse!['id'], {
-        'name': _nameController.text.trim(),
-        'phone': _phoneController.text.trim(),
-        'holes': int.tryParse(_holesController.text.trim()),
-        'tees': _teesController.text.trim(),
-        'slope': int.tryParse(_slopeController.text.trim()),
-        'travel_time': _travelTimeController.text.trim(),
-      });
-      
-      _clearForm();
-      _refreshCourseList();
-      _showSuccessDialog('Course updated successfully!');
-    } catch (e) {
-      _showErrorDialog('Error updating course: $e');
-    }
-  }
 
   Future<void> _deleteCourse() async {
     if (_selectedCourse == null) {
@@ -324,10 +292,8 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
                 'zip': zipController.text.trim(),
                 'website': websiteController.text.trim(),
               });
-              if (mounted) {
-                Navigator.of(context).pop();
-                _refreshCourseList();
-              }
+              Navigator.of(context).pop();
+              _refreshCourseList();
             },
             child: Text(
               'Save',
@@ -388,24 +354,6 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
     }
   }
 
-  Future<void> _updateAllPar3sTo4() async {
-    try {
-      final courses = await _databaseHelper.getAllGolfCourses();
-      int updatedCount = 0;
-      
-      for (final course in courses) {
-        if (course['holes'] == 18) {
-          await _databaseHelper.updateGolfCourse(course['id'], {'holes': 4});
-          updatedCount++;
-        }
-      }
-      
-      await _refreshCourseList();
-      _showSuccessDialog('Updated $updatedCount courses: Par3s changed from 18 to 4');
-    } catch (e) {
-      _showErrorDialog('Error updating Par3s: $e');
-    }
-  }
 
   void _showErrorDialog(String message) {
     showDialog(
@@ -446,7 +394,7 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
     final fontSize = isPhone ? 12.0 : 14.0;
     
     return Padding(
-      padding: EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
           SizedBox(
@@ -489,17 +437,6 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
   }
 
   Widget _buildCourseTable() {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isSmallTablet = screenWidth >= 600 && screenWidth < 900;
-    
-    // Adjust column widths based on screen size - expand to fill available space
-    final availableWidth = screenWidth * (isSmallTablet ? 0.65 : 0.70) - 60; // Account for padding and borders
-    final nameWidth = availableWidth * 0.31;
-    final phoneWidth = availableWidth * 0.27;
-    final par3Width = availableWidth * 0.14;
-    final teesWidth = availableWidth * 0.16;
-    final travelWidth = availableWidth * 0.12;
-    
     return Container(
       decoration: BoxDecoration(
         border: Border.all(color: Colors.grey),
@@ -512,16 +449,16 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
             height: 40,
             decoration: BoxDecoration(
               color: Colors.grey[200],
-              border: Border(bottom: BorderSide(color: Colors.grey)),
+              border: const Border(bottom: BorderSide(color: Colors.grey)),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                _buildHeaderCell('Name', nameWidth, leftAlign: true),
-                _buildHeaderCell('Phone', phoneWidth),
-                _buildHeaderCell('Par3s', par3Width),
-                _buildHeaderCell('Tees', teesWidth),
-                _buildHeaderCell('Travel', travelWidth),
+                Expanded(flex: 31, child: _buildHeaderCellExpanded('Name', leftAlign: true)),
+                Expanded(flex: 27, child: _buildHeaderCellExpanded('Phone')),
+                Expanded(flex: 14, child: _buildHeaderCellExpanded('Par3s')),
+                Expanded(flex: 16, child: _buildHeaderCellExpanded('Tees')),
+                Expanded(flex: 12, child: _buildHeaderCellExpanded('Travel')),
               ],
             ),
           ),
@@ -541,7 +478,7 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
                       color: isSelected ? Colors.lightGreen[200] : Colors.transparent,
                       border: Border(bottom: BorderSide(color: Colors.grey[300]!)),
                     ),
-                    child: _buildTabletCourseRow(course, nameWidth, phoneWidth, par3Width, teesWidth, travelWidth),
+                    child: _buildTabletCourseRowExpanded(course),
                   ),
                 );
               },
@@ -553,6 +490,18 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
   }
   
   
+  Widget _buildTabletCourseRowExpanded(Map<String, dynamic> course) {
+    return Row(
+      children: [
+        Expanded(flex: 31, child: _buildDataCellExpanded(course['name'] ?? '', leftAlign: true)),
+        Expanded(flex: 27, child: _buildDataCellExpanded(_formatPhoneNumber(course['phone'] ?? ''))),
+        Expanded(flex: 14, child: _buildDataCellExpanded(course['holes']?.toString() ?? '')),
+        Expanded(flex: 16, child: _buildDataCellExpanded(course['tees'] ?? '')),
+        Expanded(flex: 12, child: _buildDataCellExpanded(course['travel_time'] ?? '')),
+      ],
+    );
+  }
+
   Widget _buildTabletCourseRow(Map<String, dynamic> course, double nameWidth, double phoneWidth, double par3Width, double teesWidth, double travelWidth) {
     return Row(
       children: [
@@ -671,6 +620,62 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
     );
   }
 
+  Widget _buildHeaderCellExpanded(String text, {bool leftAlign = false}) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallTablet = screenWidth >= 600 && screenWidth < 900;
+    final fontSize = isSmallTablet ? 10.0 : 12.0;
+    
+    return Container(
+      height: 40,
+      padding: EdgeInsets.symmetric(horizontal: isSmallTablet ? 4 : 8),
+      child: leftAlign 
+        ? Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              text,
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: fontSize),
+              overflow: TextOverflow.ellipsis,
+            ),
+          )
+        : Center(
+            child: Text(
+              text,
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: fontSize),
+              textAlign: TextAlign.center,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+    );
+  }
+
+  Widget _buildDataCellExpanded(String text, {bool leftAlign = false}) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallTablet = screenWidth >= 600 && screenWidth < 900;
+    final fontSize = isSmallTablet ? 10.0 : 12.0;
+    
+    return Container(
+      height: 40,
+      padding: EdgeInsets.symmetric(horizontal: isSmallTablet ? 4 : 8),
+      child: leftAlign 
+        ? Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              text,
+              style: TextStyle(fontSize: fontSize),
+              overflow: TextOverflow.ellipsis,
+            ),
+          )
+        : Center(
+            child: Text(
+              text,
+              style: TextStyle(fontSize: fontSize),
+              textAlign: TextAlign.center,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+    );
+  }
+
   Widget _buildDataCell(String text, double width, {bool leftAlign = false}) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallTablet = screenWidth >= 600 && screenWidth < 900;
@@ -701,41 +706,11 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
   }
 
 
-  Widget _buildButtonCell(Map<String, dynamic> course, double width) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isSmallTablet = screenWidth >= 600 && screenWidth < 900;
-    final buttonSize = isSmallTablet ? 28.0 : 32.0;
-    final fontSize = isSmallTablet ? 10.0 : 11.0;
-    
-    return Container(
-      width: width,
-      height: 40,
-      padding: const EdgeInsets.all(4),
-      child: Center(
-        child: ElevatedButton(
-          onPressed: () => _showCourseDetails(course),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.lightBlue[200],
-            foregroundColor: Colors.black,
-            minimumSize: Size(width - 8, buttonSize),
-            padding: EdgeInsets.symmetric(horizontal: isSmallTablet ? 4 : 8),
-          ),
-          child: Text(
-            isSmallTablet ? 'Info' : 'Details',
-            style: TextStyle(fontSize: fontSize),
-          ),
-        ),
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
-    final screenHeight = MediaQuery.of(context).size.height;
     final isPhone = screenWidth < 600;
-    final isSmallTablet = screenWidth >= 600 && screenWidth < 900;
-    final isLargeTablet = screenWidth >= 900;
     
     return Scaffold(
       appBar: AppBar(
@@ -855,7 +830,7 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.3),
+            color: Colors.grey.withValues(alpha: 0.3),
             spreadRadius: 1,
             blurRadius: 3,
             offset: const Offset(0, -2),
