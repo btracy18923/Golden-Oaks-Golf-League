@@ -32,3 +32,7 @@ Firebase browser key: AIzaSyCNbOi-C2QsZIa9H6XTzQw62BNVNx5_nkQ
 - Web Interface: Can read from Firebase (via your Netlify site)
 
 6.5" phone resolution: 720 x 1600 px; 412 x 915 dp
+8" Fire Tablet: 800 x 1280 px
+10.2" tablet: 800 x 1280
+
+

@@ -71,28 +71,48 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
     final isLandscape = screenSize.width > screenSize.height;
-    final is6InchPhone = isLandscape && screenSize.width <= 900;
+    
+    // Define device breakpoints
+    final is6InchPhone = isLandscape && screenSize.width <= 900;  // 6.5" phone in landscape
+    final is8InchTablet = isLandscape && screenSize.width > 900 && screenSize.width <= 1200;  // 8" tablet
+    final is10InchTablet = isLandscape && screenSize.width > 1200;  // 10" tablet
+    
+    // Responsive sizing based on device type
+    final double basePadding = is6InchPhone ? 8.0 : (is8InchTablet ? 12.0 : 16.0);
+    final double contentPadding = is6InchPhone ? 12.0 : (is8InchTablet ? 16.0 : 20.0);
+    final double titleSize = is6InchPhone ? 20 : (is8InchTablet ? 22 : 24);
+    final double iconSize = is6InchPhone ? 18 : (is8InchTablet ? 20 : 22);
+    final double buttonHeight = is6InchPhone ? 12 : (is8InchTablet ? 14 : 16);
+    final double buttonFontSize = is6InchPhone ? 14 : (is8InchTablet ? 15 : 16);
+    
+    // Responsive button width
+    final double buttonWidth = is6InchPhone ? screenSize.width * 0.4 : 
+                              (is8InchTablet ? screenSize.width * 0.35 : screenSize.width * 0.3);
     
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Monday League Results',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: is6InchPhone ? 18 : (is8InchTablet ? 20 : 22),
+          ),
         ),
         backgroundColor: Colors.green[700],
         foregroundColor: Colors.white,
         centerTitle: true,
-        automaticallyImplyLeading: false, // Remove back button
+        automaticallyImplyLeading: false,
+        toolbarHeight: is6InchPhone ? 48 : (is8InchTablet ? 56 : 64),
       ),
       body: Padding(
-        padding: EdgeInsets.all(is6InchPhone ? 8.0 : 16.0),
+        padding: EdgeInsets.all(basePadding),
         child: Column(
           children: [
             // Main content area with white background
             Expanded(
               child: Container(
-                padding: EdgeInsets.all(is6InchPhone ? 12.0 : 16.0),
+                padding: EdgeInsets.all(contentPadding),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(8.0),
@@ -107,14 +127,14 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
                         child: Text(
                           'Game Session Summary',
                           style: TextStyle(
-                            fontSize: is6InchPhone ? 20 : 24,
+                            fontSize: titleSize,
                             fontWeight: FontWeight.bold,
                             color: Colors.green[800],
                           ),
                         ),
                       ),
                       
-                      SizedBox(height: is6InchPhone ? 16 : 24),
+                      SizedBox(height: basePadding * 2),
                       
                       // Single unified section with all data
                       _buildDataSection(
@@ -122,6 +142,8 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
                         _buildUnifiedData(),
                         Icons.summarize,
                         is6InchPhone,
+                        is8InchTablet,
+                        iconSize,
                       ),
                     ],
                   ),
@@ -129,42 +151,43 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
               ),
             ),
             
-            SizedBox(height: is6InchPhone ? 8 : 16),
+            SizedBox(height: basePadding),
             
             // Return to Main Menu Button
             Align(
               alignment: Alignment.centerRight,
               child: SizedBox(
-                width: screenSize.width * 0.3,
+                width: buttonWidth,
                 child: ElevatedButton(
-                onPressed: _returnToMainMenu,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue[600],
-                  foregroundColor: Colors.white,
-                  padding: EdgeInsets.symmetric(
-                    vertical: is6InchPhone ? 12 : 16,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    side: const BorderSide(color: Colors.black, width: 1),
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.home, size: 20),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Return to Main Menu',
-                      style: TextStyle(
-                        fontSize: is6InchPhone ? 14 : 16,
-                        fontWeight: FontWeight.bold,
-                      ),
+                  onPressed: _returnToMainMenu,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue[600],
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(vertical: buttonHeight),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      side: const BorderSide(color: Colors.black, width: 1),
                     ),
-                  ],
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.home, size: iconSize),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          'Return to Main Menu',
+                          style: TextStyle(
+                            fontSize: buttonFontSize,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
             ),
           ],
         ),
@@ -173,10 +196,14 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
   }
 
   /// Builds a data section with title, icon, and content
-  Widget _buildDataSection(String title, Widget content, IconData icon, bool isCompact) {
+  Widget _buildDataSection(String title, Widget content, IconData icon, bool is6InchPhone, bool is8InchTablet, double iconSize) {
+    final double sectionPadding = is6InchPhone ? 12 : (is8InchTablet ? 16 : 20);
+    final double titleSize = is6InchPhone ? 16 : (is8InchTablet ? 18 : 20);
+    final double spacingHeight = is6InchPhone ? 8 : (is8InchTablet ? 12 : 16);
+    
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.all(isCompact ? 12 : 16),
+      padding: EdgeInsets.all(sectionPadding),
       decoration: BoxDecoration(
         color: Colors.green[50],
         borderRadius: BorderRadius.circular(8),
@@ -187,19 +214,19 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
         children: [
           Row(
             children: [
-              Icon(icon, color: Colors.green[700], size: isCompact ? 18 : 20),
+              Icon(icon, color: Colors.green[700], size: iconSize),
               const SizedBox(width: 8),
               Text(
                 title,
                 style: TextStyle(
-                  fontSize: isCompact ? 16 : 18,
+                  fontSize: titleSize,
                   fontWeight: FontWeight.bold,
                   color: Colors.green[800],
                 ),
               ),
             ],
           ),
-          SizedBox(height: isCompact ? 8 : 12),
+          SizedBox(height: spacingHeight),
           content,
         ],
       ),
@@ -257,52 +284,118 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Single row with all three money amounts
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Players Ante: \$${_retentionService.playersAnte?.toStringAsFixed(2) ?? 'N/A'}',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
+        // Responsive layout for money amounts
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final screenSize = MediaQuery.of(context).size;
+            final is6InchPhone = screenSize.width <= 900;
+            
+            final double fontSize = is6InchPhone ? 12 : 14;
+            
+            if (is6InchPhone) {
+              // Stack vertically on small screens for better readability
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 2),
+                    child: Text(
+                      'Players Ante: \$${_retentionService.playersAnte?.toStringAsFixed(2) ?? 'N/A'}',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                        fontSize: fontSize,
+                      ),
+                    ),
                   ),
-                ),
-              ),
-              Expanded(
-                child: Text(
-                  'Closest Pin: \$${_retentionService.closestPinAmount?.toStringAsFixed(2) ?? 'N/A'}',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 2),
+                    child: Text(
+                      'Closest Pin: \$${_retentionService.closestPinAmount?.toStringAsFixed(2) ?? 'N/A'}',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                        fontSize: fontSize,
+                      ),
+                    ),
                   ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-              Expanded(
-                child: Text(
-                  'Mulligan: \$${_retentionService.mulliganAmount?.toStringAsFixed(2) ?? 'N/A'}',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 2),
+                    child: Text(
+                      'Mulligan: \$${_retentionService.mulliganAmount?.toStringAsFixed(2) ?? 'N/A'}',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                        fontSize: fontSize,
+                      ),
+                    ),
                   ),
-                  textAlign: TextAlign.end,
+                ],
+              );
+            } else {
+              // Single row layout for larger screens
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Players Ante: \$${_retentionService.playersAnte?.toStringAsFixed(2) ?? 'N/A'}',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                          fontSize: fontSize,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: Text(
+                        'Closest Pin: \$${_retentionService.closestPinAmount?.toStringAsFixed(2) ?? 'N/A'}',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                          fontSize: fontSize,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                    Expanded(
+                      child: Text(
+                        'Mulligan: \$${_retentionService.mulliganAmount?.toStringAsFixed(2) ?? 'N/A'}',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                          fontSize: fontSize,
+                        ),
+                        textAlign: TextAlign.end,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
-          ),
+              );
+            }
+          },
         ),
         // Golf Course row
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 4),
-          child: Text(
-            'Golf Course: ${_retentionService.selectedGolfCourse ?? 'Not Selected'}',
-            style: const TextStyle(
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
-            ),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final screenSize = MediaQuery.of(context).size;
+              final is6InchPhone = screenSize.width <= 900;
+              final double fontSize = is6InchPhone ? 12 : 14;
+              
+              return Text(
+                'Golf Course: ${_retentionService.selectedGolfCourse ?? 'Not Selected'}',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                  fontSize: fontSize,
+                ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+              );
+            },
           ),
         ),
       ],
@@ -480,54 +573,106 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'SKAT Winners: $playersWithMoney     Skat Value: \$${skatValue.toStringAsFixed(2)}',
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: Colors.black87,
-          ),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final screenSize = MediaQuery.of(context).size;
+            final is6InchPhone = screenSize.width <= 900;
+            final double fontSize = is6InchPhone ? 14 : 16;
+            
+            if (is6InchPhone) {
+              // Stack vertically on small screens
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'SKAT Winners: $playersWithMoney',
+                    style: TextStyle(
+                      fontSize: fontSize,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  Text(
+                    'Skat Value: \$${skatValue.toStringAsFixed(2)}',
+                    style: TextStyle(
+                      fontSize: fontSize,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ],
+              );
+            } else {
+              // Single row for larger screens
+              return Text(
+                'SKAT Winners: $playersWithMoney     Skat Value: \$${skatValue.toStringAsFixed(2)}',
+                style: TextStyle(
+                  fontSize: fontSize,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                ),
+              );
+            }
+          },
         ),
         const SizedBox(height: 8),
         
-        // Table
-        Table(
-          border: TableBorder.all(color: Colors.grey[400]!, width: 1),
-          columnWidths: const {
-            0: FlexColumnWidth(2), // Name
-            1: FlexColumnWidth(1), // SK#
-            2: FlexColumnWidth(1), // Skats
-            3: FlexColumnWidth(1), // Diff
-            4: FlexColumnWidth(1), // Money
-          },
-          children: [
-            // Header row
-            TableRow(
-              decoration: BoxDecoration(color: Colors.grey[200]),
-              children: [
-                _buildTableCell('Player', isHeader: true, isCompact: false),
-                _buildTableCell('SK#', isHeader: true, isCompact: false),
-                _buildTableCell('Skats', isHeader: true, isCompact: false),
-                _buildTableCell('Diff', isHeader: true, isCompact: false),
-                _buildTableCell('\$\$\$', isHeader: true, isCompact: false),
-              ],
-            ),
+        // Table with responsive column widths
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final screenSize = MediaQuery.of(context).size;
+            final is6InchPhone = screenSize.width <= 900;
             
-            // Player data rows
-            ...allPlayers.map((player) => TableRow(
+            // Adjust column widths for smaller screens
+            final Map<int, TableColumnWidth> columnWidths = is6InchPhone 
+              ? {
+                  0: const FlexColumnWidth(3), // Name - wider on small screens
+                  1: const FlexColumnWidth(1), // SK#
+                  2: const FlexColumnWidth(1), // Skats
+                  3: const FlexColumnWidth(1), // Diff
+                  4: const FlexColumnWidth(1.5), // Money - slightly wider
+                }
+              : {
+                  0: const FlexColumnWidth(2), // Name
+                  1: const FlexColumnWidth(1), // SK#
+                  2: const FlexColumnWidth(1), // Skats
+                  3: const FlexColumnWidth(1), // Diff
+                  4: const FlexColumnWidth(1), // Money
+                };
+            
+            return Table(
+              border: TableBorder.all(color: Colors.grey[400]!, width: 1),
+              columnWidths: columnWidths,
               children: [
-                _buildTableCell(player.name, isCompact: false),
-                _buildTableCell(player.skNumber, isCompact: false),
-                _buildTableCell(player.skats.isEmpty ? '-' : player.skats, isCompact: false),
-                _buildTableCell(player.diff.isEmpty ? '-' : player.diff, isCompact: false),
-                _buildTableCell(
-                  player.money.isEmpty ? '-' : player.money, 
-                  isCompact: false,
-                  isMoneyColumn: true,
+                // Header row
+                TableRow(
+                  decoration: BoxDecoration(color: Colors.grey[200]),
+                  children: [
+                    _buildTableCell('Player', isHeader: true, isCompact: false),
+                    _buildTableCell('SK#', isHeader: true, isCompact: false),
+                    _buildTableCell('Skats', isHeader: true, isCompact: false),
+                    _buildTableCell('Diff', isHeader: true, isCompact: false),
+                    _buildTableCell('\$\$\$', isHeader: true, isCompact: false),
+                  ],
                 ),
+                
+                // Player data rows
+                ...allPlayers.map((player) => TableRow(
+                  children: [
+                    _buildTableCell(player.name, isCompact: false),
+                    _buildTableCell(player.skNumber, isCompact: false),
+                    _buildTableCell(player.skats.isEmpty ? '-' : player.skats, isCompact: false),
+                    _buildTableCell(player.diff.isEmpty ? '-' : player.diff, isCompact: false),
+                    _buildTableCell(
+                      player.money.isEmpty ? '-' : player.money, 
+                      isCompact: false,
+                      isMoneyColumn: true,
+                    ),
+                  ],
+                )).toList(),
               ],
-            )).toList(),
-          ],
+            );
+          },
         ),
       ],
     );
@@ -621,17 +766,27 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
 
   /// Builds a table cell with proper styling
   Widget _buildTableCell(String text, {bool isHeader = false, bool isCompact = false, bool isMoneyColumn = false}) {
+    final screenSize = MediaQuery.of(context).size;
+    final is6InchPhone = screenSize.width <= 900;
+    final is8InchTablet = screenSize.width > 900 && screenSize.width <= 1200;
+    
+    // Responsive font sizes for table cells
+    final double fontSize = is6InchPhone ? 9 : (is8InchTablet ? 11 : 12);
+    final double cellPadding = is6InchPhone ? 4 : (is8InchTablet ? 6 : 8);
+    
     return Padding(
-      padding: EdgeInsets.all(isCompact ? 6 : 8),
+      padding: EdgeInsets.all(cellPadding),
       child: Text(
         text,
         style: TextStyle(
-          fontSize: isCompact ? 10 : 12,
+          fontSize: fontSize,
           fontWeight: isHeader ? FontWeight.bold : FontWeight.normal,
           color: isMoneyColumn && text.contains('\$') ? Colors.green[700] : 
                  isHeader ? Colors.black87 : Colors.black,
         ),
         textAlign: isHeader || isMoneyColumn ? TextAlign.center : TextAlign.left,
+        overflow: TextOverflow.ellipsis,
+        maxLines: isHeader ? 2 : 1,
       ),
     );
   }
@@ -729,12 +884,49 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
               color: Colors.orange[100],
               border: Border(bottom: BorderSide(color: Colors.grey[400]!)),
             ),
-            child: const Row(
-              children: [
-                Expanded(flex: 2, child: Text('Closest Pin Winners', style: TextStyle(fontWeight: FontWeight.bold))),
-                Expanded(flex: 1, child: Text('Pins Won', style: TextStyle(fontWeight: FontWeight.bold), textAlign: TextAlign.center)),
-                Expanded(flex: 1, child: Text('Winnings', style: TextStyle(fontWeight: FontWeight.bold), textAlign: TextAlign.center)),
-              ],
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final screenSize = MediaQuery.of(context).size;
+                final is6InchPhone = screenSize.width <= 900;
+                final double fontSize = is6InchPhone ? 12 : 14;
+                
+                return Row(
+                  children: [
+                    Expanded(
+                      flex: is6InchPhone ? 3 : 2, 
+                      child: Text(
+                        'Closest Pin Winners', 
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: fontSize,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      flex: 1, 
+                      child: Text(
+                        'Pins Won', 
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: fontSize,
+                        ), 
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                    Expanded(
+                      flex: 1, 
+                      child: Text(
+                        'Winnings', 
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: fontSize,
+                        ), 
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
           ),
           ...winners.map((winner) => Container(
@@ -742,16 +934,45 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
             decoration: BoxDecoration(
               border: Border(bottom: BorderSide(color: Colors.grey[300]!, width: 0.5)),
             ),
-            child: Row(
-              children: [
-                Expanded(flex: 2, child: Text(winner['name'] as String)),
-                Expanded(flex: 1, child: Text('${winner['pins']}', textAlign: TextAlign.center)),
-                Expanded(flex: 1, child: Text(
-                  '\$${(winner['winnings'] as double).round()}', 
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.green[700], fontWeight: FontWeight.w600),
-                )),
-              ],
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final screenSize = MediaQuery.of(context).size;
+                final is6InchPhone = screenSize.width <= 900;
+                final double fontSize = is6InchPhone ? 11 : 13;
+                
+                return Row(
+                  children: [
+                    Expanded(
+                      flex: is6InchPhone ? 3 : 2, 
+                      child: Text(
+                        winner['name'] as String,
+                        style: TextStyle(fontSize: fontSize),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Expanded(
+                      flex: 1, 
+                      child: Text(
+                        '${winner['pins']}', 
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: fontSize),
+                      ),
+                    ),
+                    Expanded(
+                      flex: 1, 
+                      child: Text(
+                        '\$${(winner['winnings'] as double).round()}', 
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.green[700], 
+                          fontWeight: FontWeight.w600,
+                          fontSize: fontSize,
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
           )).toList(),
         ],

@@ -231,8 +231,8 @@ class MainMenuResponsiveConfig {
 
 class MainMenuUIService {
   // Device breakpoints based on screen width
-  static const double _phoneMaxWidth = 800;      // 6.5" phones
-  static const double _tabletSmallMaxWidth = 1000; // 8" tablets
+  static const double _phoneMaxWidth = 750;      // 6.5" phones
+  static const double _tabletSmallMaxWidth = 830; // 8" tablets
   
   /// Determines the device type and responsive configuration
   static MainMenuResponsiveConfig getResponsiveConfig(BuildContext context) {

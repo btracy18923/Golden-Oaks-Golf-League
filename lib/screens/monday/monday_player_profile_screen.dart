@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../services/database_helper.dart';
 import '../../models/league.dart';
+import '../../services/UI/player_profile_service.dart';
 
 class MondayPlayerProfileScreen extends StatefulWidget {
   final League? league;
@@ -253,436 +254,56 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
   }
 
   Widget _buildCompactFormField(String label, TextEditingController controller, FocusNode focusNode, FocusNode? nextFocus, {TextInputType? keyboardType, List<TextInputFormatter>? inputFormatters}) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
-    final is6InchPhoneLandscape = isLandscape && screenWidth <= 900;
-    
-    // Convert long labels to short labels for landscape mode
-    String displayLabel = label;
-    if (is6InchPhoneLandscape) {
-      if (label == 'First Name') displayLabel = 'First';
-      else if (label == 'Last Name') displayLabel = 'Last';
-      else if (label == 'Cell Phone') displayLabel = 'Phone';
-      else if (label == 'SKAT#') displayLabel = 'SKAT#';
-    }
-    
-    if (is6InchPhoneLandscape) {
-      // Special layout for Email field in landscape mode
-      if (label == 'Email') {
-        return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 2),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Email:',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 10),
-              ),
-              const SizedBox(height: 2),
-              SizedBox(
-                height: 28,
-                child: TextFormField(
-                  controller: controller,
-                  focusNode: focusNode,
-                  keyboardType: keyboardType,
-                  inputFormatters: inputFormatters,
-                  decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
-                    isDense: true,
-                    contentPadding: EdgeInsets.only(left: 6, right: 6, top: 2, bottom: 10),
-                  ),
-                  style: const TextStyle(fontSize: 9, height: 1.0),
-                  onFieldSubmitted: (_) {
-                    if (_selectedPlayer != null) {
-                      _updatePlayer();
-                    } else {
-                      FocusScope.of(context).unfocus();
-                    }
-                  },
-                ),
-              ),
-            ],
-          ),
-        );
-      } else {
-        // Horizontal layout for other fields in landscape mode
-        return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 2),
-          child: Row(
-            children: [
-              SizedBox(
-                width: 60, // Fixed width for label
-                child: Text(
-                  displayLabel == 'SKAT#' ? displayLabel : '$displayLabel:',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 10),
-                ),
-              ),
-              const SizedBox(width: 4),
-              Expanded(
-                child: SizedBox(
-                  height: 28,
-                  child: TextFormField(
-                    controller: controller,
-                    focusNode: focusNode,
-                    keyboardType: keyboardType,
-                    inputFormatters: inputFormatters,
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      isDense: true,
-                      contentPadding: EdgeInsets.only(left: 6, right: 6, top: 2, bottom: 10),
-                    ),
-                    style: const TextStyle(fontSize: 11, height: 1.0),
-                    onFieldSubmitted: (_) {
-                      if (_selectedPlayer != null) {
-                        _updatePlayer();
-                      } else {
-                        FocusScope.of(context).unfocus();
-                      }
-                    },
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      }
-    } else {
-      // Original vertical layout for portrait mode
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 1),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              '$label:',
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
-            ),
-            const SizedBox(height: 1),
-            SizedBox(
-              height: 28, // Reduced height for text field
-              child: TextFormField(
-                controller: controller,
-                focusNode: focusNode,
-                keyboardType: keyboardType,
-                inputFormatters: inputFormatters,
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                  isDense: true,
-                  contentPadding: EdgeInsets.only(left: 6, right: 6, top: 2, bottom: 10),
-                ),
-                style: const TextStyle(fontSize: 11, height: 1.0),
-                onFieldSubmitted: (_) {
-                  // If a player is selected, update the player; otherwise close keyboard
-                  if (_selectedPlayer != null) {
-                    _updatePlayer();
-                  } else {
-                    FocusScope.of(context).unfocus();
-                  }
-                },
-              ),
-            ),
-          ],
-        ),
-      );
-    }
+    return PlayerProfileService.buildCompactFormField(
+      context,
+      label,
+      controller,
+      focusNode,
+      nextFocus,
+      _selectedPlayer != null ? _updatePlayer : null,
+      keyboardType: keyboardType,
+      inputFormatters: inputFormatters,
+    );
   }
 
   Widget _buildFormField(String label, TextEditingController controller, FocusNode focusNode, FocusNode? nextFocus, {TextInputType? keyboardType, List<TextInputFormatter>? inputFormatters}) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isMobile = screenWidth < 600;
-    
-    if (isMobile) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '$label:',
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-            ),
-            const SizedBox(height: 4),
-            TextFormField(
-              controller: controller,
-              focusNode: focusNode,
-              keyboardType: keyboardType,
-              inputFormatters: inputFormatters,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                isDense: true,
-                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-              ),
-              onFieldSubmitted: (_) {
-                if (nextFocus != null) {
-                  FocusScope.of(context).requestFocus(nextFocus);
-                } else {
-                  // If this is the last field and a player is selected, update the player
-                  if (_selectedPlayer != null) {
-                    _updatePlayer();
-                  }
-                }
-              },
-            ),
-          ],
-        ),
-      );
-    } else {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 100,
-              child: Text(
-                '$label:',
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ),
-            Expanded(
-              child: TextFormField(
-                controller: controller,
-                focusNode: focusNode,
-                keyboardType: keyboardType,
-                inputFormatters: inputFormatters,
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                  isDense: true,
-                  contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-                ),
-                onFieldSubmitted: (_) {
-                  if (nextFocus != null) {
-                    FocusScope.of(context).requestFocus(nextFocus);
-                  } else {
-                    // If this is the last field and a player is selected, update the player
-                    if (_selectedPlayer != null) {
-                      _updatePlayer();
-                    }
-                  }
-                },
-              ),
-            ),
-          ],
-        ),
-      );
-    }
+    return PlayerProfileService.buildFormField(
+      context,
+      label,
+      controller,
+      focusNode,
+      nextFocus,
+      _selectedPlayer != null ? _updatePlayer : null,
+      keyboardType: keyboardType,
+      inputFormatters: inputFormatters,
+    );
   }
 
   Widget _buildPlayerTable() {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isMobile = screenWidth < 600;
-    final isTablet = screenWidth >= 900;
-    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
-    final is6InchPhonePortrait = !isLandscape && screenWidth <= 600;
-    final is6InchPhoneLandscape = isLandscape && screenWidth <= 900;
-    
-    // Calculate available width for table
-    double tableWidth;
-    if (isMobile || is6InchPhoneLandscape) {
-      if (is6InchPhonePortrait) {
-        tableWidth = screenWidth; // Full screen width for 6" phone portrait
-      } else if (is6InchPhoneLandscape) {
-        // For landscape, table is in right column (60% of screen minus padding and gap)
-        tableWidth = (screenWidth * 0.6) - 20; // Account for 10px gap and padding
-      } else {
-        tableWidth = screenWidth - 20; // Account for padding (10px on each side)
-      }
-    } else if (isTablet) {
-      // In tablet layout, table gets 70% of remaining width after form
-      tableWidth = (screenWidth * 0.7) - 30; // Account for padding and gap
-    } else {
-      tableWidth = screenWidth - 40;
-    }
-    
-    Widget tableWidget = Container(
-      width: tableWidth,
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey),
-        color: Colors.grey[50],
-      ),
-      child: Column(
-        children: [
-          // Header row
-          Container(
-            height: 40,
-            decoration: BoxDecoration(
-              color: Colors.grey[200],
-              border: Border(bottom: BorderSide(color: Colors.grey)),
-            ),
-            child: SizedBox(
-              width: tableWidth,
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: isMobile || is6InchPhoneLandscape ? (is6InchPhonePortrait || is6InchPhoneLandscape ? [
-                    _buildHeaderCellLeftAlign('Name', tableWidth * 0.47),
-                    _buildHeaderCellLeftAlign('SK#', tableWidth * 0.16),
-                    _buildHeaderCellLeftAlign('Phone', tableWidth * 0.37),
-                  ] : [
-                    _buildHeaderCell('Name', tableWidth * 0.55),
-                    _buildHeaderCell('S#', tableWidth * 0.2),
-                    _buildHeaderCell('Phone', tableWidth * 0.2),
-                  ]) : [
-                    _buildHeaderCell('Name', tableWidth * 0.5),
-                    _buildHeaderCell('S#', tableWidth * 0.25),
-                    _buildHeaderCell('Phone', tableWidth * 0.25),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          // Player rows
-          Expanded(
-            child: SizedBox(
-              width: tableWidth,
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: SizedBox(
-                  width: tableWidth, // Use full available table width
-                  child: ListView.builder(
-                    itemCount: _players.length,
-                    itemBuilder: (context, index) {
-                      final player = _players[index];
-                      final isSelected = _selectedPlayer?['id'] == player['id'];
-                      
-                      return GestureDetector(
-                        onTap: () => _selectPlayer(player),
-                        child: Container(
-                          height: isMobile || is6InchPhoneLandscape ? 50 : 40,
-                          decoration: BoxDecoration(
-                            color: isSelected ? Colors.lightGreen[200] : Colors.transparent,
-                            border: Border(bottom: BorderSide(color: Colors.grey[300]!)),
-                          ),
-                          child: isMobile || is6InchPhoneLandscape
-                            ? _buildMobilePlayerRow(player, tableWidth) 
-                            : _buildTabletPlayerRow(player, tableWidth),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-    
-    // For 6" phone portrait only, use OverflowBox to allow table to exceed parent bounds
-    if (is6InchPhonePortrait) {
-      return OverflowBox(
-        maxWidth: screenWidth,
-        alignment: Alignment.centerLeft,
-        child: Transform.translate(
-          offset: const Offset(-10, 0),
-          child: tableWidget,
-        ),
-      );
-    } else {
-      return tableWidget;
-    }
-  }
-  
-  Widget _buildMobilePlayerRow(Map<String, dynamic> player, double tableWidth) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
-    final is6InchPhonePortrait = !isLandscape && screenWidth <= 600;
-    final is6InchPhoneLandscape = isLandscape && screenWidth <= 900;
-    
-    return Row(
-      children: [
-        _buildDataCell('${player['first'] ?? ''} ${player['last'] ?? ''}', 
-                      is6InchPhonePortrait ? tableWidth * 0.47 : (is6InchPhoneLandscape ? tableWidth * 0.47 : tableWidth * 0.55), 
-                      alignLeft: true),
-        _buildDataCell(player['skat_number']?.toString() ?? '', 
-                      is6InchPhonePortrait ? tableWidth * 0.14 : (is6InchPhoneLandscape ? tableWidth * 0.16 : tableWidth * 0.2)),
-        _buildDataCell(_formatPhoneNumber(player['cell']), 
-                      is6InchPhonePortrait ? tableWidth * 0.39 : (is6InchPhoneLandscape ? tableWidth * 0.37 : tableWidth * 0.2)),
-      ],
+    return PlayerProfileService.buildPlayerTable(
+      context,
+      _players,
+      _selectedPlayer,
+      _selectPlayer,
+      _formatPhoneNumber,
     );
   }
   
-  Widget _buildTabletPlayerRow(Map<String, dynamic> player, double tableWidth) {
-    return Row(
-      children: [
-        _buildDataCell('${player['first'] ?? ''} ${player['last'] ?? ''}', tableWidth * 0.5, alignLeft: true),
-        _buildDataCell(player['skat_number']?.toString() ?? '', tableWidth * 0.25),
-        _buildDataCell(_formatPhoneNumber(player['cell']), tableWidth * 0.25),
-      ],
-    );
-  }
-
-  Widget _buildHeaderCell(String text, double width) {
-    return Container(
-      width: width,
-      height: 40,
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: Center(
-        child: Text(
-          text,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-          textAlign: TextAlign.center,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeaderCellLeftAlign(String text, double width) {
-    return Container(
-      width: width,
-      height: 40,
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      decoration: const BoxDecoration(
-        border: Border(
-          right: BorderSide(color: Colors.grey, width: 1),
-        ),
-      ),
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: Text(
-          text,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-          textAlign: TextAlign.left,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDataCell(String text, double width, {bool alignLeft = false}) {
-    return Container(
-      width: width,
-      height: 40,
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: alignLeft 
-        ? Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              text,
-              style: const TextStyle(fontSize: 12),
-              textAlign: TextAlign.left,
-              overflow: TextOverflow.ellipsis,
-            ),
-          )
-        : Center(
-            child: Text(
-              text,
-              style: const TextStyle(fontSize: 12),
-              textAlign: TextAlign.center,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isTablet = screenWidth >= 900;
-    final isMobile = screenWidth < 600;
-    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
-    final is6InchPhoneLandscape = isLandscape && screenWidth <= 900;
-    final is6InchPhonePortrait = !isLandscape && screenWidth <= 600;
+    final size = MediaQuery.of(context).size;
+    final orientation = MediaQuery.of(context).orientation;
+    final screenWidth = size.width;
+    final screenHeight = size.height;
+    
+    // Improved responsive breakpoints
+    final isLargeTablet = screenWidth >= 1200; // 10"+ tablets
+    final isMediumTablet = screenWidth >= 800 && screenWidth < 1200; // 8" tablets
+    final isSmallTablet = screenWidth >= 600 && screenWidth < 800; // Small tablets
+    final isPhone = screenWidth < 600; // Phones
+    final isTablet = isLargeTablet || isMediumTablet || isSmallTablet;
+    final isLandscape = orientation == Orientation.landscape;
     
     return Scaffold(
       appBar: AppBar(
@@ -690,18 +311,11 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
         backgroundColor: _selectedLeague == League.monday ? Colors.green[700] : Colors.orange[700],
         foregroundColor: Colors.white,
       ),
-      resizeToAvoidBottomInset: !is6InchPhonePortrait, // Disable resize for 6" phones portrait to prevent keyboard overlap
       body: SafeArea(
-        child: Stack(
-          children: [
-            Container(
-              color: Colors.grey[100],
-              padding: EdgeInsets.all(isMobile ? 10 : 20),
-              child: isTablet 
-                ? _buildTabletLayout()
-                : _buildMobileLayout(),
-            ),
-          ],
+        child: Container(
+          color: Colors.grey[100],
+          padding: _getAdaptivePadding(isTablet, isPhone, isLandscape),
+          child: _buildAdaptiveLayout(isTablet, isPhone, isLandscape, screenWidth, screenHeight),
         ),
       ),
     );
@@ -711,24 +325,145 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
   Widget _buildTabletLayout() {
     return LayoutBuilder(
       builder: (context, constraints) {
+        return PlayerProfileService.buildTabletLayout(
+          context,
+          constraints,
+          _buildFormSection(),
+          _buildPlayerTable(),
+        );
+      },
+    );
+  }
+  
+  Widget _buildMobileLayout() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return PlayerProfileService.buildMobileLayout(
+          context,
+          constraints,
+          _buildFormSectionWithoutButtons(),
+          _buildPlayerTable(),
+          _buildButtonFooterLandscape(),
+        );
+      },
+    );
+  }
+  
+  Widget _buildFormSection() {
+    return PlayerProfileService.buildFormSection(
+      context,
+      _buildFormField,
+      _idController,
+      _firstController,
+      _lastController,
+      _skatController,
+      _cellController,
+      _emailController,
+      _idFocus,
+      _firstFocus,
+      _lastFocus,
+      _skatFocus,
+      _cellFocus,
+      _emailFocus,
+      _buildActionButtons(),
+    );
+  }
+  
+  Widget _buildFormSectionWithoutButtons() {
+    return PlayerProfileService.buildFormSectionWithoutButtons(
+      context,
+      _buildCompactFormField,
+      _idController,
+      _firstController,
+      _lastController,
+      _skatController,
+      _cellController,
+      _emailController,
+      _idFocus,
+      _firstFocus,
+      _lastFocus,
+      _skatFocus,
+      _cellFocus,
+      _emailFocus,
+    );
+  }
+  
+  
+  
+  Widget _buildButtonFooterLandscape() {
+    return PlayerProfileService.buildButtonFooterLandscape(
+      _addPlayer,
+      _deletePlayer,
+      _clearForm,
+      () => Navigator.of(context).pop(),
+    );
+  }
+  
+  Widget _buildActionButtons() {
+    return PlayerProfileService.buildActionButtons(
+      _addPlayer,
+      _updatePlayer,
+      _deletePlayer,
+      _clearForm,
+      () => Navigator.of(context).popUntil((route) => route.isFirst),
+    );
+  }
+  
+  EdgeInsets _getAdaptivePadding(bool isTablet, bool isPhone, bool isLandscape) {
+    if (isTablet) {
+      return const EdgeInsets.all(24.0);
+    } else if (isPhone && isLandscape) {
+      return const EdgeInsets.symmetric(horizontal: 8.0, vertical: 12.0);
+    } else {
+      return const EdgeInsets.all(16.0);
+    }
+  }
+  
+  Widget _buildAdaptiveLayout(bool isTablet, bool isPhone, bool isLandscape, double screenWidth, double screenHeight) {
+    if (isTablet) {
+      return _buildTabletLayout();
+    } else if (isPhone && isLandscape) {
+      return _buildPhoneLandscapeLayout();
+    } else {
+      return _buildPhonePortraitLayout();
+    }
+  }
+  
+  Widget _buildPhoneLandscapeLayout() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
         return Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Left side - Form (30%)
+            // Form section (35% width)
             Expanded(
-              flex: 30,
-              child: SizedBox(
+              flex: 35,
+              child: Container(
                 height: constraints.maxHeight,
-                child: _buildFormSection(),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.shade300),
+                  borderRadius: BorderRadius.circular(8.0),
+                  color: Colors.white,
+                ),
+                padding: const EdgeInsets.all(12.0),
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: _buildFormSectionWithoutButtons(),
+                    ),
+                    const SizedBox(height: 8),
+                    _buildCompactButtonRow(),
+                  ],
+                ),
               ),
             ),
             
-            const SizedBox(width: 10),
+            const SizedBox(width: 12),
             
-            // Right side - Player list (70%)
+            // Player table (65% width)
             Expanded(
-              flex: 70,
-              child: SizedBox(
+              flex: 65,
+              child: Container(
                 height: constraints.maxHeight,
                 child: _buildPlayerTable(),
               ),
@@ -739,392 +474,45 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
     );
   }
   
-  Widget _buildMobileLayout() {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
-    final is6InchPhonePortrait = !isLandscape && screenWidth <= 600;
-    final is6InchPhoneLandscape = isLandscape && screenWidth <= 900; // Detect 6" phone landscape
-    
+  Widget _buildPhonePortraitLayout() {
     return LayoutBuilder(
       builder: (context, constraints) {
-        if (is6InchPhonePortrait) {
-          // 6" phone portrait: move buttons to bottom footer
-          final footerHeight = 80.0; // Height for 2-row footer
-          final formHeight = constraints.maxHeight * 0.5; // Reduced from 0.55 to 0.5
-          final remainingHeight = constraints.maxHeight - formHeight - footerHeight - 30;
-          
-          return Column(
-            children: [
-              // Form section on top (no buttons)
-              SizedBox(
-                height: formHeight,
-                child: _buildFormSectionWithoutButtons(),
+        final formHeight = constraints.maxHeight * 0.5;
+        final tableHeight = constraints.maxHeight * 0.5;
+        
+        return Column(
+          children: [
+            // Form section
+            Container(
+              height: formHeight,
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey.shade300),
+                borderRadius: BorderRadius.circular(8.0),
+                color: Colors.white,
               ),
-              
-              const SizedBox(height: 10),
-              
-              // Player list in middle
-              SizedBox(
-                height: remainingHeight,
-                child: _buildPlayerTable(),
-              ),
-              
-              const SizedBox(height: 10),
-              
-              // Button footer at bottom
-              SizedBox(
-                height: footerHeight,
-                child: _buildButtonFooter(),
-              ),
-            ],
-          );
-        } else if (is6InchPhoneLandscape) {
-          // 6" phone landscape: 2-column layout with form on left, table on right
-          final footerHeight = 40.0; // Single row footer height
-          final mainContentHeight = constraints.maxHeight - footerHeight - 5; // Content height minus footer and reduced spacing
-          
-          return Column(
-            children: [
-              // Main content area - 2 columns
-              SizedBox(
-                height: mainContentHeight,
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Left column - Form (40% of width)
-                    Expanded(
-                      flex: 40,
-                      child: Container(
-                        height: mainContentHeight,
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey, width: 1),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        padding: const EdgeInsets.all(8),
-                        child: _buildFormSectionWithoutButtons(),
-                      ),
-                    ),
-                    
-                    const SizedBox(width: 10),
-                    
-                    // Right column - Player Table (60% of width)
-                    Expanded(
-                      flex: 60,
-                      child: Container(
-                        height: mainContentHeight,
-                        child: _buildPlayerTable(),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              
-              const SizedBox(height: 2),
-              
-              // Button footer at bottom
-              SizedBox(
-                height: footerHeight,
-                child: _buildButtonFooterLandscape(),
-              ),
-            ],
-          );
-        } else {
-          // Original layout for other mobile sizes
-          final formHeight = constraints.maxHeight * 0.6;
-          final remainingHeight = constraints.maxHeight - formHeight - 20;
-          
-          return Column(
-            children: [
-              // Form section on top
-              SizedBox(
-                height: formHeight,
-                child: _buildFormSection(),
-              ),
-              
-              const SizedBox(height: 20),
-              
-              // Player list below
-              SizedBox(
-                height: remainingHeight,
-                child: _buildPlayerTable(),
-              ),
-            ],
-          );
-        }
+              padding: const EdgeInsets.all(16.0),
+              child: _buildFormSection(),
+            ),
+            
+            const SizedBox(height: 12),
+            
+            // Player table
+            Container(
+              height: tableHeight,
+              child: _buildPlayerTable(),
+            ),
+          ],
+        );
       },
     );
   }
   
-  Widget _buildFormSection() {
-    return Column(
-      children: [
-        // Form fields - scrollable area that takes up available space
-        Expanded(
-          child: SingleChildScrollView(
-            child: Column(
-              children: [
-                _buildFormField('ID#', _idController, _idFocus, _firstFocus, 
-                  keyboardType: TextInputType.number, 
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
-                _buildFormField('First Name', _firstController, _firstFocus, _lastFocus),
-                _buildFormField('Last Name', _lastController, _lastFocus, _skatFocus),
-                _buildFormField('SKAT#', _skatController, _skatFocus, _cellFocus, 
-                  keyboardType: TextInputType.number, 
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
-                _buildFormField('Cell Phone', _cellController, _cellFocus, _emailFocus, 
-                  keyboardType: TextInputType.numberWithOptions(decimal: false)),
-                _buildFormField('Email', _emailController, _emailFocus, null),
-                const SizedBox(height: 10),
-              ],
-            ),
-          ),
-        ),
-        
-        // Action buttons - fixed at bottom
-        _buildActionButtons(),
-      ],
-    );
-  }
-  
-  Widget _buildFormSectionWithoutButtons() {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
-    final is6InchPhoneLandscape = isLandscape && screenWidth <= 900;
-    
-    if (is6InchPhoneLandscape) {
-      // For landscape, use compact layout that fits in container
-      return Column(
-        children: [
-          Expanded(
-            flex: 1,
-            child: _buildCompactFormField('ID#', _idController, _idFocus, _firstFocus, 
-              keyboardType: TextInputType.number, 
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
-          ),
-          Expanded(
-            flex: 1,
-            child: _buildCompactFormField('First Name', _firstController, _firstFocus, _lastFocus),
-          ),
-          Expanded(
-            flex: 1,
-            child: _buildCompactFormField('Last Name', _lastController, _lastFocus, _skatFocus),
-          ),
-          Expanded(
-            flex: 1,
-            child: _buildCompactFormField('SKAT#', _skatController, _skatFocus, _cellFocus, 
-              keyboardType: TextInputType.number, 
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
-          ),
-          Expanded(
-            flex: 1,
-            child: _buildCompactFormField('Cell Phone', _cellController, _cellFocus, _emailFocus, 
-              keyboardType: TextInputType.numberWithOptions(decimal: false)),
-          ),
-          Expanded(
-            flex: 2,
-            child: _buildCompactFormField('Email', _emailController, _emailFocus, null),
-          ),
-        ],
-      );
-    } else {
-      // Original expanded layout for portrait mode
-      return Column(
-        children: [
-          // Form fields - static layout that fits within available space
-          Expanded(
-            flex: 1,
-            child: _buildCompactFormField('ID#', _idController, _idFocus, _firstFocus, 
-              keyboardType: TextInputType.number, 
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
-          ),
-          Expanded(
-            flex: 1,
-            child: _buildCompactFormField('First Name', _firstController, _firstFocus, _lastFocus),
-          ),
-          Expanded(
-            flex: 1,
-            child: _buildCompactFormField('Last Name', _lastController, _lastFocus, _skatFocus),
-          ),
-          Expanded(
-            flex: 1,
-            child: _buildCompactFormField('SKAT#', _skatController, _skatFocus, _cellFocus, 
-              keyboardType: TextInputType.number, 
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
-          ),
-          Expanded(
-            flex: 1,
-            child: _buildCompactFormField('Cell Phone', _cellController, _cellFocus, _emailFocus, 
-              keyboardType: TextInputType.numberWithOptions(decimal: false)),
-          ),
-          Expanded(
-            flex: 1,
-            child: _buildCompactFormField('Email', _emailController, _emailFocus, null),
-          ),
-        ],
-      );
-    }
-  }
-  
-  Widget _buildButtonFooter() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-      child: Column(
-        children: [
-          // First row: 2 buttons
-          Expanded(
-            child: Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 2),
-                    child: ElevatedButton(
-                      onPressed: _addPlayer,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.lightGreen,
-                        foregroundColor: Colors.black,
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                      ),
-                      child: const Text('Add Player', style: TextStyle(fontSize: 10)),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 2),
-                    child: ElevatedButton(
-                      onPressed: _deletePlayer,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red[300],
-                        foregroundColor: Colors.black,
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                      ),
-                      child: const Text('Delete Player', style: TextStyle(fontSize: 10)),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          
-          const SizedBox(height: 4),
-          
-          // Second row: 2 buttons
-          Expanded(
-            child: Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 2),
-                    child: ElevatedButton(
-                      onPressed: _clearForm,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.amber[300],
-                        foregroundColor: Colors.black,
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                      ),
-                      child: const Text('Clear Form', style: TextStyle(fontSize: 10)),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 2),
-                    child: ElevatedButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red[300],
-                        foregroundColor: Colors.black,
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                      ),
-                      child: const Text('Return', style: TextStyle(fontSize: 10)),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-  
-  
-  Widget _buildButtonFooterLandscape() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 2),
+  Widget _buildCompactButtonRow() {
+    return SizedBox(
+      height: 36,
       child: Row(
         children: [
           Expanded(
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 1),
-              child: ElevatedButton(
-                onPressed: _addPlayer,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.lightGreen,
-                  foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                ),
-                child: const Text('Add', style: TextStyle(fontSize: 9)),
-              ),
-            ),
-          ),
-          Expanded(
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 1),
-              child: ElevatedButton(
-                onPressed: _deletePlayer,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red[300],
-                  foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                ),
-                child: const Text('Delete', style: TextStyle(fontSize: 9)),
-              ),
-            ),
-          ),
-          Expanded(
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 1),
-              child: ElevatedButton(
-                onPressed: _clearForm,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.amber[300],
-                  foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                ),
-                child: const Text('Clear', style: TextStyle(fontSize: 9)),
-              ),
-            ),
-          ),
-          Expanded(
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 1),
-              child: ElevatedButton(
-                onPressed: () => Navigator.of(context).pop(),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red[300],
-                  foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                ),
-                child: const Text('Return', style: TextStyle(fontSize: 9)),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-  
-  Widget _buildActionButtons() {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isMobile = screenWidth < 600;
-    
-    if (isMobile) {
-      return Column(
-        children: [
-          SizedBox(
-            width: double.infinity,
-            height: 32,
             child: ElevatedButton(
               onPressed: _addPlayer,
               style: ElevatedButton.styleFrom(
@@ -1132,147 +520,47 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
                 foregroundColor: Colors.black,
                 padding: const EdgeInsets.symmetric(vertical: 4),
               ),
-              child: const Text('Add Player', style: TextStyle(fontSize: 12)),
+              child: const Text('Add', style: TextStyle(fontSize: 10)),
             ),
           ),
-          const SizedBox(height: 4),
-          SizedBox(
-            width: double.infinity,
-            height: 32,
+          const SizedBox(width: 4),
+          Expanded(
             child: ElevatedButton(
-              onPressed: _updatePlayer,
+              onPressed: _selectedPlayer != null ? _updatePlayer : null,
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.lightBlue,
+                backgroundColor: _selectedPlayer != null ? Colors.lightBlue : Colors.grey.shade300,
                 foregroundColor: Colors.black,
                 padding: const EdgeInsets.symmetric(vertical: 4),
               ),
-              child: const Text('Edit Player', style: TextStyle(fontSize: 12)),
+              child: const Text('Edit', style: TextStyle(fontSize: 10)),
             ),
           ),
-          const SizedBox(height: 4),
-          SizedBox(
-            width: double.infinity,
-            height: 32,
+          const SizedBox(width: 4),
+          Expanded(
             child: ElevatedButton(
-              onPressed: _deletePlayer,
+              onPressed: _selectedPlayer != null ? _deletePlayer : null,
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red[300],
+                backgroundColor: _selectedPlayer != null ? Colors.red.shade300 : Colors.grey.shade300,
                 foregroundColor: Colors.black,
                 padding: const EdgeInsets.symmetric(vertical: 4),
               ),
-              child: const Text('Delete Player', style: TextStyle(fontSize: 12)),
+              child: const Text('Del', style: TextStyle(fontSize: 10)),
             ),
           ),
-          const SizedBox(height: 4),
-          SizedBox(
-            width: double.infinity,
-            height: 32,
+          const SizedBox(width: 4),
+          Expanded(
             child: ElevatedButton(
               onPressed: _clearForm,
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.amber[300],
+                backgroundColor: Colors.amber.shade300,
                 foregroundColor: Colors.black,
                 padding: const EdgeInsets.symmetric(vertical: 4),
               ),
-              child: const Text('Clear Form', style: TextStyle(fontSize: 12)),
-            ),
-          ),
-          const SizedBox(height: 4),
-          SizedBox(
-            width: double.infinity,
-            height: 32,
-            child: ElevatedButton(
-              onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red[300],
-                foregroundColor: Colors.black,
-                padding: const EdgeInsets.symmetric(vertical: 4),
-              ),
-              child: const Text('Return to Main Menu', style: TextStyle(fontSize: 12)),
+              child: const Text('Clear', style: TextStyle(fontSize: 10)),
             ),
           ),
         ],
-      );
-    } else {
-      return Column(
-        children: [
-          SizedBox(
-            height: 30,
-            child: Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: _addPlayer,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.lightGreen,
-                      foregroundColor: Colors.black,
-                      padding: const EdgeInsets.symmetric(vertical: 2),
-                    ),
-                    child: const Text('Add Player', style: TextStyle(fontSize: 11)),
-                  ),
-                ),
-                const SizedBox(width: 3),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: _updatePlayer,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.lightBlue,
-                      foregroundColor: Colors.black,
-                      padding: const EdgeInsets.symmetric(vertical: 2),
-                    ),
-                    child: const Text('Edit Player', style: TextStyle(fontSize: 11)),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 3),
-          SizedBox(
-            height: 30,
-            child: Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: _deletePlayer,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red[300],
-                      foregroundColor: Colors.black,
-                      padding: const EdgeInsets.symmetric(vertical: 2),
-                    ),
-                    child: const Text('Delete Player', style: TextStyle(fontSize: 11)),
-                  ),
-                ),
-                const SizedBox(width: 3),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: _clearForm,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.amber[300],
-                      foregroundColor: Colors.black,
-                      padding: const EdgeInsets.symmetric(vertical: 2),
-                    ),
-                    child: const Text('Clear Form', style: TextStyle(fontSize: 11)),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 6),
-          SizedBox(
-            width: double.infinity,
-            height: 30,
-            child: ElevatedButton(
-              onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red[300],
-                foregroundColor: Colors.black,
-                padding: const EdgeInsets.symmetric(vertical: 2),
-              ),
-              child: const Text('Return to Main Menu', style: TextStyle(fontSize: 11)),
-            ),
-          ),
-        ],
-      );
-    }
+      ),
+    );
   }
 }

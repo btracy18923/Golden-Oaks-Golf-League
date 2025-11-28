@@ -233,17 +233,18 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     
-    // Define breakpoints based on logical pixel dimensions (Flutter's dp units)
+    // Define breakpoints based on shortest side (physical screen size)
     // All devices are in landscape mode
-    // Your 6.5" phone: 820.57 × 411.43 logical pixels in landscape
-    // 8" tablet: Estimated ~533 × 800 logical pixels in landscape (800×1200 physical / 1.5 density)
-    // 10" tablet: Larger than both
-    final is6Point5Phone = screenWidth >= 750 && screenWidth < 900; // 6.5" phone range
-    final is8Tablet = screenWidth >= 500 && screenWidth < 750; // 8" tablet range  
-    final is10Tablet = screenWidth >= 900; // 10" tablets (larger screens)
+    // 6.5" phone: 412dp height (shortest side in landscape)
+    // 8" tablet: ~533dp height (800×1280px with higher density)
+    // 10" tablet: Larger height due to lower density on same resolution
+    final shortestSide = MediaQuery.of(context).size.shortestSide;
+    final is6Point5Phone = shortestSide < 450;      // Phone range
+    final is8Tablet = shortestSide >= 450 && shortestSide < 600;  // 8" tablet range
+    final is10Tablet = shortestSide >= 600;         // 10" tablet range
     
     // Debug output to verify device detection
-    print('DEVICE DEBUG: Screen ${screenWidth}x$screenHeight');
+    print('DEVICE DEBUG: Screen ${screenWidth}x$screenHeight, Shortest: $shortestSide');
     print('DEVICE DEBUG: 6.5" Phone: $is6Point5Phone, 8" Tablet: $is8Tablet, 10" Tablet: $is10Tablet');
     
     // For backwards compatibility, keep these variables

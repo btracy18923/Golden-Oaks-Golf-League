@@ -50,11 +50,23 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
 
   void _setOrientation() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // Lock to landscape mode for Monday League
-      SystemChrome.setPreferredOrientations([
-        DeviceOrientation.landscapeLeft,
-        DeviceOrientation.landscapeRight,
-      ]);
+      final screenWidth = MediaQuery.of(context).size.width;
+      
+      // Allow both orientations for phones, prefer landscape for tablets
+      if (screenWidth < 600) {
+        // Phone - allow both orientations
+        SystemChrome.setPreferredOrientations([
+          DeviceOrientation.portraitUp,
+          DeviceOrientation.landscapeLeft,
+          DeviceOrientation.landscapeRight,
+        ]);
+      } else {
+        // Tablet - prefer landscape
+        SystemChrome.setPreferredOrientations([
+          DeviceOrientation.landscapeLeft,
+          DeviceOrientation.landscapeRight,
+        ]);
+      }
     });
   }
 
@@ -219,63 +231,44 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
     final websiteController = TextEditingController(text: course['website'] ?? '');
     
     final screenWidth = MediaQuery.of(context).size.width;
-    final isMobile = screenWidth < 600;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final isPhone = screenWidth < 600;
+    final dialogWidth = isPhone ? screenWidth * 0.9 : screenWidth * 0.6;
+    final maxHeight = screenHeight * 0.8;
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Course Details - ${course['name']}'),
+        title: Text(
+          'Course Details - ${course['name']}',
+          style: TextStyle(fontSize: isPhone ? 16 : 18),
+        ),
         content: SizedBox(
-          width: isMobile ? screenWidth * 0.9 : screenWidth * 0.6,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildEditableDetailField('Address:', addressController),
-                _buildEditableDetailField('City:', cityController),
-                _buildEditableDetailField('State:', stateController),
-                _buildEditableDetailField('ZIP Code:', zipController, keyboardType: TextInputType.number),
-                _buildEditableDetailField('Website:', websiteController),
-              ],
+          width: dialogWidth,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: maxHeight),
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildEditableDetailField('Address:', addressController),
+                  _buildEditableDetailField('City:', cityController),
+                  _buildEditableDetailField('State:', stateController),
+                  _buildEditableDetailField('ZIP Code:', zipController, keyboardType: TextInputType.number),
+                  _buildEditableDetailField('Website:', websiteController),
+                ],
+              ),
             ),
           ),
         ),
-        actions: isMobile ? [
-          Column(
-            children: [
-              SizedBox(
-                width: double.infinity,
-                child: TextButton(
-                  onPressed: () async {
-                    await _updateCourseDetails(course['id'], {
-                      'address': addressController.text.trim(),
-                      'city': cityController.text.trim(),
-                      'state': stateController.text.trim(),
-                      'zip': zipController.text.trim(),
-                      'website': websiteController.text.trim(),
-                    });
-                    if (mounted) {
-                      Navigator.of(context).pop();
-                      _refreshCourseList();
-                    }
-                  },
-                  child: const Text('Save'),
-                ),
-              ),
-              SizedBox(
-                width: double.infinity,
-                child: TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Cancel'),
-                ),
-              ),
-            ],
-          ),
-        ] : [
+        actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
+            child: Text(
+              'Cancel',
+              style: TextStyle(fontSize: isPhone ? 14 : 16),
+            ),
           ),
           TextButton(
             onPressed: () async {
@@ -291,7 +284,10 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
                 _refreshCourseList();
               }
             },
-            child: const Text('Save'),
+            child: Text(
+              'Save',
+              style: TextStyle(fontSize: isPhone ? 14 : 16),
+            ),
           ),
         ],
       ),
@@ -300,58 +296,42 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
 
   Widget _buildEditableDetailField(String label, TextEditingController controller, {TextInputType? keyboardType}) {
     final screenWidth = MediaQuery.of(context).size.width;
-    final isMobile = screenWidth < 600;
+    final isPhone = screenWidth < 600;
+    final labelWidth = isPhone ? 80.0 : 100.0;
+    final fontSize = isPhone ? 12.0 : 14.0;
     
-    if (isMobile) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: isPhone ? 6 : 8),
+      child: Row(
+        children: [
+          SizedBox(
+            width: labelWidth,
+            child: Text(
               label,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: fontSize,
+              ),
             ),
-            const SizedBox(height: 4),
-            TextFormField(
+          ),
+          Expanded(
+            child: TextFormField(
               controller: controller,
               keyboardType: keyboardType,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
+              style: TextStyle(fontSize: fontSize),
+              decoration: InputDecoration(
+                border: const OutlineInputBorder(),
                 isDense: true,
-                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-              ),
-            ),
-          ],
-        ),
-      );
-    } else {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 100,
-              child: Text(
-                label,
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ),
-            Expanded(
-              child: TextFormField(
-                controller: controller,
-                keyboardType: keyboardType,
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                  isDense: true,
-                  contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: isPhone ? 6 : 8,
+                  vertical: isPhone ? 10 : 12,
                 ),
               ),
             ),
-          ],
-        ),
-      );
-    }
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _updateCourseDetails(int courseId, Map<String, dynamic> details) async {
@@ -397,28 +377,38 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
 
   Widget _buildFormField(String label, TextEditingController controller, FocusNode focusNode, FocusNode? nextFocus, {TextInputType? keyboardType, List<TextInputFormatter>? inputFormatters}) {
     final screenWidth = MediaQuery.of(context).size.width;
-    final isMobile = screenWidth < 600;
+    final isPhone = screenWidth < 600;
+    final labelWidth = isPhone ? 80.0 : 100.0;
+    final fontSize = isPhone ? 12.0 : 14.0;
     
-    if (isMobile) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: isPhone ? 3 : 4),
+      child: Row(
+        children: [
+          SizedBox(
+            width: labelWidth,
+            child: Text(
               '$label:',
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: fontSize,
+              ),
             ),
-            const SizedBox(height: 4),
-            TextFormField(
+          ),
+          Expanded(
+            child: TextFormField(
               controller: controller,
               focusNode: focusNode,
               keyboardType: keyboardType,
               inputFormatters: inputFormatters,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
+              style: TextStyle(fontSize: fontSize),
+              decoration: InputDecoration(
+                border: const OutlineInputBorder(),
                 isDense: true,
-                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: isPhone ? 6 : 8,
+                  vertical: isPhone ? 10 : 12,
+                ),
               ),
               onFieldSubmitted: (_) {
                 if (nextFocus != null) {
@@ -426,51 +416,24 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
                 }
               },
             ),
-          ],
-        ),
-      );
-    } else {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 100,
-              child: Text(
-                '$label:',
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ),
-            Expanded(
-              child: TextFormField(
-                controller: controller,
-                focusNode: focusNode,
-                keyboardType: keyboardType,
-                inputFormatters: inputFormatters,
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                  isDense: true,
-                  contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-                ),
-                onFieldSubmitted: (_) {
-                  if (nextFocus != null) {
-                    FocusScope.of(context).requestFocus(nextFocus);
-                  }
-                },
-              ),
-            ),
-          ],
-        ),
-      );
-    }
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildCourseTable() {
     final screenWidth = MediaQuery.of(context).size.width;
-    final isMobile = screenWidth < 600;
-    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
-    final is6InchPhonePortrait = !isLandscape && screenWidth <= 600;
-    final is6InchPhoneLandscape = isLandscape && screenWidth <= 900;
+    final isSmallTablet = screenWidth >= 600 && screenWidth < 900;
+    
+    // Adjust column widths based on screen size
+    final nameWidth = isSmallTablet ? 140.0 : 180.0;
+    final phoneWidth = isSmallTablet ? 80.0 : 100.0;
+    final par3Width = isSmallTablet ? 50.0 : 70.0;
+    final teesWidth = isSmallTablet ? 60.0 : 80.0;
+    final slopeWidth = isSmallTablet ? 50.0 : 70.0;
+    final travelWidth = isSmallTablet ? 60.0 : 80.0;
+    final detailsWidth = isSmallTablet ? 60.0 : 80.0;
     
     return Container(
       decoration: BoxDecoration(
@@ -486,58 +449,39 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
               color: Colors.grey[200],
               border: Border(bottom: BorderSide(color: Colors.grey)),
             ),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: (isMobile || is6InchPhoneLandscape) ? (is6InchPhonePortrait ? [
-                  _buildHeaderCell('Name', (screenWidth - 20) * 0.6),
-                  _buildHeaderCell('Phone', (screenWidth - 20) * 0.4),
-                ] : is6InchPhoneLandscape ? [
-                  _buildHeaderCell('Name', (screenWidth * 0.6 - 20) * 0.6),
-                  _buildHeaderCell('Phone', (screenWidth * 0.6 - 20) * 0.4),
-                ] : [
-                  _buildHeaderCell('Name', 150),
-                  _buildHeaderCell('Phone', 120),
-                  _buildHeaderCell('Details', 80),
-                ]) : [
-                  _buildHeaderCell('Name', 180),
-                  _buildHeaderCell('Phone', 100),
-                  _buildHeaderCell('Par3s', 70),
-                  _buildHeaderCell('Tees', 80),
-                  _buildHeaderCell('Slope', 70),
-                  _buildHeaderCell('Travel', 80),
-                  _buildHeaderCell('Details', 80),
-                ],
-              ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                _buildHeaderCell('Name', nameWidth),
+                _buildHeaderCell('Phone', phoneWidth),
+                _buildHeaderCell('Par3s', par3Width),
+                _buildHeaderCell('Tees', teesWidth),
+                _buildHeaderCell('Slope', slopeWidth),
+                _buildHeaderCell('Travel', travelWidth),
+                _buildHeaderCell('Details', detailsWidth),
+              ],
             ),
           ),
           // Data rows
           Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: SizedBox(
-                width: (isMobile || is6InchPhoneLandscape) ? (is6InchPhonePortrait ? screenWidth - 20 : is6InchPhoneLandscape ? (screenWidth * 0.6 - 20) : 350) : 660,
-                child: ListView.builder(
-                  itemCount: _courses.length,
-                  itemBuilder: (context, index) {
-                    final course = _courses[index];
-                    final isSelected = _selectedCourse?['id'] == course['id'];
-                    
-                    return GestureDetector(
-                      onTap: () => _selectCourse(course),
-                      child: Container(
-                        height: (isMobile || is6InchPhoneLandscape) ? 50 : 40,
-                        decoration: BoxDecoration(
-                          color: isSelected ? Colors.lightGreen[200] : Colors.transparent,
-                          border: Border(bottom: BorderSide(color: Colors.grey[300]!)),
-                        ),
-                        child: (isMobile || is6InchPhoneLandscape) ? _buildMobileCourseRow(course) : _buildTabletCourseRow(course),
-                      ),
-                    );
-                  },
-                ),
-              ),
+            child: ListView.builder(
+              itemCount: _courses.length,
+              itemBuilder: (context, index) {
+                final course = _courses[index];
+                final isSelected = _selectedCourse?['id'] == course['id'];
+                
+                return GestureDetector(
+                  onTap: () => _selectCourse(course),
+                  child: Container(
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: isSelected ? Colors.lightGreen[200] : Colors.transparent,
+                      border: Border(bottom: BorderSide(color: Colors.grey[300]!)),
+                    ),
+                    child: _buildTabletCourseRow(course, nameWidth, phoneWidth, par3Width, teesWidth, slopeWidth, travelWidth, detailsWidth),
+                  ),
+                );
+              },
             ),
           ),
         ],
@@ -545,59 +489,83 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
     );
   }
   
-  Widget _buildMobileCourseRow(Map<String, dynamic> course) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
-    final is6InchPhonePortrait = !isLandscape && screenWidth <= 600;
-    final is6InchPhoneLandscape = isLandscape && screenWidth <= 900;
-    
-    if (is6InchPhonePortrait) {
-      // 6" portrait: no Details column, use full width
-      final availableWidth = screenWidth - 20; // Account for padding
-      final nameWidth = availableWidth * 0.6; // 60% for name
-      final phoneWidth = availableWidth * 0.4; // 40% for phone
-      
-      return Row(
-        children: [
-          _buildDataCellLeftAlign(course['name'] ?? '', nameWidth),
-          _buildDataCell(_formatPhoneNumber(course['phone'] ?? ''), phoneWidth),
-        ],
-      );
-    } else if (is6InchPhoneLandscape) {
-      // 6" landscape: left-align Name field, no Details column, use full width
-      final availableWidth = screenWidth * 0.6 - 20; // Account for 60% right column minus padding
-      final nameWidth = availableWidth * 0.6; // 60% for name
-      final phoneWidth = availableWidth * 0.4; // 40% for phone
-      
-      return Row(
-        children: [
-          _buildDataCellLeftAlign(course['name'] ?? '', nameWidth),
-          _buildDataCell(_formatPhoneNumber(course['phone'] ?? ''), phoneWidth),
-        ],
-      );
-    } else {
-      // Other mobile layouts: include Details column
-      return Row(
-        children: [
-          _buildDataCell(course['name'] ?? '', 150),
-          _buildDataCell(_formatPhoneNumber(course['phone'] ?? ''), 120),
-          _buildButtonCell(course, 80),
-        ],
-      );
-    }
-  }
   
-  Widget _buildTabletCourseRow(Map<String, dynamic> course) {
+  Widget _buildTabletCourseRow(Map<String, dynamic> course, double nameWidth, double phoneWidth, double par3Width, double teesWidth, double slopeWidth, double travelWidth, double detailsWidth) {
     return Row(
       children: [
-        _buildDataCell(course['name'] ?? '', 180),
-        _buildDataCell(course['phone'] ?? '', 100),
-        _buildDataCell(course['holes']?.toString() ?? '', 70),
-        _buildDataCell(course['tees'] ?? '', 80),
-        _buildDataCell(course['slope']?.toString() ?? '', 70),
-        _buildDataCell(course['travel_time'] ?? '', 80),
-        _buildButtonCell(course, 80),
+        _buildDataCell(course['name'] ?? '', nameWidth),
+        _buildDataCell(_formatPhoneNumber(course['phone'] ?? ''), phoneWidth),
+        _buildDataCell(course['holes']?.toString() ?? '', par3Width),
+        _buildDataCell(course['tees'] ?? '', teesWidth),
+        _buildDataCell(course['slope']?.toString() ?? '', slopeWidth),
+        _buildDataCell(course['travel_time'] ?? '', travelWidth),
+        _buildButtonCell(course, detailsWidth),
       ],
+    );
+  }
+  
+  Widget _buildPhoneCourseList() {
+    return ListView.builder(
+      itemCount: _courses.length,
+      itemBuilder: (context, index) {
+        final course = _courses[index];
+        final isSelected = _selectedCourse?['id'] == course['id'];
+        
+        return Card(
+          margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 0),
+          color: isSelected ? Colors.lightGreen[200] : Colors.white,
+          child: ListTile(
+            title: Text(
+              course['name'] ?? '',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+            ),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if ((course['phone'] ?? '').isNotEmpty)
+                  Text('Phone: ${_formatPhoneNumber(course['phone'])}', style: const TextStyle(fontSize: 12)),
+                Row(
+                  children: [
+                    if ((course['holes']?.toString() ?? '').isNotEmpty)
+                      Text('Par3s: ${course['holes']}', style: const TextStyle(fontSize: 12)),
+                    const SizedBox(width: 16),
+                    if ((course['slope']?.toString() ?? '').isNotEmpty)
+                      Text('Slope: ${course['slope']}', style: const TextStyle(fontSize: 12)),
+                  ],
+                ),
+                Row(
+                  children: [
+                    if ((course['tees'] ?? '').isNotEmpty)
+                      Text('Tees: ${course['tees']}', style: const TextStyle(fontSize: 12)),
+                    const SizedBox(width: 16),
+                    if ((course['travel_time'] ?? '').isNotEmpty)
+                      Text('Travel: ${course['travel_time']}', style: const TextStyle(fontSize: 12)),
+                  ],
+                ),
+              ],
+            ),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  onPressed: () => _selectCourse(course),
+                  icon: Icon(
+                    isSelected ? Icons.check_circle : Icons.radio_button_unchecked,
+                    color: isSelected ? Colors.green : Colors.grey,
+                  ),
+                  tooltip: 'Select Course',
+                ),
+                IconButton(
+                  onPressed: () => _showCourseDetails(course),
+                  icon: const Icon(Icons.info_outline, color: Colors.blue),
+                  tooltip: 'Details',
+                ),
+              ],
+            ),
+            onTap: () => _selectCourse(course),
+          ),
+        );
+      },
     );
   }
   
@@ -616,14 +584,18 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
   }
 
   Widget _buildHeaderCell(String text, double width) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallTablet = screenWidth >= 600 && screenWidth < 900;
+    final fontSize = isSmallTablet ? 12.0 : 14.0;
+    
     return Container(
       width: width,
       height: 40,
-      padding: const EdgeInsets.symmetric(horizontal: 8),
+      padding: EdgeInsets.symmetric(horizontal: isSmallTablet ? 4 : 8),
       child: Center(
         child: Text(
           text,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: fontSize),
           textAlign: TextAlign.center,
         ),
       ),
@@ -631,14 +603,18 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
   }
 
   Widget _buildDataCell(String text, double width) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallTablet = screenWidth >= 600 && screenWidth < 900;
+    final fontSize = isSmallTablet ? 10.0 : 12.0;
+    
     return Container(
       width: width,
       height: 40,
-      padding: const EdgeInsets.symmetric(horizontal: 8),
+      padding: EdgeInsets.symmetric(horizontal: isSmallTablet ? 4 : 8),
       child: Center(
         child: Text(
           text,
-          style: const TextStyle(fontSize: 12),
+          style: TextStyle(fontSize: fontSize),
           textAlign: TextAlign.center,
           overflow: TextOverflow.ellipsis,
         ),
@@ -646,24 +622,13 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
     );
   }
 
-  Widget _buildDataCellLeftAlign(String text, double width) {
-    return Container(
-      width: width,
-      height: 40,
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: Text(
-          text,
-          style: const TextStyle(fontSize: 12),
-          textAlign: TextAlign.left,
-          overflow: TextOverflow.ellipsis,
-        ),
-      ),
-    );
-  }
 
   Widget _buildButtonCell(Map<String, dynamic> course, double width) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallTablet = screenWidth >= 600 && screenWidth < 900;
+    final buttonSize = isSmallTablet ? 28.0 : 32.0;
+    final fontSize = isSmallTablet ? 10.0 : 11.0;
+    
     return Container(
       width: width,
       height: 40,
@@ -674,10 +639,13 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.lightBlue[200],
             foregroundColor: Colors.black,
-            minimumSize: const Size(70, 32),
-            padding: const EdgeInsets.symmetric(horizontal: 8),
+            minimumSize: Size(width - 8, buttonSize),
+            padding: EdgeInsets.symmetric(horizontal: isSmallTablet ? 4 : 8),
           ),
-          child: const Text('Details', style: TextStyle(fontSize: 11)),
+          child: Text(
+            isSmallTablet ? 'Info' : 'Details',
+            style: TextStyle(fontSize: fontSize),
+          ),
         ),
       ),
     );
@@ -686,12 +654,17 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
-    final isTablet = screenWidth >= 900;
-    final isMobile = screenWidth < 600;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final isPhone = screenWidth < 600;
+    final isSmallTablet = screenWidth >= 600 && screenWidth < 900;
+    final isLargeTablet = screenWidth >= 900;
     
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Golf Course Info'),
+        title: Text(
+          isPhone ? 'Golf Courses' : 'Golf Course Info',
+          style: TextStyle(fontSize: isPhone ? 18 : 20),
+        ),
         backgroundColor: widget.league == League.monday ? Colors.green[700] : 
                         widget.league == League.wednesday ? Colors.orange[700] : 
                         Colors.cyan[700],
@@ -700,455 +673,79 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
       resizeToAvoidBottomInset: true,
       body: Container(
         color: Colors.grey[100],
-        padding: EdgeInsets.all(isMobile ? 10 : 20),
-        child: isTablet 
-          ? _buildTabletLayout()
-          : _buildMobileLayout(),
+        padding: EdgeInsets.all(isPhone ? 12 : 20),
+        child: isPhone ? _buildPhoneLayout() : _buildTabletLayout(),
       ),
     );
   }
   
   Widget _buildTabletLayout() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallTablet = screenWidth >= 600 && screenWidth < 900;
+    
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Left side - Form (30%)
+        // Left side - Form (adjust ratio based on screen size)
         Expanded(
-          flex: 30,
+          flex: isSmallTablet ? 35 : 30,
           child: SingleChildScrollView(
             child: _buildFormSection(),
           ),
         ),
         
-        const SizedBox(width: 10),
+        SizedBox(width: isSmallTablet ? 8 : 10),
         
-        // Right side - Course list (70%)
+        // Right side - Course list
         Expanded(
-          flex: 70,
+          flex: isSmallTablet ? 65 : 70,
           child: _buildCourseTable(),
         ),
       ],
     );
   }
   
-  Widget _buildMobileLayout() {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
-    final is6InchPhonePortrait = !isLandscape && screenWidth <= 600;
-    final is6InchPhoneLandscape = isLandscape && screenWidth <= 900;
-    
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        if (is6InchPhonePortrait) {
-          // 6" phone portrait: 3-section layout with button footer
-          final footerHeight = 80.0; // Height for 2-row footer
-          final formHeight = constraints.maxHeight * 0.5; // Form section height
-          final remainingHeight = constraints.maxHeight - formHeight - footerHeight - 30;
-          
-          return Column(
-            children: [
-              // Form section on top (no buttons)
-              SizedBox(
-                height: formHeight,
-                child: _buildFormSectionWithoutButtons(),
-              ),
-              
-              const SizedBox(height: 10),
-              
-              // Course table in middle
-              SizedBox(
-                height: remainingHeight,
-                child: _buildCourseTable(),
-              ),
-              
-              const SizedBox(height: 10),
-              
-              // Button footer at bottom
-              SizedBox(
-                height: footerHeight,
-                child: _buildButtonFooter(),
-              ),
-            ],
-          );
-        } else if (is6InchPhoneLandscape) {
-          // 6" phone landscape: 2-column layout with form on left, table on right
-          final footerHeight = 40.0; // Single row footer height
-          final mainContentHeight = constraints.maxHeight - footerHeight - 5; // Content height minus footer and reduced spacing
-          
-          return Column(
-            children: [
-              // Main content area - 2 columns
-              SizedBox(
-                height: mainContentHeight,
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Left column - Form (40% of width)
-                    Expanded(
-                      flex: 40,
-                      child: Container(
-                        height: mainContentHeight,
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey, width: 1),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        padding: const EdgeInsets.all(8),
-                        child: _buildFormSectionWithoutButtons(),
-                      ),
-                    ),
-                    
-                    const SizedBox(width: 10),
-                    
-                    // Right column - Course Table (60% of width)
-                    Expanded(
-                      flex: 60,
-                      child: Container(
-                        height: mainContentHeight,
-                        child: _buildCourseTable(),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              
-              const SizedBox(height: 2),
-              
-              // Button footer at bottom
-              SizedBox(
-                height: footerHeight,
-                child: _buildButtonFooterLandscape(),
-              ),
-            ],
-          );
-        } else {
-          // Original layout for other mobile sizes
-          return Column(
-            children: [
-              // Form section on top
-              Expanded(
-                flex: 1,
-                child: SingleChildScrollView(
-                  child: _buildFormSection(),
-                ),
-              ),
-              
-              const SizedBox(height: 20),
-              
-              // Course list below
-              Expanded(
-                flex: 1,
-                child: _buildCourseTable(),
-              ),
-            ],
-          );
-        }
-      },
-    );
-  }
-  
-  Widget _buildFormSectionWithoutButtons() {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
-    final is6InchPhoneLandscape = isLandscape && screenWidth <= 900;
-    
-    if (is6InchPhoneLandscape) {
-      // For landscape, use expanded layout that fills available space
-      return Column(
-        children: [
-          Expanded(
-            flex: 1,
-            child: _buildCompactFormField('Name', _nameController, _nameFocus, _phoneFocus),
+  Widget _buildPhoneLayout() {
+    return Column(
+      children: [
+        // Form section (collapsed by default on phones)
+        ExpansionTile(
+          title: const Text(
+            'Course Form',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
           ),
-          Expanded(
-            flex: 1,
-            child: _buildCompactFormField('Phone', _phoneController, _phoneFocus, _holesFocus, 
-              keyboardType: TextInputType.phone),
-          ),
-          Expanded(
-            flex: 1,
-            child: _buildCompactFormField('# Par3s', _holesController, _holesFocus, _teesFocus, 
-              keyboardType: TextInputType.number, 
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
-          ),
-          Expanded(
-            flex: 1,
-            child: _buildCompactFormField('Tees', _teesController, _teesFocus, _slopeFocus),
-          ),
-          Expanded(
-            flex: 1,
-            child: _buildCompactFormField('Slope', _slopeController, _slopeFocus, _travelTimeFocus, 
-              keyboardType: TextInputType.number, 
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
-          ),
-          Expanded(
-            flex: 1,
-            child: _buildCompactFormField('Travel Time', _travelTimeController, _travelTimeFocus, null),
-          ),
-        ],
-      );
-    } else {
-      // Original scrollable layout for portrait mode
-      return SingleChildScrollView(
-        child: Column(
+          initiallyExpanded: _selectedCourse != null,
           children: [
-            _buildCompactFormField('Name', _nameController, _nameFocus, _phoneFocus),
-            _buildCompactFormField('Phone', _phoneController, _phoneFocus, _holesFocus, 
-              keyboardType: TextInputType.phone),
-            _buildCompactFormField('# Par3s', _holesController, _holesFocus, _teesFocus, 
-              keyboardType: TextInputType.number, 
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
-            _buildCompactFormField('Tees', _teesController, _teesFocus, _slopeFocus),
-            _buildCompactFormField('Slope', _slopeController, _slopeFocus, _travelTimeFocus, 
-              keyboardType: TextInputType.number, 
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
-            _buildCompactFormField('Travel Time', _travelTimeController, _travelTimeFocus, null),
-          ],
-        ),
-      );
-    }
-  }
-  
-  Widget _buildCompactFormField(String label, TextEditingController controller, FocusNode focusNode, FocusNode? nextFocus, {TextInputType? keyboardType, List<TextInputFormatter>? inputFormatters}) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
-    final is6InchPhoneLandscape = isLandscape && screenWidth <= 900;
-    
-    if (is6InchPhoneLandscape) {
-      // Convert long labels to short labels for landscape mode
-      String displayLabel = label;
-      if (label == '# Par3s') displayLabel = 'Par3s';
-      else if (label == 'Travel Time') displayLabel = 'Travel';
-      
-      // Horizontal layout for 6" landscape mode
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 2),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            SizedBox(
-              width: 60, // Fixed width for label
-              child: Text(
-                '$displayLabel:',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 10),
-              ),
-            ),
-            const SizedBox(width: 4),
-            Expanded(
-              child: SizedBox(
-                height: 32, // Slightly increased height for better visual balance
-                child: TextFormField(
-                  controller: controller,
-                  focusNode: focusNode,
-                  keyboardType: keyboardType,
-                  inputFormatters: inputFormatters,
-                  decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
-                    isDense: true,
-                    contentPadding: EdgeInsets.only(left: 6, right: 6, top: 4, bottom: 12),
-                  ),
-                  style: const TextStyle(fontSize: 11, height: 1.0),
-                  onFieldSubmitted: (_) {
-                    if (nextFocus != null) {
-                      FocusScope.of(context).requestFocus(nextFocus);
-                    } else {
-                      FocusScope.of(context).unfocus();
-                    }
-                  },
-                ),
-              ),
+            Container(
+              padding: const EdgeInsets.all(12),
+              child: _buildFormSection(),
             ),
           ],
         ),
-      );
-    } else {
-      // Original vertical layout for portrait mode
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 1),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              '$label:',
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
-            ),
-            const SizedBox(height: 1),
-            SizedBox(
-              height: 28, // Reduced height for text field
-              child: TextFormField(
-                controller: controller,
-                focusNode: focusNode,
-                keyboardType: keyboardType,
-                inputFormatters: inputFormatters,
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                  isDense: true,
-                  contentPadding: EdgeInsets.only(left: 6, right: 6, top: 2, bottom: 10),
-                ),
-                style: const TextStyle(fontSize: 11, height: 1.0),
-                onFieldSubmitted: (_) {
-                  if (nextFocus != null) {
-                    FocusScope.of(context).requestFocus(nextFocus);
-                  } else {
-                    FocusScope.of(context).unfocus();
-                  }
-                },
+        
+        const SizedBox(height: 8),
+        
+        // Course list takes remaining space
+        Expanded(
+          child: Column(
+            children: [
+              const Text(
+                'Golf Courses',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               ),
-            ),
-          ],
+              const SizedBox(height: 8),
+              Expanded(child: _buildPhoneCourseList()),
+            ],
+          ),
         ),
-      );
-    }
-  }
-  
-  Widget _buildButtonFooter() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-      child: Column(
-        children: [
-          // First row: 2 buttons (Edit button removed for 6" portrait)
-          Expanded(
-            child: Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 1),
-                    child: ElevatedButton(
-                      onPressed: _addCourse,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.lightGreen,
-                        foregroundColor: Colors.black,
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                      ),
-                      child: const Text('Add', style: TextStyle(fontSize: 9)),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 1),
-                    child: ElevatedButton(
-                      onPressed: _deleteCourse,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red[300],
-                        foregroundColor: Colors.black,
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                      ),
-                      child: const Text('Delete', style: TextStyle(fontSize: 9)),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          
-          const SizedBox(height: 4),
-          
-          // Second row: 2 buttons
-          Expanded(
-            child: Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 2),
-                    child: ElevatedButton(
-                      onPressed: _clearForm,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.amber[300],
-                        foregroundColor: Colors.black,
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                      ),
-                      child: const Text('Clear Form', style: TextStyle(fontSize: 9)),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 2),
-                    child: ElevatedButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red[300],
-                        foregroundColor: Colors.black,
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                      ),
-                      child: const Text('Return', style: TextStyle(fontSize: 9)),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+      ],
     );
   }
   
-  Widget _buildButtonFooterLandscape() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 2),
-      child: Row(
-        children: [
-          Expanded(
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 1),
-              child: ElevatedButton(
-                onPressed: _addCourse,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.lightGreen,
-                  foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                ),
-                child: const Text('Add', style: TextStyle(fontSize: 9)),
-              ),
-            ),
-          ),
-          Expanded(
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 1),
-              child: ElevatedButton(
-                onPressed: _deleteCourse,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red[300],
-                  foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                ),
-                child: const Text('Delete', style: TextStyle(fontSize: 9)),
-              ),
-            ),
-          ),
-          Expanded(
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 1),
-              child: ElevatedButton(
-                onPressed: _clearForm,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.amber[300],
-                  foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                ),
-                child: const Text('Clear', style: TextStyle(fontSize: 9)),
-              ),
-            ),
-          ),
-          Expanded(
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 1),
-              child: ElevatedButton(
-                onPressed: () => Navigator.of(context).pop(),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red[300],
-                  foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                ),
-                child: const Text('Return', style: TextStyle(fontSize: 9)),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  
+  
+  
+  
   
   Widget _buildFormSection() {
     return Column(
@@ -1175,145 +772,85 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
   
   Widget _buildActionButtons() {
     final screenWidth = MediaQuery.of(context).size.width;
-    final isMobile = screenWidth < 600;
+    final isPhone = screenWidth < 600;
+    final buttonHeight = isPhone ? 36.0 : 40.0;
+    final fontSize = isPhone ? 12.0 : 14.0;
+    final spacing = isPhone ? 4.0 : 5.0;
     
-    if (isMobile) {
-      return Column(
-        children: [
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: _addCourse,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.lightGreen,
-                foregroundColor: Colors.black,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-              ),
-              child: const Text('Add Course'),
-            ),
-          ),
-          const SizedBox(height: 8),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: _updateCourse,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.lightBlue,
-                foregroundColor: Colors.black,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-              ),
-              child: const Text('Edit Course'),
-            ),
-          ),
-          const SizedBox(height: 8),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: _deleteCourse,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red[300],
-                foregroundColor: Colors.black,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-              ),
-              child: const Text('Delete Course'),
-            ),
-          ),
-          const SizedBox(height: 8),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: _clearForm,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.amber[300],
-                foregroundColor: Colors.black,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-              ),
-              child: const Text('Clear Form'),
-            ),
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red[300],
-                foregroundColor: Colors.black,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-              ),
-              child: const Text('Return to Main Menu'),
-            ),
-          ),
-        ],
-      );
-    } else {
-      return Column(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: _addCourse,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.lightGreen,
-                    foregroundColor: Colors.black,
-                  ),
-                  child: const Text('Add Course'),
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: ElevatedButton(
+                onPressed: _addCourse,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.lightGreen,
+                  foregroundColor: Colors.black,
+                  minimumSize: Size(double.infinity, buttonHeight),
                 ),
+                child: Text('Add Course', style: TextStyle(fontSize: fontSize)),
               ),
-              const SizedBox(width: 5),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: _updateCourse,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.lightBlue,
-                    foregroundColor: Colors.black,
-                  ),
-                  child: const Text('Edit Course'),
+            ),
+            SizedBox(width: spacing),
+            Expanded(
+              child: ElevatedButton(
+                onPressed: _updateCourse,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.lightBlue,
+                  foregroundColor: Colors.black,
+                  minimumSize: Size(double.infinity, buttonHeight),
                 ),
+                child: Text('Edit Course', style: TextStyle(fontSize: fontSize)),
               ),
-            ],
-          ),
-          const SizedBox(height: 5),
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: _deleteCourse,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red[300],
-                    foregroundColor: Colors.black,
-                  ),
-                  child: const Text('Delete Course'),
+            ),
+          ],
+        ),
+        SizedBox(height: spacing),
+        Row(
+          children: [
+            Expanded(
+              child: ElevatedButton(
+                onPressed: _deleteCourse,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red[300],
+                  foregroundColor: Colors.black,
+                  minimumSize: Size(double.infinity, buttonHeight),
                 ),
+                child: Text('Delete Course', style: TextStyle(fontSize: fontSize)),
               ),
-              const SizedBox(width: 5),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: _clearForm,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.amber[300],
-                    foregroundColor: Colors.black,
-                  ),
-                  child: const Text('Clear Form'),
+            ),
+            SizedBox(width: spacing),
+            Expanded(
+              child: ElevatedButton(
+                onPressed: _clearForm,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.amber[300],
+                  foregroundColor: Colors.black,
+                  minimumSize: Size(double.infinity, buttonHeight),
                 ),
+                child: Text('Clear Form', style: TextStyle(fontSize: fontSize)),
               ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red[300],
-                foregroundColor: Colors.black,
-              ),
-              child: const Text('Return to Main Menu'),
+            ),
+          ],
+        ),
+        SizedBox(height: isPhone ? 8 : 10),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red[300],
+              foregroundColor: Colors.black,
+              minimumSize: Size(double.infinity, buttonHeight),
+            ),
+            child: Text(
+              isPhone ? 'Main Menu' : 'Return to Main Menu',
+              style: TextStyle(fontSize: fontSize),
             ),
           ),
-        ],
-      );
-    }
+        ),
+      ],
+    );
   }
 }

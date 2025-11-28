@@ -61,11 +61,25 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
   }
 
   void _setOrientation() {
-    // Force landscape orientation for ALL Monday League screens
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+    
+    // Only force landscape for phones (6.5" and smaller)
+    // Let tablets use natural orientation
+    if (screenWidth <= 900 || screenHeight <= 600) {
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+    } else {
+      // Allow both orientations for tablets
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+        DeviceOrientation.portraitUp,
+        DeviceOrientation.portraitDown,
+      ]);
+    }
   }
 
   @override
@@ -121,8 +135,7 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
     if (!_showAddScoreRow) {
       final player = _players.firstWhere((p) => p['last'] == _selectedPlayer);
       final screenWidth = MediaQuery.of(context).size.width;
-      final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
-      final is6InchPhoneLandscape = isLandscape && screenWidth <= 900;
+      final is6InchPhoneLandscape = screenWidth <= 900;
       
       setState(() {
         _showAddScoreRow = true;
@@ -543,8 +556,6 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
 
   Widget _buildPlayerList({bool isCompact = false, bool hideHeader = false}) {
     final screenWidth = MediaQuery.of(context).size.width;
-    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
-    final is6InchPhonePortrait = !isLandscape && screenWidth <= 600;
     
     double listWidth = isCompact ? double.infinity : 200;
     double headerFontSize = isCompact ? 12 : 16;
@@ -613,25 +624,30 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
   }
 
   Widget _buildScoresTable() {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
-    final is6InchPhonePortrait = !isLandscape && screenWidth <= 600;
-    final is6InchPhoneLandscape = isLandscape && screenWidth <= 900;
+    final screenSize = MediaQuery.of(context).size;
+    final screenWidth = screenSize.width;
+    final screenHeight = screenSize.height;
     
-    // Adjust table width based on screen size
+    // Define device categories
+    final isPhone = screenWidth <= 900;  // 6.5" phones
+    final isSmallTablet = screenWidth > 900 && screenWidth <= 1200;  // 8" tablets
+    final isLargeTablet = screenWidth > 1200;  // 10" tablets
+    
+    // Adjust table width based on screen size and orientation
     double tableWidth;
-    if (is6InchPhonePortrait) {
-      // Compact width for 6" phone portrait
-      tableWidth = _selectedLeague == League.monday ? 560 : 600;
-    } else if (is6InchPhoneLandscape) {
-      // Optimized width for 6" phone landscape (60% of screen width)
+    if (isPhone) {
+      // Phone: Compact layout
       tableWidth = _selectedLeague == League.monday ? 510 : 550;
+    } else if (isSmallTablet) {
+      // 8" tablet: Medium layout
+      tableWidth = _selectedLeague == League.monday ? 650 : 700;
     } else {
-      // Full width for larger screens  
+      // 10" tablet: Full layout
       tableWidth = _selectedLeague == League.monday ? 810 : 870;
     }
     
-    final isCompact = is6InchPhonePortrait || is6InchPhoneLandscape;
+    final isCompact = isPhone;
+    final isMedium = isSmallTablet;
     
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -650,11 +666,11 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
                 border: Border.all(color: Colors.black),
                 color: Colors.grey[200],
               ),
-              child: _buildHeaders(isCompact: isCompact),
+              child: _buildHeaders(isCompact: isCompact, isMedium: isMedium),
             ),
             
             // Add new score row (if player selected and add score button clicked)
-            if (_selectedPlayer != null && _showAddScoreRow) _buildAddScoreRow(isCompact: isCompact),
+            if (_selectedPlayer != null && _showAddScoreRow) _buildAddScoreRow(isCompact: isCompact, isMedium: isMedium),
             
             // Scores list
             Expanded(
@@ -685,7 +701,7 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
                               ? Colors.orange[50]
                               : Colors.grey[50],
                       ),
-                      child: _buildScoreRow(score, isUnlocked, isCompact: isCompact),
+                      child: _buildScoreRow(score, isUnlocked, isCompact: isCompact, isMedium: isMedium),
                     ),
                   );
                 },
@@ -699,10 +715,10 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
     );
   }
 
-  Widget _buildScoreRow(Map<String, dynamic> score, bool isUnlocked, {bool isCompact = false}) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
-    final is6InchPhoneLandscape = isLandscape && screenWidth <= 900;
+  Widget _buildScoreRow(Map<String, dynamic> score, bool isUnlocked, {bool isCompact = false, bool isMedium = false}) {
+    final screenSize = MediaQuery.of(context).size;
+    final screenWidth = screenSize.width;
+    final isPhone = screenWidth <= 900;
     
     if (_selectedLeague == League.monday) {
       // Monday League: Name, Date, Golf Course, Close Pin, SKATS, SKAT Winnings
@@ -711,9 +727,9 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
           _buildFlexDataCellWithIcon(score['name'] ?? '', isUnlocked, isCompact ? 22 : 24, isCompact: isCompact),
           _buildFlexDataCell(_formatDateToMMDDYY(score['date_played']), isCompact ? 14 : 14, isCompact: isCompact),
           _buildFlexDataCell(score['golf_course'] ?? '', isCompact ? 20 : 18, isCompact: isCompact),
-          _buildFlexDataCell(is6InchPhoneLandscape ? _formatWinningsWithCents(score['close_pin_winnings']) : _formatWinningsSimple(score['close_pin_winnings']), isCompact ? 16 : 15, isCompact: isCompact),
-          _buildFlexDataCell('${score['skats_score'] ?? ''}', isCompact ? 10 : 9, isCompact: isCompact),
-          _buildFlexDataCell(is6InchPhoneLandscape ? _formatWinningsWithCents(score['skat_winnings']) : _formatWinningsSimple(score['skat_winnings']), isCompact ? 18 : 20, isCompact: isCompact),
+          _buildFlexDataCell(isPhone ? _formatWinningsWithCents(score['close_pin_winnings']) : _formatWinningsSimple(score['close_pin_winnings']), isCompact ? 16 : isMedium ? 15 : 15, isCompact: isCompact),
+          _buildFlexDataCell('${score['skats_score'] ?? ''}', isCompact ? 10 : isMedium ? 10 : 9, isCompact: isCompact),
+          _buildFlexDataCell(isPhone ? _formatWinningsWithCents(score['skat_winnings']) : _formatWinningsSimple(score['skat_winnings']), isCompact ? 18 : isMedium ? 18 : 20, isCompact: isCompact),
         ],
       );
     } else {
@@ -733,47 +749,47 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
     }
   }
 
-  Widget _buildAddScoreRow({bool isCompact = false}) {
+  Widget _buildAddScoreRow({bool isCompact = false, bool isMedium = false}) {
     return Container(
       decoration: BoxDecoration(
         border: Border.all(color: Colors.black, width: 0.5),
         color: _selectedLeague == League.monday ? Colors.green[100] : Colors.amber[100],
       ),
-      child: _buildAddScoreRowContent(isCompact: isCompact),
+      child: _buildAddScoreRowContent(isCompact: isCompact, isMedium: isMedium),
     );
   }
 
-  Widget _buildAddScoreRowContent({bool isCompact = false}) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
-    final is6InchPhoneLandscape = isLandscape && screenWidth <= 900;
+  Widget _buildAddScoreRowContent({bool isCompact = false, bool isMedium = false}) {
+    final screenSize = MediaQuery.of(context).size;
+    final screenWidth = screenSize.width;
+    final isPhone = screenWidth <= 900;
     
     if (_selectedLeague == League.monday) {
       // Monday League: Name, Date, Golf Course, Close Pin, SKATS, SKAT Winnings
       return Row(
         children: [
-          _buildFlexDataCell(_selectedPlayer ?? '', isCompact ? 22 : 24, isCompact: isCompact),
-          _buildFlexDataCell(_getCurrentDateMMDDYY(), isCompact ? 14 : 14, isCompact: isCompact),
+          _buildFlexDataCell(_selectedPlayer ?? '', isCompact ? 22 : isMedium ? 22 : 24, isCompact: isCompact),
+          _buildFlexDataCell(_getCurrentDateMMDDYY(), isCompact ? 14 : isMedium ? 14 : 14, isCompact: isCompact),
           _buildFlexGolfCourseCell(isCompact: isCompact), // Golf Course - editable dropdown for Monday
-          is6InchPhoneLandscape 
-            ? _buildFlexEditableCellWithBorder(_closePinController, _closePinFocus, isCompact ? 16 : 15, TextInputType.number, isCompact: isCompact) // Close Pin - editable for 6" landscape
-            : _buildFlexDataCell('\$0.00', isCompact ? 16 : 15, isCompact: isCompact), // Close pin winnings - static for other sizes
-          _buildFlexEditableCellWithBorder(_skatsController, _skatsFocus, isCompact ? 10 : 9, TextInputType.number, isCompact: isCompact),
-          _buildFlexEditableCellWithBorder(_winningsController, _winningsFocus, isCompact ? 18 : 20, TextInputType.number, isCompact: isCompact), // SKAT Winnings
+          isPhone 
+            ? _buildFlexEditableCellWithBorder(_closePinController, _closePinFocus, isCompact ? 16 : 15, TextInputType.number, isCompact: isCompact) // Close Pin - editable for phones
+            : _buildFlexDataCell('\$0.00', isCompact ? 16 : isMedium ? 15 : 15, isCompact: isCompact), // Close pin winnings - static for tablets
+          _buildFlexEditableCellWithBorder(_skatsController, _skatsFocus, isCompact ? 10 : isMedium ? 10 : 9, TextInputType.number, isCompact: isCompact),
+          _buildFlexEditableCellWithBorder(_winningsController, _winningsFocus, isCompact ? 18 : isMedium ? 18 : 20, TextInputType.number, isCompact: isCompact), // SKAT Winnings
         ],
       );
     } else {
       // Wednesday League: Name, Date, Golf Course, HC, Gross, Close Pin, Single Winnings, Group Winnings
       return Row(
         children: [
-          _buildFlexDataCell(_selectedPlayer ?? '', isCompact ? 12 : 12, isCompact: isCompact),
-          _buildFlexDataCell(_getCurrentDateMMDDYY(), isCompact ? 14 : 14, isCompact: isCompact),
-          _buildFlexDataCell('The Hideout', isCompact ? 18 : 18, isCompact: isCompact), // Golf Course - always The Hideout for Wednesday
-          _buildFlexEditableCellWithBorder(_handicapController, _handicapFocus, isCompact ? 12 : 12, TextInputType.number, isCompact: isCompact), // HC editable
-          _buildFlexEditableCellWithBorder(_grossScoreController, _grossScoreFocus, isCompact ? 10 : 9, TextInputType.number, isCompact: isCompact), // Gross editable
-          _buildFlexDataCell('\$0.00', isCompact ? 16 : 15, isCompact: isCompact), // Close pin winnings - always $0
-          _buildFlexEditableCellWithBorder(_winningsController, _winningsFocus, isCompact ? 16 : 15, TextInputType.number, isCompact: isCompact), // Single Winnings
-          _buildFlexDataCell('\$0.00', isCompact ? 16 : 15, isCompact: isCompact), // Group winnings - always $0
+          _buildFlexDataCell(_selectedPlayer ?? '', isCompact ? 12 : isMedium ? 12 : 12, isCompact: isCompact),
+          _buildFlexDataCell(_getCurrentDateMMDDYY(), isCompact ? 14 : isMedium ? 14 : 14, isCompact: isCompact),
+          _buildFlexDataCell('The Hideout', isCompact ? 18 : isMedium ? 18 : 18, isCompact: isCompact), // Golf Course - always The Hideout for Wednesday
+          _buildFlexEditableCellWithBorder(_handicapController, _handicapFocus, isCompact ? 12 : isMedium ? 12 : 12, TextInputType.number, isCompact: isCompact), // HC editable
+          _buildFlexEditableCellWithBorder(_grossScoreController, _grossScoreFocus, isCompact ? 10 : isMedium ? 10 : 9, TextInputType.number, isCompact: isCompact), // Gross editable
+          _buildFlexDataCell('\$0.00', isCompact ? 16 : isMedium ? 15 : 15, isCompact: isCompact), // Close pin winnings - always $0
+          _buildFlexEditableCellWithBorder(_winningsController, _winningsFocus, isCompact ? 16 : isMedium ? 15 : 15, TextInputType.number, isCompact: isCompact), // Single Winnings
+          _buildFlexDataCell('\$0.00', isCompact ? 16 : isMedium ? 15 : 15, isCompact: isCompact), // Group winnings - always $0
         ],
       );
     }
@@ -911,10 +927,10 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
     );
   }
 
-  Widget _buildHeaders({bool isCompact = false}) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
-    final is6InchPhoneLandscape = isLandscape && screenWidth <= 900;
+  Widget _buildHeaders({bool isCompact = false, bool isMedium = false}) {
+    final screenSize = MediaQuery.of(context).size;
+    final screenWidth = screenSize.width;
+    final isPhone = screenWidth <= 900;
     
     if (_selectedLeague == League.monday) {
       // Monday League: Name, Date, Golf Course, Close Pin, SKATS, SKAT Winnings
@@ -923,12 +939,12 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
           // First header line
           Row(
             children: [
-              _buildFlexHeaderCell('Name', isCompact ? 22 : 24, isCompact: isCompact),
-              _buildFlexHeaderCell('Date', isCompact ? 14 : 14, isCompact: isCompact),
-              _buildFlexHeaderCell('Golf Course', isCompact ? 20 : 18, isCompact: isCompact),
-              _buildFlexHeaderCell(is6InchPhoneLandscape ? 'Close Pin\nWinnings' : 'Close Pin', isCompact ? 16 : 15, isCompact: isCompact),
-              _buildFlexHeaderCell('SKATS', isCompact ? 10 : 9, isCompact: isCompact),
-              _buildFlexHeaderCell('SKAT\nWinnings', isCompact ? 18 : 20, isCompact: isCompact),
+              _buildFlexHeaderCell('Name', isCompact ? 22 : isMedium ? 22 : 24, isCompact: isCompact),
+              _buildFlexHeaderCell('Date', isCompact ? 14 : isMedium ? 14 : 14, isCompact: isCompact),
+              _buildFlexHeaderCell('Golf Course', isCompact ? 20 : isMedium ? 18 : 18, isCompact: isCompact),
+              _buildFlexHeaderCell(isPhone ? 'Close Pin\nWinnings' : 'Close Pin', isCompact ? 16 : isMedium ? 15 : 15, isCompact: isCompact),
+              _buildFlexHeaderCell('SKATS', isCompact ? 10 : isMedium ? 10 : 9, isCompact: isCompact),
+              _buildFlexHeaderCell('SKAT\nWinnings', isCompact ? 18 : isMedium ? 18 : 20, isCompact: isCompact),
             ],
           ),
         ],
@@ -940,14 +956,14 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
           // First header line
           Row(
             children: [
-              _buildFlexHeaderCell('Name', isCompact ? 12 : 12, isCompact: isCompact),
-              _buildFlexHeaderCell('Date', isCompact ? 14 : 14, isCompact: isCompact),
-              _buildFlexHeaderCell('Golf Course', isCompact ? 18 : 18, isCompact: isCompact),
-              _buildFlexHeaderCell('HC', isCompact ? 12 : 12, isCompact: isCompact),
-              _buildFlexHeaderCell('Gross', isCompact ? 10 : 9, isCompact: isCompact),
-              _buildFlexHeaderCell(is6InchPhoneLandscape ? 'Close Pin\nWinnings' : 'Close Pin', isCompact ? 16 : 15, isCompact: isCompact),
-              _buildFlexHeaderCell('Single\nWinnings', isCompact ? 16 : 15, isCompact: isCompact),
-              _buildFlexHeaderCell('Group\nWinnings', isCompact ? 16 : 15, isCompact: isCompact),
+              _buildFlexHeaderCell('Name', isCompact ? 12 : isMedium ? 12 : 12, isCompact: isCompact),
+              _buildFlexHeaderCell('Date', isCompact ? 14 : isMedium ? 14 : 14, isCompact: isCompact),
+              _buildFlexHeaderCell('Golf Course', isCompact ? 18 : isMedium ? 18 : 18, isCompact: isCompact),
+              _buildFlexHeaderCell('HC', isCompact ? 12 : isMedium ? 12 : 12, isCompact: isCompact),
+              _buildFlexHeaderCell('Gross', isCompact ? 10 : isMedium ? 10 : 9, isCompact: isCompact),
+              _buildFlexHeaderCell(isPhone ? 'Close Pin\nWinnings' : 'Close Pin', isCompact ? 16 : isMedium ? 15 : 15, isCompact: isCompact),
+              _buildFlexHeaderCell('Single\nWinnings', isCompact ? 16 : isMedium ? 15 : 15, isCompact: isCompact),
+              _buildFlexHeaderCell('Group\nWinnings', isCompact ? 16 : isMedium ? 15 : 15, isCompact: isCompact),
             ],
           ),
         ],
@@ -1153,8 +1169,7 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
     List<TextInputFormatter>? formatters;
     String? prefixText;
     final screenWidth = MediaQuery.of(context).size.width;
-    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
-    final is6InchPhoneLandscape = isLandscape && screenWidth <= 900;
+    final is6InchPhoneLandscape = screenWidth <= 900;
     
     if (inputType == TextInputType.number) {
       if (controller == _grossScoreController || controller == _skatsController) {
@@ -1274,10 +1289,9 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
 
   Widget _buildActionButtons() {
     final screenWidth = MediaQuery.of(context).size.width;
-    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
-    final is6InchPhonePortrait = !isLandscape && screenWidth <= 600;
+    final is6InchPhoneLandscape = screenWidth <= 900;
     
-    if (is6InchPhonePortrait) {
+    if (is6InchPhoneLandscape) {
       return _buildCompactActionButtons();
     } else {
       return _buildStandardActionButtons();
@@ -1467,10 +1481,14 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
-    final is6InchPhonePortrait = !isLandscape && screenWidth <= 600;
-    final is6InchPhoneLandscape = isLandscape && screenWidth <= 900;
+    final screenSize = MediaQuery.of(context).size;
+    final screenWidth = screenSize.width;
+    final screenHeight = screenSize.height;
+    
+    // Define device categories
+    final isPhone = screenWidth <= 900;  // 6.5" phones
+    final isSmallTablet = screenWidth > 900 && screenWidth <= 1200;  // 8" tablets
+    final isLargeTablet = screenWidth > 1200;  // 10" tablets
     
     return Scaffold(
       appBar: AppBar(
@@ -1478,30 +1496,29 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
         backgroundColor: _selectedLeague == League.monday ? Colors.green[700] : Colors.orange[700],
         foregroundColor: Colors.white,
       ),
-      resizeToAvoidBottomInset: !is6InchPhonePortrait,
+      resizeToAvoidBottomInset: true,
       body: SafeArea(
         child: Container(
           color: Colors.grey[100],
-          padding: EdgeInsets.all(is6InchPhonePortrait ? 5 : (is6InchPhoneLandscape ? 10 : 20)),
-          child: (is6InchPhonePortrait || is6InchPhoneLandscape) 
-            ? _build6InchPhoneLayout()
-            : _buildDesktopLayout(),
+          padding: EdgeInsets.all(isPhone ? 10 : isSmallTablet ? 15 : 20),
+          child: isPhone
+            ? _buildPhoneLayout()
+            : isSmallTablet
+              ? _buildTabletLayout()
+              : _buildDesktopLayout(),
         ),
       ),
     );
   }
 
-  Widget _build6InchPhoneLayout() {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
-    
-    if (isLandscape) {
-      // 6" phone landscape - use 2-column layout similar to tablets
-      return _buildTabletStyleLayout();
-    } else {
-      // 6" phone portrait - use mobile layout (though this should be rare due to orientation lock)
-      return _buildMobileLayout();
-    }
+  Widget _buildPhoneLayout() {
+    // Phone landscape - use 2-column compact layout
+    return _buildTabletStyleLayout();
+  }
+
+  Widget _buildTabletLayout() {
+    // 8" tablet - use enhanced tablet layout with better spacing
+    return _buildTabletStyleLayoutMedium();
   }
 
   Widget _buildTabletStyleLayout() {
@@ -1581,6 +1598,83 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
     );
   }
 
+  Widget _buildTabletStyleLayoutMedium() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final footerHeight = 45.0; // Slightly larger footer for 8" tablets
+        final mainContentHeight = constraints.maxHeight - footerHeight - 8; // More spacing
+        
+        return Column(
+          children: [
+            // Main content area - 2 columns
+            SizedBox(
+              height: mainContentHeight,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Left column - Player list (18% of width for better balance)
+                  Expanded(
+                    flex: 18,
+                    child: Container(
+                      height: mainContentHeight,
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey, width: 1),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Column(
+                        children: [
+                          // Player list header
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[200],
+                              border: Border(bottom: BorderSide(color: Colors.grey)),
+                            ),
+                            child: const Text(
+                              'Players',
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                            ),
+                          ),
+                          // Player list content
+                          Expanded(
+                            child: _buildPlayerList(isCompact: false, hideHeader: true),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  
+                  const SizedBox(width: 12),
+                  
+                  // Right column - Scores Table (82% of width)
+                  Expanded(
+                    flex: 82,
+                    child: Container(
+                      height: mainContentHeight,
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey, width: 1),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: _buildScoresTable(),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            const SizedBox(height: 5),
+            
+            // Button footer at bottom
+            SizedBox(
+              height: footerHeight,
+              child: _buildButtonFooterTablet(),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Widget _buildButtonFooterLandscape() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 2),
@@ -1653,6 +1747,100 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 8),
                 ),
                 child: const Text('Return', style: TextStyle(fontSize: 9)),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildButtonFooterTablet() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Row(
+        children: [
+          Expanded(
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 2),
+              child: ElevatedButton(
+                onPressed: _addScore,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.lightGreen,
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                ),
+                child: const Text('Add Score', style: TextStyle(fontSize: 11)),
+              ),
+            ),
+          ),
+          Expanded(
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 2),
+              child: ElevatedButton(
+                onPressed: _selectedScoreIndex != null ? _editScore : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.lightBlue,
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                ),
+                child: const Text('Edit', style: TextStyle(fontSize: 11)),
+              ),
+            ),
+          ),
+          Expanded(
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 2),
+              child: ElevatedButton(
+                onPressed: _selectedScoreIndex != null ? () => _deleteScore(_scores[_selectedScoreIndex!]) : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red[300],
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                ),
+                child: const Text('Delete', style: TextStyle(fontSize: 11)),
+              ),
+            ),
+          ),
+          Expanded(
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 2),
+              child: ElevatedButton(
+                onPressed: _clearSelection,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.amber[300],
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                ),
+                child: const Text('Clear', style: TextStyle(fontSize: 11)),
+              ),
+            ),
+          ),
+          Expanded(
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 2),
+              child: ElevatedButton(
+                onPressed: _clearAllScoreData,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red[600],
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                ),
+                child: const Text('Clear All', style: TextStyle(fontSize: 11)),
+              ),
+            ),
+          ),
+          Expanded(
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 2),
+              child: ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red[300],
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                ),
+                child: const Text('Return', style: TextStyle(fontSize: 11)),
               ),
             ),
           ),
