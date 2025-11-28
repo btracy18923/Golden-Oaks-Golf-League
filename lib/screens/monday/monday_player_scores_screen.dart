@@ -1287,197 +1287,6 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
     return '$month/$day/$year';
   }
 
-  Widget _buildActionButtons() {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final is6InchPhoneLandscape = screenWidth <= 900;
-    
-    if (is6InchPhoneLandscape) {
-      return _buildCompactActionButtons();
-    } else {
-      return _buildStandardActionButtons();
-    }
-  }
-
-  Widget _buildStandardActionButtons() {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      child: Column(
-        children: [
-          // Action buttons row
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              ElevatedButton(
-                onPressed: _addScore,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.lightGreen,
-                  foregroundColor: Colors.black,
-                ),
-                child: const Text('Add Score'),
-              ),
-              const SizedBox(width: 10),
-              ElevatedButton(
-                onPressed: _selectedScoreIndex != null ? _editScore : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.lightBlue,
-                  foregroundColor: Colors.black,
-                ),
-                child: const Text('Edit Score'),
-              ),
-              const SizedBox(width: 10),
-              ElevatedButton(
-                onPressed: _selectedScoreIndex != null ? () => _deleteScore(_scores[_selectedScoreIndex!]) : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red[300],
-                  foregroundColor: Colors.black,
-                ),
-                child: const Text('Delete Score'),
-              ),
-              const SizedBox(width: 10),
-              ElevatedButton(
-                onPressed: _clearSelection,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.amber[300],
-                  foregroundColor: Colors.black,
-                ),
-                child: const Text('Clear'),
-              ),
-              const SizedBox(width: 10),
-              ElevatedButton(
-                onPressed: _clearAllScoreData,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red[600],
-                  foregroundColor: Colors.white,
-                ),
-                child: const Text('Clear All Data'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          // Return button
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red[300],
-              foregroundColor: Colors.black,
-            ),
-            child: const Text('Return to Main Menu'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCompactActionButtons() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-      child: Column(
-        children: [
-          // First row: 3 buttons
-          Expanded(
-            child: Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 2),
-                    child: ElevatedButton(
-                      onPressed: _addScore,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.lightGreen,
-                        foregroundColor: Colors.black,
-                        padding: const EdgeInsets.symmetric(vertical: 2),
-                      ),
-                      child: const Text('Add', style: TextStyle(fontSize: 9)),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 2),
-                    child: ElevatedButton(
-                      onPressed: _selectedScoreIndex != null ? _editScore : null,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.lightBlue,
-                        foregroundColor: Colors.black,
-                        padding: const EdgeInsets.symmetric(vertical: 2),
-                      ),
-                      child: const Text('Edit', style: TextStyle(fontSize: 9)),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 2),
-                    child: ElevatedButton(
-                      onPressed: _selectedScoreIndex != null ? () => _deleteScore(_scores[_selectedScoreIndex!]) : null,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red[300],
-                        foregroundColor: Colors.black,
-                        padding: const EdgeInsets.symmetric(vertical: 2),
-                      ),
-                      child: const Text('Delete', style: TextStyle(fontSize: 9)),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          
-          const SizedBox(height: 3),
-          
-          // Second row: 3 buttons
-          Expanded(
-            child: Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 2),
-                    child: ElevatedButton(
-                      onPressed: _clearSelection,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.amber[300],
-                        foregroundColor: Colors.black,
-                        padding: const EdgeInsets.symmetric(vertical: 2),
-                      ),
-                      child: const Text('Clear', style: TextStyle(fontSize: 9)),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 2),
-                    child: ElevatedButton(
-                      onPressed: _clearAllScoreData,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red[600],
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 2),
-                      ),
-                      child: const Text('Clear All', style: TextStyle(fontSize: 9)),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 2),
-                    child: ElevatedButton(
-                      onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red[300],
-                        foregroundColor: Colors.black,
-                        padding: const EdgeInsets.symmetric(vertical: 2),
-                      ),
-                      child: const Text('Return', style: TextStyle(fontSize: 9)),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -1496,17 +1305,33 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
         backgroundColor: _selectedLeague == League.monday ? Colors.green[700] : Colors.orange[700],
         foregroundColor: Colors.white,
       ),
-      resizeToAvoidBottomInset: true,
-      body: SafeArea(
-        child: Container(
-          color: Colors.grey[100],
-          padding: EdgeInsets.all(isPhone ? 10 : isSmallTablet ? 15 : 20),
-          child: isPhone
-            ? _buildPhoneLayout()
-            : isSmallTablet
-              ? _buildTabletLayout()
-              : _buildDesktopLayout(),
-        ),
+      resizeToAvoidBottomInset: false,
+      body: Column(
+        children: [
+          Expanded(
+            child: Container(
+              color: Colors.grey[100],
+              padding: EdgeInsets.only(
+                left: isPhone ? 10 : isSmallTablet ? 15 : 20,
+                right: isPhone ? 10 : isSmallTablet ? 15 : 20,
+                top: isPhone ? 10 : isSmallTablet ? 15 : 20,
+                bottom: 0, // No bottom padding
+              ),
+              child: SafeArea(
+                bottom: false, // Don't add safe area at bottom
+                child: isPhone
+                  ? _buildPhoneLayout()
+                  : isSmallTablet
+                    ? _buildTabletLayout()
+                    : _buildDesktopLayout(),
+              ),
+            ),
+          ),
+          Container(
+            height: 39,
+            child: _buildFullScreenButtonBar(),
+          ),
+        ],
       ),
     );
   }
@@ -1524,8 +1349,7 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
   Widget _buildTabletStyleLayout() {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final footerHeight = 40.0; // Single row footer height
-        final mainContentHeight = constraints.maxHeight - footerHeight - 5; // Content height minus footer and spacing
+        final mainContentHeight = constraints.maxHeight; // Use full height since we have no footer
         
         return Column(
           children: [
@@ -1584,14 +1408,6 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
                 ],
               ),
             ),
-            
-            const SizedBox(height: 2),
-            
-            // Button footer at bottom
-            SizedBox(
-              height: footerHeight,
-              child: _buildButtonFooterLandscape(),
-            ),
           ],
         );
       },
@@ -1601,8 +1417,7 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
   Widget _buildTabletStyleLayoutMedium() {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final footerHeight = 45.0; // Slightly larger footer for 8" tablets
-        final mainContentHeight = constraints.maxHeight - footerHeight - 8; // More spacing
+        final mainContentHeight = constraints.maxHeight; // Use full height since we have no footer
         
         return Column(
           children: [
@@ -1661,233 +1476,12 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
                 ],
               ),
             ),
-            
-            const SizedBox(height: 5),
-            
-            // Button footer at bottom
-            SizedBox(
-              height: footerHeight,
-              child: _buildButtonFooterTablet(),
-            ),
           ],
         );
       },
     );
   }
 
-  Widget _buildButtonFooterLandscape() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 2),
-      child: Row(
-        children: [
-          Expanded(
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 1),
-              child: ElevatedButton(
-                onPressed: _addScore,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.lightGreen,
-                  foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                ),
-                child: const Text('Add', style: TextStyle(fontSize: 9)),
-              ),
-            ),
-          ),
-          Expanded(
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 1),
-              child: ElevatedButton(
-                onPressed: _selectedScoreIndex != null ? () => _deleteScore(_scores[_selectedScoreIndex!]) : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red[300],
-                  foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                ),
-                child: const Text('Delete', style: TextStyle(fontSize: 9)),
-              ),
-            ),
-          ),
-          Expanded(
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 1),
-              child: ElevatedButton(
-                onPressed: _clearSelection,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.amber[300],
-                  foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                ),
-                child: const Text('Clear', style: TextStyle(fontSize: 9)),
-              ),
-            ),
-          ),
-          Expanded(
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 1),
-              child: ElevatedButton(
-                onPressed: _clearAllScoreData,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red[600],
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                ),
-                child: const Text('Clear All', style: TextStyle(fontSize: 9)),
-              ),
-            ),
-          ),
-          Expanded(
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 1),
-              child: ElevatedButton(
-                onPressed: () => Navigator.of(context).pop(),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red[300],
-                  foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                ),
-                child: const Text('Return', style: TextStyle(fontSize: 9)),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildButtonFooterTablet() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-      child: Row(
-        children: [
-          Expanded(
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 2),
-              child: ElevatedButton(
-                onPressed: _addScore,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.lightGreen,
-                  foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                ),
-                child: const Text('Add Score', style: TextStyle(fontSize: 11)),
-              ),
-            ),
-          ),
-          Expanded(
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 2),
-              child: ElevatedButton(
-                onPressed: _selectedScoreIndex != null ? _editScore : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.lightBlue,
-                  foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                ),
-                child: const Text('Edit', style: TextStyle(fontSize: 11)),
-              ),
-            ),
-          ),
-          Expanded(
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 2),
-              child: ElevatedButton(
-                onPressed: _selectedScoreIndex != null ? () => _deleteScore(_scores[_selectedScoreIndex!]) : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red[300],
-                  foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                ),
-                child: const Text('Delete', style: TextStyle(fontSize: 11)),
-              ),
-            ),
-          ),
-          Expanded(
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 2),
-              child: ElevatedButton(
-                onPressed: _clearSelection,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.amber[300],
-                  foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                ),
-                child: const Text('Clear', style: TextStyle(fontSize: 11)),
-              ),
-            ),
-          ),
-          Expanded(
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 2),
-              child: ElevatedButton(
-                onPressed: _clearAllScoreData,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red[600],
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                ),
-                child: const Text('Clear All', style: TextStyle(fontSize: 11)),
-              ),
-            ),
-          ),
-          Expanded(
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 2),
-              child: ElevatedButton(
-                onPressed: () => Navigator.of(context).pop(),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red[300],
-                  foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                ),
-                child: const Text('Return', style: TextStyle(fontSize: 11)),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLandscapeActionButtons() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 2),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            _buildCompactButton('Add', Colors.lightGreen, _addScore),
-            const SizedBox(width: 4),
-            _buildCompactButton('Edit', Colors.lightBlue, _selectedScoreIndex != null ? _editScore : null),
-            const SizedBox(width: 4),
-            _buildCompactButton('Delete', Colors.red[300]!, _selectedScoreIndex != null ? () => _deleteScore(_scores[_selectedScoreIndex!]) : null),
-            const SizedBox(width: 4),
-            _buildCompactButton('Clear', Colors.amber[300]!, _clearSelection),
-            const SizedBox(width: 4),
-            _buildCompactButton('Clear All', Colors.red[600]!, _clearAllScoreData),
-            const SizedBox(width: 4),
-            _buildCompactButton('Return', Colors.red[300]!, () => Navigator.of(context).popUntil((route) => route.isFirst)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCompactButton(String text, Color color, VoidCallback? onPressed) {
-    return SizedBox(
-      height: 35,
-      child: ElevatedButton(
-        onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: color,
-          foregroundColor: text == 'Clear All' ? Colors.white : Colors.black,
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        ),
-        child: Text(text, style: const TextStyle(fontSize: 10)),
-      ),
-    );
-  }
 
   Widget _buildDesktopLayout() {
     return Column(
@@ -1917,8 +1511,6 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
           ),
         ),
         
-        // Action buttons
-        _buildActionButtons(),
       ],
     );
   }
@@ -1928,9 +1520,8 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
       builder: (context, constraints) {
         final titleHeight = 30.0;
         final playerListHeight = constraints.maxHeight * 0.22; // Reduced from 0.25
-        final buttonHeight = 75.0; // Reduced from 80.0
-        final spacing = 25.0; // Total spacing (3 gaps of ~8px each)
-        final remainingHeight = constraints.maxHeight - titleHeight - playerListHeight - buttonHeight - spacing;
+        final spacing = 16.0; // Total spacing (2 gaps of ~8px each)
+        final remainingHeight = constraints.maxHeight - titleHeight - playerListHeight - spacing;
         
         return Column(
           children: [
@@ -1962,11 +1553,6 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
             
             const SizedBox(height: 8),
             
-            // Compact action buttons at bottom
-            SizedBox(
-              height: buttonHeight,
-              child: _buildActionButtons(),
-            ),
           ],
         );
       },
@@ -2007,6 +1593,93 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
         _showErrorDialog('Error clearing data: $e');
       }
     }
+  }
+
+  Widget _buildFullScreenButtonBar() {
+    return Container(
+      width: double.infinity,
+      height: 39,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.3),
+            spreadRadius: 1,
+            blurRadius: 3,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
+      child: Row(
+        children: [
+          Expanded(
+            child: ElevatedButton(
+              onPressed: _addScore,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green[300],
+                foregroundColor: Colors.black,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+                padding: EdgeInsets.zero,
+              ),
+              child: const Text('Add Score', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+            ),
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: ElevatedButton(
+              onPressed: _clearSelection,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange[300],
+                foregroundColor: Colors.black,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+                padding: EdgeInsets.zero,
+              ),
+              child: const Text('Clear', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+            ),
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: ElevatedButton(
+              onPressed: _selectedScoreIndex != null ? () => _deleteScore(_scores[_selectedScoreIndex!]) : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _selectedScoreIndex != null ? Colors.red[300] : Colors.grey[400],
+                foregroundColor: Colors.black,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+                padding: EdgeInsets.zero,
+              ),
+              child: const Text('Delete', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+            ),
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue[300],
+                foregroundColor: Colors.black,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+                padding: EdgeInsets.zero,
+              ),
+              child: const Text('Back', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+            ),
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: ElevatedButton(
+              onPressed: _clearAllScoreData,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red[600],
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+                padding: EdgeInsets.zero,
+              ),
+              child: const Text('Clear All', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
 }
