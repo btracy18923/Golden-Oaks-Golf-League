@@ -386,6 +386,11 @@ class PlayerProfileService {
       width: width,
       height: 40,
       padding: const EdgeInsets.symmetric(horizontal: 8),
+      decoration: const BoxDecoration(
+        border: Border(
+          right: BorderSide(color: Colors.grey, width: 1),
+        ),
+      ),
       child: Center(
         child: Text(
           text,
