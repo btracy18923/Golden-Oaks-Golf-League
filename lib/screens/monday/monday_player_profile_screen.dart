@@ -79,6 +79,10 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
     _skatController.clear();
     _cellController.clear();
     _emailController.clear();
+    
+    // Remove focus from all form fields
+    FocusScope.of(context).unfocus();
+    
     setState(() {
       _selectedPlayer = null;
     });
@@ -312,10 +316,17 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
         foregroundColor: Colors.white,
       ),
       body: SafeArea(
-        child: Container(
-          color: Colors.grey[100],
-          padding: _getAdaptivePadding(isTablet, isPhone, isLandscape),
-          child: _buildAdaptiveLayout(isTablet, isPhone, isLandscape, screenWidth, screenHeight),
+        child: Column(
+          children: [
+            Expanded(
+              child: Container(
+                color: Colors.grey[100],
+                padding: _getAdaptivePadding(isTablet, isPhone, isLandscape),
+                child: _buildAdaptiveLayout(isTablet, isPhone, isLandscape, screenWidth, screenHeight),
+              ),
+            ),
+            _buildFullScreenButtonBar(),
+          ],
         ),
       ),
     );
@@ -328,7 +339,7 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
         return PlayerProfileService.buildTabletLayout(
           context,
           constraints,
-          _buildFormSection(),
+          _buildFormSectionWithoutButtons(),
           _buildPlayerTable(),
         );
       },
@@ -446,15 +457,7 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
                   color: Colors.white,
                 ),
                 padding: const EdgeInsets.all(12.0),
-                child: Column(
-                  children: [
-                    Expanded(
-                      child: _buildFormSectionWithoutButtons(),
-                    ),
-                    const SizedBox(height: 8),
-                    _buildCompactButtonRow(),
-                  ],
-                ),
+                child: _buildFormSectionWithoutButtons(),
               ),
             ),
             
@@ -491,7 +494,7 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
                 color: Colors.white,
               ),
               padding: const EdgeInsets.all(16.0),
-              child: _buildFormSection(),
+              child: _buildFormSectionWithoutButtons(),
             ),
             
             const SizedBox(height: 12),
@@ -507,32 +510,35 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
     );
   }
   
-  Widget _buildCompactButtonRow() {
-    return SizedBox(
-      height: 36,
+
+  Widget _buildFullScreenButtonBar() {
+    return Container(
+      width: double.infinity,
+      height: 45,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.3),
+            spreadRadius: 1,
+            blurRadius: 3,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(6.0),
       child: Row(
         children: [
           Expanded(
             child: ElevatedButton(
               onPressed: _addPlayer,
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.lightGreen,
+                backgroundColor: Colors.green[300],
                 foregroundColor: Colors.black,
-                padding: const EdgeInsets.symmetric(vertical: 4),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+                padding: EdgeInsets.zero,
               ),
-              child: const Text('Add', style: TextStyle(fontSize: 10)),
-            ),
-          ),
-          const SizedBox(width: 4),
-          Expanded(
-            child: ElevatedButton(
-              onPressed: _selectedPlayer != null ? _updatePlayer : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _selectedPlayer != null ? Colors.lightBlue : Colors.grey.shade300,
-                foregroundColor: Colors.black,
-                padding: const EdgeInsets.symmetric(vertical: 4),
-              ),
-              child: const Text('Edit', style: TextStyle(fontSize: 10)),
+              child: const Text('ADD PLAYER', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
             ),
           ),
           const SizedBox(width: 4),
@@ -540,11 +546,12 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
             child: ElevatedButton(
               onPressed: _selectedPlayer != null ? _deletePlayer : null,
               style: ElevatedButton.styleFrom(
-                backgroundColor: _selectedPlayer != null ? Colors.red.shade300 : Colors.grey.shade300,
+                backgroundColor: _selectedPlayer != null ? Colors.red[300] : Colors.grey[400],
                 foregroundColor: Colors.black,
-                padding: const EdgeInsets.symmetric(vertical: 4),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+                padding: EdgeInsets.zero,
               ),
-              child: const Text('Del', style: TextStyle(fontSize: 10)),
+              child: const Text('DELETE', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
             ),
           ),
           const SizedBox(width: 4),
@@ -552,11 +559,25 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
             child: ElevatedButton(
               onPressed: _clearForm,
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.amber.shade300,
+                backgroundColor: Colors.orange[300],
                 foregroundColor: Colors.black,
-                padding: const EdgeInsets.symmetric(vertical: 4),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+                padding: EdgeInsets.zero,
               ),
-              child: const Text('Clear', style: TextStyle(fontSize: 10)),
+              child: const Text('CLEAR', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+            ),
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue[300],
+                foregroundColor: Colors.black,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+                padding: EdgeInsets.zero,
+              ),
+              child: const Text('BACK', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
             ),
           ),
         ],

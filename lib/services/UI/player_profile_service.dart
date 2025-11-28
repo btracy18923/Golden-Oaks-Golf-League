@@ -35,45 +35,56 @@ class PlayerProfileService {
       else if (label == 'SKAT#') displayLabel = 'SKAT#';
     }
     
-    if (is6InchPhoneLandscape) {
-      // Special layout for Email field in landscape mode
-      if (label == 'Email') {
-        return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 2),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Email:',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 10),
-              ),
-              const SizedBox(height: 2),
-              SizedBox(
-                height: 28,
-                child: TextFormField(
-                  controller: controller,
-                  focusNode: focusNode,
-                  keyboardType: keyboardType,
-                  inputFormatters: inputFormatters,
-                  decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
-                    isDense: true,
-                    contentPadding: EdgeInsets.only(left: 6, right: 6, top: 2, bottom: 10),
-                  ),
-                  style: const TextStyle(fontSize: 9, height: 1.0),
-                  onFieldSubmitted: (_) {
-                    if (onUpdatePlayer != null) {
-                      onUpdatePlayer();
-                    } else {
-                      FocusScope.of(context).unfocus();
-                    }
-                  },
+    // Special two-row layout for Email field for all screen sizes
+    if (label == 'Email') {
+      double labelFontSize = 10;
+      double fieldHeight = 28;
+      double inputFontSize = 9;
+      
+      if (!is6InchPhoneLandscape && isTablet) {
+        labelFontSize = 11;
+        fieldHeight = 32;
+        inputFontSize = 11;
+      }
+      
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Email:',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: labelFontSize),
+            ),
+            const SizedBox(height: 2),
+            SizedBox(
+              height: fieldHeight,
+              child: TextFormField(
+                controller: controller,
+                focusNode: focusNode,
+                keyboardType: keyboardType,
+                inputFormatters: inputFormatters,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                  contentPadding: EdgeInsets.only(left: 6, right: 6, top: 2, bottom: 10),
                 ),
+                style: TextStyle(fontSize: inputFontSize, height: 1.0),
+                onFieldSubmitted: (_) {
+                  if (onUpdatePlayer != null) {
+                    onUpdatePlayer();
+                  } else {
+                    FocusScope.of(context).unfocus();
+                  }
+                },
               ),
-            ],
-          ),
-        );
-      } else {
+            ),
+          ],
+        ),
+      );
+    }
+    
+    if (is6InchPhoneLandscape) {
         // Horizontal layout for other fields in landscape mode
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: 2),
@@ -114,7 +125,6 @@ class PlayerProfileService {
             ],
           ),
         );
-      }
     } else {
       // Adaptive layout for tablets and larger screens
       double labelWidth = 80;
@@ -294,13 +304,13 @@ class PlayerProfileService {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: is6InchPhoneLandscape ? [
-                    _buildHeaderCellLeftAlign('Name', tableWidth * 0.47, fontSize),
-                    _buildHeaderCellLeftAlign('SK#', tableWidth * 0.16, fontSize),
-                    _buildHeaderCellLeftAlign('Phone', tableWidth * 0.37, fontSize),
+                    _buildHeaderCellLeftAlign('Name', tableWidth * 0.40, fontSize),
+                    _buildHeaderCellLeftAlign('Skat #', tableWidth * 0.15, fontSize),
+                    _buildHeaderCellLeftAlign('Phone', tableWidth * 0.45, fontSize),
                   ] : [
-                    _buildHeaderCell('Name', tableWidth * 0.5, fontSize),
-                    _buildHeaderCell('S#', tableWidth * 0.25, fontSize),
-                    _buildHeaderCell('Phone', tableWidth * 0.25, fontSize),
+                    _buildHeaderCellLeftAlign('Name', tableWidth * 0.45, fontSize),
+                    _buildHeaderCell('Skat #', tableWidth * 0.20, fontSize),
+                    _buildHeaderCell('Phone', tableWidth * 0.35, fontSize),
                   ],
                 ),
               ),
@@ -352,11 +362,11 @@ class PlayerProfileService {
     return Row(
       children: [
         _buildDataCell('${player['first'] ?? ''} ${player['last'] ?? ''}', 
-                      tableWidth * 0.47, fontSize, alignLeft: true),
+                      tableWidth * 0.40, fontSize, alignLeft: true),
         _buildDataCell(player['skat_number']?.toString() ?? '', 
-                      tableWidth * 0.16, fontSize),
+                      tableWidth * 0.15, fontSize),
         _buildDataCell(formatPhoneNumber(player['cell']), 
-                      tableWidth * 0.37, fontSize),
+                      tableWidth * 0.45, fontSize),
       ],
     );
   }
@@ -364,9 +374,9 @@ class PlayerProfileService {
   static Widget _buildTabletPlayerRow(Map<String, dynamic> player, double tableWidth, String Function(String?) formatPhoneNumber, double fontSize) {
     return Row(
       children: [
-        _buildDataCell('${player['first'] ?? ''} ${player['last'] ?? ''}', tableWidth * 0.5, fontSize, alignLeft: true),
-        _buildDataCell(player['skat_number']?.toString() ?? '', tableWidth * 0.25, fontSize),
-        _buildDataCell(formatPhoneNumber(player['cell']), tableWidth * 0.25, fontSize),
+        _buildDataCell('${player['first'] ?? ''} ${player['last'] ?? ''}', tableWidth * 0.45, fontSize, alignLeft: true),
+        _buildDataCell(player['skat_number']?.toString() ?? '', tableWidth * 0.20, fontSize),
+        _buildDataCell(formatPhoneNumber(player['cell']), tableWidth * 0.35, fontSize),
       ],
     );
   }
