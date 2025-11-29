@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import '../../services/screen_data_retention_service.dart';
 import '../../services/UI/enter_scores_UI_service.dart';
 import '../../services/shared/league_purse_service.dart';
+import '../../services/database_helper.dart';
+import '../../models/league.dart';
 import '../main_menu_screen.dart';
 
 class MondayResultsScreen extends StatefulWidget {
@@ -14,6 +16,7 @@ class MondayResultsScreen extends StatefulWidget {
 
 class _MondayResultsScreenState extends State<MondayResultsScreen> {
   final ScreenDataRetentionService _retentionService = ScreenDataRetentionService();
+  final DatabaseHelper _databaseHelper = DatabaseHelper();
 
   @override
   void initState() {
@@ -41,8 +44,105 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
     super.dispose();
   }
 
-  /// Returns to the main menu and clears retained data
-  void _returnToMainMenu() {
+  /// Saves the results data to the monday_scores table
+  Future<void> _saveResultsToDatabase() async {
+    try {
+      final playerGroups = _retentionService.playerGroups ?? [];
+      final selectedGolfCourse = _retentionService.selectedGolfCourse ?? 'Not Selected';
+      final currentDate = DateTime.now().toIso8601String().split('T')[0];
+      final playerClosestPinWinnings = _retentionService.playerClosestPinWinnings ?? {};
+      
+      // Flatten all players from all groups and filter for positive DIFF
+      List<PlayerData> allPlayers = [];
+      for (int groupIndex = 0; groupIndex < playerGroups.length; groupIndex++) {
+        for (var player in playerGroups[groupIndex]) {
+          // Only include players with positive DIFF
+          if (player.diff.isNotEmpty && player.diff != '-') {
+            try {
+              final diffValue = double.parse(player.diff.replaceAll('+', ''));
+              if (diffValue > 0) {
+                allPlayers.add(player);
+              }
+            } catch (e) {
+              // If parsing fails, skip this player
+            }
+          }
+        }
+      }
+
+      // Get player ID by name lookup for each player
+      final allDbPlayers = await _databaseHelper.getPlayersByLeague(League.monday);
+      
+      for (var player in allPlayers) {
+        // Find matching player in database
+        final dbPlayer = allDbPlayers.firstWhere(
+          (p) => p['last'] == player.name, 
+          orElse: () => <String, dynamic>{}
+        );
+        
+        if (dbPlayer.isNotEmpty) {
+          // Parse SKATS score
+          int? skatsScore;
+          if (player.skats.isNotEmpty && player.skats != '-') {
+            skatsScore = int.tryParse(player.skats);
+          }
+          
+          // Parse SKAT winnings
+          double skatWinnings = 0.0;
+          if (player.money.isNotEmpty && player.money.contains('\$')) {
+            try {
+              skatWinnings = double.parse(player.money.replaceAll('\$', '').replaceAll(',', ''));
+            } catch (e) {
+              skatWinnings = 0.0;
+            }
+          }
+          
+          // Get close pin winnings for this player
+          double closePinWinnings = playerClosestPinWinnings[player.name] ?? 0.0;
+          
+          // Prepare score data
+          Map<String, dynamic> scoreData = {
+            'player_id': dbPlayer['id'],
+            'name': player.name,
+            'date_played': currentDate,
+            'golf_course': selectedGolfCourse,
+            'skats_score': skatsScore,
+            'close_pin_winnings': closePinWinnings,
+            'skat_winnings': skatWinnings,
+            'handicap': dbPlayer['handicap'],
+            'skat_number': dbPlayer['skat_number'],
+          };
+          
+          // Save to monday_scores table
+          await _databaseHelper.insertScoreLeague(scoreData, League.monday);
+        }
+      }
+      
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Results saved successfully! ${allPlayers.length} player records saved.'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 3),
+        ),
+      );
+    } catch (e) {
+      // Show error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error saving results: $e'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+
+  /// Saves results to database and returns to the main menu
+  Future<void> _saveResultsAndReturnToMainMenu() async {
+    // First save the results
+    await _saveResultsToDatabase();
+    
     // Clear all retained data for a fresh session
     _retentionService.clearAllData();
     
@@ -154,15 +254,15 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
             
             SizedBox(height: is6InchPhone ? 4 : (is8InchTablet ? 5 : 6)),
             
-            // Return to Main Menu Button
+            // Save Results Button
             Align(
               alignment: Alignment.centerRight,
               child: SizedBox(
                 width: buttonWidth,
                 child: ElevatedButton(
-                  onPressed: _returnToMainMenu,
+                  onPressed: _saveResultsAndReturnToMainMenu,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue[600],
+                    backgroundColor: Colors.green[600],
                     foregroundColor: Colors.white,
                     padding: EdgeInsets.symmetric(vertical: buttonHeight),
                     shape: RoundedRectangleBorder(
@@ -173,11 +273,11 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.home, size: iconSize),
+                      Icon(Icons.save, size: iconSize),
                       const SizedBox(width: 8),
                       Flexible(
                         child: Text(
-                          'Return to Main Menu',
+                          'Save Results',
                           style: TextStyle(
                             fontSize: buttonFontSize,
                             fontWeight: FontWeight.bold,
