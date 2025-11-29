@@ -510,7 +510,7 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
                                     child: ElevatedButton(
                                       onPressed: () => Navigator.of(context).pop(),
                                       style: ElevatedButton.styleFrom(
-                                        backgroundColor: _leagueColor,
+                                        backgroundColor: Colors.lightBlue[300],
                                         foregroundColor: Colors.black,
                                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                                         shape: RoundedRectangleBorder(
@@ -519,7 +519,7 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
                                         ),
                                       ),
                                       child: const Text(
-                                        'Return',
+                                        'Back',
                                         style: TextStyle(
                                           fontSize: 12,
                                           fontWeight: FontWeight.bold,
@@ -535,7 +535,7 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
                                     child: ElevatedButton(
                                       onPressed: selectAllPlayers,
                                       style: ElevatedButton.styleFrom(
-                                        backgroundColor: _leagueColor,
+                                        backgroundColor: Colors.lightGreen[100],
                                         foregroundColor: Colors.black,
                                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                                         shape: RoundedRectangleBorder(
@@ -564,9 +564,9 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
                                           ? null 
                                           : _navigateToEnterScores,
                                       style: ElevatedButton.styleFrom(
-                                        backgroundColor: _leagueColor,
+                                        backgroundColor: Colors.green[300],
                                         foregroundColor: Colors.black,
-                                        disabledBackgroundColor: _leagueColor,
+                                        disabledBackgroundColor: Colors.green[300],
                                         disabledForegroundColor: Colors.black.withOpacity(0.6),
                                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                                         shape: RoundedRectangleBorder(
@@ -592,7 +592,7 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
                                 ElevatedButton(
                                   onPressed: () => Navigator.of(context).pop(),
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: _leagueColor,
+                                    backgroundColor: Colors.green[600],
                                     foregroundColor: Colors.black,
                                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                                     shape: RoundedRectangleBorder(
@@ -601,7 +601,7 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
                                     ),
                                   ),
                                   child: const Text(
-                                    'Return to Monday Menu',
+                                    'Back',
                                     style: TextStyle(fontWeight: FontWeight.bold),
                                   ),
                                 ),
@@ -610,9 +610,9 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
                                       ? null 
                                       : _navigateToEnterScores,
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: _leagueColor,
+                                    backgroundColor: Colors.green[600],
                                     foregroundColor: Colors.black,
-                                    disabledBackgroundColor: _leagueColor.withOpacity(0.6),
+                                    disabledBackgroundColor: Colors.green[300]!.withOpacity(0.6),
                                     disabledForegroundColor: Colors.black.withOpacity(0.6),
                                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                                     shape: RoundedRectangleBorder(
@@ -621,7 +621,7 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
                                     ),
                                   ),
                                   child: const Text(
-                                    "Enter Player's Skats",
+                                    "Enter Skats",
                                     style: TextStyle(fontWeight: FontWeight.bold),
                                   ),
                                 ),
