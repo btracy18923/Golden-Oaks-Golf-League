@@ -83,8 +83,8 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
     final double contentPadding = is6InchPhone ? 12.0 : (is8InchTablet ? 16.0 : 20.0);
     final double titleSize = is6InchPhone ? 20 : (is8InchTablet ? 22 : 24);
     final double iconSize = is6InchPhone ? 18 : (is8InchTablet ? 20 : 22);
-    final double buttonHeight = is6InchPhone ? 12 : (is8InchTablet ? 14 : 16);
-    final double buttonFontSize = is6InchPhone ? 14 : (is8InchTablet ? 15 : 16);
+    final double buttonHeight = is6InchPhone ? 4 : (is8InchTablet ? 5 : 6);
+    final double buttonFontSize = is6InchPhone ? 12 : (is8InchTablet ? 13 : 14);
     
     // Responsive button width
     final double buttonWidth = is6InchPhone ? screenSize.width * 0.4 : 
@@ -152,7 +152,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
               ),
             ),
             
-            SizedBox(height: basePadding),
+            SizedBox(height: is6InchPhone ? 4 : (is8InchTablet ? 5 : 6)),
             
             // Return to Main Menu Button
             Align(
@@ -295,8 +295,12 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
             
             final double fontSize = is6InchPhone ? 12 : 14;
             
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
+            return Container(
+              padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+              decoration: BoxDecoration(
+                color: Colors.green[300],
+                borderRadius: BorderRadius.circular(4),
+              ),
               child: Row(
                 children: [
                   Expanded(
