@@ -46,8 +46,8 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
   // Currently focused player for keypad input
   PlayerData? _currentFocusedPlayer;
   
-  // Counter for consecutive backspace key presses
-  int _consecutiveBackspacePresses = 0;
+  // Counter for consecutive backspace key presses (removed)
+  // int _consecutiveBackspacePresses = 0;
   
   // Track if players have been shuffled in this session
   bool _shuffledInCurrentSession = false;
@@ -263,7 +263,6 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     if (groupIndex < groups.length && playerIndex < groups[groupIndex].length) {
       _currentFocusedPlayer = groups[groupIndex][playerIndex];
       _keypadController.setInput(_currentFocusedPlayer?.skats ?? '');
-      _consecutiveBackspacePresses = 0; // Reset backspace counter when showing keypad for new player
       setState(() {
         _keypadController.show();
       });
@@ -367,25 +366,6 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     print("Keypad key pressed: $key");
     
     if (key == 'backspace') {
-      // Increment consecutive backspace press counter
-      _consecutiveBackspacePresses++;
-      print("Backspace pressed $_consecutiveBackspacePresses times consecutively");
-      
-      // Run AutoFill if backspace pressed 3 times in a row
-      if (_consecutiveBackspacePresses == 3) {
-        print("3 consecutive backspace presses detected - running AutoFill");
-        _handleAutoFill();
-        return;
-      }
-      
-      // Hide keypad if backspace pressed 4 times in a row
-      if (_consecutiveBackspacePresses >= 4) {
-        print("4 consecutive backspace presses detected - hiding keypad");
-        _hideKeypad(); // Remove focus completely
-        _consecutiveBackspacePresses = 0; // Reset counter
-        return;
-      }
-      
       // Handle normal backspace functionality
       String? newInput = _keypadController.handleKeyPress(key);
       if (newInput != null) {
@@ -396,8 +376,6 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
         print("Current keypad input: ${_keypadController.currentInput}");
       }
     } else if (key == 'enter') {
-      // Reset consecutive backspace counter for Enter key
-      _consecutiveBackspacePresses = 0;
       
       // Apply current input and move to next field
       String currentInput = _keypadController.currentInput;
@@ -415,8 +393,6 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
         }
       }
     } else {
-      // Reset consecutive backspace counter for any digit key
-      _consecutiveBackspacePresses = 0;
       // Handle digit or backspace input
       String? newInput = _keypadController.handleKeyPress(key);
       if (newInput != null) {
@@ -482,6 +458,9 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
       final autoFillService = AutoFillFactory.create(League.monday);
       groups = autoFillService.autoFillData(groups);
     });
+    
+    // Hide keypad after auto-fill is complete
+    _hideKeypad();
     
     print("Groups after auto fill: ${groups.map((g) => g.map((p) => "${p.name}: ${p.skats}").toList()).toList()}");
   }
@@ -1288,7 +1267,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
           // Main content
           Column(
             children: [
-              EnterScoresUIService.buildPurseHeader(context, League.monday, onReturn: _handleReturn),
+              EnterScoresUIService.buildPurseHeader(context, League.monday, onReturn: _handleReturn, onAutoFill: _handleAutoFill),
               EnterScoresUIService.buildGroupsGrid(
                 context, 
                 groups,

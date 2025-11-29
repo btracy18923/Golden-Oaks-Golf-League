@@ -108,7 +108,8 @@ class EnterScoresUIService {
   /// Responsive design adapts to different screen sizes
   /// Uses LeaguePurseService for dynamic purse management
   /// [onReturn] - Optional callback for left arrow return functionality
-  static Widget buildPurseHeader(BuildContext context, League league, {VoidCallback? onReturn}) {
+  /// [onAutoFill] - Optional callback for storage icon auto-fill functionality
+  static Widget buildPurseHeader(BuildContext context, League league, {VoidCallback? onReturn, VoidCallback? onAutoFill}) {
     print("Using UI Service for ${league.name} league");
     final deviceType = getDeviceType(context);
     final fontSize = getResponsiveFontSize(deviceType, isHeader: true);
@@ -255,6 +256,27 @@ class EnterScoresUIService {
             ),
           ),
               ],
+            ),
+          ),
+          // Storage icon button for Auto Fill
+          if (onAutoFill != null)
+            GestureDetector(
+              onTap: onAutoFill,
+            child: Container(
+              width: fontSize * 3.0,
+              height: fontSize * 2.0,
+              margin: EdgeInsets.only(left: padding.left / 2),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.black, width: 1),
+                borderRadius: BorderRadius.circular(4.0),
+              ),
+              child: Center(
+                child: Icon(
+                  Icons.storage,
+                  color: Colors.black,
+                  size: fontSize * 1.5,
+                ),
+              ),
             ),
           ),
         ],

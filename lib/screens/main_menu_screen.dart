@@ -273,10 +273,13 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
         foregroundColor: Colors.white,
         centerTitle: true,
         actions: [
-          Icon(
-            Icons.storage,
-            color: Colors.white,
-            size: isPhone ? 24 : 28,
+          IconButton(
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const FirebaseTestScreen())),
+            icon: Icon(
+              Icons.storage,
+              color: Colors.white,
+              size: isPhone ? 24 : 28,
+            ),
           ),
           SizedBox(width: isPhone ? 12 : 16),
         ],
@@ -349,29 +352,6 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
           ),
         ),
         
-        const SizedBox(height: 8),
-        
-        // Bottom row - Admin Functions
-        Container(
-          height: 40, // Fixed height - about 10% of typical screen height
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Row(
-            children: [
-              Expanded(
-                flex: 20, // 20% of available width
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: _buildCompactAdminButton('Firebase', Icons.cloud_upload, Colors.red[200]!, 
-                    () => Navigator.push(context, MaterialPageRoute(builder: (context) => const FirebaseTestScreen()))),
-                ),
-              ),
-              Expanded(flex: 80, child: Container()), // Remaining 80% empty space
-            ],
-          ),
-        ),
       ],
     );
   }
@@ -436,32 +416,6 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
           ),
         ),
         
-        const SizedBox(height: 12),
-        
-        Container(
-          height: 60, // Fixed height - about 10% of typical tablet screen height
-          padding: const EdgeInsets.symmetric(horizontal: 40),
-          child: Row(
-            children: [
-              Expanded(
-                flex: 20, // 20% of available width
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: _buildAdminButton(
-                    'Firebase Upload',
-                    Icons.cloud_upload,
-                    Colors.red[200]!,
-                    () => Navigator.push(context, MaterialPageRoute(builder: (context) => const FirebaseTestScreen())),
-                  ),
-                ),
-              ),
-              Expanded(flex: 80, child: Container()), // Remaining 80% empty space
-            ],
-          ),
-        ),
       ],
     );
   }
