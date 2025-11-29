@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../services/screen_data_retention_service.dart';
 import '../../services/UI/enter_scores_UI_service.dart';
+import '../../services/shared/league_purse_service.dart';
 import '../main_menu_screen.dart';
 
 class MondayResultsScreen extends StatefulWidget {
@@ -138,7 +139,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
                       
                       // Single unified section with all data
                       _buildDataSection(
-                        'Session Results',
+                        '',
                         _buildUnifiedData(),
                         Icons.summarize,
                         is6InchPhone,
@@ -212,21 +213,23 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(icon, color: Colors.green[700], size: iconSize),
-              const SizedBox(width: 8),
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: titleSize,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.green[800],
+          if (title.isNotEmpty) ...[
+            Row(
+              children: [
+                Icon(icon, color: Colors.green[700], size: iconSize),
+                const SizedBox(width: 8),
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: titleSize,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.green[800],
+                  ),
                 ),
-              ),
-            ],
-          ),
-          SizedBox(height: spacingHeight),
+              ],
+            ),
+            SizedBox(height: spacingHeight),
+          ],
           content,
         ],
       ),
@@ -284,7 +287,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Responsive layout for money amounts
+        // Single row layout for money amounts
         LayoutBuilder(
           builder: (context, constraints) {
             final screenSize = MediaQuery.of(context).size;
@@ -292,13 +295,11 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
             
             final double fontSize = is6InchPhone ? 12 : 14;
             
-            if (is6InchPhone) {
-              // Stack vertically on small screens for better readability
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 2),
+                  Expanded(
                     child: Text(
                       'Players Ante: \$${_retentionService.playersAnte?.toStringAsFixed(2) ?? 'N/A'}',
                       style: TextStyle(
@@ -308,8 +309,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
                       ),
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 2),
+                  Expanded(
                     child: Text(
                       'Closest Pin: \$${_retentionService.closestPinAmount?.toStringAsFixed(2) ?? 'N/A'}',
                       style: TextStyle(
@@ -317,10 +317,10 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
                         color: Colors.black87,
                         fontSize: fontSize,
                       ),
+                      textAlign: TextAlign.center,
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 2),
+                  Expanded(
                     child: Text(
                       'Mulligan: \$${_retentionService.mulliganAmount?.toStringAsFixed(2) ?? 'N/A'}',
                       style: TextStyle(
@@ -328,104 +328,114 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
                         color: Colors.black87,
                         fontSize: fontSize,
                       ),
+                      textAlign: TextAlign.end,
                     ),
                   ),
                 ],
-              );
-            } else {
-              // Single row layout for larger screens
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'Players Ante: \$${_retentionService.playersAnte?.toStringAsFixed(2) ?? 'N/A'}',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black87,
-                          fontSize: fontSize,
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: Text(
-                        'Closest Pin: \$${_retentionService.closestPinAmount?.toStringAsFixed(2) ?? 'N/A'}',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black87,
-                          fontSize: fontSize,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                    Expanded(
-                      child: Text(
-                        'Mulligan: \$${_retentionService.mulliganAmount?.toStringAsFixed(2) ?? 'N/A'}',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black87,
-                          fontSize: fontSize,
-                        ),
-                        textAlign: TextAlign.end,
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }
+              ),
+            );
           },
         ),
-        // Golf Course row
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final screenSize = MediaQuery.of(context).size;
-              final is6InchPhone = screenSize.width <= 900;
-              final double fontSize = is6InchPhone ? 12 : 14;
-              
-              return Text(
-                'Golf Course: ${_retentionService.selectedGolfCourse ?? 'Not Selected'}',
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black87,
-                  fontSize: fontSize,
-                ),
-                overflow: TextOverflow.ellipsis,
-                maxLines: 1,
-              );
-            },
-          ),
-        ),
+        // Total Players and Collect row
+        _buildPlayersAndCollectRow(),
+        // Golf Course row (separate line)
+        _buildGolfCourseRow(),
       ],
+    );
+  }
+
+  /// Builds Total Players, Collect amount, and Mulligan/Party funds on one row
+  Widget _buildPlayersAndCollectRow() {
+    final selectedPlayers = _retentionService.selectedPlayers ?? [];
+    final selectedCount = selectedPlayers.length;
+    
+    // Calculate collect amount: (Players Ante + Closest Pin + Mulligan) * Total Players
+    final playersAnte = _retentionService.playersAnte ?? 0.0;
+    final closestPin = _retentionService.closestPinAmount ?? 0.0;
+    final originalMulligan = _retentionService.mulliganAmount ?? 0.0;
+    final collectAmount = (playersAnte + closestPin + originalMulligan) * selectedCount;
+    
+    // Get the adjusted Mulligan Purse amount after SKAT calculations
+    final adjustedMulliganPurse = LeaguePurseService.mulliganPurse;
+    
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final screenSize = MediaQuery.of(context).size;
+          final is6InchPhone = screenSize.width <= 900;
+          final double fontSize = is6InchPhone ? 12 : 14;
+          
+          return Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Total Players = $selectedCount',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                    fontSize: fontSize,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Text(
+                  'Collect \$${collectAmount.toStringAsFixed(2)}',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                    fontSize: fontSize,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              Expanded(
+                child: Text(
+                  'Party Fund = \$${adjustedMulliganPurse.toStringAsFixed(2)}',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                    fontSize: fontSize,
+                  ),
+                  textAlign: TextAlign.end,
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  /// Builds Golf Course on its own row
+  Widget _buildGolfCourseRow() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final screenSize = MediaQuery.of(context).size;
+          final is6InchPhone = screenSize.width <= 900;
+          final double fontSize = is6InchPhone ? 12 : 14;
+          
+          return Text(
+            'Golf Course: ${_retentionService.selectedGolfCourse ?? 'Not Selected'}',
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+              fontSize: fontSize,
+            ),
+          );
+        },
+      ),
     );
   }
 
   /// Builds combined player selection and game results data in one row
   Widget _buildPlayerAndGameResultsData() {
-    final selectedPlayers = _retentionService.selectedPlayers ?? [];
-    final selectedCount = selectedPlayers.length;
-    
-    final playerGroups = _retentionService.playerGroups ?? [];
-    final playersWithMoney = _countPlayersWithMoney(playerGroups);
-    
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              'Total Players Selected: $selectedCount',
-              style: const TextStyle(
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+    // This method is now empty since player count is shown in the Golf Course row
+    return const SizedBox.shrink();
   }
 
   /// Builds the player selection data display
@@ -579,20 +589,11 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
             final is6InchPhone = screenSize.width <= 900;
             final double fontSize = is6InchPhone ? 14 : 16;
             
-            if (is6InchPhone) {
-              // Stack vertically on small screens
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'SKAT Winners: $playersWithMoney',
-                    style: TextStyle(
-                      fontSize: fontSize,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black87,
-                    ),
-                  ),
-                  Text(
+            // Always use single row layout with Skat Value on the left
+            return Row(
+              children: [
+                Expanded(
+                  child: Text(
                     'Skat Value: \$${skatValue.toStringAsFixed(2)}',
                     style: TextStyle(
                       fontSize: fontSize,
@@ -600,19 +601,20 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
                       color: Colors.black87,
                     ),
                   ),
-                ],
-              );
-            } else {
-              // Single row for larger screens
-              return Text(
-                'SKAT Winners: $playersWithMoney     Skat Value: \$${skatValue.toStringAsFixed(2)}',
-                style: TextStyle(
-                  fontSize: fontSize,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black87,
                 ),
-              );
-            }
+                Expanded(
+                  child: Text(
+                    'SKAT Winners: $playersWithMoney',
+                    style: TextStyle(
+                      fontSize: fontSize,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
+                    textAlign: TextAlign.end,
+                  ),
+                ),
+              ],
+            );
           },
         ),
         const SizedBox(height: 8),
@@ -646,7 +648,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
               children: [
                 // Header row
                 TableRow(
-                  decoration: BoxDecoration(color: Colors.grey[200]),
+                  decoration: BoxDecoration(color: Colors.green[300]),
                   children: [
                     _buildTableCell('Player', isHeader: true, isCompact: false),
                     _buildTableCell('SK#', isHeader: true, isCompact: false),
@@ -881,7 +883,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Colors.orange[100],
+              color: Colors.green[300],
               border: Border(bottom: BorderSide(color: Colors.grey[400]!)),
             ),
             child: LayoutBuilder(
