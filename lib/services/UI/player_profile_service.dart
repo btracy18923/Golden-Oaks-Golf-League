@@ -11,7 +11,8 @@ class PlayerProfileService {
     FocusNode? nextFocus,
     VoidCallback? onUpdatePlayer, {
     TextInputType? keyboardType, 
-    List<TextInputFormatter>? inputFormatters
+    List<TextInputFormatter>? inputFormatters,
+    bool enabled = true
   }) {
     final size = MediaQuery.of(context).size;
     final orientation = MediaQuery.of(context).orientation;
@@ -37,14 +38,14 @@ class PlayerProfileService {
     
     // Special two-row layout for Email field for all screen sizes
     if (label == 'Email') {
-      double labelFontSize = 10;
-      double fieldHeight = 28;
+      double labelFontSize = 20;
+      double fieldHeight = 42;
       double inputFontSize = 9;
       
       if (!is6InchPhoneLandscape && isTablet) {
-        labelFontSize = 11;
-        fieldHeight = 32;
-        inputFontSize = 11;
+        labelFontSize = 22;
+        fieldHeight = 77;
+        inputFontSize = 20;
       }
       
       return Padding(
@@ -64,12 +65,13 @@ class PlayerProfileService {
                 focusNode: focusNode,
                 keyboardType: keyboardType,
                 inputFormatters: inputFormatters,
+                enabled: enabled,
                 decoration: const InputDecoration(
                   border: OutlineInputBorder(),
-                  isDense: true,
-                  contentPadding: EdgeInsets.only(left: 6, right: 6, top: 2, bottom: 10),
+                  isDense: false,
+                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 ),
-                style: TextStyle(fontSize: inputFontSize, height: 1.0),
+                style: TextStyle(fontSize: inputFontSize, height: 1.5),
                 onFieldSubmitted: (_) {
                   if (onUpdatePlayer != null) {
                     onUpdatePlayer();
@@ -95,18 +97,19 @@ class PlayerProfileService {
                 width: 60, // Fixed width for label
                 child: Text(
                   displayLabel == 'SKAT#' ? displayLabel : '$displayLabel:',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 10),
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
                 ),
               ),
               const SizedBox(width: 4),
               Expanded(
                 child: SizedBox(
-                  height: 28,
+                  height: 42,
                   child: TextFormField(
                     controller: controller,
                     focusNode: focusNode,
                     keyboardType: keyboardType,
                     inputFormatters: inputFormatters,
+                    enabled: enabled,
                     decoration: const InputDecoration(
                       border: OutlineInputBorder(),
                       isDense: true,
@@ -135,16 +138,16 @@ class PlayerProfileService {
       // Adaptive layout for tablets and larger screens
       double labelWidth = 80;
       double fontSize = 11;
-      double fieldHeight = 32;
+      double fieldHeight = 48;
       
       if (isLargeTablet) {
         labelWidth = 100;
-        fontSize = 12;
-        fieldHeight = 36;
+        fontSize = 24;
+        fieldHeight = 54;
       } else if (isMediumTablet) {
         labelWidth = 90;
-        fontSize = 11;
-        fieldHeight = 32;
+        fontSize = 22;
+        fieldHeight = 48;
       }
       
       return Padding(
@@ -167,6 +170,7 @@ class PlayerProfileService {
                   focusNode: focusNode,
                   keyboardType: keyboardType,
                   inputFormatters: inputFormatters,
+                  enabled: enabled,
                   decoration: const InputDecoration(
                     border: OutlineInputBorder(),
                     isDense: true,
@@ -250,8 +254,9 @@ class PlayerProfileService {
     List<Map<String, dynamic>> players,
     Map<String, dynamic>? selectedPlayer,
     Function(Map<String, dynamic>) onSelectPlayer,
-    String Function(String?) formatPhoneNumber,
-  ) {
+    String Function(String?) formatPhoneNumber, {
+    Function(bool)? onInteractionChange,
+  }) {
     final size = MediaQuery.of(context).size;
     final orientation = MediaQuery.of(context).orientation;
     final screenWidth = size.width;
@@ -278,7 +283,7 @@ class PlayerProfileService {
     } else if (isMediumTablet) {
       tableWidth = isLandscape ? (screenWidth * 0.65) - 30 : screenWidth - 50;
       rowHeight = 44;
-      fontSize = 13;
+      fontSize = 20;
     } else if (isSmallTablet) {
       tableWidth = isLandscape ? (screenWidth * 0.6) - 25 : screenWidth - 40;
       rowHeight = 40;
@@ -306,7 +311,7 @@ class PlayerProfileService {
           Container(
             height: rowHeight,
             decoration: BoxDecoration(
-              color: Colors.grey[200],
+              color: Colors.green[300],
               border: Border(bottom: BorderSide(color: Colors.grey)),
             ),
             child: SizedBox(
@@ -336,26 +341,49 @@ class PlayerProfileService {
                 scrollDirection: Axis.horizontal,
                 child: SizedBox(
                   width: tableWidth, // Use full available table width
-                  child: ListView.builder(
-                    itemCount: players.length,
-                    itemBuilder: (context, index) {
-                      final player = players[index];
-                      final isSelected = selectedPlayer?['id'] == player['id'];
-                      
-                      return GestureDetector(
-                        onTap: () => onSelectPlayer(player),
-                        child: Container(
-                          height: rowHeight,
-                          decoration: BoxDecoration(
-                            color: isSelected ? Colors.lightGreen[200] : Colors.transparent,
-                            border: Border(bottom: BorderSide(color: Colors.grey[300]!)),
-                          ),
-                          child: is6InchPhoneLandscape
-                            ? _buildMobilePlayerRow(player, tableWidth, formatPhoneNumber, fontSize) 
-                            : _buildTabletPlayerRow(player, tableWidth, formatPhoneNumber, fontSize),
-                        ),
-                      );
+                  child: GestureDetector(
+                    onTap: () {
+                      // Clear focus when tapping in the table area
+                      FocusScope.of(context).unfocus();
                     },
+                    child: NotificationListener<ScrollNotification>(
+                      onNotification: (ScrollNotification scrollInfo) {
+                        // Clear focus and disable form when scrolling starts
+                        if (scrollInfo is ScrollStartNotification) {
+                          FocusScope.of(context).unfocus();
+                          onInteractionChange?.call(true);
+                        } else if (scrollInfo is ScrollEndNotification) {
+                          // Re-enable form when scrolling ends
+                          onInteractionChange?.call(false);
+                        }
+                        return false;
+                      },
+                      child: ListView.builder(
+                        itemCount: players.length,
+                        itemBuilder: (context, index) {
+                          final player = players[index];
+                          final isSelected = selectedPlayer?['id'] == player['id'];
+                          
+                          return GestureDetector(
+                            onTap: () {
+                              // Clear focus before selecting player
+                              FocusScope.of(context).unfocus();
+                              onSelectPlayer(player);
+                            },
+                            child: Container(
+                              height: rowHeight,
+                              decoration: BoxDecoration(
+                                color: isSelected ? Colors.lightGreen[200] : Colors.transparent,
+                                border: Border(bottom: BorderSide(color: Colors.grey[300]!)),
+                              ),
+                              child: is6InchPhoneLandscape
+                                ? _buildMobilePlayerRow(player, tableWidth, formatPhoneNumber, fontSize) 
+                                : _buildTabletPlayerRow(player, tableWidth, formatPhoneNumber, fontSize),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -646,41 +674,68 @@ class PlayerProfileService {
     FocusNode emailFocus,
   ) {
     final screenWidth = MediaQuery.of(context).size.width;
+    final isMediumTablet = screenWidth >= 800 && screenWidth < 1200; // 8" tablets
     final isTablet = screenWidth >= 900;
     final is6InchPhoneLandscape = screenWidth <= 900 && !isTablet;
     
-    return Column(
-      children: [
-        Expanded(
-          flex: 1,
-          child: buildCompactFormField('ID#', idController, idFocus, firstFocus, 
+    // For 8" tablets, don't use scroll wrapper but reduce spacing
+    if (isMediumTablet) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.only(top: 10),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              buildCompactFormField('ID#', idController, idFocus, firstFocus, 
+                keyboardType: TextInputType.number, 
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
+              const SizedBox(height: 4),
+              buildCompactFormField('First Name', firstController, firstFocus, lastFocus),
+              const SizedBox(height: 4),
+              buildCompactFormField('Last Name', lastController, lastFocus, skatFocus),
+              const SizedBox(height: 4),
+              buildCompactFormField('SKAT#', skatController, skatFocus, cellFocus, 
+                keyboardType: TextInputType.number, 
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
+              const SizedBox(height: 4),
+              buildCompactFormField('Cell Phone', cellController, cellFocus, emailFocus, 
+                keyboardType: TextInputType.numberWithOptions(decimal: false)),
+              const SizedBox(height: 4),
+              buildCompactFormField('Email', emailController, emailFocus, null),
+            ],
+          ),
+        ),
+      );
+    }
+    
+    // For other screen sizes, keep the scroll wrapper
+    return Center(
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.only(top: 20),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+          buildCompactFormField('ID#', idController, idFocus, firstFocus, 
             keyboardType: TextInputType.number, 
             inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
-        ),
-        Expanded(
-          flex: 1,
-          child: buildCompactFormField('First Name', firstController, firstFocus, lastFocus),
-        ),
-        Expanded(
-          flex: 1,
-          child: buildCompactFormField('Last Name', lastController, lastFocus, skatFocus),
-        ),
-        Expanded(
-          flex: 1,
-          child: buildCompactFormField('SKAT#', skatController, skatFocus, cellFocus, 
+          const SizedBox(height: 8),
+          buildCompactFormField('First Name', firstController, firstFocus, lastFocus),
+          const SizedBox(height: 8),
+          buildCompactFormField('Last Name', lastController, lastFocus, skatFocus),
+          const SizedBox(height: 8),
+          buildCompactFormField('SKAT#', skatController, skatFocus, cellFocus, 
             keyboardType: TextInputType.number, 
             inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
-        ),
-        Expanded(
-          flex: 1,
-          child: buildCompactFormField('Cell Phone', cellController, cellFocus, emailFocus, 
+          const SizedBox(height: 8),
+          buildCompactFormField('Cell Phone', cellController, cellFocus, emailFocus, 
             keyboardType: TextInputType.numberWithOptions(decimal: false)),
+          const SizedBox(height: 8),
+          buildCompactFormField('Email', emailController, emailFocus, null),
+        ],
+          ),
         ),
-        Expanded(
-          flex: is6InchPhoneLandscape ? 2 : 1,
-          child: buildCompactFormField('Email', emailController, emailFocus, null),
-        ),
-      ],
+      ),
     );
   }
   

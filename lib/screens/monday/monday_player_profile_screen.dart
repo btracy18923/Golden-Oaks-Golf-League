@@ -20,6 +20,7 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
   League _selectedLeague = League.monday;
   Map<String, dynamic>? _selectedPlayer;
   List<Map<String, dynamic>> _players = [];
+  bool _isTableInteracting = false;
   
   // Form controllers
   final TextEditingController _idController = TextEditingController();
@@ -267,8 +268,38 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
     return true;
   }
 
+  bool _checkForDuplicates() {
+    final playerId = int.tryParse(_idController.text.trim()) ?? 0;
+    final firstName = _firstController.text.trim().toLowerCase();
+    final lastName = _lastController.text.trim().toLowerCase();
+    
+    // Check for duplicate ID number
+    for (var player in _players) {
+      if (player['player_number'] == playerId) {
+        _showErrorDialog('Player ID #$playerId already exists!');
+        return true;
+      }
+    }
+    
+    // Check for duplicate name combination
+    for (var player in _players) {
+      final existingFirst = (player['first'] ?? '').toString().toLowerCase();
+      final existingLast = (player['last'] ?? '').toString().toLowerCase();
+      
+      if (existingFirst == firstName && existingLast == lastName) {
+        _showErrorDialog('Player "$firstName $lastName" already exists!');
+        return true;
+      }
+    }
+    
+    return false;
+  }
+
   Future<void> _addPlayer() async {
     if (!_validateForm()) return;
+    
+    // Check for duplicates
+    if (_checkForDuplicates()) return;
     
     try {
       final leagueStr = _selectedLeague == League.monday ? 'monday' : 'wednesday';
@@ -345,17 +376,17 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Confirm Delete'),
-        content: Text('Are you sure you want to delete $playerName?\n\nThis action cannot be undone.'),
+        title: const Text('Confirm Delete', style: TextStyle(fontSize: 32)),
+        content: Text('Are you sure you want to delete $playerName?\n\nThis action cannot be undone.', style: const TextStyle(fontSize: 24)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: const Text('Cancel', style: TextStyle(fontSize: 24)),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Delete'),
+            child: const Text('Delete', style: TextStyle(fontSize: 24)),
           ),
         ],
       ),
@@ -363,9 +394,24 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
     
     if (confirmed == true) {
       try {
+        // Clear focus first
+        FocusScope.of(context).unfocus();
+        
         await _databaseHelper.deletePlayer(_selectedPlayer!['id']);
         _clearForm();
         _refreshPlayerList();
+        
+        // Ensure absolutely no field has focus after deletion
+        FocusScope.of(context).unfocus();
+        
+        // Also clear focus from all individual focus nodes
+        _idFocus.unfocus();
+        _firstFocus.unfocus();
+        _lastFocus.unfocus();
+        _skatFocus.unfocus();
+        _cellFocus.unfocus();
+        _emailFocus.unfocus();
+        
         _showSuccessDialog('Player deleted successfully!');
       } catch (e) {
         _showErrorDialog('Error deleting player: $e');
@@ -377,12 +423,12 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Error'),
-        content: Text(message),
+        title: const Text('Error', style: TextStyle(fontSize: 32)),
+        content: Text(message, style: const TextStyle(fontSize: 24)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('OK'),
+            child: const Text('OK', style: TextStyle(fontSize: 24)),
           ),
         ],
       ),
@@ -393,12 +439,12 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Success'),
-        content: Text(message),
+        title: const Text('Success', style: TextStyle(fontSize: 32)),
+        content: Text(message, style: const TextStyle(fontSize: 24)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('OK'),
+            child: const Text('OK', style: TextStyle(fontSize: 24)),
           ),
         ],
       ),
@@ -415,6 +461,7 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
       _selectedPlayer != null ? _updatePlayer : null,
       keyboardType: keyboardType,
       inputFormatters: inputFormatters,
+      enabled: !_isTableInteracting,
     );
   }
 
@@ -438,6 +485,11 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
       _selectedPlayer,
       _selectPlayer,
       _formatPhoneNumber,
+      onInteractionChange: (bool isInteracting) {
+        setState(() {
+          _isTableInteracting = isInteracting;
+        });
+      },
     );
   }
   
@@ -669,7 +721,7 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
   Widget _buildFullScreenButtonBar() {
     return Container(
       width: double.infinity,
-      height: 45,
+      height: 90,
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
@@ -681,7 +733,7 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
           ),
         ],
       ),
-      padding: const EdgeInsets.all(6.0),
+      padding: const EdgeInsets.all(12.0),
       child: Row(
         children: [
           Expanded(
@@ -691,9 +743,9 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
                 backgroundColor: Colors.green[300],
                 foregroundColor: Colors.black,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
-                padding: EdgeInsets.zero,
+                padding: const EdgeInsets.symmetric(vertical: 16.0),
               ),
-              child: const Text('Add Player', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+              child: const Text('Add Player', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             ),
           ),
           const SizedBox(width: 4),
@@ -704,9 +756,9 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
                 backgroundColor: Colors.orange[300],
                 foregroundColor: Colors.black,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
-                padding: EdgeInsets.zero,
+                padding: const EdgeInsets.symmetric(vertical: 16.0),
               ),
-              child: const Text('Clear', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+              child: const Text('Clear', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             ),
           ),
           const SizedBox(width: 4),
@@ -717,9 +769,9 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
                 backgroundColor: _selectedPlayer != null ? Colors.red[300] : Colors.grey[400],
                 foregroundColor: Colors.black,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
-                padding: EdgeInsets.zero,
+                padding: const EdgeInsets.symmetric(vertical: 16.0),
               ),
-              child: const Text('Delete', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+              child: const Text('Delete', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             ),
           ),
           const SizedBox(width: 4),
@@ -730,9 +782,9 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
                 backgroundColor: Colors.blue[300],
                 foregroundColor: Colors.black,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
-                padding: EdgeInsets.zero,
+                padding: const EdgeInsets.symmetric(vertical: 16.0),
               ),
-              child: const Text('Back', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+              child: const Text('Back', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             ),
           ),
         ],
