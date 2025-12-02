@@ -100,18 +100,18 @@ class ParentScreenUI extends StatelessWidget {
                 flex: 4,
                 child: Column(
                   children: [
-                    _buildLeagueTitleWidget(),
-                    const SizedBox(height: 3),
                     Expanded(
                       child: Column(
                         children: [
-                          _buildTabletAnteWidget(),
+                          const Spacer(flex: 4), // Top spacer for centering
+                          Expanded(flex: 8, child: _buildTabletAnteWidget()),
                           const SizedBox(height: 3),
-                          _buildTabletClosestPinWidget(),
+                          Expanded(flex: 8, child: _buildTabletClosestPinWidget()),
                           const SizedBox(height: 3),
-                          _buildTabletMulligansWidget(),
+                          Expanded(flex: 8, child: _buildTabletMulligansWidget()),
                           const SizedBox(height: 3),
-                          _buildTabletCourseSelector(),
+                          Expanded(flex: 8, child: _buildTabletCourseSelector()),
+                          const Spacer(flex: 4), // Bottom spacer for centering
                         ],
                       ),
                     ),
@@ -132,27 +132,6 @@ class ParentScreenUI extends StatelessWidget {
   }
 
 
-  // League Title Widgets
-  Widget _buildLeagueTitleWidget() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
-      decoration: BoxDecoration(
-        color: Colors.green[300],
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.black, width: 2),
-      ),
-      child: Text(
-        leagueTitle,
-        style: const TextStyle(
-          fontSize: 20,
-          fontWeight: FontWeight.bold,
-          color: Colors.black,
-        ),
-        textAlign: TextAlign.center,
-      ),
-    );
-  }
 
 
 
@@ -218,9 +197,7 @@ class ParentScreenUI extends StatelessWidget {
   }
 
   Widget _buildTabletAnteWidget() {
-    return Expanded(
-      flex: 2,
-      child: Container(
+    return Container(
         padding: const EdgeInsets.all(6),
         decoration: BoxDecoration(
           color: Colors.green[200],
@@ -240,9 +217,10 @@ class ParentScreenUI extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            Expanded(
+            SizedBox(
+              width: 120, // Fixed width increased by 50% from 80px
               child: Container(
-                height: double.infinity,
+                height: 40, // Reduced from double.infinity (20% reduction from ~50px)
                 decoration: BoxDecoration(
                   color: Colors.green[100],
                   borderRadius: BorderRadius.circular(4),
@@ -258,7 +236,7 @@ class ParentScreenUI extends StatelessWidget {
                       child: Text(
                         skatsAnteDisplayValue ?? '\$${skatsAnte.toStringAsFixed(2)}',
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: 26,
                           fontWeight: FontWeight.bold,
                           color: (isEditingAmount == true && currentEditField == 'ante') ? Colors.blue : Colors.black,
                           height: 1.0,
@@ -270,10 +248,10 @@ class ParentScreenUI extends StatelessWidget {
                 ),
               ),
             ),
+            const Spacer(), // Add spacer to push content to the left
           ],
         ),
-      ),
-    );
+      );
   }
 
 
@@ -341,9 +319,7 @@ class ParentScreenUI extends StatelessWidget {
   }
 
   Widget _buildTabletClosestPinWidget() {
-    return Expanded(
-      flex: 2,
-      child: Container(
+    return Container(
         padding: const EdgeInsets.all(6),
         decoration: BoxDecoration(
           color: Colors.green[200],
@@ -355,7 +331,7 @@ class ParentScreenUI extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             const Text(
-              'Closest Pin',
+              'Closest Pin        ',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w600,
@@ -363,30 +339,34 @@ class ParentScreenUI extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 4),
-              decoration: BoxDecoration(
-                color: Colors.green[100],
-                borderRadius: BorderRadius.circular(4),
-                border: Border.all(color: Colors.black, width: 1),
-              ),
-              alignment: Alignment.center,
-              child: GestureDetector(
-                onTap: onClosestPinEdit,
-                child: Text(
-                  closestPinDisplayValue ?? '\$${closestPin.toStringAsFixed(2)}',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: (isEditingAmount == true && currentEditField == 'closestPin') ? Colors.blue : Colors.black,
+            SizedBox(
+              width: 120, // Same width as Players Ante
+              child: Container(
+                height: 40, // Reduced from double.infinity (20% reduction from ~50px)
+                padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 4),
+                decoration: BoxDecoration(
+                  color: Colors.green[100],
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: Colors.black, width: 1),
+                ),
+                alignment: Alignment.center,
+                child: GestureDetector(
+                  onTap: onClosestPinEdit,
+                  child: Text(
+                    closestPinDisplayValue ?? '\$${closestPin.toStringAsFixed(2)}',
+                    style: TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.bold,
+                      color: (isEditingAmount == true && currentEditField == 'closestPin') ? Colors.blue : Colors.black,
+                    ),
                   ),
                 ),
               ),
             ),
+            const Spacer(), // Add spacer to push content to the left
           ],
         ),
-      ),
-    );
+      );
   }
 
 
@@ -454,9 +434,7 @@ class ParentScreenUI extends StatelessWidget {
   }
 
   Widget _buildTabletMulligansWidget() {
-    return Expanded(
-      flex: 2,
-      child: Container(
+    return Container(
         padding: const EdgeInsets.all(6),
         decoration: BoxDecoration(
           color: Colors.green[200],
@@ -468,7 +446,7 @@ class ParentScreenUI extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             const Text(
-              'Mulligans',
+              'Mulligans           ',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w600,
@@ -476,30 +454,34 @@ class ParentScreenUI extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 4),
-              decoration: BoxDecoration(
-                color: Colors.green[100],
-                borderRadius: BorderRadius.circular(4),
-                border: Border.all(color: Colors.black, width: 1),
-              ),
-              alignment: Alignment.center,
-              child: GestureDetector(
-                onTap: onMulligansEdit,
-                child: Text(
-                  mulligansDisplayValue ?? '\$${mulligans.toStringAsFixed(2)}',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: (isEditingAmount == true && currentEditField == 'mulligans') ? Colors.blue : Colors.black,
+            SizedBox(
+              width: 120, // Same width as Players Ante
+              child: Container(
+                height: 40, // Reduced from double.infinity (20% reduction from ~50px)
+                padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 4),
+                decoration: BoxDecoration(
+                  color: Colors.green[100],
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: Colors.black, width: 1),
+                ),
+                alignment: Alignment.center,
+                child: GestureDetector(
+                  onTap: onMulligansEdit,
+                  child: Text(
+                    mulligansDisplayValue ?? '\$${mulligans.toStringAsFixed(2)}',
+                    style: TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.bold,
+                      color: (isEditingAmount == true && currentEditField == 'mulligans') ? Colors.blue : Colors.black,
+                    ),
                   ),
                 ),
               ),
             ),
+            const Spacer(), // Add spacer to push content to the left
           ],
         ),
-      ),
-    );
+      );
   }
 
 
@@ -547,9 +529,7 @@ class ParentScreenUI extends StatelessWidget {
   }
 
   Widget _buildTabletCourseSelector() {
-    return Expanded(
-      flex: 3,
-      child: Container(
+    return Container(
         padding: const EdgeInsets.all(4),
         decoration: BoxDecoration(
           color: Colors.green[200],
@@ -561,13 +541,13 @@ class ParentScreenUI extends StatelessWidget {
             const Text(
               'Select Course',
               style: TextStyle(
-                fontSize: 10,
+                fontSize: 20,
                 fontWeight: FontWeight.w600,
                 color: Colors.black,
               ),
             ),
             Expanded(
-              flex: 8,
+              flex: 6,
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
                 decoration: BoxDecoration(
@@ -576,13 +556,12 @@ class ParentScreenUI extends StatelessWidget {
                   border: Border.all(color: Colors.black, width: 1),
                 ),
                 alignment: Alignment.center,
-                child: _buildCourseDropdown(fontSize: 8, hintSize: 10),
+                child: _buildCourseDropdown(fontSize: 14, hintSize: 10),
               ),
             ),
           ],
         ),
-      ),
-    );
+      );
   }
 
 
@@ -601,7 +580,7 @@ class ParentScreenUI extends StatelessWidget {
           hint: Text(
             'Choose Course',
             style: TextStyle(
-              fontSize: hintSize,
+              fontSize: 20,
               color: Colors.black54,
             ),
           ),

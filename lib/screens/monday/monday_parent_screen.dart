@@ -60,11 +60,19 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
 
   void _setOrientation() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      final screenWidth = MediaQuery.of(context).size.width;
+      final is8InchTablet = screenWidth >= 600 && screenWidth <= 1000;
+      
       // Lock to landscape mode for Monday League
       SystemChrome.setPreferredOrientations([
         DeviceOrientation.landscapeLeft,
         DeviceOrientation.landscapeRight,
       ]);
+      
+      // Hide status bar for 8" tablets
+      if (is8InchTablet) {
+        SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersive);
+      }
     });
   }
   
@@ -305,8 +313,8 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
                     skatsAnte: skatsAnte,
                     closestPin: closestPin,
                     mulligans: mulligans,
-                    leagueTitle: 'MONDAY LEAGUE',
-                    anteLabel: 'Players Ante ',
+                    leagueTitle: '',
+                    anteLabel: 'Players Ante      ',
                     onSkatsAnteEdit: () => _showKeypadForAmount('ante'),
                     onClosestPinEdit: () => _showKeypadForAmount('closestPin'),
                     onMulligansEdit: () => _showKeypadForAmount('mulligans'),
@@ -373,6 +381,7 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
         selectedGolfCourse != null ? Colors.green[300]! : Colors.grey[400]!,
         selectedGolfCourse != null ? () => _navigateToPlayerSelection() : null,
         isCompact: is6InchPhoneLandscape,
+        is8InchTablet: is8InchTablet,
       ),
       _buildNavigationButton(
         'Player Profiles',
@@ -380,6 +389,7 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
         Colors.green[100]!,
         () => navigateToScreen(const MondayPlayerProfileScreen()),
         isCompact: is6InchPhoneLandscape,
+        is8InchTablet: is8InchTablet,
       ),
       _buildNavigationButton(
         'Player Scores',
@@ -387,6 +397,7 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
         Colors.green[100]!,
         () => navigateToScreen(const MondayPlayerScoresScreen()),
         isCompact: is6InchPhoneLandscape,
+        is8InchTablet: is8InchTablet,
       ),
       _buildNavigationButton(
         'Golf Courses',
@@ -394,6 +405,7 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
         Colors.green[100]!,
         () => navigateToScreen(const MondayGolfCourseScreen()),
         isCompact: is6InchPhoneLandscape,
+        is8InchTablet: is8InchTablet,
       ),
     ];
     
@@ -408,6 +420,7 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
             Colors.green[100]!,
             () => navigateToScreen(AdminScreen(currentLeague: League.monday)),
             isCompact: is6InchPhoneLandscape,
+            is8InchTablet: is8InchTablet,
           ),
         ];
 
@@ -421,6 +434,16 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
           Expanded(flex: 1, child: buttons[3]), // Golf Courses
         ],
       );
+    } else if (is8InchTablet) {
+      // Single row for 8" tablets with Player Selection button 100% wider
+      return Row(
+        children: [
+          Expanded(flex: 2, child: buttons[0]), // Player Selection - 2x wider
+          Expanded(flex: 1, child: buttons[1]), // Player Profiles
+          Expanded(flex: 1, child: buttons[2]), // Player Scores  
+          Expanded(flex: 1, child: buttons[3]), // Golf Courses
+        ],
+      );
     } else {
       // Default wrap layout for other screen sizes
       return Wrap(
@@ -430,12 +453,12 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
     }
   }
 
-  Widget _buildNavigationButton(String title, IconData icon, Color bgColor, VoidCallback? onPressed, {bool isCompact = false}) {
+  Widget _buildNavigationButton(String title, IconData icon, Color bgColor, VoidCallback? onPressed, {bool isCompact = false, bool is8InchTablet = false}) {
     final isDisabled = onPressed == null;
     return Container(
       margin: EdgeInsets.symmetric(
-        horizontal: isCompact ? 1 : 4, 
-        vertical: isCompact ? 1 : 2, // Reduced by 50%
+        horizontal: is8InchTablet ? 1 : (isCompact ? 1 : 4), 
+        vertical: is8InchTablet ? 1 : (isCompact ? 1 : 2),
       ),
       child: ElevatedButton(
         onPressed: onPressed,
@@ -443,7 +466,7 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
           backgroundColor: bgColor,
           foregroundColor: isDisabled ? Colors.grey[600] : Colors.black,
           padding: EdgeInsets.symmetric(
-            vertical: isCompact ? 3 : 6, // Reduced by 50%
+            vertical: is8InchTablet ? 7.2 : (isCompact ? 3 : 6), // Increased by 20% for 8" tablets (6 to 7.2)
             horizontal: isCompact ? 4 : 8,
           ),
           shape: RoundedRectangleBorder(
@@ -457,16 +480,18 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              icon, 
-              size: isCompact ? 14 : 18, // Reduced by ~20%
-              color: isDisabled ? Colors.grey[600] : null,
-            ),
-            SizedBox(height: isCompact ? 0.5 : 1), // Reduced by 50%
+            if (!is8InchTablet) ...[
+              Icon(
+                icon, 
+                size: isCompact ? 14 : 18, // Reduced by ~20%
+                color: isDisabled ? Colors.grey[600] : null,
+              ),
+              SizedBox(height: isCompact ? 0.5 : 1), // Reduced by 50%
+            ],
             Text(
               title,
               style: TextStyle(
-                fontSize: isCompact ? 9 : 11, // Reduced by ~15%
+                fontSize: isCompact ? 9 : 16, // Reduced by ~15%
                 fontWeight: FontWeight.w600,
                 color: isDisabled ? Colors.grey[600] : null,
               ),
