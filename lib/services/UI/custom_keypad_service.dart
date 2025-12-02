@@ -180,7 +180,7 @@ class CustomKeypadController {
         return null;
       default:
         // Add digit to input (limit to reasonable length)
-        if (_currentInput.length < 3) { // Limit to 3 digits for SKATS
+        if (_currentInput.length < 5) { // Increased limit to allow larger amounts (up to $999.99)
           _currentInput += key;
         }
         return _currentInput;

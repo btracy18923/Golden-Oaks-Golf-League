@@ -128,24 +128,21 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
   void _showKeypadForAmount(String fieldType) {
     _currentEditField = fieldType;
     
-    // Set current input based on field type
+    // Set current input to whole dollar amount (highlighted for replacement)
     String currentValue = '';
     switch (fieldType) {
       case 'ante':
-        currentValue = skatsAnte.toStringAsFixed(2);
+        currentValue = skatsAnte.toInt().toString();
         break;
       case 'closestPin':
-        currentValue = closestPin.toStringAsFixed(2);
+        currentValue = closestPin.toInt().toString();
         break;
       case 'mulligans':
-        currentValue = mulligans.toStringAsFixed(2);
+        currentValue = mulligans.toInt().toString();
         break;
     }
     
-    // Remove decimal point and leading zeros for input
-    currentValue = currentValue.replaceAll('.', '').replaceAll(RegExp(r'^0+'), '');
-    if (currentValue.isEmpty) currentValue = '0';
-    
+    _keypadController.clear(); // Clear for fresh input
     _keypadController.setInput(currentValue);
     setState(() {
       _keypadController.show();
@@ -165,12 +162,12 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
     if (_currentEditField == null) return;
     
     if (key == 'backspace') {
-      String? newInput = _keypadController.handleKeyPress(key);
-      if (newInput != null) {
-        setState(() {
-          // Live update display while typing
-        });
-      }
+      // Reset to $0.00 for whole dollar amounts
+      _keypadController.clear(); // Clear first to ensure clean state
+      _keypadController.setInput('0');
+      setState(() {
+        // Live update display while typing
+      });
     } else if (key == 'enter') {
       // Apply current input and hide keypad
       String currentInput = _keypadController.currentInput;
@@ -179,9 +176,10 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
       }
       _hideKeypadForAmount();
     } else {
-      // Handle digit input
-      String? newInput = _keypadController.handleKeyPress(key);
-      if (newInput != null) {
+      // Handle digit input - replace the current value with single digit
+      if (RegExp(r'^\d$').hasMatch(key)) { // Single digit 0-9
+        _keypadController.clear();
+        _keypadController.setInput(key);
         setState(() {
           // Live update display while typing  
         });
@@ -193,12 +191,11 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
   void _applyAmountInput(String input) {
     if (_currentEditField == null) return;
     
-    // Convert input to dollars (divide by 100 since input is in cents)
+    // Convert input to dollars (input is already in dollars)
     double amount = double.tryParse(input) ?? 0.0;
-    amount = amount / 100.0;
     
-    // Ensure minimum value
-    if (amount < 0.01) amount = 0.01;
+    // Allow $0.00 values
+    if (amount < 0.0) amount = 0.0;
     
     switch (_currentEditField) {
       case 'ante':
@@ -262,7 +259,6 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
       if (input.isEmpty) return '\$0.00';
       
       double amount = double.tryParse(input) ?? 0.0;
-      amount = amount / 100.0;
       return '\$${amount.toStringAsFixed(2)}';
     }
     return '\$${originalValue.toStringAsFixed(2)}';
