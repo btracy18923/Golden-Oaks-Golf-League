@@ -8,6 +8,7 @@ import '../services/mulligan_manager.dart';
 import 'monday/monday_parent_screen.dart';
 import 'wednesday/wednesday_parent_screen.dart';
 import 'firebase_test_screen.dart';
+import 'admin_screen.dart';
 
 class UnifiedMainMenuScreen extends StatefulWidget {
   const UnifiedMainMenuScreen({super.key});
@@ -272,17 +273,6 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
         backgroundColor: Colors.green[700],
         foregroundColor: Colors.white,
         centerTitle: true,
-        actions: [
-          IconButton(
-            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const FirebaseTestScreen())),
-            icon: Icon(
-              Icons.storage,
-              color: Colors.white,
-              size: isPhone ? 24 : 28,
-            ),
-          ),
-          SizedBox(width: isPhone ? 12 : 16),
-        ],
       ),
       body: Padding(
         padding: EdgeInsets.all(isPhone ? 8.0 : 16.0),

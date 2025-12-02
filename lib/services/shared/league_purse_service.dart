@@ -117,7 +117,7 @@ class LeaguePurseService {
   static Future<void> loadPurseAmounts(League league) async {
     // Placeholder for database loading
     // This would typically load from SQLite or Firebase
-    print('Loading purse amounts for ${league.name} league...');
+    //print('Loading purse amounts for ${league.name} league...');
     
     // For now, set some default values for demonstration
     switch (league) {
@@ -145,10 +145,10 @@ class LeaguePurseService {
   /// TODO: Implement database saving logic
   static Future<void> savePurseAmounts(League league) async {
     // Placeholder for database saving
-    print('Saving purse amounts for ${league.name} league...');
-    print('Primary Purse: ${formatPurseAmount(getPrimaryPurse(league))}');
-    print('Closest Pin Purse: ${formatPurseAmount(_closestPinPurse)}');
-    print('Mulligan Purse: ${formatPurseAmount(_mulliganPurse)}');
+    //print('Saving purse amounts for ${league.name} league...');
+    //print('Primary Purse: ${formatPurseAmount(getPrimaryPurse(league))}');
+    //print('Closest Pin Purse: ${formatPurseAmount(_closestPinPurse)}');
+    //print('Mulligan Purse: ${formatPurseAmount(_mulliganPurse)}');
   }
   
   /// Updates a specific purse amount by type

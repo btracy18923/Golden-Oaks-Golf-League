@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'services/database_helper.dart';
 import 'screens/main_menu_screen.dart';
 import 'firebase_options.dart';
+import 'services/connectivity_service.dart';
 
 //Version 4, November 16, 2025
 void main() async {
@@ -13,15 +14,15 @@ void main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-    print('Firebase initialized successfully');
-    print('Project ID: ${DefaultFirebaseOptions.currentPlatform.projectId}');
-    print('Platform: ${DefaultFirebaseOptions.currentPlatform.apiKey.substring(0, 10)}...');
+  //  print('Firebase initialized successfully');
+   // print('Project ID: ${DefaultFirebaseOptions.currentPlatform.projectId}');
+    //print('Platform: ${DefaultFirebaseOptions.currentPlatform.apiKey.substring(0, 10)}...');
   } catch (e) {
-    print('Firebase initialization failed: $e');
-    print('Error type: ${e.runtimeType}');
+    //print('Firebase initialization failed: $e');
+    //print('Error type: ${e.runtimeType}');
     
     // Continue app startup even if Firebase fails
-    print('Continuing without Firebase - local database only');
+    //print('Continuing without Firebase - local database only');
   }
   
   // Initialize local database
@@ -29,6 +30,15 @@ void main() async {
     await DatabaseHelper().database;
   } catch (e) {
     print('Database initialization failed: $e');
+  }
+  
+  // Initialize connectivity monitoring
+  try {
+    final connectivityService = ConnectivityService();
+    connectivityService.startMonitoring();
+    //print('Connectivity monitoring started');
+  } catch (e) {
+    //print('Connectivity monitoring initialization failed: $e');
   }
   
   runApp(const GoldenOaksGolfApp());

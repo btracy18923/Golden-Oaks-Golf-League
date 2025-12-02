@@ -143,7 +143,7 @@ class GolfCourseUIService {
       children: [
         buildDataCell(course['name'] ?? '', 180),
         buildDataCell(course['phone'] ?? '', 100),
-        buildDataCell(course['holes']?.toString() ?? '', 70),
+        buildDataCell(course['Par3s']?.toString() ?? '', 70),
         buildDataCell(course['tees'] ?? '', 80),
         buildDataCell(course['slope']?.toString() ?? '', 70),
         buildDataCell(course['travel_time'] ?? '', 80),

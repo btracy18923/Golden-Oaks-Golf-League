@@ -111,7 +111,6 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
     _phoneController.addListener(_onFormFieldChanged);
     _holesController.addListener(_onFormFieldChanged);
     _teesController.addListener(_onFormFieldChanged);
-    _slopeController.addListener(_onFormFieldChanged);
     _travelTimeController.addListener(_onFormFieldChanged);
   }
 
@@ -125,15 +124,14 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
   }
 
   Future<void> _autoSaveCourse() async {
-    if (_selectedCourse == null || !_validateForm()) return;
+    if (_selectedCourse == null) return;
     
     try {
       await _databaseHelper.updateGolfCourse(_selectedCourse!['id'], {
         'name': _nameController.text.trim(),
         'phone': _phoneController.text.trim(),
-        'holes': int.tryParse(_holesController.text.trim()),
+        'Par3s': int.tryParse(_holesController.text.trim()),
         'tees': _teesController.text.trim(),
-        'slope': int.tryParse(_slopeController.text.trim()),
         'travel_time': _travelTimeController.text.trim(),
       });
       
@@ -154,6 +152,8 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
     }
   }
 
+
+
   void _clearForm() {
     FocusScope.of(context).unfocus();
     _nameController.clear();
@@ -172,7 +172,7 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
       _selectedCourse = course;
       _nameController.text = course['name'] ?? '';
       _phoneController.text = course['phone'] ?? '';
-      _holesController.text = course['holes']?.toString() ?? '';
+      _holesController.text = course['Par3s']?.toString() ?? '';
       _teesController.text = course['tees'] ?? '';
       _slopeController.text = course['slope']?.toString() ?? '';
       _travelTimeController.text = course['travel_time'] ?? '';
@@ -194,7 +194,7 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
       await _databaseHelper.insertGolfCourse({
         'name': _nameController.text.trim(),
         'phone': _phoneController.text.trim(),
-        'holes': 4,
+        'Par3s': 4,
         'tees': _teesController.text.trim(),
         'slope': int.tryParse(_slopeController.text.trim()),
         'travel_time': _travelTimeController.text.trim(),
@@ -512,7 +512,7 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
       children: [
         Expanded(flex: 31, child: _buildDataCellExpanded(course['name'] ?? '', leftAlign: true)),
         Expanded(flex: 27, child: _buildDataCellExpanded(_formatPhoneNumber(course['phone'] ?? ''))),
-        Expanded(flex: 14, child: _buildDataCellExpanded(course['holes']?.toString() ?? '')),
+        Expanded(flex: 14, child: _buildDataCellExpanded(course['Par3s']?.toString() ?? '')),
         Expanded(flex: 16, child: _buildDataCellExpanded(course['tees'] ?? '')),
         Expanded(flex: 12, child: _buildDataCellExpanded(course['travel_time'] ?? '')),
       ],
@@ -524,7 +524,7 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
       children: [
         _buildDataCell(course['name'] ?? '', nameWidth, leftAlign: true),
         _buildDataCell(_formatPhoneNumber(course['phone'] ?? ''), phoneWidth),
-        _buildDataCell(course['holes']?.toString() ?? '', par3Width),
+        _buildDataCell(course['Par3s']?.toString() ?? '', par3Width),
         _buildDataCell(course['tees'] ?? '', teesWidth),
         _buildDataCell(course['travel_time'] ?? '', travelWidth),
       ],
@@ -553,8 +553,8 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
                   Text('Phone: ${_formatPhoneNumber(course['phone'])}', style: const TextStyle(fontSize: 12)),
                 Row(
                   children: [
-                    if ((course['holes']?.toString() ?? '').isNotEmpty)
-                      Text('Par3s: ${course['holes']}', style: const TextStyle(fontSize: 12)),
+                    if ((course['Par3s']?.toString() ?? '').isNotEmpty)
+                      Text('Par3s: ${course['Par3s']}', style: const TextStyle(fontSize: 12)),
                     const SizedBox(width: 16),
                     if ((course['slope']?.toString() ?? '').isNotEmpty)
                       Text('Slope: ${course['slope']}', style: const TextStyle(fontSize: 12)),

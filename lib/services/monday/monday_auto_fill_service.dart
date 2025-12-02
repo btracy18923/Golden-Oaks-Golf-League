@@ -12,7 +12,7 @@ class MondayAutoFillService extends BaseAutoFillService {
   /// Returns updated groups with random SKATS values
   @override
   List<List<PlayerData>> autoFillData(List<List<PlayerData>> groups) {
-    print("MondayAutoFillService.autoFillData called!");
+    //print("MondayAutoFillService.autoFillData called!");
     
     // Create a deep copy of the groups to avoid modifying the original
     List<List<PlayerData>> updatedGroups = createGroupsCopy(groups);

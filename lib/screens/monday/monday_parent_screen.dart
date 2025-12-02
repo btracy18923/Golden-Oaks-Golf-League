@@ -217,6 +217,35 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
     }
   }
   
+  /// Updates Closest Pin amount based on selected golf course Par3s
+  Future<void> _updateClosestPinFromGolfCourse(String courseName) async {
+    try {
+      final courses = await DatabaseHelper().getAllGolfCourses();
+      final selectedCourse = courses.firstWhere(
+        (course) => course['name'] == courseName,
+        orElse: () => <String, dynamic>{},
+      );
+      
+      if (selectedCourse.isNotEmpty && selectedCourse['holes'] != null) {
+        final par3s = selectedCourse['holes'] as int;
+        final newClosestPin = par3s * 1.00; // Multiply by $1.00
+        
+        setState(() {
+          closestPin = newClosestPin;
+          _closestPinController.text = closestPin.toStringAsFixed(2);
+          LeaguePurseService.setClosestPinAmount(closestPin);
+        });
+      }
+    } catch (e) {
+      // Silently handle errors to avoid interrupting user experience
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error updating Closest Pin amount: $e')),
+        );
+      }
+    }
+  }
+
   /// Gets the display value for amount field during editing
   String _getAmountDisplayValue(String fieldType, double originalValue) {
     if (_currentEditField == fieldType && _keypadController.isVisible) {
@@ -247,12 +276,16 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
         foregroundColor: Colors.white,
         centerTitle: true,
         actions: [
-          const Icon(
-            Icons.storage,
-            color: Colors.white,
-            size: 28,
+          IconButton(
+            icon: const Icon(Icons.storage),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => AdminScreen(currentLeague: League.monday),
+              ),
+            ),
+            tooltip: 'Administration',
           ),
-          const SizedBox(width: 16),
         ],
       ),
       body: Stack(
@@ -277,10 +310,15 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
                     onSkatsAnteEdit: () => _showKeypadForAmount('ante'),
                     onClosestPinEdit: () => _showKeypadForAmount('closestPin'),
                     onMulligansEdit: () => _showKeypadForAmount('mulligans'),
-                    onGolfCourseChanged: (String? newValue) {
+                    onGolfCourseChanged: (String? newValue) async {
                       setState(() {
                         selectedGolfCourse = newValue;
                       });
+                      
+                      // Get Par3s data from selected golf course and calculate Closest Pin amount
+                      if (newValue != null) {
+                        await _updateClosestPinFromGolfCourse(newValue);
+                      }
                     },
                     // Pass additional parameters for custom keypad display
                     skatsAnteDisplayValue: _getAmountDisplayValue('ante', skatsAnte),

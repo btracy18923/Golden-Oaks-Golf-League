@@ -122,9 +122,9 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
     try {
       await _dbHelper.setSetting('monday_players_shuffled', 'false', league: League.monday);
       await _dbHelper.setSetting('monday_player_order', '', league: League.monday);
-      print("Shuffle state cleared - all players unselected");
+      //print("Shuffle state cleared - all players unselected");
     } catch (error) {
-      print("Error clearing shuffle state: $error");
+      //print("Error clearing shuffle state: $error");
     }
   }
 
@@ -135,9 +135,9 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
       try {
         await _dbHelper.setSetting('monday_players_shuffled', 'false', league: League.monday);
         await _dbHelper.setSetting('monday_player_order', '', league: League.monday);
-        print("Shuffle state cleared on init - starting with no players selected");
+        //print("Shuffle state cleared on init - starting with no players selected");
       } catch (error) {
-        print("Error clearing shuffle state on init: $error");
+        //print("Error clearing shuffle state on init: $error");
       }
     }
   }
@@ -168,12 +168,12 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
             
             // Save the updated order
             await _dbHelper.setSetting('monday_player_order', updatedOrder, league: League.monday);
-            print("Removed player '$playerNameToRemove' from saved shuffle order");
+            //print("Removed player '$playerNameToRemove' from saved shuffle order");
           }
         }
       }
     } catch (error) {
-      print("Error handling player removal: $error");
+      //print("Error handling player removal: $error");
     }
   }
 
@@ -205,12 +205,12 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
             
             // Save the updated order
             await _dbHelper.setSetting('monday_player_order', updatedOrder, league: League.monday);
-            print("Added player '$playerNameToAdd' to existing shuffle order");
+            //print("Added player '$playerNameToAdd' to existing shuffle order");
           }
         }
       }
     } catch (error) {
-      print("Error handling player addition: $error");
+      //print("Error handling player addition: $error");
     }
   }
 
@@ -273,7 +273,7 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
       
       return filteredEntries.join(';;');
     } catch (e) {
-      print("Error removing player from order: $e");
+      //print("Error removing player from order: $e");
       return orderData; // Return original if error
     }
   }
@@ -361,7 +361,7 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
       
       return finalEntries.join(';;');
     } catch (e) {
-      print("Error adding player to order: $e");
+      //print("Error adding player to order: $e");
       return orderData; // Return original if error
     }
   }

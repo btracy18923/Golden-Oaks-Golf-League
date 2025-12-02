@@ -110,7 +110,7 @@ class EnterScoresUIService {
   /// [onReturn] - Optional callback for left arrow return functionality
   /// [onAutoFill] - Optional callback for storage icon auto-fill functionality
   static Widget buildPurseHeader(BuildContext context, League league, {VoidCallback? onReturn, VoidCallback? onAutoFill}) {
-    print("Using UI Service for ${league.name} league");
+    //print("Using UI Service for ${league.name} league");
     final deviceType = getDeviceType(context);
     final fontSize = getResponsiveFontSize(deviceType, isHeader: true);
     final padding = getResponsivePadding(deviceType);
@@ -141,7 +141,7 @@ class EnterScoresUIService {
                 ),
                 child: Center(
                   child: Icon(
-                    Icons.arrow_back_ios,
+                    Icons.arrow_back,
                     color: Colors.black,
                     size: fontSize * 1.5,
                   ),
@@ -272,7 +272,7 @@ class EnterScoresUIService {
               ),
               child: Center(
                 child: Icon(
-                  Icons.storage,
+                  Icons.refresh,
                   color: Colors.black,
                   size: fontSize * 1.5,
                 ),

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../../services/database_helper.dart';
 import '../../models/league.dart';
 import '../../services/UI/player_profile_service.dart';
+import '../../services/firebase_upload_service.dart';
 
 class MondayPlayerProfileScreen extends StatefulWidget {
   final League? league;
@@ -15,6 +16,7 @@ class MondayPlayerProfileScreen extends StatefulWidget {
 
 class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
   final DatabaseHelper _databaseHelper = DatabaseHelper();
+  final FirebaseUploadService _firebaseUploadService = FirebaseUploadService();
   League _selectedLeague = League.monday;
   Map<String, dynamic>? _selectedPlayer;
   List<Map<String, dynamic>> _players = [];
@@ -39,11 +41,14 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
   void initState() {
     super.initState();
     _selectedLeague = widget.league ?? League.monday;
-    _refreshPlayerList();
+    _loadPlayerList();
   }
 
   @override
   void dispose() {
+    // Upload player table to Firebase before leaving
+    _uploadPlayerDataToFirebase();
+    
     _idController.dispose();
     _firstController.dispose();
     _lastController.dispose();
@@ -61,7 +66,68 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
     super.dispose();
   }
 
-  Future<void> _refreshPlayerList() async {
+  /// Upload player table data to Firebase when leaving the screen
+  void _uploadPlayerDataToFirebase() async {
+    try {
+      final success = await _firebaseUploadService.uploadPlayerTableWithQueue(_selectedLeague);
+      if (success) {
+      } else {
+      }
+    } catch (e) {
+    }
+  }
+
+  /// Manual Firebase upload for testing
+  Future<void> _manualFirebaseUpload() async {
+    try {
+      
+      // Test Firebase connection first
+      final isConnected = await _firebaseUploadService.isFirebaseConnected();
+      
+      if (!isConnected) {
+        _showErrorDialog('Cannot connect to Firebase. Check your internet connection.');
+        return;
+      }
+      
+      // Get current player count
+      final players = await _databaseHelper.getPlayersByLeague(_selectedLeague);
+      
+      // Show loading dialog
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const AlertDialog(
+          content: Row(
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(width: 16),
+              Text('Uploading to Firebase...'),
+            ],
+          ),
+        ),
+      );
+      
+      // Attempt upload
+      final success = await _firebaseUploadService.uploadPlayerTable(_selectedLeague);
+      
+      // Close loading dialog
+      Navigator.of(context).pop();
+      
+      if (success) {
+        _showSuccessDialog('Successfully uploaded ${players.length} players to Firebase!\\n\\nCheck Firebase collections:\\n• M_player_profile\\n• wednesday_player_profile');
+      } else {
+        _showErrorDialog('Failed to upload players to Firebase. Check console for details.');
+      }
+      
+      
+    } catch (e) {
+      // Close loading dialog if still open
+      Navigator.of(context).pop();
+      _showErrorDialog('Upload error: $e');
+    }
+  }
+
+  Future<void> _loadPlayerList() async {
     try {
       final players = await _databaseHelper.getPlayersByLeague(_selectedLeague);
       setState(() {
@@ -69,6 +135,74 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
       });
     } catch (e) {
       _showErrorDialog('Error loading players: $e');
+    }
+  }
+
+  /// Simple refresh without any dialog - just reload the player list
+  Future<void> _refreshPlayerList() async {
+    await _loadPlayerList();
+  }
+
+  /// Special function to replace all Skat numbers to 35 (testing feature)
+  Future<void> _replaceAllSkatNumbersTo35() async {
+    // Show confirmation dialog first
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirm Replace to 35'),
+        content: RichText(
+          text: const TextSpan(
+            style: TextStyle(color: Colors.black, fontSize: 16),
+            children: [
+              TextSpan(text: 'Are you sure you want to replace all Skat # values to 35?\n'),
+              TextSpan(text: 'This usually is done only for testing purposes.\n'),
+              TextSpan(text: 'Click '),
+              TextSpan(text: 'Cancel', style: TextStyle(fontWeight: FontWeight.bold)),
+              TextSpan(text: ' if you are not sure.\n'),
+              TextSpan(text: 'This cannot be undone.\n\n'),
+              TextSpan(text: 'This will affect all players in the current league.'),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Replace'),
+          ),
+        ],
+      ),
+    );
+    
+    if (confirmed != true) return;
+    
+    try {
+      // Update all players' Skat # to 35
+      final players = await _databaseHelper.getPlayersByLeague(_selectedLeague);
+      for (var player in players) {
+        await _databaseHelper.updatePlayer(player['id'], {
+          'player_number': player['player_number'],
+          'first': player['first'],
+          'last': player['last'],
+          'skat_number': 35,
+          'league': player['league'],
+          'cell': player['cell'],
+          'email': player['email'],
+        });
+      }
+      
+      // Reload the updated player list
+      await _refreshPlayerList();
+      
+      _showSuccessDialog('All Skat # values replaced to 35');
+    } catch (e) {
+      _showErrorDialog('Error updating players: $e');
+      // Ensure player list is reloaded even if update fails
+      await _loadPlayerList();
     }
   }
 
@@ -151,7 +285,14 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
       
       _clearForm();
       _refreshPlayerList();
-      _showSuccessDialog('Player added successfully!');
+      
+      // Immediately try to upload to Firebase
+      final uploadSuccess = await _firebaseUploadService.uploadPlayerTableWithQueue(_selectedLeague);
+      if (uploadSuccess) {
+        _showSuccessDialog('Player added and uploaded to Firebase!');
+      } else {
+        _showSuccessDialog('Player added locally! Firebase upload queued for when WiFi is available.');
+      }
     } catch (e) {
       _showErrorDialog('Error adding player: $e');
     }
@@ -180,7 +321,14 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
       
       _refreshPlayerList();
       _clearForm();
-      _showSuccessDialog('Player updated successfully!');
+      
+      // Immediately try to upload to Firebase
+      final uploadSuccess = await _firebaseUploadService.uploadPlayerTableWithQueue(_selectedLeague);
+      if (uploadSuccess) {
+        _showSuccessDialog('Player updated and uploaded to Firebase!');
+      } else {
+        _showSuccessDialog('Player updated locally! Firebase upload queued for when WiFi is available.');
+      }
     } catch (e) {
       _showErrorDialog('Error updating player: $e');
     }
@@ -314,6 +462,13 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
         title: Text('Player Profile - ${_selectedLeague == League.monday ? 'Monday' : 'Wednesday'} League'),
         backgroundColor: _selectedLeague == League.monday ? Colors.green[700] : Colors.orange[700],
         foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: Icon(Icons.settings),
+            onPressed: _replaceAllSkatNumbersTo35,
+            tooltip: 'Replace All Skat # to 35 (Testing)',
+          ),
+        ],
       ),
       body: SafeArea(
         child: Column(

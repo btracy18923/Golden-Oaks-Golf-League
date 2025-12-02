@@ -6,6 +6,7 @@ import '../../services/shared/league_purse_service.dart';
 import '../../services/database_helper.dart';
 import '../../models/league.dart';
 import '../main_menu_screen.dart';
+import '../../services/firebase_upload_service.dart';
 
 class MondayResultsScreen extends StatefulWidget {
   const MondayResultsScreen({super.key});
@@ -17,6 +18,7 @@ class MondayResultsScreen extends StatefulWidget {
 class _MondayResultsScreenState extends State<MondayResultsScreen> {
   final ScreenDataRetentionService _retentionService = ScreenDataRetentionService();
   final DatabaseHelper _databaseHelper = DatabaseHelper();
+  final FirebaseUploadService _firebaseUploadService = FirebaseUploadService();
 
   @override
   void initState() {
@@ -44,7 +46,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
     super.dispose();
   }
 
-  /// Saves the results data to the monday_scores table
+  /// Saves the results data to the monday_scores table using 4-step process
   Future<void> _saveResultsToDatabase() async {
     try {
       final playerGroups = _retentionService.playerGroups ?? [];
@@ -52,28 +54,24 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
       final currentDate = DateTime.now().toIso8601String().split('T')[0];
       final playerClosestPinWinnings = _retentionService.playerClosestPinWinnings ?? {};
       
-      // Flatten all players from all groups and filter for positive DIFF
-      List<PlayerData> allPlayers = [];
+      // Get player database records for lookups
+      final allDbPlayers = await _databaseHelper.getPlayersByLeague(League.monday);
+      
+      // STEP A1: Create rows for ALL selected players from monday_enter_scores_screen
+      List<PlayerData> allSelectedPlayers = [];
       for (int groupIndex = 0; groupIndex < playerGroups.length; groupIndex++) {
         for (var player in playerGroups[groupIndex]) {
-          // Only include players with positive DIFF
-          if (player.diff.isNotEmpty && player.diff != '-') {
-            try {
-              final diffValue = double.parse(player.diff.replaceAll('+', ''));
-              if (diffValue > 0) {
-                allPlayers.add(player);
-              }
-            } catch (e) {
-              // If parsing fails, skip this player
-            }
+          if (player.name.isNotEmpty) { // Only include players with names (not empty slots)
+            allSelectedPlayers.add(player);
           }
         }
       }
-
-      // Get player ID by name lookup for each player
-      final allDbPlayers = await _databaseHelper.getPlayersByLeague(League.monday);
       
-      for (var player in allPlayers) {
+      //print("Step A1: Creating rows for ${allSelectedPlayers.length} selected players");
+      
+      // Create initial rows for all selected players
+      Map<String, int> playerToRecordId = {}; // Track record IDs for updates
+      for (var player in allSelectedPlayers) {
         // Find matching player in database
         final dbPlayer = allDbPlayers.firstWhere(
           (p) => p['last'] == player.name, 
@@ -81,47 +79,91 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
         );
         
         if (dbPlayer.isNotEmpty) {
-          // Parse SKATS score
-          int? skatsScore;
-          if (player.skats.isNotEmpty && player.skats != '-') {
-            skatsScore = int.tryParse(player.skats);
-          }
-          
-          // Parse SKAT winnings
-          double skatWinnings = 0.0;
-          if (player.money.isNotEmpty && player.money.contains('\$')) {
-            try {
-              skatWinnings = double.parse(player.money.replaceAll('\$', '').replaceAll(',', ''));
-            } catch (e) {
-              skatWinnings = 0.0;
-            }
-          }
-          
-          // Get close pin winnings for this player
-          double closePinWinnings = playerClosestPinWinnings[player.name] ?? 0.0;
-          
-          // Prepare score data
+          // Create initial score record with basic data
           Map<String, dynamic> scoreData = {
             'player_id': dbPlayer['id'],
             'name': player.name,
             'date_played': currentDate,
             'golf_course': selectedGolfCourse,
-            'skats_score': skatsScore,
-            'close_pin_winnings': closePinWinnings,
-            'skat_winnings': skatWinnings,
+            'skats_score': null, // Will be updated in Step A4
+            'close_pin_winnings': 0.0, // Will be updated in Step A2
+            'skat_winnings': 0.0, // Will be updated in Step A3
             'handicap': dbPlayer['handicap'],
             'skat_number': dbPlayer['skat_number'],
           };
           
-          // Save to monday_scores table
-          await _databaseHelper.insertScoreLeague(scoreData, League.monday);
+          // Insert record and get the record ID
+          int recordId = await _databaseHelper.insertScoreLeague(scoreData, League.monday);
+          playerToRecordId[player.name] = recordId;
         }
       }
+      
+      // STEP A2: Update Closest Pin Winnings for winners
+      //print("Step A2: Updating Closest Pin Winnings");
+      for (String playerName in playerClosestPinWinnings.keys) {
+        double closePinWinnings = playerClosestPinWinnings[playerName] ?? 0.0;
+        
+        if (closePinWinnings > 0.0 && playerToRecordId.containsKey(playerName)) {
+          int recordId = playerToRecordId[playerName]!;
+          await _databaseHelper.updateScoreField(
+            recordId, 
+            'close_pin_winnings', 
+            closePinWinnings,
+            League.monday
+          );
+        }
+      }
+      
+      // STEP A3: Update SKAT Winnings for players with money earnings
+      //print("Step A3: Updating SKAT Winnings");
+      for (var player in allSelectedPlayers) {
+        if (player.money.isNotEmpty && player.money.contains('\$') && playerToRecordId.containsKey(player.name)) {
+          try {
+            double skatWinnings = double.parse(player.money.replaceAll('\$', '').replaceAll(',', ''));
+            if (skatWinnings > 0.0) {
+              int recordId = playerToRecordId[player.name]!;
+              await _databaseHelper.updateScoreField(
+                recordId, 
+                'skat_winnings', 
+                skatWinnings,
+                League.monday
+              );
+            }
+          } catch (e) {
+            //print("Error parsing SKAT winnings for ${player.name}: $e");
+          }
+        }
+      }
+      
+      // STEP A4: Update SKAT data field with SKAT # from player profiles
+      //print("Step A4: Updating SKAT data field with SKAT # from profiles");
+      for (var player in allSelectedPlayers) {
+        if (playerToRecordId.containsKey(player.name)) {
+          // Find player's SKAT # from database
+          final dbPlayer = allDbPlayers.firstWhere(
+            (p) => p['last'] == player.name, 
+            orElse: () => <String, dynamic>{}
+          );
+          
+          if (dbPlayer.isNotEmpty && dbPlayer['skat_number'] != null) {
+            int recordId = playerToRecordId[player.name]!;
+            await _databaseHelper.updateScoreField(
+              recordId, 
+              'skats_score', 
+              dbPlayer['skat_number'],
+              League.monday
+            );
+          }
+        }
+      }
+      
+      // Upload scores to Firebase after successful database save
+      await _uploadScoresToFirebase();
       
       // Show success message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Results saved successfully! ${allPlayers.length} player records saved.'),
+          content: Text('Results saved successfully! ${allSelectedPlayers.length} player records created and updated.'),
           backgroundColor: Colors.green,
           duration: Duration(seconds: 3),
         ),
@@ -135,6 +177,21 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
           duration: Duration(seconds: 3),
         ),
       );
+    }
+  }
+
+  /// Upload player scores to Firebase after saving to database
+  Future<void> _uploadScoresToFirebase() async {
+    try {
+      //print('Uploading/queuing player scores for Monday league...');
+      final success = await _firebaseUploadService.uploadPlayerScoresTableWithQueue(League.monday);
+      if (success) {
+        //print('Player scores upload initiated or queued successfully');
+      } else {
+        //print('Failed to upload or queue player scores');
+      }
+    } catch (e) {
+      //print('Error uploading/queuing player scores: $e');
     }
   }
 
@@ -223,19 +280,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Title
-                      Center(
-                        child: Text(
-                          'Game Session Summary',
-                          style: TextStyle(
-                            fontSize: titleSize,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.green[800],
-                          ),
-                        ),
-                      ),
-                      
-                      SizedBox(height: basePadding * 2),
+                      SizedBox(height: basePadding),
                       
                       // Single unified section with all data
                       _buildDataSection(

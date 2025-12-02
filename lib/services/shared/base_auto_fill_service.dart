@@ -56,6 +56,6 @@ abstract class BaseAutoFillService {
   
   /// Common method to print debug information
   void logFillAction(String playerName, String fieldName, String value) {
-    print("${getLeagueType()} League: Filling $playerName with $fieldName value: $value");
+    //print("${getLeagueType()} League: Filling $playerName with $fieldName value: $value");
   }
 }

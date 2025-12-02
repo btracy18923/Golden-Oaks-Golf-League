@@ -20,7 +20,7 @@ class DatabaseHelper {
     
     return await openDatabase(
       path,
-      version: 14,
+      version: 19,
       onCreate: (db, version) {
         // DatabaseHelper: Creating new database with version $version
         return _createTables(db, version);
@@ -37,18 +37,13 @@ class DatabaseHelper {
     // Players table - stores player information for both leagues
     await db.execute('''
       CREATE TABLE players (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        player_number INTEGER,
+        player_number INTEGER PRIMARY KEY,
         first TEXT NOT NULL,
         last TEXT NOT NULL,
-        handicap REAL DEFAULT 0.0,
         skat_number INTEGER,
         cell TEXT,
         email TEXT,
-        league TEXT NOT NULL,
-        active INTEGER DEFAULT 1,
-        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+        league TEXT NOT NULL
       )
     ''');
     // DatabaseHelper: Players table created successfully
@@ -61,16 +56,12 @@ class DatabaseHelper {
         name TEXT NOT NULL,
         date_played TEXT NOT NULL,
         golf_course TEXT NOT NULL,
-        handicap REAL,
         skat_number INTEGER,
         gross_score INTEGER,
         skats_score INTEGER,
         close_pin_winnings REAL DEFAULT 0.0,
         skat_winnings REAL DEFAULT 0.0,
-        pos TEXT,
-        prize_money TEXT,
-        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (player_id) REFERENCES players (id)
+        FOREIGN KEY (player_id) REFERENCES players (player_number)
       )
     ''');
 
@@ -90,7 +81,7 @@ class DatabaseHelper {
         pos TEXT,
         prize_money TEXT,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (player_id) REFERENCES players (id)
+        FOREIGN KEY (player_id) REFERENCES players (player_number)
       )
     ''');
 
@@ -111,7 +102,7 @@ class DatabaseHelper {
         wed_group_winnings REAL DEFAULT 0.0,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (player_id) REFERENCES players (id)
+        FOREIGN KEY (player_id) REFERENCES players (player_number)
       )
     ''');
 
@@ -143,7 +134,7 @@ class DatabaseHelper {
         individual_winnings REAL DEFAULT 0.0,
         group_winnings REAL DEFAULT 0.0,
         FOREIGN KEY (game_id) REFERENCES games (id),
-        FOREIGN KEY (player_id) REFERENCES players (id)
+        FOREIGN KEY (player_id) REFERENCES players (player_number)
       )
     ''');
 
@@ -167,17 +158,9 @@ class DatabaseHelper {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT UNIQUE NOT NULL,
         phone TEXT,
-        holes INTEGER,
+        Par3s INTEGER,
         tees TEXT,
-        slope INTEGER,
-        travel_time TEXT,
-        address TEXT,
-        city TEXT,
-        state TEXT,
-        zip TEXT,
-        website TEXT,
-        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+        travel_time TEXT
       )
     ''');
 
@@ -366,14 +349,12 @@ class DatabaseHelper {
             name TEXT NOT NULL,
             date_played TEXT NOT NULL,
             golf_course TEXT NOT NULL,
-            handicap REAL,
             skat_number INTEGER,
             gross_score INTEGER,
             skats_score INTEGER,
             close_pin_winnings REAL DEFAULT 0.0,
             skat_winnings REAL DEFAULT 0.0,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (player_id) REFERENCES players (id)
+            FOREIGN KEY (player_id) REFERENCES players (player_number)
           )
         ''');
 
@@ -391,7 +372,7 @@ class DatabaseHelper {
             single_winnings REAL DEFAULT 0.0,
             group_winnings REAL DEFAULT 0.0,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (player_id) REFERENCES players (id)
+            FOREIGN KEY (player_id) REFERENCES players (player_number)
           )
         ''');
         
@@ -449,6 +430,167 @@ class DatabaseHelper {
         // Warning: Could not create adjusted_mulligan_purse table: $e
       }
     }
+    if (oldVersion < 15) {
+      // Remove id, handicap, active, created_at, updated_at fields from players table
+      try {
+        // Create new players table with simplified schema
+        await db.execute('''
+          CREATE TABLE players_new (
+            player_number INTEGER PRIMARY KEY,
+            first TEXT NOT NULL,
+            last TEXT NOT NULL,
+            skat_number INTEGER,
+            cell TEXT,
+            email TEXT,
+            league TEXT NOT NULL
+          )
+        ''');
+        
+        // Copy data from old table to new table (only the fields we want to keep)
+        await db.execute('''
+          INSERT INTO players_new (player_number, first, last, skat_number, cell, email, league)
+          SELECT player_number, first, last, skat_number, cell, email, league FROM players
+        ''');
+        
+        // Drop old table and rename new table
+        await db.execute('DROP TABLE players');
+        await db.execute('ALTER TABLE players_new RENAME TO players');
+        
+        print('Successfully migrated players table to remove unwanted fields');
+      } catch (e) {
+        print('Warning: Could not migrate players table: $e');
+      }
+    }
+    if (oldVersion < 16) {
+      // Remove unwanted fields from monday_scores table
+      try {
+        // Create new monday_scores table with simplified schema
+        await db.execute('''
+          CREATE TABLE monday_scores_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            player_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            date_played TEXT NOT NULL,
+            golf_course TEXT NOT NULL,
+            skat_number INTEGER,
+            gross_score INTEGER,
+            skats_score INTEGER,
+            close_pin_winnings REAL DEFAULT 0.0,
+            skat_winnings REAL DEFAULT 0.0,
+            FOREIGN KEY (player_id) REFERENCES players (player_number)
+          )
+        ''');
+        
+        // Copy data from old table to new table (only the fields we want to keep)
+        await db.execute('''
+          INSERT INTO monday_scores_new (player_id, name, date_played, golf_course, skat_number, gross_score, skats_score, close_pin_winnings, skat_winnings)
+          SELECT player_id, name, date_played, golf_course, skat_number, gross_score, skats_score, close_pin_winnings, skat_winnings FROM monday_scores
+        ''');
+        
+        // Drop old table and rename new table
+        await db.execute('DROP TABLE monday_scores');
+        await db.execute('ALTER TABLE monday_scores_new RENAME TO monday_scores');
+        
+        print('Successfully migrated monday_scores table to remove unwanted fields');
+      } catch (e) {
+        print('Warning: Could not migrate monday_scores table: $e');
+      }
+    }
+    if (oldVersion < 17) {
+      // Remove unwanted fields from golf_courses table
+      try {
+        // Create new golf_courses table with simplified schema
+        await db.execute('''
+          CREATE TABLE golf_courses_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT UNIQUE NOT NULL,
+            phone TEXT,
+            holes INTEGER,
+            tees TEXT,
+            travel_time TEXT
+          )
+        ''');
+        
+        // Copy data from old table to new table (only the fields we want to keep)
+        await db.execute('''
+          INSERT INTO golf_courses_new (id, name, phone, holes, tees, travel_time)
+          SELECT id, name, phone, holes, tees, travel_time FROM golf_courses
+        ''');
+        
+        // Drop old table and rename new table
+        await db.execute('DROP TABLE golf_courses');
+        await db.execute('ALTER TABLE golf_courses_new RENAME TO golf_courses');
+        
+        print('Successfully migrated golf_courses table to remove unwanted fields');
+      } catch (e) {
+        print('Warning: Could not migrate golf_courses table: $e');
+      }
+    }
+    if (oldVersion < 18) {
+      // Rename 'holes' field to 'Par3s' in golf_courses table
+      try {
+        // Create new golf_courses table with Par3s field
+        await db.execute('''
+          CREATE TABLE golf_courses_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT UNIQUE NOT NULL,
+            phone TEXT,
+            Par3s INTEGER,
+            tees TEXT,
+            travel_time TEXT
+          )
+        ''');
+        
+        // Copy data from old table to new table (rename holes to Par3s)
+        await db.execute('''
+          INSERT INTO golf_courses_new (id, name, phone, Par3s, tees, travel_time)
+          SELECT id, name, phone, holes, tees, travel_time FROM golf_courses
+        ''');
+        
+        // Drop old table and rename new table
+        await db.execute('DROP TABLE golf_courses');
+        await db.execute('ALTER TABLE golf_courses_new RENAME TO golf_courses');
+        
+        print('Successfully renamed holes field to Par3s in golf_courses table');
+      } catch (e) {
+        print('Warning: Could not rename holes field to Par3s: $e');
+      }
+    }
+    if (oldVersion < 19) {
+      // Add id column to monday_scores table
+      try {
+        // Create new monday_scores table with id column
+        await db.execute('''
+          CREATE TABLE monday_scores_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            player_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            date_played TEXT NOT NULL,
+            golf_course TEXT NOT NULL,
+            skat_number INTEGER,
+            gross_score INTEGER,
+            skats_score INTEGER,
+            close_pin_winnings REAL DEFAULT 0.0,
+            skat_winnings REAL DEFAULT 0.0,
+            FOREIGN KEY (player_id) REFERENCES players (player_number)
+          )
+        ''');
+        
+        // Copy data from old table to new table
+        await db.execute('''
+          INSERT INTO monday_scores_new (player_id, name, date_played, golf_course, skat_number, gross_score, skats_score, close_pin_winnings, skat_winnings)
+          SELECT player_id, name, date_played, golf_course, skat_number, gross_score, skats_score, close_pin_winnings, skat_winnings FROM monday_scores
+        ''');
+        
+        // Drop old table and rename new table
+        await db.execute('DROP TABLE monday_scores');
+        await db.execute('ALTER TABLE monday_scores_new RENAME TO monday_scores');
+        
+        print('Successfully added id column to monday_scores table');
+      } catch (e) {
+        print('Warning: Could not add id column to monday_scores table: $e');
+      }
+    }
   }
 
   Future<void> _insertDefaultSettings(Database db) async {
@@ -496,41 +638,23 @@ class DatabaseHelper {
       {
         'name': 'Golden Oaks Golf Course',
         'phone': '217-555-0123',
-        'holes': 18,
+        'Par3s': 4,
         'tees': 'Blue/White',
-        'slope': 113,
-        'travel_time': '5 minutes',
-        'address': '123 Golf Course Dr',
-        'city': 'Springfield',
-        'state': 'IL',
-        'zip': '62701',
-        'website': 'www.goldenoaksgolf.com'
+        'travel_time': '5 minutes'
       },
       {
         'name': 'Riverside Country Club',
         'phone': '217-555-0456',
-        'holes': 18,
+        'Par3s': 5,
         'tees': 'Championship',
-        'slope': 125,
-        'travel_time': '15 minutes',
-        'address': '456 River Rd',
-        'city': 'Springfield',
-        'state': 'IL',
-        'zip': '62702',
-        'website': 'www.riversidecc.com'
+        'travel_time': '15 minutes'
       },
       {
         'name': 'Pine Valley Golf Club',
         'phone': '217-555-0789',
-        'holes': 18,
+        'Par3s': 6,
         'tees': 'Blue/White/Red',
-        'slope': 118,
-        'travel_time': '25 minutes',
-        'address': '789 Pine Valley Ln',
-        'city': 'Chatham',
-        'state': 'IL',
-        'zip': '62629',
-        'website': 'www.pinevalleygc.com'
+        'travel_time': '25 minutes'
       }
     ];
 
@@ -758,6 +882,30 @@ class DatabaseHelper {
     }
     
     return 0; // No records found to update
+  }
+
+  // Update a specific field in a score record by record ID
+  Future<int> updateScoreField(int recordId, String fieldName, dynamic fieldValue, League league) async {
+    print("DEBUG: updateScoreField called - recordId: $recordId, fieldName: $fieldName, fieldValue: $fieldValue, league: $league");
+    
+    final db = await database;
+    String tableName = league == League.monday ? 'monday_scores' : 'wednesday_scores';
+    
+    try {
+      // Update the specific field for the record
+      int rowsUpdated = await db.update(
+        tableName,
+        {fieldName: fieldValue},
+        where: 'id = ?',
+        whereArgs: [recordId],
+      );
+      
+      print("DEBUG: updateScoreField completed - rows affected: $rowsUpdated");
+      return rowsUpdated;
+    } catch (e) {
+      print("ERROR: Failed to update $fieldName in $tableName for record $recordId: $e");
+      return 0;
+    }
   }
 
   // Transaction-safe cleanup method for league tables
@@ -1231,14 +1379,11 @@ class DatabaseHelper {
 
   Future<int> insertGolfCourse(Map<String, dynamic> course) async {
     final db = await database;
-    course['created_at'] = DateTime.now().toIso8601String();
-    course['updated_at'] = DateTime.now().toIso8601String();
     return await db.insert('golf_courses', course);
   }
 
   Future<int> updateGolfCourse(int courseId, Map<String, dynamic> course) async {
     final db = await database;
-    course['updated_at'] = DateTime.now().toIso8601String();
     
     return await db.update(
       'golf_courses',
@@ -1371,6 +1516,43 @@ class DatabaseHelper {
     } catch (e) {
       // Error retrieving adjusted mulligan purse: $e
       return null;
+    }
+  }
+
+  // FIREBASE UPLOAD HELPER METHODS
+
+  /// Get all golf courses (golf courses table doesn't have league-specific data)
+  Future<List<Map<String, dynamic>>> getGolfCoursesByLeague(League league) async {
+    final db = await database;
+    
+    // Since golf courses are shared between leagues, return all courses
+    return await db.query(
+      'golf_courses',
+      orderBy: 'name ASC',
+    );
+  }
+
+  /// Get all scores for a specific league from the league-specific tables
+  Future<List<Map<String, dynamic>>> getScoresByLeague(League league) async {
+    final db = await database;
+    String tableName = league == League.monday ? 'monday_scores' : 'wednesday_scores';
+    
+    return await db.query(
+      tableName,
+      orderBy: 'date_played DESC, id DESC',
+    );
+  }
+
+  /// Update all golf courses to set Par3s field to 4
+  Future<void> updateAllGolfCoursesPar3sTo4() async {
+    try {
+      final db = await database;
+      await db.execute('''
+        UPDATE golf_courses 
+        SET Par3s = 4
+      ''');
+    } catch (e) {
+      rethrow;
     }
   }
 
