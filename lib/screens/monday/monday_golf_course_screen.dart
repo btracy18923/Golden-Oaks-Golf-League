@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'dart:async';
 import '../../services/database_helper.dart';
 import '../../models/league.dart';
+import '../../services/firebase_upload_service.dart';
 
 class MondayGolfCourseScreen extends StatefulWidget {
   final League? league;
@@ -15,6 +16,7 @@ class MondayGolfCourseScreen extends StatefulWidget {
 
 class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
   final DatabaseHelper _databaseHelper = DatabaseHelper();
+  final FirebaseUploadService _firebaseUploadService = FirebaseUploadService();
   Map<String, dynamic>? _selectedCourse;
   List<Map<String, dynamic>> _courses = [];
   
@@ -72,6 +74,9 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
   void dispose() {
     _autoSaveTimer?.cancel();
     
+    // Upload golf course table to Firebase before leaving
+    _uploadGolfCourseDataToFirebase();
+    
     _nameController.dispose();
     _phoneController.dispose();
     _holesController.dispose();
@@ -87,6 +92,18 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
     _travelTimeFocus.dispose();
     
     super.dispose();
+  }
+
+  /// Upload golf course table data to Firebase when leaving the screen
+  void _uploadGolfCourseDataToFirebase() async {
+    try {
+      final league = widget.league ?? League.monday;
+      final success = await _firebaseUploadService.uploadGolfCourseTableWithQueue(league);
+      if (success) {
+      } else {
+      }
+    } catch (e) {
+    }
   }
 
   void _setupAutoSaveListeners() {

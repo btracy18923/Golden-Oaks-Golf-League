@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../services/database_helper.dart';
 import '../../models/league.dart';
+import '../../services/firebase_upload_service.dart';
 
 class MondayPlayerScoresScreen extends StatefulWidget {
   final League? league;
@@ -14,6 +15,7 @@ class MondayPlayerScoresScreen extends StatefulWidget {
 
 class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
   final DatabaseHelper _databaseHelper = DatabaseHelper();
+  final FirebaseUploadService _firebaseUploadService = FirebaseUploadService();
   League _selectedLeague = League.monday;
   String? _selectedPlayer;
   List<Map<String, dynamic>> _players = [];
@@ -84,6 +86,9 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
 
   @override
   void dispose() {
+    // Upload player scores to Firebase before leaving
+    _uploadPlayerScoresDataToFirebase();
+    
     // Keep landscape mode locked for Monday screens
     
     _grossScoreController.dispose();
@@ -97,6 +102,67 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
     _handicapFocus.dispose();
     _closePinFocus.dispose();
     super.dispose();
+  }
+
+  /// Upload player scores data to Firebase when leaving the screen
+  void _uploadPlayerScoresDataToFirebase() async {
+    try {
+      final success = await _firebaseUploadService.uploadPlayerScoresTableWithQueue(_selectedLeague);
+      if (success) {
+      } else {
+      }
+    } catch (e) {
+    }
+  }
+
+  /// Manual Firebase upload for testing
+  Future<void> _manualFirebaseUpload() async {
+    try {
+      
+      // Test Firebase connection first
+      final isConnected = await _firebaseUploadService.isFirebaseConnected();
+      
+      if (!isConnected) {
+        _showErrorDialog('Cannot connect to Firebase. Check your internet connection.');
+        return;
+      }
+      
+      // Get current scores count
+      final scores = await _databaseHelper.getScoresByLeague(_selectedLeague);
+      
+      // Show loading dialog
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const AlertDialog(
+          content: Row(
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(width: 16),
+              Text('Uploading scores to Firebase...'),
+            ],
+          ),
+        ),
+      );
+      
+      // Attempt upload
+      final success = await _firebaseUploadService.uploadPlayerScoresTable(_selectedLeague);
+      
+      // Close loading dialog
+      Navigator.of(context).pop();
+      
+      if (success) {
+        _showSuccessDialog('Successfully uploaded ${scores.length} score records to Firebase!\\n\\nCheck Firebase collection:\\n• M_player_scores');
+      } else {
+        _showErrorDialog('Failed to upload scores to Firebase. Check console for details.');
+      }
+      
+      
+    } catch (e) {
+      // Close loading dialog if still open
+      Navigator.of(context).pop();
+      _showErrorDialog('Upload error: $e');
+    }
   }
 
   Future<void> _loadPlayers() async {
@@ -227,7 +293,7 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
       }
       
       if (_selectedLeague == League.monday) {
-        // Monday League: Name, Date, Golf Course, Close Pin, SKATS, SKAT Winnings
+        // Monday League: Name, Date, Golf Course, SKATS, Close Pin, SKAT Winnings
         scoreData['golf_course'] = _selectedGolfCourse; // Use selected golf course
         scoreData['skats_score'] = int.tryParse(_skatsController.text.trim()) ?? 0; // From Enter Scores
         scoreData['skat_winnings'] = winningsAmount; // From Enter Scores
@@ -254,7 +320,14 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
       });
       
       _loadPlayerScores(_selectedPlayer!);
-      _showSuccessDialog('Score added and locked successfully!');
+      
+      // Immediately try to upload to Firebase
+      final uploadSuccess = await _firebaseUploadService.uploadPlayerScoresTableWithQueue(_selectedLeague);
+      if (uploadSuccess) {
+        _showSuccessDialog('Score added and uploaded to Firebase!');
+      } else {
+        _showSuccessDialog('Score added locally! Firebase upload queued for when WiFi is available.');
+      }
     } catch (e) {
       _showErrorDialog('Error adding score: $e');
     }
@@ -313,7 +386,14 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
           _unlockedScoreIds.remove(scoreId);
         });
         _loadPlayerScores(_selectedPlayer!);
-        _showSuccessDialog('Score deleted successfully!');
+        
+        // Immediately try to upload to Firebase
+        final uploadSuccess = await _firebaseUploadService.uploadPlayerScoresTableWithQueue(_selectedLeague);
+        if (uploadSuccess) {
+          _showSuccessDialog('Score deleted and uploaded to Firebase!');
+        } else {
+          _showSuccessDialog('Score deleted locally! Firebase upload queued for when WiFi is available.');
+        }
       } catch (e) {
         // Re-lock the row if deletion failed
         setState(() {
@@ -482,7 +562,14 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
                     _unlockedScoreIds.remove(scoreId);
                   });
                   _loadPlayerScores(_selectedPlayer!);
-                  _showSuccessDialog('Score updated successfully!');
+                  
+                  // Immediately try to upload to Firebase
+                  final uploadSuccess = await _firebaseUploadService.uploadPlayerScoresTableWithQueue(_selectedLeague);
+                  if (uploadSuccess) {
+                    _showSuccessDialog('Score updated and uploaded to Firebase!');
+                  } else {
+                    _showSuccessDialog('Score updated locally! Firebase upload queued for when WiFi is available.');
+                  }
                 } catch (e) {
                   // Close the edit dialog first, then show error
                   Navigator.of(context).pop();
@@ -721,14 +808,14 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
     final isPhone = screenWidth <= 900;
     
     if (_selectedLeague == League.monday) {
-      // Monday League: Name, Date, Golf Course, Close Pin, SKATS, SKAT Winnings
+      // Monday League: Name, Date, Golf Course, SKATS, Close Pin, SKAT Winnings
       return Row(
         children: [
           _buildFlexDataCellWithIcon(score['name'] ?? '', isUnlocked, isCompact ? 22 : 24, isCompact: isCompact),
           _buildFlexDataCell(_formatDateToMMDDYY(score['date_played']), isCompact ? 14 : 14, isCompact: isCompact),
           _buildFlexDataCell(score['golf_course'] ?? '', isCompact ? 20 : 18, isCompact: isCompact),
-          _buildFlexDataCell(isPhone ? _formatWinningsWithCents(score['close_pin_winnings']) : _formatWinningsSimple(score['close_pin_winnings']), isCompact ? 16 : isMedium ? 15 : 15, isCompact: isCompact),
           _buildFlexDataCell('${score['skats_score'] ?? ''}', isCompact ? 10 : isMedium ? 10 : 9, isCompact: isCompact),
+          _buildFlexDataCell(isPhone ? _formatWinningsWithCents(score['close_pin_winnings']) : _formatWinningsSimple(score['close_pin_winnings']), isCompact ? 16 : isMedium ? 15 : 15, isCompact: isCompact),
           _buildFlexDataCell(isPhone ? _formatWinningsWithCents(score['skat_winnings']) : _formatWinningsSimple(score['skat_winnings']), isCompact ? 18 : isMedium ? 18 : 20, isCompact: isCompact),
         ],
       );
@@ -765,16 +852,16 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
     final isPhone = screenWidth <= 900;
     
     if (_selectedLeague == League.monday) {
-      // Monday League: Name, Date, Golf Course, Close Pin, SKATS, SKAT Winnings
+      // Monday League: Name, Date, Golf Course, SKATS, Close Pin, SKAT Winnings
       return Row(
         children: [
           _buildFlexDataCell(_selectedPlayer ?? '', isCompact ? 22 : isMedium ? 22 : 24, isCompact: isCompact),
           _buildFlexDataCell(_getCurrentDateMMDDYY(), isCompact ? 14 : isMedium ? 14 : 14, isCompact: isCompact),
           _buildFlexGolfCourseCell(isCompact: isCompact), // Golf Course - editable dropdown for Monday
+          _buildFlexEditableCellWithBorder(_skatsController, _skatsFocus, isCompact ? 10 : isMedium ? 10 : 9, TextInputType.number, isCompact: isCompact),
           isPhone 
             ? _buildFlexEditableCellWithBorder(_closePinController, _closePinFocus, isCompact ? 16 : 15, TextInputType.number, isCompact: isCompact) // Close Pin - editable for phones
             : _buildFlexDataCell('\$0.00', isCompact ? 16 : isMedium ? 15 : 15, isCompact: isCompact), // Close pin winnings - static for tablets
-          _buildFlexEditableCellWithBorder(_skatsController, _skatsFocus, isCompact ? 10 : isMedium ? 10 : 9, TextInputType.number, isCompact: isCompact),
           _buildFlexEditableCellWithBorder(_winningsController, _winningsFocus, isCompact ? 18 : isMedium ? 18 : 20, TextInputType.number, isCompact: isCompact), // SKAT Winnings
         ],
       );
@@ -933,7 +1020,7 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
     final isPhone = screenWidth <= 900;
     
     if (_selectedLeague == League.monday) {
-      // Monday League: Name, Date, Golf Course, Close Pin, SKATS, SKAT Winnings
+      // Monday League: Name, Date, Golf Course, SKATS, Close Pin, SKAT Winnings
       return Column(
         children: [
           // First header line
@@ -942,8 +1029,8 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
               _buildFlexHeaderCell('Name', isCompact ? 22 : isMedium ? 22 : 24, isCompact: isCompact),
               _buildFlexHeaderCell('Date', isCompact ? 14 : isMedium ? 14 : 14, isCompact: isCompact),
               _buildFlexHeaderCell('Golf Course', isCompact ? 20 : isMedium ? 18 : 18, isCompact: isCompact),
+              _buildFlexHeaderCell('SKAT#', isCompact ? 10 : isMedium ? 10 : 9, isCompact: isCompact),
               _buildFlexHeaderCell(isPhone ? 'Close Pin\nWinnings' : 'Close Pin', isCompact ? 16 : isMedium ? 15 : 15, isCompact: isCompact),
-              _buildFlexHeaderCell('SKATS', isCompact ? 10 : isMedium ? 10 : 9, isCompact: isCompact),
               _buildFlexHeaderCell('SKAT\nWinnings', isCompact ? 18 : isMedium ? 18 : 20, isCompact: isCompact),
             ],
           ),
@@ -1304,6 +1391,12 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
         title: Text('Player Scores - ${_getLeagueDisplayName()} League'),
         backgroundColor: _selectedLeague == League.monday ? Colors.green[700] : Colors.orange[700],
         foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            onPressed: _clearAllScoreData,
+            icon: Icon(Icons.delete, color: Colors.white),
+          ),
+        ],
       ),
       resizeToAvoidBottomInset: false,
       body: Column(
@@ -1662,19 +1755,6 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
                 padding: EdgeInsets.zero,
               ),
               child: const Text('Back', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-            ),
-          ),
-          const SizedBox(width: 4),
-          Expanded(
-            child: ElevatedButton(
-              onPressed: _clearAllScoreData,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red[600],
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
-                padding: EdgeInsets.zero,
-              ),
-              child: const Text('Clear All', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
             ),
           ),
         ],
