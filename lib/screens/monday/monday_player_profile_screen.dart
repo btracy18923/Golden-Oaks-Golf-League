@@ -4,6 +4,7 @@ import '../../services/database_helper.dart';
 import '../../models/league.dart';
 import '../../services/UI/player_profile_service.dart';
 import '../../services/firebase_upload_service.dart';
+import '../../widgets/responsive_wrapper.dart';
 
 class MondayPlayerProfileScreen extends StatefulWidget {
   final League? league;
@@ -496,19 +497,6 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-    final orientation = MediaQuery.of(context).orientation;
-    final screenWidth = size.width;
-    final screenHeight = size.height;
-    
-    // Improved responsive breakpoints
-    final isLargeTablet = screenWidth >= 1200; // 10"+ tablets
-    final isMediumTablet = screenWidth >= 800 && screenWidth < 1200; // 8" tablets
-    final isSmallTablet = screenWidth >= 600 && screenWidth < 800; // Small tablets
-    final isPhone = screenWidth < 600; // Phones
-    final isTablet = isLargeTablet || isMediumTablet || isSmallTablet;
-    final isLandscape = orientation == Orientation.landscape;
-    
     return Scaffold(
       appBar: AppBar(
         title: Text('Player Profile - ${_selectedLeague == League.monday ? 'Monday' : 'Wednesday'} League'),
@@ -523,24 +511,65 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
         ],
       ),
       body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: Container(
-                color: Colors.grey[100],
-                padding: _getAdaptivePadding(isTablet, isPhone, isLandscape),
-                child: _buildAdaptiveLayout(isTablet, isPhone, isLandscape, screenWidth, screenHeight),
-              ),
-            ),
-            _buildFullScreenButtonBar(),
-          ],
+        child: ResponsiveWrapper(
+          phone: _buildPhoneLayout(),
+          tablet8: _buildTablet8Layout(),
+          tablet10: _buildTablet10Layout(),
         ),
       ),
     );
   }
   
   
-  Widget _buildTabletLayout() {
+  // Phone layout (6.5" phone)
+  Widget _buildPhoneLayout() {
+    return Column(
+      children: [
+        Expanded(
+          child: Container(
+            color: Colors.grey[100],
+            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 12.0),
+            child: _buildPhoneLandscapeLayout(),
+          ),
+        ),
+        _buildFullScreenButtonBar(),
+      ],
+    );
+  }
+
+  // 8" tablet layout
+  Widget _buildTablet8Layout() {
+    return Column(
+      children: [
+        Expanded(
+          child: Container(
+            color: Colors.grey[100],
+            padding: const EdgeInsets.all(16.0),
+            child: _buildTabletLayoutContent(),
+          ),
+        ),
+        _buildFullScreenButtonBar(),
+      ],
+    );
+  }
+
+  // 10" tablet layout
+  Widget _buildTablet10Layout() {
+    return Column(
+      children: [
+        Expanded(
+          child: Container(
+            color: Colors.grey[100],
+            padding: const EdgeInsets.all(24.0),
+            child: _buildTabletLayoutContent(),
+          ),
+        ),
+        _buildFullScreenButtonBar(),
+      ],
+    );
+  }
+
+  Widget _buildTabletLayoutContent() {
     return LayoutBuilder(
       builder: (context, constraints) {
         return PlayerProfileService.buildTabletLayout(
@@ -553,19 +582,6 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
     );
   }
   
-  Widget _buildMobileLayout() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return PlayerProfileService.buildMobileLayout(
-          context,
-          constraints,
-          _buildFormSectionWithoutButtons(),
-          _buildPlayerTable(),
-          _buildButtonFooterLandscape(),
-        );
-      },
-    );
-  }
   
   Widget _buildFormSection() {
     return PlayerProfileService.buildFormSection(
@@ -627,25 +643,6 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
     );
   }
   
-  EdgeInsets _getAdaptivePadding(bool isTablet, bool isPhone, bool isLandscape) {
-    if (isTablet) {
-      return const EdgeInsets.all(24.0);
-    } else if (isPhone && isLandscape) {
-      return const EdgeInsets.symmetric(horizontal: 8.0, vertical: 12.0);
-    } else {
-      return const EdgeInsets.all(16.0);
-    }
-  }
-  
-  Widget _buildAdaptiveLayout(bool isTablet, bool isPhone, bool isLandscape, double screenWidth, double screenHeight) {
-    if (isTablet) {
-      return _buildTabletLayout();
-    } else if (isPhone && isLandscape) {
-      return _buildPhoneLandscapeLayout();
-    } else {
-      return _buildPhonePortraitLayout();
-    }
-  }
   
   Widget _buildPhoneLandscapeLayout() {
     return LayoutBuilder(
@@ -684,38 +681,6 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
     );
   }
   
-  Widget _buildPhonePortraitLayout() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final formHeight = constraints.maxHeight * 0.5;
-        final tableHeight = constraints.maxHeight * 0.5;
-        
-        return Column(
-          children: [
-            // Form section
-            Container(
-              height: formHeight,
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.shade300),
-                borderRadius: BorderRadius.circular(8.0),
-                color: Colors.white,
-              ),
-              padding: const EdgeInsets.all(16.0),
-              child: _buildFormSectionWithoutButtons(),
-            ),
-            
-            const SizedBox(height: 12),
-            
-            // Player table
-            Container(
-              height: tableHeight,
-              child: _buildPlayerTable(),
-            ),
-          ],
-        );
-      },
-    );
-  }
   
 
   Widget _buildFullScreenButtonBar() {

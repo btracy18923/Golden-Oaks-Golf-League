@@ -11,6 +11,7 @@ import '../../services/shared/league_purse_service.dart';
 import '../../services/screen_data_retention_service.dart';
 import '../../services/UI/parent_screen_service.dart';
 import '../../services/UI/custom_keypad_service.dart';
+import '../../services/responsive_typography.dart';
 import '../../widgets/responsive_wrapper.dart';
 
 class MondayParentScreen extends StatefulWidget {
@@ -452,9 +453,9 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Monday League - Golden Oaks Golf',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: ResponsiveTypography.headingStyle(context, fontWeight: FontWeight.bold),
         ),
         backgroundColor: Colors.green[700],
         foregroundColor: Colors.white,
@@ -511,7 +512,7 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
               const SizedBox(height: 12),
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(4),
+                padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   color: Colors.grey[300],
                   borderRadius: BorderRadius.circular(0),
@@ -544,6 +545,7 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
         selectedGolfCourse != null ? () => _navigateToPlayerSelection() : null,
         isCompact: true,
         is8InchTablet: false,
+        is10InchTablet: false,
       ),
       _buildNavigationButton(
         'Player Profiles',
@@ -552,6 +554,7 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
         () => navigateToScreen(const MondayPlayerProfileScreen()),
         isCompact: true,
         is8InchTablet: false,
+        is10InchTablet: false,
       ),
       _buildNavigationButton(
         'Player Scores',
@@ -560,6 +563,7 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
         () => navigateToScreen(const MondayPlayerScoresScreen()),
         isCompact: true,
         is8InchTablet: false,
+        is10InchTablet: false,
       ),
       _buildNavigationButton(
         'Golf Courses',
@@ -568,6 +572,7 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
         () => navigateToScreen(const MondayGolfCourseScreen()),
         isCompact: true,
         is8InchTablet: false,
+        is10InchTablet: false,
       ),
     ];
 
@@ -590,6 +595,7 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
         selectedGolfCourse != null ? () => _navigateToPlayerSelection() : null,
         isCompact: false,
         is8InchTablet: true,
+        is10InchTablet: false,
       ),
       _buildNavigationButton(
         'Player Profiles',
@@ -598,6 +604,7 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
         () => navigateToScreen(const MondayPlayerProfileScreen()),
         isCompact: false,
         is8InchTablet: true,
+        is10InchTablet: false,
       ),
       _buildNavigationButton(
         'Player Scores',
@@ -606,6 +613,7 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
         () => navigateToScreen(const MondayPlayerScoresScreen()),
         isCompact: false,
         is8InchTablet: true,
+        is10InchTablet: false,
       ),
       _buildNavigationButton(
         'Golf Courses',
@@ -614,14 +622,18 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
         () => navigateToScreen(const MondayGolfCourseScreen()),
         isCompact: false,
         is8InchTablet: true,
+        is10InchTablet: false,
       ),
     ];
 
     return Row(
       children: [
         Expanded(flex: 2, child: buttons[0]),
+        const SizedBox(width: 8),
         Expanded(flex: 1, child: buttons[1]),
+        const SizedBox(width: 8),
         Expanded(flex: 1, child: buttons[2]),
+        const SizedBox(width: 8),
         Expanded(flex: 1, child: buttons[3]),
       ],
     );
@@ -636,6 +648,7 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
         selectedGolfCourse != null ? () => _navigateToPlayerSelection() : null,
         isCompact: false,
         is8InchTablet: false,
+        is10InchTablet: true,
       ),
       _buildNavigationButton(
         'Player Profiles',
@@ -644,6 +657,7 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
         () => navigateToScreen(const MondayPlayerProfileScreen()),
         isCompact: false,
         is8InchTablet: false,
+        is10InchTablet: true,
       ),
       _buildNavigationButton(
         'Player Scores',
@@ -652,6 +666,7 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
         () => navigateToScreen(const MondayPlayerScoresScreen()),
         isCompact: false,
         is8InchTablet: false,
+        is10InchTablet: true,
       ),
       _buildNavigationButton(
         'Golf Courses',
@@ -660,24 +675,24 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
         () => navigateToScreen(const MondayGolfCourseScreen()),
         isCompact: false,
         is8InchTablet: false,
-      ),
-      _buildNavigationButton(
-        'Administration',
-        Icons.settings,
-        Colors.green[100]!,
-        () => navigateToScreen(AdminScreen(currentLeague: League.monday)),
-        isCompact: false,
-        is8InchTablet: false,
+        is10InchTablet: true,
       ),
     ];
 
-    return Wrap(
-      alignment: WrapAlignment.spaceEvenly,
-      children: buttons,
+    return Row(
+      children: [
+        Expanded(flex: 2, child: buttons[0]), // Player Selection - double width
+        const SizedBox(width: 8),
+        Expanded(flex: 1, child: buttons[1]), // Player Profiles
+        const SizedBox(width: 8),
+        Expanded(flex: 1, child: buttons[2]), // Player Scores
+        const SizedBox(width: 8),
+        Expanded(flex: 1, child: buttons[3]), // Golf Courses
+      ],
     );
   }
 
-  Widget _buildNavigationButton(String title, IconData icon, Color bgColor, VoidCallback? onPressed, {bool isCompact = false, bool is8InchTablet = false}) {
+  Widget _buildNavigationButton(String title, IconData icon, Color bgColor, VoidCallback? onPressed, {bool isCompact = false, bool is8InchTablet = false, bool is10InchTablet = false}) {
     final isDisabled = onPressed == null;
     return ElevatedButton(
       onPressed: onPressed,
@@ -685,7 +700,7 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
         backgroundColor: bgColor,
         foregroundColor: isDisabled ? Colors.grey[600] : Colors.black,
         padding: EdgeInsets.symmetric(
-          vertical: is8InchTablet ? 20 : (isCompact ? 3 : 6), // Good height for 8" tablets
+          vertical: is10InchTablet ? 24 : (is8InchTablet ? 20 : (isCompact ? 3 : 6)), // Increased height for 10" tablets
           horizontal: 2, // Force minimal padding for all layouts
         ),
         shape: RoundedRectangleBorder(
@@ -699,21 +714,11 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (!is8InchTablet) ...[
-            Icon(
-              icon, 
-              size: isCompact ? 14 : 18, // Reduced by ~20%
-              color: isDisabled ? Colors.grey[600] : null,
-            ),
-            SizedBox(height: isCompact ? 0.5 : 1), // Reduced by 50%
-          ],
           Text(
             title,
-            style: TextStyle(
-              fontSize: isCompact ? 9 : 16, // Reduced by ~15%
-              fontWeight: FontWeight.w600,
-              color: isDisabled ? Colors.grey[600] : null,
-            ),
+            style: ResponsiveTypography.buttonStyle(context, 
+                fontWeight: FontWeight.w600, 
+                color: isDisabled ? Colors.grey[600] : null),
             textAlign: TextAlign.center,
           ),
         ],

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/league.dart';
+import '../../widgets/responsive_wrapper.dart';
 
 class WednesdayPlayerPayoutScreen extends StatefulWidget {
   const WednesdayPlayerPayoutScreen({super.key});
@@ -21,27 +22,61 @@ class _WednesdayPlayerPayoutScreenState extends State<WednesdayPlayerPayoutScree
 
   @override
   Widget build(BuildContext context) {
+    return ResponsiveWrapper(
+      phone: _buildPhoneLayout(),
+      tablet8: _buildTablet8Layout(),
+      tablet10: _buildTablet10Layout(),
+    );
+  }
+  
+  Widget _buildPhoneLayout() {
     return Scaffold(
       backgroundColor: Colors.white,
       body: Column(
         children: [
-          _buildHeader(),
+          _buildHeader(16),
           Expanded(child: _buildPayoutContent()),
-          _buildFooter(),
+          _buildPhoneFooter(),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildTablet8Layout() {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: Column(
+        children: [
+          _buildHeader(18),
+          Expanded(child: _buildPayoutContent()),
+          _buildTabletFooter(),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildTablet10Layout() {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: Column(
+        children: [
+          _buildHeader(20),
+          Expanded(child: _buildPayoutContent()),
+          _buildTabletFooter(),
         ],
       ),
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(double fontSize) {
     return Container(
-      color: const Color(0xFFE5E5E5), // Light grey
+      color: const Color(0xFFE5E5E5),
       padding: const EdgeInsets.symmetric(vertical: 10),
-      child: const Center(
+      child: Center(
         child: Text(
           'WEDNESDAY LEAGUE - PLAYER PAYOUTS',
           style: TextStyle(
-            fontSize: 20,
+            fontSize: fontSize,
             fontWeight: FontWeight.bold,
             color: Colors.black,
           ),
@@ -202,44 +237,110 @@ class _WednesdayPlayerPayoutScreenState extends State<WednesdayPlayerPayoutScree
         : const Color(0xFFFFD700); // Light gold
   }
 
-  Widget _buildFooter() {
+  Widget _buildPhoneFooter() {
     return Container(
-      color: const Color(0xFFE5E5E5), // Light grey
+      color: const Color(0xFFE5E5E5),
+      padding: const EdgeInsets.all(8),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: _buildFooterButton(
+                  'Main Menu',
+                  const Color(0xFFB3FFFF),
+                  () => Navigator.popUntil(context, (route) => route.isFirst),
+                  12,
+                  50,
+                ),
+              ),
+              const SizedBox(width: 4),
+              Expanded(
+                child: _buildFooterButton(
+                  'Enter Scores',
+                  _getLeagueColor(),
+                  () => Navigator.pop(context),
+                  12,
+                  50,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              Expanded(
+                child: _buildFooterButton(
+                  'Calculate Winners',
+                  const Color(0xFFE5E5E5),
+                  _calculateWinners,
+                  12,
+                  50,
+                ),
+              ),
+              const SizedBox(width: 4),
+              Expanded(
+                child: _buildFooterButton(
+                  'Save Results',
+                  const Color(0xFFB3FFB3),
+                  _saveResults,
+                  12,
+                  50,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildTabletFooter() {
+    return Container(
+      color: const Color(0xFFE5E5E5),
       padding: const EdgeInsets.all(15),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
           _buildFooterButton(
             'Return to Main Menu',
-            const Color(0xFFB3FFFF), // Light cyan
+            const Color(0xFFB3FFFF),
             () => Navigator.popUntil(context, (route) => route.isFirst),
+            16,
+            80,
           ),
           _buildFooterButton(
             'Return to Enter Scores',
             _getLeagueColor(),
             () => Navigator.pop(context),
+            16,
+            80,
           ),
           _buildFooterButton(
             'Calculate Winners',
-            const Color(0xFFE5E5E5), // Light grey
+            const Color(0xFFE5E5E5),
             _calculateWinners,
+            16,
+            80,
           ),
           _buildFooterButton(
             'Save Results',
-            const Color(0xFFB3FFB3), // Light green
+            const Color(0xFFB3FFB3),
             _saveResults,
+            16,
+            80,
           ),
         ],
       ),
     );
   }
 
-  Widget _buildFooterButton(String text, Color color, VoidCallback onPressed) {
+  Widget _buildFooterButton(String text, Color color, VoidCallback onPressed, double fontSize, double height) {
     return Expanded(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 5),
         child: SizedBox(
-          height: 80,
+          height: height,
           child: ElevatedButton(
             onPressed: onPressed,
             style: ElevatedButton.styleFrom(
@@ -252,8 +353,8 @@ class _WednesdayPlayerPayoutScreenState extends State<WednesdayPlayerPayoutScree
             ),
             child: Text(
               text,
-              style: const TextStyle(
-                fontSize: 16,
+              style: TextStyle(
+                fontSize: fontSize,
                 fontWeight: FontWeight.bold,
               ),
               textAlign: TextAlign.center,

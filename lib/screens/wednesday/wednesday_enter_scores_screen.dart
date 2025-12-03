@@ -65,8 +65,8 @@ class EnterScoresScreenWithData extends StatelessWidget {
 }
 
 class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen> {
-  // Hard-coded Wednesday league - no selection needed
-  String selectedLeague = 'wednesday';
+  // Wednesday league only
+  static const String selectedLeague = 'wednesday';
   List<List<Map<String, dynamic>?>> groups = [];
   List<Map<String, dynamic>> selectedPlayers = [];
   List<String> selectedForSwap = [];
@@ -171,7 +171,7 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
 
   void setLeague(String leagueType) {
     setState(() {
-      selectedLeague = leagueType;
+      // Wednesday league only - no league setting needed
       updateTitleInformation();
     });
   }
@@ -183,7 +183,7 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
       groups = playerGroups.map((group) => 
         group.map((player) => player != null ? Map<String, dynamic>.from(player) : null).toList()
       ).toList();
-      selectedLeague = leagueType;
+      // Wednesday league only - no league setting needed
       selectedForSwap.clear();
       playerNameButtons.clear();
       scoreEntries.clear();
@@ -370,9 +370,7 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
       child: Row(
         children: [
           Text(
-            selectedLeague == 'monday' 
-              ? (groupsProcessed ? "Process Groups:" : "Enter Skats:")
-              : (groupsProcessed ? "Process Groups:" : "Enter Scores:"),
+            groupsProcessed ? "Process Groups:" : "Enter Scores:",
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
@@ -381,32 +379,19 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
           ),
           SizedBox(width: 30),
           Text(
-            selectedLeague == 'monday'
-              ? (groupsProcessed ? "Total Group Purse = $_playersPurseDisplayText" : "Skat Purse = $_playersPurseDisplayText")
-              : (groupsProcessed ? "Total Group Purse = $_playersPurseDisplayText" : "Total Players' Purse = $_playersPurseDisplayText"),
+            groupsProcessed ? "Total Group Purse = $_playersPurseDisplayText" : "Total Players' Purse = $_playersPurseDisplayText",
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           SizedBox(width: 30),
           Text(
-            selectedLeague == 'monday'
-              ? "Closest Pin Purse = $_closestPinPurseDisplayText"
-              : "Total Closest Pin Purse = $_closestPinPurseDisplayText",
+            "Total Closest Pin Purse = $_closestPinPurseDisplayText",
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
-          if (selectedLeague == 'monday') ...[
-            SizedBox(width: 30),
-            Text(
-              "Mulligan Purse = $_mulliganPurseDisplayText",
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-          ],
-          if (selectedLeague == 'wednesday') ...[
-            SizedBox(width: 30),
-            Text(
-              "Total Mulligan Purse = $_mulliganPurseDisplayText",
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-          ],
+          SizedBox(width: 30),
+          Text(
+            "Total Mulligan Purse = $_mulliganPurseDisplayText",
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
         ],
       ),
     );

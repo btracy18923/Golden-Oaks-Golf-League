@@ -9,6 +9,7 @@ import 'monday/monday_parent_screen.dart';
 import 'wednesday/wednesday_parent_screen.dart';
 import 'firebase_test_screen.dart';
 import 'admin_screen.dart';
+import '../widgets/responsive_wrapper.dart';
 
 class UnifiedMainMenuScreen extends StatefulWidget {
   const UnifiedMainMenuScreen({super.key});
@@ -231,43 +232,24 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final screenHeight = MediaQuery.of(context).size.height;
-    
-    // Define breakpoints based on shortest side (physical screen size)
-    // All devices are in landscape mode
-    // 6.5" phone: 412dp height (shortest side in landscape)
-    // 8" tablet: ~533dp height (800×1280px with higher density)
-    // 10" tablet: Larger height due to lower density on same resolution
-    final shortestSide = MediaQuery.of(context).size.shortestSide;
-    final is6Point5Phone = shortestSide < 450;      // Phone range
-    final is8Tablet = shortestSide >= 450 && shortestSide < 600;  // 8" tablet range
-    final is10Tablet = shortestSide >= 600;         // 10" tablet range
-    
-    // Debug output to verify device detection
-    print('DEVICE DEBUG: Screen ${screenWidth}x$screenHeight, Shortest: $shortestSide');
-    print('DEVICE DEBUG: 6.5" Phone: $is6Point5Phone, 8" Tablet: $is8Tablet, 10" Tablet: $is10Tablet');
-    
-    // For backwards compatibility, keep these variables
-    final isPhone = is6Point5Phone;
-    final isTablet8 = is8Tablet;
-    final isTablet10 = is10Tablet;
-    
-    // Hide status bar for 6" phones
-    if (isPhone) {
-      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-    } else {
-      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-    }
+    return ResponsiveWrapper(
+      phone: _buildPhoneLayout(),
+      tablet8: _buildTablet8Layout(),
+      tablet10: _buildTablet10Layout(),
+    );
+  }
+
+  Widget _buildPhoneLayout() {
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: Text(
+        title: const Text(
           'Golden Oaks Golf League',
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            fontSize: isPhone ? 18 : 20,
+            fontSize: 18,
           ),
         ),
         backgroundColor: Colors.green[700],
@@ -275,10 +257,217 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
         centerTitle: true,
       ),
       body: Padding(
-        padding: EdgeInsets.all(isPhone ? 8.0 : 16.0),
-        child: isPhone 
-          ? _buildPhoneLandscapeLayout(context)
-          : _buildTabletLayout(context, isTablet10, isTablet8),
+        padding: const EdgeInsets.all(8.0),
+        child: Column(
+          children: [
+            Expanded(
+              child: Row(
+                children: [
+                  Expanded(
+                    flex: 1,
+                    child: SingleChildScrollView(
+                      child: Column(
+                        children: [
+                          _buildLeagueSelectionCompact(context),
+                          const SizedBox(height: 6),
+                          if (currentLeague != null) _buildLeagueConfigurationCompact(context),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 1,
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.asset(
+                          'assets/images/GoldenOaks.png',
+                          fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              decoration: BoxDecoration(
+                                color: Colors.green[50],
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.green[200]!),
+                              ),
+                              child: Center(
+                                child: Icon(
+                                  Icons.park,
+                                  size: 40,
+                                  color: Colors.green[600],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTablet8Layout() {
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    
+    return Scaffold(
+      backgroundColor: Colors.grey[100],
+      appBar: AppBar(
+        title: const Text(
+          'Golden Oaks Golf League',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+        ),
+        backgroundColor: Colors.green[700],
+        foregroundColor: Colors.white,
+        centerTitle: true,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Column(
+          children: [
+            Expanded(
+              flex: 2,
+              child: Row(
+                children: [
+                  Expanded(
+                    flex: 4,
+                    child: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _buildLeagueSelection(context, false),
+                          if (currentLeague != null) ...[
+                            const SizedBox(height: 16),
+                            _buildLeagueConfiguration(context, false),
+                          ],
+                          const SizedBox(height: 20),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 20),
+                  Expanded(
+                    flex: 7,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.asset(
+                        'assets/images/GoldenOaks.png',
+                        fit: BoxFit.contain,
+                        width: double.infinity,
+                        height: double.infinity,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            decoration: BoxDecoration(
+                              color: Colors.green[50],
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.green[200]!),
+                            ),
+                            child: Center(
+                              child: Icon(
+                                Icons.park,
+                                size: 120,
+                                color: Colors.green[600],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTablet10Layout() {
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    
+    return Scaffold(
+      backgroundColor: Colors.grey[100],
+      appBar: AppBar(
+        title: const Text(
+          'Golden Oaks Golf League',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+        ),
+        backgroundColor: Colors.green[700],
+        foregroundColor: Colors.white,
+        centerTitle: true,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            Expanded(
+              flex: 2,
+              child: Row(
+                children: [
+                  Expanded(
+                    flex: 4,
+                    child: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _buildLeagueSelection(context, false),
+                          if (currentLeague != null) ...[
+                            const SizedBox(height: 16),
+                            _buildLeagueConfiguration(context, false),
+                          ],
+                          const SizedBox(height: 20),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 20),
+                  Expanded(
+                    flex: 7,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.asset(
+                        'assets/images/GoldenOaks.png',
+                        fit: BoxFit.contain,
+                        width: double.infinity,
+                        height: double.infinity,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            decoration: BoxDecoration(
+                              color: Colors.green[50],
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.green[200]!),
+                            ),
+                            child: Center(
+                              child: Icon(
+                                Icons.park,
+                                size: 120,
+                                color: Colors.green[600],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

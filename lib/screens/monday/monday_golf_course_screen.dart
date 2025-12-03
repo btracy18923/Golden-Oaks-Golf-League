@@ -4,6 +4,7 @@ import 'dart:async';
 import '../../services/database_helper.dart';
 import '../../models/league.dart';
 import '../../services/firebase_upload_service.dart';
+import '../../widgets/responsive_wrapper.dart';
 
 class MondayGolfCourseScreen extends StatefulWidget {
   final League? league;
@@ -726,14 +727,19 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isPhone = screenWidth < 600;
-    
+    return ResponsiveWrapper(
+      phone: _buildPhoneLayout(),
+      tablet8: _buildTablet8Layout(),
+      tablet10: _buildTablet10Layout(),
+    );
+  }
+  
+  Widget _buildTablet8Layout() {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          isPhone ? 'Golf Courses' : 'Golf Course Info',
-          style: TextStyle(fontSize: isPhone ? 18 : 20),
+        title: const Text(
+          'Golf Course Info',
+          style: TextStyle(fontSize: 20),
         ),
         backgroundColor: widget.league == League.monday ? Colors.green[700] : 
                         widget.league == League.wednesday ? Colors.orange[700] : 
@@ -747,8 +753,64 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
             Expanded(
               child: Container(
                 color: Colors.grey[100],
-                padding: EdgeInsets.all(isPhone ? 12 : 20),
-                child: isPhone ? _buildPhoneLayout() : _buildTabletLayout(),
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      flex: 35,
+                      child: _buildFormSection(),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 65,
+                      child: _buildCourseTable(),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            _buildFullScreenButtonBar(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTablet10Layout() {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text(
+          'Golf Course Info',
+          style: TextStyle(fontSize: 20),
+        ),
+        backgroundColor: widget.league == League.monday ? Colors.green[700] : 
+                        widget.league == League.wednesday ? Colors.orange[700] : 
+                        Colors.cyan[700],
+        foregroundColor: Colors.white,
+      ),
+      resizeToAvoidBottomInset: true,
+      body: SafeArea(
+        child: Column(
+          children: [
+            Expanded(
+              child: Container(
+                color: Colors.grey[100],
+                padding: const EdgeInsets.all(20),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      flex: 30,
+                      child: _buildFormSection(),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      flex: 70,
+                      child: _buildCourseTable(),
+                    ),
+                  ],
+                ),
               ),
             ),
             _buildFullScreenButtonBar(),
@@ -758,64 +820,62 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
     );
   }
   
-  Widget _buildTabletLayout() {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isSmallTablet = screenWidth >= 600 && screenWidth < 900;
-    
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Left side - Form (adjust ratio based on screen size)
-        Expanded(
-          flex: isSmallTablet ? 35 : 30,
-          child: _buildFormSection(),
-        ),
-        
-        SizedBox(width: isSmallTablet ? 8 : 10),
-        
-        // Right side - Course list
-        Expanded(
-          flex: isSmallTablet ? 65 : 70,
-          child: _buildCourseTable(),
-        ),
-      ],
-    );
-  }
-  
   Widget _buildPhoneLayout() {
-    return Column(
-      children: [
-        // Form section (collapsed by default on phones)
-        ExpansionTile(
-          title: const Text(
-            'Course Form',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-          ),
-          initiallyExpanded: _selectedCourse != null,
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text(
+          'Golf Courses',
+          style: TextStyle(fontSize: 18),
+        ),
+        backgroundColor: widget.league == League.monday ? Colors.green[700] : 
+                        widget.league == League.wednesday ? Colors.orange[700] : 
+                        Colors.cyan[700],
+        foregroundColor: Colors.white,
+      ),
+      resizeToAvoidBottomInset: true,
+      body: SafeArea(
+        child: Column(
           children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              child: _buildFormSection(),
+            Expanded(
+              child: Container(
+                color: Colors.grey[100],
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  children: [
+                    ExpansionTile(
+                      title: const Text(
+                        'Course Form',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                      initiallyExpanded: _selectedCourse != null,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          child: _buildFormSection(),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Expanded(
+                      child: Column(
+                        children: [
+                          const Text(
+                            'Golf Courses',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                          ),
+                          const SizedBox(height: 8),
+                          Expanded(child: _buildPhoneCourseList()),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
+            _buildFullScreenButtonBar(),
           ],
         ),
-        
-        const SizedBox(height: 8),
-        
-        // Course list takes remaining space
-        Expanded(
-          child: Column(
-            children: [
-              const Text(
-                'Golf Courses',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-              ),
-              const SizedBox(height: 8),
-              Expanded(child: _buildPhoneCourseList()),
-            ],
-          ),
-        ),
-      ],
+      ),
     );
   }
   

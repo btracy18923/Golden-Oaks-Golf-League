@@ -1,0 +1,161 @@
+import 'package:flutter/material.dart';
+
+/// Responsive typography system that provides device-specific font sizes
+/// based on screen dimensions using the same breakpoints as ResponsiveWrapper
+class ResponsiveTypography {
+  
+  /// Get device type based on shortest side (matches ResponsiveWrapper logic)
+  static String _getDeviceType(BuildContext context) {
+    final shortestSide = MediaQuery.of(context).size.shortestSide;
+    
+    if (shortestSide < 450) {
+      return 'phone';       // 6.5" phone
+    } else if (shortestSide < 650) {
+      return 'tablet8';     // 8" tablet  
+    } else {
+      return 'tablet10';    // 10" tablet
+    }
+  }
+
+  /// Main body text size (for general content)
+  static double getBodyText(BuildContext context) {
+    switch (_getDeviceType(context)) {
+      case 'phone':
+        return 12;
+      case 'tablet8':
+        return 20;
+      case 'tablet10':
+        return 20;
+      default:
+        return 16;
+    }
+  }
+
+  /// Label text size (for field labels like "Players Ante")
+  static double getLabel(BuildContext context) {
+    switch (_getDeviceType(context)) {
+      case 'phone':
+        return 12;
+      case 'tablet8':
+        return 24;
+      case 'tablet10':
+        return 30;
+      default:
+        return 14;
+    }
+  }
+
+  /// Heading text size (for screen titles, section headers)
+  static double getHeading(BuildContext context) {
+    switch (_getDeviceType(context)) {
+      case 'phone':
+        return 16;
+      case 'tablet8':
+        return 20;
+      case 'tablet10':
+        return 30;
+      default:
+        return 20;
+    }
+  }
+
+  /// Large display text size (for amounts, scores, important values)
+  static double getDisplay(BuildContext context) {
+    switch (_getDeviceType(context)) {
+      case 'phone':
+        return 18;
+      case 'tablet8':
+        return 24;
+      case 'tablet10':
+        return 30;
+      default:
+        return 24;
+    }
+  }
+
+  /// Small text size (for hints, helper text, secondary info)
+  static double getSmall(BuildContext context) {
+    switch (_getDeviceType(context)) {
+      case 'phone':
+        return 10;
+      case 'tablet8':
+        return 12;
+      case 'tablet10':
+        return 14;
+      default:
+        return 12;
+    }
+  }
+
+  /// Button text size (for button labels)
+  static double getButton(BuildContext context) {
+    switch (_getDeviceType(context)) {
+      case 'phone':
+        return 12;
+      case 'tablet8':
+        return 24;
+      case 'tablet10':
+        return 30;
+      default:
+        return 14;
+    }
+  }
+
+  /// AppBar title text size
+  static double getAppBarTitle(BuildContext context) {
+    switch (_getDeviceType(context)) {
+      case 'phone':
+        return 18;
+      case 'tablet8':
+        return 20;
+      case 'tablet10':
+        return 24;
+      default:
+        return 20;
+    }
+  }
+
+  /// Helper method to get TextStyle with responsive font size
+  static TextStyle getTextStyle(BuildContext context, {
+    required double Function(BuildContext) fontSize,
+    FontWeight? fontWeight,
+    Color? color,
+    TextDecoration? decoration,
+  }) {
+    return TextStyle(
+      fontSize: fontSize(context),
+      fontWeight: fontWeight,
+      color: color,
+      decoration: decoration,
+    );
+  }
+
+  /// Convenience methods for common text styles
+  static TextStyle bodyTextStyle(BuildContext context, {FontWeight? fontWeight, Color? color}) {
+    return getTextStyle(context, fontSize: getBodyText, fontWeight: fontWeight, color: color);
+  }
+
+  static TextStyle labelStyle(BuildContext context, {FontWeight? fontWeight, Color? color}) {
+    return getTextStyle(context, fontSize: getLabel, fontWeight: fontWeight, color: color);
+  }
+
+  static TextStyle headingStyle(BuildContext context, {FontWeight? fontWeight, Color? color}) {
+    return getTextStyle(context, fontSize: getHeading, fontWeight: fontWeight, color: color);
+  }
+
+  static TextStyle displayStyle(BuildContext context, {FontWeight? fontWeight, Color? color}) {
+    return getTextStyle(context, fontSize: getDisplay, fontWeight: fontWeight, color: color);
+  }
+
+  static TextStyle smallStyle(BuildContext context, {FontWeight? fontWeight, Color? color}) {
+    return getTextStyle(context, fontSize: getSmall, fontWeight: fontWeight, color: color);
+  }
+
+  static TextStyle buttonStyle(BuildContext context, {FontWeight? fontWeight, Color? color}) {
+    return getTextStyle(context, fontSize: getButton, fontWeight: fontWeight, color: color);
+  }
+
+  static TextStyle appBarTitleStyle(BuildContext context, {FontWeight? fontWeight, Color? color}) {
+    return getTextStyle(context, fontSize: getAppBarTitle, fontWeight: fontWeight, color: color);
+  }
+}

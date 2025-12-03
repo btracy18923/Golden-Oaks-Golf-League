@@ -7,6 +7,7 @@ import '../../services/database_helper.dart';
 import '../../models/league.dart';
 import '../main_menu_screen.dart';
 import '../../services/firebase_upload_service.dart';
+import '../../widgets/responsive_wrapper.dart';
 
 class MondayResultsScreen extends StatefulWidget {
   const MondayResultsScreen({super.key});
@@ -227,47 +228,40 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final screenSize = MediaQuery.of(context).size;
-    final isLandscape = screenSize.width > screenSize.height;
-    
-    // Define device breakpoints
-    final is6InchPhone = isLandscape && screenSize.width <= 900;  // 6.5" phone in landscape
-    final is8InchTablet = isLandscape && screenSize.width > 900 && screenSize.width <= 1200;  // 8" tablet
-    final is10InchTablet = isLandscape && screenSize.width > 1200;  // 10" tablet
-    
-    // Responsive sizing based on device type
-    final double basePadding = is6InchPhone ? 8.0 : (is8InchTablet ? 12.0 : 16.0);
-    final double contentPadding = is6InchPhone ? 12.0 : (is8InchTablet ? 16.0 : 20.0);
-    final double titleSize = is6InchPhone ? 20 : (is8InchTablet ? 22 : 24);
-    final double iconSize = is6InchPhone ? 18 : (is8InchTablet ? 20 : 22);
-    final double buttonHeight = is6InchPhone ? 4 : (is8InchTablet ? 5 : 6);
-    final double buttonFontSize = is6InchPhone ? 12 : (is8InchTablet ? 13 : 14);
-    
-    // Responsive button width
-    final double buttonWidth = is6InchPhone ? screenSize.width * 0.4 : 
-                              (is8InchTablet ? screenSize.width * 0.35 : screenSize.width * 0.3);
+    return ResponsiveWrapper(
+      phone: _buildPhoneLayout(),
+      tablet8: _buildTablet8Layout(),
+      tablet10: _buildTablet10Layout(),
+    );
+  }
+
+  Widget _buildPhoneLayout() {
+    final double basePadding = 8.0;
+    final double contentPadding = 12.0;
+    final double iconSize = 18;
+    final double buttonHeight = 4;
+    final double buttonFontSize = 12;
     
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: Text(
+        title: const Text(
           'Monday League Results',
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            fontSize: is6InchPhone ? 18 : (is8InchTablet ? 20 : 22),
+            fontSize: 18,
           ),
         ),
         backgroundColor: Colors.green[700],
         foregroundColor: Colors.white,
         centerTitle: true,
         automaticallyImplyLeading: false,
-        toolbarHeight: is6InchPhone ? 48 : (is8InchTablet ? 56 : 64),
+        toolbarHeight: 48,
       ),
       body: Padding(
         padding: EdgeInsets.all(basePadding),
         child: Column(
           children: [
-            // Main content area with white background
             Expanded(
               child: Container(
                 padding: EdgeInsets.all(contentPadding),
@@ -281,14 +275,12 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       SizedBox(height: basePadding),
-                      
-                      // Single unified section with all data
                       _buildDataSection(
                         '',
                         _buildUnifiedData(),
                         Icons.summarize,
-                        is6InchPhone,
-                        is8InchTablet,
+                        true,
+                        false,
                         iconSize,
                       ),
                     ],
@@ -296,48 +288,177 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
                 ),
               ),
             ),
-            
-            SizedBox(height: is6InchPhone ? 4 : (is8InchTablet ? 5 : 6)),
-            
-            // Save Results Button
-            Align(
-              alignment: Alignment.centerRight,
-              child: SizedBox(
-                width: buttonWidth,
-                child: ElevatedButton(
-                  onPressed: _saveResultsAndReturnToMainMenu,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green[600],
-                    foregroundColor: Colors.white,
-                    padding: EdgeInsets.symmetric(vertical: buttonHeight),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      side: const BorderSide(color: Colors.black, width: 1),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+            const SizedBox(height: 4),
+            _buildSaveButton(0.4, buttonHeight, buttonFontSize, iconSize),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTablet8Layout() {
+    final double basePadding = 12.0;
+    final double contentPadding = 16.0;
+    final double iconSize = 20;
+    final double buttonHeight = 5;
+    final double buttonFontSize = 13;
+    
+    return Scaffold(
+      backgroundColor: Colors.grey[100],
+      appBar: AppBar(
+        title: const Text(
+          'Monday League Results',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+        ),
+        backgroundColor: Colors.green[700],
+        foregroundColor: Colors.white,
+        centerTitle: true,
+        automaticallyImplyLeading: false,
+        toolbarHeight: 56,
+      ),
+      body: Padding(
+        padding: EdgeInsets.all(basePadding),
+        child: Column(
+          children: [
+            Expanded(
+              child: Container(
+                padding: EdgeInsets.all(contentPadding),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8.0),
+                  border: Border.all(color: Colors.grey[300]!),
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(Icons.save, size: iconSize),
-                      const SizedBox(width: 8),
-                      Flexible(
-                        child: Text(
-                          'Save Results',
-                          style: TextStyle(
-                            fontSize: buttonFontSize,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                      SizedBox(height: basePadding),
+                      _buildDataSection(
+                        '',
+                        _buildUnifiedData(),
+                        Icons.summarize,
+                        false,
+                        true,
+                        iconSize,
                       ),
                     ],
                   ),
                 ),
               ),
             ),
+            const SizedBox(height: 5),
+            _buildSaveButton(0.35, buttonHeight, buttonFontSize, iconSize),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildTablet10Layout() {
+    final double basePadding = 16.0;
+    final double contentPadding = 20.0;
+    final double iconSize = 22;
+    final double buttonHeight = 6;
+    final double buttonFontSize = 14;
+    
+    return Scaffold(
+      backgroundColor: Colors.grey[100],
+      appBar: AppBar(
+        title: const Text(
+          'Monday League Results',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 22,
+          ),
+        ),
+        backgroundColor: Colors.green[700],
+        foregroundColor: Colors.white,
+        centerTitle: true,
+        automaticallyImplyLeading: false,
+        toolbarHeight: 64,
+      ),
+      body: Padding(
+        padding: EdgeInsets.all(basePadding),
+        child: Column(
+          children: [
+            Expanded(
+              child: Container(
+                padding: EdgeInsets.all(contentPadding),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8.0),
+                  border: Border.all(color: Colors.grey[300]!),
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(height: basePadding),
+                      _buildDataSection(
+                        '',
+                        _buildUnifiedData(),
+                        Icons.summarize,
+                        false,
+                        false,
+                        iconSize,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            _buildSaveButton(0.3, buttonHeight, buttonFontSize, iconSize),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSaveButton(double widthRatio, double buttonHeight, double buttonFontSize, double iconSize) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final buttonWidth = MediaQuery.of(context).size.width * widthRatio;
+        
+        return Align(
+          alignment: Alignment.centerRight,
+          child: SizedBox(
+            width: buttonWidth,
+            child: ElevatedButton(
+              onPressed: _saveResultsAndReturnToMainMenu,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green[600],
+                foregroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(vertical: buttonHeight),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  side: const BorderSide(color: Colors.black, width: 1),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.save, size: iconSize),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      'Save Results',
+                      style: TextStyle(
+                        fontSize: buttonFontSize,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
