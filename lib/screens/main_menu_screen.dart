@@ -240,7 +240,9 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
   }
 
   Widget _buildPhoneLayout() {
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    });
     
     return Scaffold(
       backgroundColor: Colors.grey[100],
@@ -1113,7 +1115,7 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
                     child: const Text(
                       'Monday',
                       style: TextStyle(
-                        fontSize: 10,
+                        fontSize: 14,
                         fontWeight: FontWeight.bold,
                       ),
                       textAlign: TextAlign.center,
@@ -1147,7 +1149,7 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
                     child: const Text(
                       'Wednesday',
                       style: TextStyle(
-                        fontSize: 10,
+                        fontSize: 14,
                         fontWeight: FontWeight.bold,
                       ),
                       textAlign: TextAlign.center,

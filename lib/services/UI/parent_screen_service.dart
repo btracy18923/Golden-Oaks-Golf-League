@@ -45,13 +45,19 @@ class ParentScreenUI extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
+    final shortestSide = MediaQuery.of(context).size.shortestSide;
     
-    // Check if this is a 6.5" phone (screenWidth <= 950)
-    if (screenWidth <= 950) {
+    // Use same device detection logic as ResponsiveWrapper
+    final is6Point5Phone = shortestSide < 450;
+    final is8Tablet = shortestSide >= 450 && shortestSide < 650;
+    final is10Tablet = shortestSide >= 650;
+    
+    if (is6Point5Phone) {
       return _build6InchPhoneLandscape(context);
-    } else {
+    } else if (is8Tablet) {
       return _build8InchTabletLandscape(context);
+    } else {
+      return _build10InchTabletLandscape(context);
     }
   }
 
@@ -66,18 +72,19 @@ class ParentScreenUI extends StatelessWidget {
               Expanded(
                 flex: 2,
                 child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     _buildCompactAnteWidget(context),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 4),
                     _buildCompactClosestPinWidget(context),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 4),
                     _buildCompactMulligansWidget(context),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 4),
                     _buildCompactCourseSelector(context),
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 4),
               // Right Column: GoldenOaks Image  
               Expanded(
                 flex: 3,
@@ -100,22 +107,15 @@ class ParentScreenUI extends StatelessWidget {
               Flexible(
                 flex: 4,
                 child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Expanded(
-                      child: Column(
-                        children: [
-                          const Spacer(flex: 4), // Top spacer for centering
-                          Expanded(flex: 8, child: _buildTabletAnteWidget(context)),
-                          const SizedBox(height: 3),
-                          Expanded(flex: 8, child: _buildTabletClosestPinWidget(context)),
-                          const SizedBox(height: 3),
-                          Expanded(flex: 8, child: _buildTabletMulligansWidget(context)),
-                          const SizedBox(height: 3),
-                          Expanded(flex: 8, child: _buildTabletCourseSelector(context)),
-                          const Spacer(flex: 4), // Bottom spacer for centering
-                        ],
-                      ),
-                    ),
+                    _buildTabletAnteWidget(context),
+                    const SizedBox(height: 8),
+                    _buildTabletClosestPinWidget(context),
+                    const SizedBox(height: 8),
+                    _buildTabletMulligansWidget(context),
+                    const SizedBox(height: 8),
+                    _buildTabletCourseSelector(context),
                   ],
                 ),
               ),
@@ -132,7 +132,40 @@ class ParentScreenUI extends StatelessWidget {
     );
   }
 
-
+  Widget _build10InchTabletLandscape(BuildContext context) {
+    return Column(
+      children: [
+        Expanded(
+          child: Row(
+            children: [
+              // Left column with title and settings
+              Flexible(
+                flex: 4,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _buildTablet10AnteWidget(context),
+                    const SizedBox(height: 12),
+                    _buildTablet10ClosestPinWidget(context),
+                    const SizedBox(height: 12),
+                    _buildTablet10MulligansWidget(context),
+                    const SizedBox(height: 12),
+                    _buildTablet10CourseSelector(context),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
+              // Right Side - Golden Oaks Image
+              Flexible(
+                flex: 6,
+                child: _buildGoldenOaksImage(),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
 
 
 
@@ -196,6 +229,7 @@ class ParentScreenUI extends StatelessWidget {
 
   Widget _buildTabletAnteWidget(BuildContext context) {
     return Container(
+        height: 60,
         padding: const EdgeInsets.all(6),
         decoration: BoxDecoration(
           color: Colors.green[200],
@@ -305,6 +339,7 @@ class ParentScreenUI extends StatelessWidget {
 
   Widget _buildTabletClosestPinWidget(BuildContext context) {
     return Container(
+        height: 60,
         padding: const EdgeInsets.all(6),
         decoration: BoxDecoration(
           color: Colors.green[200],
@@ -414,6 +449,7 @@ class ParentScreenUI extends StatelessWidget {
 
   Widget _buildTabletMulligansWidget(BuildContext context) {
     return Container(
+        height: 60,
         padding: const EdgeInsets.all(6),
         decoration: BoxDecoration(
           color: Colors.green[200],
@@ -505,6 +541,7 @@ class ParentScreenUI extends StatelessWidget {
 
   Widget _buildTabletCourseSelector(BuildContext context) {
     return Container(
+        height: 80,
         padding: const EdgeInsets.all(4),
         decoration: BoxDecoration(
           color: Colors.green[200],
@@ -512,6 +549,7 @@ class ParentScreenUI extends StatelessWidget {
           border: Border.all(color: Colors.black, width: 2),
         ),
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
               'Select Course',
@@ -520,8 +558,8 @@ class ParentScreenUI extends StatelessWidget {
                 color: Colors.black,
               ),
             ),
+            const SizedBox(height: 4),
             Expanded(
-              flex: 6,
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
                 decoration: BoxDecoration(
@@ -604,5 +642,190 @@ class ParentScreenUI extends StatelessWidget {
         },
       ),
     );
+  }
+
+  // 10" Tablet Widget Methods
+  Widget _buildTablet10AnteWidget(BuildContext context) {
+    return Container(
+        height: 70,
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.green[200],
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.black, width: 2),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Text(
+              anteLabel,
+              style: ResponsiveTypography.labelStyle(context,
+                fontWeight: FontWeight.w600,
+                color: Colors.black,
+              ),
+            ),
+            const SizedBox(width: 12),
+            SizedBox(
+              width: 140,
+              child: Container(
+                height: 45,
+                decoration: BoxDecoration(
+                  color: Colors.green[100],
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: Colors.black, width: 1),
+                ),
+                alignment: Alignment.center,
+                child: GestureDetector(
+                  onTap: onSkatsAnteEdit,
+                  child: Text(
+                    skatsAnteDisplayValue ?? '\$${skatsAnte.toStringAsFixed(2)}',
+                    style: ResponsiveTypography.displayStyle(context,
+                      fontWeight: FontWeight.bold,
+                      color: (isEditingAmount == true && currentEditField == 'ante') ? Colors.blue : Colors.black,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const Spacer(),
+          ],
+        ),
+      );
+  }
+
+  Widget _buildTablet10ClosestPinWidget(BuildContext context) {
+    return Container(
+        height: 70,
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.green[200],
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.black, width: 2),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Text(
+              'Closest Pin        ',
+              style: ResponsiveTypography.labelStyle(context,
+                fontWeight: FontWeight.w600,
+                color: Colors.black,
+              ),
+            ),
+            const SizedBox(width: 12),
+            SizedBox(
+              width: 140,
+              child: Container(
+                height: 45,
+                decoration: BoxDecoration(
+                  color: Colors.green[100],
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: Colors.black, width: 1),
+                ),
+                alignment: Alignment.center,
+                child: GestureDetector(
+                  onTap: onClosestPinEdit,
+                  child: Text(
+                    closestPinDisplayValue ?? '\$${closestPin.toStringAsFixed(2)}',
+                    style: ResponsiveTypography.displayStyle(context,
+                      fontWeight: FontWeight.bold,
+                      color: (isEditingAmount == true && currentEditField == 'closestPin') ? Colors.blue : Colors.black,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const Spacer(),
+          ],
+        ),
+      );
+  }
+
+  Widget _buildTablet10MulligansWidget(BuildContext context) {
+    return Container(
+        height: 70,
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.green[200],
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.black, width: 2),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Text(
+              'Mulligans           ',
+              style: ResponsiveTypography.labelStyle(context,
+                fontWeight: FontWeight.w600,
+                color: Colors.black,
+              ),
+            ),
+            const SizedBox(width: 12),
+            SizedBox(
+              width: 140,
+              child: Container(
+                height: 45,
+                decoration: BoxDecoration(
+                  color: Colors.green[100],
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: Colors.black, width: 1),
+                ),
+                alignment: Alignment.center,
+                child: GestureDetector(
+                  onTap: onMulligansEdit,
+                  child: Text(
+                    mulligansDisplayValue ?? '\$${mulligans.toStringAsFixed(2)}',
+                    style: ResponsiveTypography.displayStyle(context,
+                      fontWeight: FontWeight.bold,
+                      color: (isEditingAmount == true && currentEditField == 'mulligans') ? Colors.blue : Colors.black,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const Spacer(),
+          ],
+        ),
+      );
+  }
+
+  Widget _buildTablet10CourseSelector(BuildContext context) {
+    return Container(
+        height: 90,
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: Colors.green[200],
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.black, width: 2),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              'Select Course',
+              style: ResponsiveTypography.labelStyle(context,
+                fontWeight: FontWeight.w600,
+                color: Colors.black,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.green[100],
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: Colors.black, width: 1),
+                ),
+                alignment: Alignment.center,
+                child: _buildCourseDropdown(context),
+              ),
+            ),
+          ],
+        ),
+      );
   }
 }
