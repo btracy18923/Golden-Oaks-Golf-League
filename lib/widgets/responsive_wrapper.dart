@@ -16,6 +16,7 @@ class ResponsiveWrapper extends StatelessWidget {
   Widget build(BuildContext context) {
     // Use exact device detection logic from main_menu_screen.dart
     final shortestSide = MediaQuery.of(context).size.shortestSide;
+    final size = MediaQuery.of(context).size;
     
     // Device breakpoints using shortest side (matches main menu screen logic)
     // All devices are in landscape mode
@@ -27,13 +28,13 @@ class ResponsiveWrapper extends StatelessWidget {
     final is10Tablet = shortestSide >= 650;         // 10" tablet range
     
     if (is6Point5Phone) {
-      print("DEBUG: Using 6.5\" Phone layout (${shortestSide}dp)");
+      print("DEBUG: Using 6.5\" Phone layout (${shortestSide}dp, ${size.width}x${size.height})");
       return phone;
     } else if (is8Tablet) {
-      print("DEBUG: Using 8\" Tablet layout (${shortestSide}dp)");
+      print("DEBUG: Using 8\" Tablet layout (${shortestSide}dp, ${size.width}x${size.height})");
       return tablet8;
     } else {
-      print("DEBUG: Using 10\" Tablet layout (${shortestSide}dp)");
+      print("DEBUG: Using 10\" Tablet layout (${shortestSide}dp, ${size.width}x${size.height})");
       return tablet10;
     }
   }

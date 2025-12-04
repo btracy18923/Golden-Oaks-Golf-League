@@ -359,7 +359,7 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
                   ),
                   const SizedBox(width: 20),
                   Expanded(
-                    flex: 7,
+                    flex: 6,
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(12),
                       child: Image.asset(

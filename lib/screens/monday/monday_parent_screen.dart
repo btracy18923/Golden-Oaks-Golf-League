@@ -276,6 +276,8 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
   }
 
   Widget _buildPhoneLayout() {
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
@@ -306,7 +308,7 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
               Expanded(
                 flex: 2,
                 child: Padding(
-                  padding: const EdgeInsets.all(8.0),
+                  padding: const EdgeInsets.all(4.0),
                   child: ParentScreenUI(
                     selectedGolfCourse: selectedGolfCourse,
                     golfCourses: golfCourses,
@@ -335,7 +337,7 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 4),
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(4),

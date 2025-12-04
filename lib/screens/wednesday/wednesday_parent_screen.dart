@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'wednesday_player_selection_screen.dart';
 import 'wednesday_player_scores_screen.dart';
 import 'wednesday_player_profile_screen.dart';
@@ -31,6 +32,8 @@ class _WednesdayParentScreenState extends State<WednesdayParentScreen> {
   }
   
   Widget _buildPhoneLayout() {
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(

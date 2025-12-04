@@ -141,17 +141,19 @@ class ParentScreenUI extends StatelessWidget {
               // Left column with title and settings
               Flexible(
                 flex: 4,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _buildTablet10AnteWidget(context),
-                    const SizedBox(height: 12),
-                    _buildTablet10ClosestPinWidget(context),
-                    const SizedBox(height: 12),
-                    _buildTablet10MulligansWidget(context),
-                    const SizedBox(height: 12),
-                    _buildTablet10CourseSelector(context),
-                  ],
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _buildTablet10AnteWidget(context),
+                      const SizedBox(height: 12),
+                      _buildTablet10ClosestPinWidget(context),
+                      const SizedBox(height: 12),
+                      _buildTablet10MulligansWidget(context),
+                      const SizedBox(height: 12),
+                      _buildTablet10CourseSelector(context),
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(width: 16),
