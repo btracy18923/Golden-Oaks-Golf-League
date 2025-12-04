@@ -49,7 +49,7 @@ class ResponsiveTypography {
   static double getHeading(BuildContext context) {
     switch (_getDeviceType(context)) {
       case 'phone':
-        return 16;
+        return 12;
       case 'tablet8':
         return 20;
       case 'tablet10':
@@ -73,15 +73,15 @@ class ResponsiveTypography {
     }
   }
 
-  /// Small text size (for hints, helper text, secondary info)
+  /// Small text size (for table data, hints, helper text, secondary info)
   static double getSmall(BuildContext context) {
     switch (_getDeviceType(context)) {
       case 'phone':
         return 10;
       case 'tablet8':
-        return 12;
+        return 24;
       case 'tablet10':
-        return 14;
+        return 26;
       default:
         return 12;
     }
@@ -91,7 +91,7 @@ class ResponsiveTypography {
   static double getButton(BuildContext context) {
     switch (_getDeviceType(context)) {
       case 'phone':
-        return 12;
+        return 10;
       case 'tablet8':
         return 24;
       case 'tablet10':

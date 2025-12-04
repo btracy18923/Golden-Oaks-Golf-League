@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/device_detection_service.dart';
 
 class ResponsiveWrapper extends StatelessWidget {
   final Widget phone;
@@ -14,27 +15,12 @@ class ResponsiveWrapper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Use exact device detection logic from main_menu_screen.dart
-    final shortestSide = MediaQuery.of(context).size.shortestSide;
-    final size = MediaQuery.of(context).size;
-    
-    // Device breakpoints using shortest side (matches main menu screen logic)
-    // All devices are in landscape mode
-    // 6.5" phone: 412dp height (shortest side in landscape)
-    // 8" tablet: ~533dp height (800×1280px with higher density)  
-    // 10" tablet: Larger height due to lower density on same resolution
-    final is6Point5Phone = shortestSide < 450;      // Phone range
-    final is8Tablet = shortestSide >= 450 && shortestSide < 650;  // 8" tablet range (expanded)
-    final is10Tablet = shortestSide >= 650;         // 10" tablet range
-    
-    if (is6Point5Phone) {
-      print("DEBUG: Using 6.5\" Phone layout (${shortestSide}dp, ${size.width}x${size.height})");
+    // Use unified device detection service for consistent, cached results
+    if (DeviceDetectionService.is6Point5Phone(context)) {
       return phone;
-    } else if (is8Tablet) {
-      print("DEBUG: Using 8\" Tablet layout (${shortestSide}dp, ${size.width}x${size.height})");
+    } else if (DeviceDetectionService.is8Tablet(context)) {
       return tablet8;
     } else {
-      print("DEBUG: Using 10\" Tablet layout (${shortestSide}dp, ${size.width}x${size.height})");
       return tablet10;
     }
   }

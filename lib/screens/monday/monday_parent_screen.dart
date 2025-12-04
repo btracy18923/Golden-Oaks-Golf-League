@@ -12,6 +12,7 @@ import '../../services/screen_data_retention_service.dart';
 import '../../services/UI/parent_screen_service.dart';
 import '../../services/UI/custom_keypad_service.dart';
 import '../../services/responsive_typography.dart';
+import '../../services/device_detection_service.dart';
 import '../../widgets/responsive_wrapper.dart';
 
 class MondayParentScreen extends StatefulWidget {
@@ -62,8 +63,8 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
 
   void _setOrientation() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final screenWidth = MediaQuery.of(context).size.width;
-      final is8InchTablet = screenWidth >= 600 && screenWidth <= 1000;
+      // Use unified device detection service
+      final is8InchTablet = DeviceDetectionService.is8Tablet(context);
       
       // Lock to landscape mode for Monday League
       SystemChrome.setPreferredOrientations([
@@ -281,9 +282,9 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: const Text(
-          'Monday League - Golden Oaks Golf',
-          style: TextStyle(fontWeight: FontWeight.bold),
+        title: Text(
+          'Monday League - Golden Oaks Golf - ${DeviceDetectionService.getDeviceName(context)}',
+          style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         backgroundColor: Colors.green[700],
         foregroundColor: Colors.white,
@@ -368,9 +369,9 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: const Text(
-          'Monday League - Golden Oaks Golf',
-          style: TextStyle(fontWeight: FontWeight.bold),
+        title: Text(
+          'Monday League - Golden Oaks Golf - ${DeviceDetectionService.getDeviceName(context)}',
+          style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         backgroundColor: Colors.green[700],
         foregroundColor: Colors.white,
@@ -456,7 +457,7 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
         title: Text(
-          'Monday League - Golden Oaks Golf',
+          'Monday League - Golden Oaks Golf - ${DeviceDetectionService.getDeviceName(context)}',
           style: ResponsiveTypography.headingStyle(context, fontWeight: FontWeight.bold),
         ),
         backgroundColor: Colors.green[700],

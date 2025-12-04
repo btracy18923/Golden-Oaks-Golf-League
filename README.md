@@ -61,7 +61,16 @@ Expected dp values:
     - "Choose Course": 20px (was 14px hardcoded)
     - All other text: Appropriately scaled for 10" tablets
 
-  Next step: Test this on your 10" tablet - you should see noticeably larger, properly scaled text throughout the ParentScreenUI!
+Make sure all screens use: DeviceDetectionService
 
+To Use This System:
 
+1. In main.dart (when you can access it):
+   // Add this after the MaterialApp builds the first frame                                                                                                                          
+   DeviceDetectionService.initialize(context);
 
+2. In any screen:
+   if (DeviceDetectionService.is8Tablet(context)) {
+   // 8" tablet specific code                                                                                                                                                      
+   }
+   "Update [screen_name] to use DeviceDetectionService for consistent device detection across 6" phones, 8" tablets, and 10" tablets"

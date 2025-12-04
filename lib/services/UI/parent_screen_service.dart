@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../responsive_typography.dart';
+import '../device_detection_service.dart';
 
 class ParentScreenUI extends StatelessWidget {
   final String? selectedGolfCourse;
@@ -45,16 +46,10 @@ class ParentScreenUI extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final shortestSide = MediaQuery.of(context).size.shortestSide;
-    
-    // Use same device detection logic as ResponsiveWrapper
-    final is6Point5Phone = shortestSide < 450;
-    final is8Tablet = shortestSide >= 450 && shortestSide < 650;
-    final is10Tablet = shortestSide >= 650;
-    
-    if (is6Point5Phone) {
+    // Use unified device detection service for consistent classification
+    if (DeviceDetectionService.is6Point5Phone(context)) {
       return _build6InchPhoneLandscape(context);
-    } else if (is8Tablet) {
+    } else if (DeviceDetectionService.is8Tablet(context)) {
       return _build8InchTabletLandscape(context);
     } else {
       return _build10InchTabletLandscape(context);

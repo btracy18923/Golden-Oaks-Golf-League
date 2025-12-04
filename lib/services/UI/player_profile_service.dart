@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../models/league.dart';
+import '../device_detection_service.dart';
+import '../responsive_typography.dart';
 
 class PlayerProfileService {
   static Widget buildCompactFormField(
@@ -14,16 +16,13 @@ class PlayerProfileService {
     List<TextInputFormatter>? inputFormatters,
     bool enabled = true
   }) {
-    final size = MediaQuery.of(context).size;
-    final orientation = MediaQuery.of(context).orientation;
-    final screenWidth = size.width;
+    // Use unified device detection service for consistent classification
+    final isPhone = DeviceDetectionService.is6Point5Phone(context);
+    final is8Tablet = DeviceDetectionService.is8Tablet(context);
+    final is10Tablet = DeviceDetectionService.is10Tablet(context);
+    final isTablet = DeviceDetectionService.isTablet(context);
     
-    // Improved responsive breakpoints
-    final isLargeTablet = screenWidth >= 1200;
-    final isMediumTablet = screenWidth >= 800 && screenWidth < 1200;
-    final isSmallTablet = screenWidth >= 600 && screenWidth < 800;
-    final isPhone = screenWidth < 600;
-    final isTablet = isLargeTablet || isMediumTablet || isSmallTablet;
+    final orientation = MediaQuery.of(context).orientation;
     final isLandscape = orientation == Orientation.landscape;
     final is6InchPhoneLandscape = isPhone && isLandscape;
     
@@ -38,18 +37,22 @@ class PlayerProfileService {
     
     // Special two-row layout for Email field for all screen sizes
     if (label == 'Email') {
-      double labelFontSize = 20;
-      double fieldHeight = 42;
-      double inputFontSize = 9;
+      double labelFontSize = 16;  // Reduced from 20
+      double fieldHeight = 30;    // Reduced for phones
+      double inputFontSize = 10;   // Reduced from 9
       
-      if (!is6InchPhoneLandscape && isTablet) {
+      if (is8Tablet) {
+        labelFontSize = 18;  // Reduced from 22
+        fieldHeight = 55;    // Reduced from 77  
+        inputFontSize = 16;  // Reduced from 20
+      } else if (is10Tablet) {
         labelFontSize = 22;
         fieldHeight = 77;
         inputFontSize = 20;
       }
       
       return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 2),
+        padding: const EdgeInsets.symmetric(vertical: 0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -68,10 +71,11 @@ class PlayerProfileService {
                 enabled: enabled,
                 decoration: const InputDecoration(
                   border: OutlineInputBorder(),
-                  isDense: false,
-                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  isDense: true,
+                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 ),
-                style: TextStyle(fontSize: inputFontSize, height: 1.5),
+                textAlignVertical: TextAlignVertical.center,
+                style: TextStyle(fontSize: inputFontSize, height: 1.0),
                 onFieldSubmitted: (_) {
                   if (onUpdatePlayer != null) {
                     onUpdatePlayer();
@@ -90,20 +94,20 @@ class PlayerProfileService {
     if (is6InchPhoneLandscape) {
         // Horizontal layout for other fields in landscape mode
         return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 2),
+          padding: const EdgeInsets.symmetric(vertical: 0),
           child: Row(
             children: [
               SizedBox(
                 width: 60, // Fixed width for label
                 child: Text(
                   displayLabel == 'SKAT#' ? displayLabel : '$displayLabel:',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 10),
                 ),
               ),
               const SizedBox(width: 4),
               Expanded(
                 child: SizedBox(
-                  height: 42,
+                  height: 35,
                   child: TextFormField(
                     controller: controller,
                     focusNode: focusNode,
@@ -137,21 +141,21 @@ class PlayerProfileService {
     } else {
       // Adaptive layout for tablets and larger screens
       double labelWidth = 80;
-      double fontSize = 11;
-      double fieldHeight = 48;
+      double fontSize = 9;   // Reduced from 11 for phones
+      double fieldHeight = 40; // Reduced from 48 for phones
       
-      if (isLargeTablet) {
+      if (is10Tablet) {
         labelWidth = 100;
         fontSize = 24;
         fieldHeight = 54;
-      } else if (isMediumTablet) {
+      } else if (is8Tablet) {
         labelWidth = 90;
         fontSize = 22;
         fieldHeight = 48;
       }
       
       return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 2),
+        padding: const EdgeInsets.symmetric(vertical: 0),
         child: Row(
           children: [
             SizedBox(
@@ -274,29 +278,25 @@ class PlayerProfileService {
     // Adaptive table width calculation
     double tableWidth;
     double rowHeight;
-    double fontSize;
+    // Use ResponsiveTypography for consistent font sizing
+    double fontSize = ResponsiveTypography.getSmall(context);
     
     if (isLargeTablet) {
       tableWidth = isLandscape ? (screenWidth * 0.7) - 40 : screenWidth - 60;
       rowHeight = 48;
-      fontSize = 14;
     } else if (isMediumTablet) {
       tableWidth = isLandscape ? (screenWidth * 0.65) - 30 : screenWidth - 50;
       rowHeight = 44;
-      fontSize = 20;
     } else if (isSmallTablet) {
       tableWidth = isLandscape ? (screenWidth * 0.6) - 25 : screenWidth - 40;
       rowHeight = 40;
-      fontSize = 12;
     } else if (is6InchPhoneLandscape) {
       tableWidth = (screenWidth * 0.65) - 20;
       rowHeight = 36;
-      fontSize = 11;
     } else {
       // Phone portrait
       tableWidth = screenWidth - 32;
       rowHeight = 48;
-      fontSize = 13;
     }
     
     Widget tableWidget = Container(
@@ -673,13 +673,41 @@ class PlayerProfileService {
     FocusNode cellFocus,
     FocusNode emailFocus,
   ) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isMediumTablet = screenWidth >= 800 && screenWidth < 1200; // 8" tablets
-    final isTablet = screenWidth >= 900;
-    final is6InchPhoneLandscape = screenWidth <= 900 && !isTablet;
+    // Use unified device detection service for consistent classification
+    final isPhone = DeviceDetectionService.is6Point5Phone(context);
+    final is8Tablet = DeviceDetectionService.is8Tablet(context);
+    final is10Tablet = DeviceDetectionService.is10Tablet(context);
+    
+    // For 6.5" phones, use compact layout without scrolling
+    if (isPhone) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: [
+            buildCompactFormField('ID#', idController, idFocus, firstFocus, 
+              keyboardType: TextInputType.number, 
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
+            const SizedBox(height: 0),
+            buildCompactFormField('First Name', firstController, firstFocus, lastFocus),
+            const SizedBox(height: 0),
+            buildCompactFormField('Last Name', lastController, lastFocus, skatFocus),
+            const SizedBox(height: 0),
+            buildCompactFormField('SKAT#', skatController, skatFocus, cellFocus, 
+              keyboardType: TextInputType.number, 
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
+            const SizedBox(height: 0),
+            buildCompactFormField('Cell Phone', cellController, cellFocus, emailFocus, 
+              keyboardType: TextInputType.numberWithOptions(decimal: false)),
+            const SizedBox(height: 0),
+            buildCompactFormField('Email', emailController, emailFocus, null),
+          ],
+        ),
+      );
+    }
     
     // For 8" tablets, don't use scroll wrapper but reduce spacing
-    if (isMediumTablet) {
+    if (is8Tablet) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.only(top: 10),
@@ -829,7 +857,7 @@ class PlayerProfileService {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.lightGreen,
                     foregroundColor: Colors.black,
-                    padding: const EdgeInsets.symmetric(vertical: 2),
+                    padding: const EdgeInsets.symmetric(vertical: 0),
                   ),
                   child: const Text('Add Player', style: TextStyle(fontSize: 11)),
                 ),
@@ -841,7 +869,7 @@ class PlayerProfileService {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.lightBlue,
                     foregroundColor: Colors.black,
-                    padding: const EdgeInsets.symmetric(vertical: 2),
+                    padding: const EdgeInsets.symmetric(vertical: 0),
                   ),
                   child: const Text('Edit Player', style: TextStyle(fontSize: 11)),
                 ),
@@ -860,7 +888,7 @@ class PlayerProfileService {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.red[300],
                     foregroundColor: Colors.black,
-                    padding: const EdgeInsets.symmetric(vertical: 2),
+                    padding: const EdgeInsets.symmetric(vertical: 0),
                   ),
                   child: const Text('Delete Player', style: TextStyle(fontSize: 11)),
                 ),
@@ -872,7 +900,7 @@ class PlayerProfileService {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.amber[300],
                     foregroundColor: Colors.black,
-                    padding: const EdgeInsets.symmetric(vertical: 2),
+                    padding: const EdgeInsets.symmetric(vertical: 0),
                   ),
                   child: const Text('Clear Form', style: TextStyle(fontSize: 11)),
                 ),
@@ -889,7 +917,7 @@ class PlayerProfileService {
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red[300],
               foregroundColor: Colors.black,
-              padding: const EdgeInsets.symmetric(vertical: 2),
+              padding: const EdgeInsets.symmetric(vertical: 0),
             ),
             child: const Text('Return to Main Menu', style: TextStyle(fontSize: 11)),
           ),

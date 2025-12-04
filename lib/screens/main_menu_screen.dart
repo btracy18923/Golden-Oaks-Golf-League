@@ -5,6 +5,7 @@ import '../services/ante_manager.dart';
 import '../services/percentage_manager.dart';
 import '../services/closest_pin_manager.dart';
 import '../services/mulligan_manager.dart';
+import '../services/device_detection_service.dart';
 import 'monday/monday_parent_screen.dart';
 import 'wednesday/wednesday_parent_screen.dart';
 import 'firebase_test_screen.dart';
@@ -247,9 +248,9 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: const Text(
-          'Golden Oaks Golf League',
-          style: TextStyle(
+        title: Text(
+          'Golden Oaks Golf League - ${DeviceDetectionService.getDeviceName(context)}',
+          style: const TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 18,
           ),
@@ -322,9 +323,9 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: const Text(
-          'Golden Oaks Golf League',
-          style: TextStyle(
+        title: Text(
+          'Golden Oaks Golf League - ${DeviceDetectionService.getDeviceName(context)}',
+          style: const TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 20,
           ),
@@ -401,9 +402,9 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: const Text(
-          'Golden Oaks Golf League',
-          style: TextStyle(
+        title: Text(
+          'Golden Oaks Golf League - ${DeviceDetectionService.getDeviceName(context)}',
+          style: const TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 20,
           ),
@@ -602,8 +603,8 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
   }
 
   Widget _buildLeagueSelection(BuildContext context, bool isPhone) {
-    final shortestSide = MediaQuery.of(context).size.shortestSide;
-    final is10Tablet = shortestSide >= 650;
+    // Use unified device detection service for consistent classification
+    final is10Tablet = DeviceDetectionService.is10Tablet(context);
     
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'services/database_helper.dart';
+import 'services/device_detection_service.dart';
 import 'screens/main_menu_screen.dart';
 import 'firebase_options.dart';
 import 'services/connectivity_service.dart';
@@ -49,6 +50,11 @@ class GoldenOaksGolfApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Initialize device detection once when the app builds
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      DeviceDetectionService.initialize(context);
+    });
+    
     return MaterialApp(
       title: 'Golden Oaks Golf League',
       theme: ThemeData(

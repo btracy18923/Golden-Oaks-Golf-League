@@ -4,6 +4,8 @@ import '../../services/database_helper.dart';
 import '../../models/league.dart';
 import '../../services/UI/player_profile_service.dart';
 import '../../services/firebase_upload_service.dart';
+import '../../services/device_detection_service.dart';
+import '../../services/responsive_typography.dart';
 import '../../widgets/responsive_wrapper.dart';
 
 class MondayPlayerProfileScreen extends StatefulWidget {
@@ -377,17 +379,17 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Confirm Delete', style: TextStyle(fontSize: 32)),
-        content: Text('Are you sure you want to delete $playerName?\n\nThis action cannot be undone.', style: const TextStyle(fontSize: 24)),
+        title: Text('Confirm Delete', style: TextStyle(fontSize: ResponsiveTypography.getHeading(context))),
+        content: Text('Are you sure you want to delete $playerName?\n\nThis action cannot be undone.', style: TextStyle(fontSize: ResponsiveTypography.getBodyText(context))),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel', style: TextStyle(fontSize: 24)),
+            child: Text('Cancel', style: TextStyle(fontSize: ResponsiveTypography.getButton(context))),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Delete', style: TextStyle(fontSize: 24)),
+            child: Text('Delete', style: TextStyle(fontSize: ResponsiveTypography.getButton(context))),
           ),
         ],
       ),
@@ -424,12 +426,12 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Error', style: TextStyle(fontSize: 32)),
-        content: Text(message, style: const TextStyle(fontSize: 24)),
+        title: Text('Error', style: TextStyle(fontSize: ResponsiveTypography.getHeading(context))),
+        content: Text(message, style: TextStyle(fontSize: ResponsiveTypography.getBodyText(context))),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('OK', style: TextStyle(fontSize: 24)),
+            child: Text('OK', style: TextStyle(fontSize: ResponsiveTypography.getButton(context))),
           ),
         ],
       ),
@@ -440,12 +442,12 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Success', style: TextStyle(fontSize: 32)),
-        content: Text(message, style: const TextStyle(fontSize: 24)),
+        title: Text('Success', style: TextStyle(fontSize: ResponsiveTypography.getHeading(context))),
+        content: Text(message, style: TextStyle(fontSize: ResponsiveTypography.getBodyText(context))),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('OK', style: TextStyle(fontSize: 24)),
+            child: Text('OK', style: TextStyle(fontSize: ResponsiveTypography.getButton(context))),
           ),
         ],
       ),
@@ -499,7 +501,11 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Player Profile - ${_selectedLeague == League.monday ? 'Monday' : 'Wednesday'} League'),
+        title: Text(
+          'Player Profile - ${_selectedLeague == League.monday ? 'Monday' : 'Wednesday'} League - ${DeviceDetectionService.getDeviceName(context)}',
+          style: TextStyle(fontSize: ResponsiveTypography.getAppBarTitle(context)),
+        ),
+        centerTitle: true,
         backgroundColor: _selectedLeague == League.monday ? Colors.green[700] : Colors.orange[700],
         foregroundColor: Colors.white,
         actions: [
@@ -684,9 +690,13 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
   
 
   Widget _buildFullScreenButtonBar() {
+    // Reduce height for 6.5" phones to prevent overflow
+    final isPhone = DeviceDetectionService.is6Point5Phone(context);
+    final buttonBarHeight = isPhone ? 60.0 : 90.0;
+    
     return Container(
       width: double.infinity,
-      height: 90,
+      height: buttonBarHeight,
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
@@ -708,9 +718,10 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
                 backgroundColor: Colors.green[300],
                 foregroundColor: Colors.black,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
-                padding: const EdgeInsets.symmetric(vertical: 16.0),
+                padding: EdgeInsets.all(isPhone ? 8.0 : 12.0),
+                alignment: Alignment.center,
               ),
-              child: const Text('Add Player', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              child: Text('Add Player', style: TextStyle(fontSize: ResponsiveTypography.getButton(context), fontWeight: FontWeight.bold)),
             ),
           ),
           const SizedBox(width: 4),
@@ -721,9 +732,10 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
                 backgroundColor: Colors.orange[300],
                 foregroundColor: Colors.black,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
-                padding: const EdgeInsets.symmetric(vertical: 16.0),
+                padding: EdgeInsets.all(isPhone ? 8.0 : 12.0),
+                alignment: Alignment.center,
               ),
-              child: const Text('Clear', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              child: Text('Clear', style: TextStyle(fontSize: ResponsiveTypography.getButton(context), fontWeight: FontWeight.bold)),
             ),
           ),
           const SizedBox(width: 4),
@@ -734,9 +746,10 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
                 backgroundColor: _selectedPlayer != null ? Colors.red[300] : Colors.grey[400],
                 foregroundColor: Colors.black,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
-                padding: const EdgeInsets.symmetric(vertical: 16.0),
+                padding: EdgeInsets.all(isPhone ? 8.0 : 12.0),
+                alignment: Alignment.center,
               ),
-              child: const Text('Delete', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              child: Text('Delete', style: TextStyle(fontSize: ResponsiveTypography.getButton(context), fontWeight: FontWeight.bold)),
             ),
           ),
           const SizedBox(width: 4),
@@ -747,9 +760,10 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
                 backgroundColor: Colors.blue[300],
                 foregroundColor: Colors.black,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
-                padding: const EdgeInsets.symmetric(vertical: 16.0),
+                padding: EdgeInsets.all(isPhone ? 8.0 : 12.0),
+                alignment: Alignment.center,
               ),
-              child: const Text('Back', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              child: Text('Back', style: TextStyle(fontSize: ResponsiveTypography.getButton(context), fontWeight: FontWeight.bold)),
             ),
           ),
         ],
