@@ -541,7 +541,7 @@ class ParentScreenUI extends StatelessWidget {
 
   Widget _buildTabletCourseSelector(BuildContext context) {
     return Container(
-        height: 80,
+        height: 90,
         padding: const EdgeInsets.all(4),
         decoration: BoxDecoration(
           color: Colors.green[200],
@@ -561,7 +561,7 @@ class ParentScreenUI extends StatelessWidget {
             const SizedBox(height: 4),
             Expanded(
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 0),
                 decoration: BoxDecoration(
                   color: Colors.green[100],
                   borderRadius: BorderRadius.circular(4),
@@ -794,7 +794,7 @@ class ParentScreenUI extends StatelessWidget {
 
   Widget _buildTablet10CourseSelector(BuildContext context) {
     return Container(
-        height: 90,
+        height: 120,
         padding: const EdgeInsets.all(6),
         decoration: BoxDecoration(
           color: Colors.green[200],

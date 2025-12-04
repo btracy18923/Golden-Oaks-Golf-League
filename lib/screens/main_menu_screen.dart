@@ -602,13 +602,16 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
   }
 
   Widget _buildLeagueSelection(BuildContext context, bool isPhone) {
+    final shortestSide = MediaQuery.of(context).size.shortestSide;
+    final is10Tablet = shortestSide >= 650;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
           'Select Your League:',
           style: TextStyle(
-            fontSize: isPhone ? 18 : 20,
+            fontSize: isPhone ? 18 : 24,
             fontWeight: FontWeight.bold,
           ),
           textAlign: TextAlign.center,
@@ -638,7 +641,7 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
                       ),
                     ),
                     child: Text(
-                      'Monday Group',
+                      'Monday League',
                       style: TextStyle(
                         fontSize: isPhone ? 16 : 18,
                         fontWeight: FontWeight.bold,
@@ -667,7 +670,7 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
                       ),
                     ),
                     child: Text(
-                      'Wednesday Group',
+                      'Wednesday League',
                       style: TextStyle(
                         fontSize: isPhone ? 16 : 18,
                         fontWeight: FontWeight.bold,
@@ -690,7 +693,7 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
                             ? Colors.green[300] 
                             : Colors.green[200],
                         foregroundColor: Colors.black,
-                        padding: const EdgeInsets.all(20),
+                        padding: EdgeInsets.all(is10Tablet ? 40 : 20),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                           side: const BorderSide(
@@ -700,9 +703,9 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
                         ),
                       ),
                       child: const Text(
-                        'Monday Group',
+                        'Monday \n League',
                         style: TextStyle(
-                          fontSize: 18,
+                          fontSize: 24,
                           fontWeight: FontWeight.bold,
                         ),
                         textAlign: TextAlign.center,
@@ -721,7 +724,7 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
                             ? Colors.orange[300] 
                             : Colors.orange[200],
                         foregroundColor: Colors.black,
-                        padding: const EdgeInsets.all(20),
+                        padding: EdgeInsets.all(is10Tablet ? 40 : 20),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                           side: const BorderSide(
@@ -731,9 +734,9 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
                         ),
                       ),
                       child: const Text(
-                        'Wednesday Group',
+                        'Wednesday League',
                         style: TextStyle(
-                          fontSize: 18,
+                          fontSize: 24,
                           fontWeight: FontWeight.bold,
                         ),
                         textAlign: TextAlign.center,
@@ -744,34 +747,32 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
               ],
             ),
         
-        SizedBox(height: isPhone ? 8 : 12),
-        
-        Container(
-          padding: EdgeInsets.all(isPhone ? 8 : 12),
-          decoration: BoxDecoration(
-            color: currentLeague == League.monday 
-                ? Colors.green[300] 
-                : currentLeague == League.wednesday 
-                    ? Colors.orange[300] 
-                    : Colors.grey[200],
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: Colors.black,
-              width: 2,
+        if (currentLeague != null) ...[
+          SizedBox(height: isPhone ? 8 : 12),
+          
+          Container(
+            padding: EdgeInsets.all(isPhone ? 8 : 12),
+            decoration: BoxDecoration(
+              color: currentLeague == League.monday 
+                  ? Colors.green[300] 
+                  : Colors.orange[300],
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: Colors.black,
+                width: 2,
+              ),
+            ),
+            child: Text(
+              'Active League: ${currentLeague!.name.toUpperCase()}',
+              style: TextStyle(
+                fontSize: isPhone ? 14 : 16,
+                fontWeight: FontWeight.w600,
+                color: Colors.black,
+              ),
+              textAlign: TextAlign.center,
             ),
           ),
-          child: Text(
-            currentLeague != null 
-                ? 'Active League: ${currentLeague!.name.toUpperCase()}'
-                : 'No League Selected',
-            style: TextStyle(
-              fontSize: isPhone ? 14 : 16,
-              fontWeight: FontWeight.w600,
-              color: Colors.black,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ),
+        ],
       ],
     );
   }
