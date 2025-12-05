@@ -4,6 +4,7 @@ import '../../services/database_helper.dart';
 import '../../models/league.dart';
 import '../../services/firebase_upload_service.dart';
 import '../../widgets/responsive_wrapper.dart';
+import '../../services/responsive_typography.dart';
 
 class MondayPlayerScoresScreen extends StatefulWidget {
   final League? league;
@@ -238,6 +239,22 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
     if (missingFields.isNotEmpty) {
       String errorMessage = 'Please enter: ${missingFields.join(', ')}';
       _showErrorDialog(errorMessage);
+      return;
+    }
+    
+    // Check for duplicate date - prevent multiple entries for the same player on the same date
+    final playerId = _players.firstWhere((p) => p['last'] == _selectedPlayer)['id'];
+    final currentDate = DateTime.now().toIso8601String().split('T')[0]; // Get YYYY-MM-DD format
+    
+    try {
+      final existingScoreForDate = await _databaseHelper.getPlayerScoreByDate(playerId, currentDate, _selectedLeague);
+      if (existingScoreForDate != null) {
+        final formattedDate = _formatDateToMMDDYY(currentDate);
+        _showErrorDialog('A score for $_selectedPlayer on $formattedDate already exists. Only one score per player per day is allowed.');
+        return;
+      }
+    } catch (e) {
+      _showErrorDialog('Error checking for duplicate date: $e');
       return;
     }
     
@@ -646,8 +663,6 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
     final screenWidth = MediaQuery.of(context).size.width;
     
     double listWidth = isCompact ? double.infinity : 200;
-    double headerFontSize = isCompact ? 12 : 16;
-    double itemFontSize = isCompact ? 11 : 14;
     double itemPadding = isCompact ? 2 : 4;
     
     Widget playerListView = ListView.builder(
@@ -669,8 +684,7 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
             ),
             child: Text(
               playerName,
-              style: TextStyle(
-                fontSize: itemFontSize,
+              style: ResponsiveTypography.smallStyle(context,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               ),
               overflow: TextOverflow.ellipsis,
@@ -700,7 +714,7 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
             ),
             child: Text(
               'Players',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: headerFontSize),
+              style: ResponsiveTypography.labelStyle(context, fontWeight: FontWeight.bold),
             ),
           ),
           Expanded(
@@ -814,7 +828,7 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
         children: [
           _buildFlexDataCellWithIcon(score['name'] ?? '', isUnlocked, isCompact ? 22 : 24, isCompact: isCompact),
           _buildFlexDataCell(_formatDateToMMDDYY(score['date_played']), isCompact ? 14 : 14, isCompact: isCompact),
-          _buildFlexDataCell(score['golf_course'] ?? '', isCompact ? 20 : 18, isCompact: isCompact),
+          _buildFlexDataCellLeftAligned(score['golf_course'] ?? '', isCompact ? 20 : 18, isCompact: isCompact),
           _buildFlexDataCell('${score['skats_score'] ?? ''}', isCompact ? 10 : isMedium ? 10 : 9, isCompact: isCompact),
           _buildFlexDataCell(isPhone ? _formatWinningsWithCents(score['close_pin_winnings']) : _formatWinningsSimple(score['close_pin_winnings']), isCompact ? 16 : isMedium ? 15 : 15, isCompact: isCompact),
           _buildFlexDataCell(isPhone ? _formatWinningsWithCents(score['skat_winnings']) : _formatWinningsSimple(score['skat_winnings']), isCompact ? 18 : isMedium ? 18 : 20, isCompact: isCompact),
@@ -907,7 +921,7 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
           contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 0),
           isDense: true,
         ),
-        style: TextStyle(fontSize: isCompact ? 10 : 12, color: Colors.black),
+        style: ResponsiveTypography.smallStyle(context).copyWith(color: Colors.black),
         items: _golfCourses.map((course) {
           return DropdownMenuItem(
             value: course,
@@ -916,7 +930,7 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
               alignment: Alignment.center,
               child: Text(
                 course, 
-                style: TextStyle(fontSize: isCompact ? 10 : 12),
+                style: ResponsiveTypography.smallStyle(context),
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
               ),
@@ -948,7 +962,7 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
           border: InputBorder.none,
           contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 8),
         ),
-        style: const TextStyle(fontSize: 12),
+        style: ResponsiveTypography.smallStyle(context),
         textAlign: TextAlign.center,
         onFieldSubmitted: (_) {
           // Handle field submission focus changes if needed
@@ -1002,9 +1016,9 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
             contentPadding: EdgeInsets.zero,
             isDense: true,
             prefixText: prefixText,
-            prefixStyle: TextStyle(fontSize: isCompact ? 10 : 12),
+            prefixStyle: ResponsiveTypography.smallStyle(context),
           ),
-          style: TextStyle(fontSize: isCompact ? 10 : 12),
+          style: ResponsiveTypography.smallStyle(context),
           textAlign: TextAlign.center,
           textAlignVertical: TextAlignVertical.center,
           onFieldSubmitted: (_) {
@@ -1070,11 +1084,9 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
         child: Center(
           child: Text(
             text,
-            style: TextStyle(
-              fontWeight: FontWeight.bold, 
-              fontSize: isCompact ? 10 : 12,
-              height: 1.0, // Reduce line height to tighten spacing
-            ),
+            style: ResponsiveTypography.smallStyle(context,
+              fontWeight: FontWeight.bold,
+            ).copyWith(height: 1.0), // Reduce line height to tighten spacing
             textAlign: TextAlign.center,
             maxLines: 2, // Allow text to wrap to 2 lines
             overflow: TextOverflow.visible,
@@ -1094,7 +1106,7 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
       child: Center(
         child: Text(
           text,
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: isCompact ? 10 : 12),
+          style: ResponsiveTypography.smallStyle(context, fontWeight: FontWeight.bold),
           textAlign: TextAlign.center,
           maxLines: 2, // Allow text to wrap to 2 lines
           overflow: TextOverflow.visible,
@@ -1111,11 +1123,33 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
         decoration: BoxDecoration(
           border: Border.all(color: Colors.black, width: 0.5),
         ),
-        child: Center(
+        child: Align(
+          alignment: Alignment.center,
           child: Text(
             text,
-            style: TextStyle(fontSize: isCompact ? 10 : 12),
+            style: ResponsiveTypography.smallStyle(context),
             textAlign: TextAlign.center,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFlexDataCellLeftAligned(String text, int flex, {bool isCompact = false}) {
+    return Expanded(
+      flex: flex,
+      child: Container(
+        height: isCompact ? 25 : 30,
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.black, width: 0.5),
+        ),
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            text,
+            style: ResponsiveTypography.smallStyle(context),
+            textAlign: TextAlign.left,
             overflow: TextOverflow.ellipsis,
           ),
         ),
@@ -1130,10 +1164,11 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
       decoration: BoxDecoration(
         border: Border.all(color: Colors.black, width: 0.5),
       ),
-      child: Center(
+      child: Align(
+        alignment: Alignment.center,
         child: Text(
           text,
-          style: TextStyle(fontSize: isCompact ? 10 : 12),
+          style: ResponsiveTypography.smallStyle(context),
           textAlign: TextAlign.center,
           overflow: TextOverflow.ellipsis,
         ),
@@ -1160,11 +1195,14 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
               ),
             ),
             Expanded(
-              child: Text(
-                text,
-                style: TextStyle(fontSize: isCompact ? 10 : 12),
-                textAlign: TextAlign.center,
-                overflow: TextOverflow.ellipsis,
+              child: Align(
+                alignment: Alignment.center,
+                child: Text(
+                  text,
+                  style: ResponsiveTypography.smallStyle(context),
+                  textAlign: TextAlign.center,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ),
           ],
@@ -1191,11 +1229,14 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
             ),
           ),
           Expanded(
-            child: Text(
-              text,
-              style: TextStyle(fontSize: isCompact ? 10 : 12),
-              textAlign: TextAlign.center,
-              overflow: TextOverflow.ellipsis,
+            child: Align(
+              alignment: Alignment.center,
+              child: Text(
+                text,
+                style: ResponsiveTypography.smallStyle(context),
+                textAlign: TextAlign.center,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ),
         ],
@@ -1228,7 +1269,7 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
             contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 0),
             isDense: true,
           ),
-          style: TextStyle(fontSize: isCompact ? 10 : 12, color: Colors.black),
+          style: ResponsiveTypography.smallStyle(context).copyWith(color: Colors.black),
           items: _golfCourses.map((course) {
             return DropdownMenuItem(
               value: course,
@@ -1236,7 +1277,7 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
                 alignment: Alignment.center,
                 child: Text(
                   course, 
-                  style: TextStyle(fontSize: isCompact ? 10 : 12),
+                  style: ResponsiveTypography.smallStyle(context),
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
                 ),
@@ -1299,26 +1340,24 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
         decoration: BoxDecoration(
           border: Border.all(color: Colors.black, width: 0.5),
         ),
-        child: Center(
-          child: TextFormField(
-            controller: controller,
-            focusNode: focusNode,
-            keyboardType: inputType,
-            inputFormatters: formatters,
-            decoration: InputDecoration(
-              border: InputBorder.none,
-              contentPadding: EdgeInsets.zero,
-              isDense: true,
-              prefixText: prefixText,
-              prefixStyle: TextStyle(fontSize: isCompact ? 10 : 12),
-            ),
-            style: TextStyle(fontSize: isCompact ? 10 : 12),
-            textAlign: TextAlign.center,
-            textAlignVertical: TextAlignVertical.center,
-            onFieldSubmitted: (_) {
-              // Handle field submission focus changes if needed
-            },
+        child: TextFormField(
+          controller: controller,
+          focusNode: focusNode,
+          keyboardType: inputType,
+          inputFormatters: formatters,
+          decoration: InputDecoration(
+            border: InputBorder.none,
+            contentPadding: EdgeInsets.zero,
+            isDense: true,
+            prefixText: prefixText,
+            prefixStyle: ResponsiveTypography.smallStyle(context),
           ),
+          style: ResponsiveTypography.smallStyle(context),
+          textAlign: TextAlign.center,
+          textAlignVertical: TextAlignVertical.center,
+          onFieldSubmitted: (_) {
+            // Handle field submission focus changes if needed
+          },
         ),
       ),
     );
@@ -1388,7 +1427,9 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
   Widget _buildPhoneLayout() {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Player Scores - ${_getLeagueDisplayName()} League'),
+        title: Text('Player Scores - ${_getLeagueDisplayName()} League', 
+          style: ResponsiveTypography.appBarTitleStyle(context, color: Colors.white)),
+        centerTitle: true,
         backgroundColor: _selectedLeague == League.monday ? Colors.green[700] : Colors.orange[700],
         foregroundColor: Colors.white,
         actions: [
@@ -1428,7 +1469,9 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
   Widget _buildTablet8Layout() {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Player Scores - ${_getLeagueDisplayName()} League'),
+        title: Text('Player Scores - ${_getLeagueDisplayName()} League', 
+          style: ResponsiveTypography.appBarTitleStyle(context, color: Colors.white)),
+        centerTitle: true,
         backgroundColor: _selectedLeague == League.monday ? Colors.green[700] : Colors.orange[700],
         foregroundColor: Colors.white,
         actions: [
@@ -1468,7 +1511,9 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
   Widget _buildTablet10Layout() {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Player Scores - ${_getLeagueDisplayName()} League'),
+        title: Text('Player Scores - ${_getLeagueDisplayName()} League', 
+          style: ResponsiveTypography.appBarTitleStyle(context, color: Colors.white)),
+        centerTitle: true,
         backgroundColor: _selectedLeague == League.monday ? Colors.green[700] : Colors.orange[700],
         foregroundColor: Colors.white,
         actions: [
@@ -1536,9 +1581,9 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
                               color: Colors.grey[200],
                               border: Border(bottom: BorderSide(color: Colors.grey)),
                             ),
-                            child: const Text(
+                            child: Text(
                               'Players',
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                              style: ResponsiveTypography.smallStyle(context, fontWeight: FontWeight.bold),
                             ),
                           ),
                           // Player list content
@@ -1604,9 +1649,9 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
                               color: Colors.grey[200],
                               border: Border(bottom: BorderSide(color: Colors.grey)),
                             ),
-                            child: const Text(
+                            child: Text(
                               'Players',
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                              style: ResponsiveTypography.labelStyle(context, fontWeight: FontWeight.bold),
                             ),
                           ),
                           // Player list content
@@ -1648,9 +1693,9 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
         // Title
         Container(
           padding: const EdgeInsets.all(20),
-          child: const Text(
+          child: Text(
             'Player Scores',
-            style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+            style: ResponsiveTypography.headingStyle(context, fontWeight: FontWeight.bold),
           ),
         ),
         
@@ -1665,7 +1710,9 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
               const SizedBox(width: 20),
               
               // Right side - Scores table (85%)
-              _buildScoresTable(),
+              Expanded(
+                child: _buildScoresTable(),
+              ),
             ],
           ),
         ),
@@ -1781,7 +1828,7 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
                 padding: EdgeInsets.zero,
               ),
-              child: const Text('Add Score', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+              child: Text('Add Score', style: ResponsiveTypography.buttonStyle(context, fontWeight: FontWeight.bold)),
             ),
           ),
           const SizedBox(width: 4),
@@ -1794,7 +1841,7 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
                 padding: EdgeInsets.zero,
               ),
-              child: const Text('Clear', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+              child: Text('Clear', style: ResponsiveTypography.buttonStyle(context, fontWeight: FontWeight.bold)),
             ),
           ),
           const SizedBox(width: 4),
@@ -1807,7 +1854,7 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
                 padding: EdgeInsets.zero,
               ),
-              child: const Text('Delete', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+              child: Text('Delete', style: ResponsiveTypography.buttonStyle(context, fontWeight: FontWeight.bold)),
             ),
           ),
           const SizedBox(width: 4),
@@ -1820,7 +1867,7 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
                 padding: EdgeInsets.zero,
               ),
-              child: const Text('Back', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+              child: Text('Back', style: ResponsiveTypography.buttonStyle(context, fontWeight: FontWeight.bold)),
             ),
           ),
         ],
