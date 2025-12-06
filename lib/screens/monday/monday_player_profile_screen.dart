@@ -24,6 +24,8 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
   Map<String, dynamic>? _selectedPlayer;
   List<Map<String, dynamic>> _players = [];
   bool _isTableInteracting = false;
+  bool _isKeyboardVisible = false;
+  bool _anyFieldHasFocus = false;
   
   // Form controllers
   final TextEditingController _idController = TextEditingController();
@@ -46,6 +48,7 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
     super.initState();
     _selectedLeague = widget.league ?? League.monday;
     _loadPlayerList();
+    _setupFocusListeners();
   }
 
   @override
@@ -78,6 +81,30 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
       } else {
       }
     } catch (e) {
+    }
+  }
+
+  void _setupFocusListeners() {
+    _idFocus.addListener(_onFocusChange);
+    _firstFocus.addListener(_onFocusChange);
+    _lastFocus.addListener(_onFocusChange);
+    _skatFocus.addListener(_onFocusChange);
+    _cellFocus.addListener(_onFocusChange);
+    _emailFocus.addListener(_onFocusChange);
+  }
+
+  void _onFocusChange() {
+    final anyFocused = _idFocus.hasFocus || 
+                      _firstFocus.hasFocus || 
+                      _lastFocus.hasFocus || 
+                      _skatFocus.hasFocus || 
+                      _cellFocus.hasFocus || 
+                      _emailFocus.hasFocus;
+    
+    if (_anyFieldHasFocus != anyFocused) {
+      setState(() {
+        _anyFieldHasFocus = anyFocused;
+      });
     }
   }
 
@@ -227,8 +254,44 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
   }
 
   void _selectPlayer(Map<String, dynamic> player) {
+    // Check if any form data exists that would be overwritten
+    bool hasFormData = _idController.text.trim().isNotEmpty ||
+                      _firstController.text.trim().isNotEmpty ||
+                      _lastController.text.trim().isNotEmpty ||
+                      _skatController.text.trim().isNotEmpty ||
+                      _cellController.text.trim().isNotEmpty ||
+                      _emailController.text.trim().isNotEmpty;
+    
+    if (hasFormData && _selectedPlayer?['id'] != player['id']) {
+      // Show confirmation dialog before overwriting form data
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('Load Player Data?', style: ResponsiveTypography.headingStyle(context, fontWeight: FontWeight.w600)),
+          content: Text('This will replace the current form data with "${player['first']} ${player['last']}". Continue?', style: ResponsiveTypography.bodyTextStyle(context)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text('Cancel', style: ResponsiveTypography.buttonStyle(context)),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(true);
+                _loadPlayerData(player);
+              },
+              child: Text('Load', style: ResponsiveTypography.buttonStyle(context)),
+            ),
+          ],
+        ),
+      );
+    } else {
+      _loadPlayerData(player);
+    }
+  }
+
+  void _loadPlayerData(Map<String, dynamic> player) {
     setState(() {
-      _selectedPlayer = player;
+      _selectedPlayer = Map<String, dynamic>.from(player);
       _idController.text = player['player_number']?.toString() ?? '';
       _firstController.text = player['first'] ?? '';
       _lastController.text = player['last'] ?? '';
@@ -493,12 +556,27 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
           _isTableInteracting = isInteracting;
         });
       },
+      isKeyboardVisible: _isKeyboardVisible,
+      anyFieldHasFocus: _anyFieldHasFocus,
     );
   }
   
 
   @override
   Widget build(BuildContext context) {
+    // Detect keyboard visibility
+    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+    final isKeyboardVisible = keyboardHeight > 0;
+    
+    // Update keyboard visibility state
+    if (_isKeyboardVisible != isKeyboardVisible) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        setState(() {
+          _isKeyboardVisible = isKeyboardVisible;
+        });
+      });
+    }
+    
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -508,13 +586,6 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
         centerTitle: true,
         backgroundColor: _selectedLeague == League.monday ? Colors.green[700] : Colors.orange[700],
         foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-            icon: Icon(Icons.settings),
-            onPressed: _replaceAllSkatNumbersTo35,
-            tooltip: 'Replace All Skat # to 35 (Testing)',
-          ),
-        ],
       ),
       body: SafeArea(
         child: ResponsiveWrapper(

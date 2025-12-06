@@ -800,6 +800,21 @@ class DatabaseHelper {
     ''', [playerId]);
   }
 
+  // Check if a player already has a score for a specific date in a league
+  Future<Map<String, dynamic>?> getPlayerScoreByDate(int playerId, String date, League league) async {
+    final db = await database;
+    String tableName = league == League.monday ? 'monday_scores' : 'wednesday_scores';
+    
+    List<Map<String, dynamic>> result = await db.query(
+      tableName,
+      where: 'player_id = ? AND date_played = ?',
+      whereArgs: [playerId, date],
+      limit: 1,
+    );
+    
+    return result.isNotEmpty ? result.first : null;
+  }
+
   // Helper method to clean up old score entries for league tables
   Future<void> _cleanupOldScoresLeague(int playerId, String tableName) async {
     final db = await database;

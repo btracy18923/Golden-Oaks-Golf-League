@@ -260,6 +260,8 @@ class PlayerProfileService {
     Function(Map<String, dynamic>) onSelectPlayer,
     String Function(String?) formatPhoneNumber, {
     Function(bool)? onInteractionChange,
+    bool isKeyboardVisible = false,
+    bool anyFieldHasFocus = false,
   }) {
     final size = MediaQuery.of(context).size;
     final orientation = MediaQuery.of(context).orientation;
@@ -365,7 +367,7 @@ class PlayerProfileService {
                           final isSelected = selectedPlayer?['id'] == player['id'];
                           
                           return GestureDetector(
-                            onTap: () {
+                            onTap: (isKeyboardVisible || anyFieldHasFocus) ? null : () {
                               // Clear focus before selecting player
                               FocusScope.of(context).unfocus();
                               onSelectPlayer(player);
@@ -393,7 +395,23 @@ class PlayerProfileService {
       ),
     );
     
-    return tableWidget;
+    return Stack(
+      children: [
+        tableWidget,
+        // Overlay when keyboard is visible or fields have focus
+        if (isKeyboardVisible || anyFieldHasFocus)
+          Container(
+            color: Colors.black.withOpacity(0.1),
+            child: const Center(
+              child: Icon(
+                Icons.keyboard,
+                size: 50,
+                color: Colors.grey,
+              ),
+            ),
+          ),
+      ],
+    );
   }
   
   static Widget _buildMobilePlayerRow(Map<String, dynamic> player, double tableWidth, String Function(String?) formatPhoneNumber, double fontSize) {

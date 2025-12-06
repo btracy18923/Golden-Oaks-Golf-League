@@ -105,7 +105,25 @@ class _AdminScreenState extends State<AdminScreen> {
                   Colors.amber[300]!,
                   () => _updateAllGolfCoursesPar3sTo4(),
                 ),
-                
+
+                const SizedBox(height: 16),
+
+                _buildDownloadButton(
+                  'Clear All Score Data',
+                  Icons.delete_forever,
+                  Colors.red[300]!,
+                  () => _clearAllScoreData(),
+                ),
+
+                const SizedBox(height: 16),
+
+                _buildDownloadButton(
+                  'Set All Skat Numbers to 35',
+                  Icons.settings,
+                  Colors.purple[300]!,
+                  () => _replaceAllSkatNumbersTo35(),
+                ),
+
                 const SizedBox(height: 20),
               ],
             ),
@@ -678,7 +696,136 @@ class _AdminScreenState extends State<AdminScreen> {
       });
     }
   }
-  
+
+  Future<void> _clearAllScoreData() async {
+    // Show confirmation dialog
+    bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Clear All Score Data'),
+        content: const Text('This will permanently delete ALL scores, games, and winnings data for ALL players. This cannot be undone. Are you sure?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('DELETE ALL'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await _dbHelper.clearAllScoreData();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('All score data has been cleared from the database'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error clearing data: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _replaceAllSkatNumbersTo35() async {
+    // Show confirmation dialog first
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirm Replace to 35'),
+        content: RichText(
+          text: const TextSpan(
+            style: TextStyle(color: Colors.black, fontSize: 16),
+            children: [
+              TextSpan(text: 'Are you sure you want to replace all Skat # values to 35?\n'),
+              TextSpan(text: 'This usually is done only for testing purposes.\n'),
+              TextSpan(text: 'Click '),
+              TextSpan(text: 'Cancel', style: TextStyle(fontWeight: FontWeight.bold)),
+              TextSpan(text: ' if you are not sure.\n'),
+              TextSpan(text: 'This cannot be undone.\n\n'),
+              TextSpan(text: 'This will affect all players in BOTH Monday and Wednesday leagues.'),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Replace'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      // Update all players' Skat # to 35 for both leagues
+      final mondayPlayers = await _dbHelper.getPlayersByLeague(League.monday);
+      final wednesdayPlayers = await _dbHelper.getPlayersByLeague(League.wednesday);
+
+      int count = 0;
+      for (var player in mondayPlayers) {
+        await _dbHelper.updatePlayer(player['id'], {
+          'player_number': player['player_number'],
+          'first': player['first'],
+          'last': player['last'],
+          'skat_number': 35,
+          'league': player['league'],
+          'cell': player['cell'],
+          'email': player['email'],
+        });
+        count++;
+      }
+
+      for (var player in wednesdayPlayers) {
+        await _dbHelper.updatePlayer(player['id'], {
+          'player_number': player['player_number'],
+          'first': player['first'],
+          'last': player['last'],
+          'skat_number': 35,
+          'league': player['league'],
+          'cell': player['cell'],
+          'email': player['email'],
+        });
+        count++;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('All Skat # values replaced to 35 for $count players'),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error updating players: $e'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+
   Widget _buildDownloadButton(String title, IconData icon, Color bgColor, VoidCallback onPressed) {
     return SizedBox(
       width: double.infinity,

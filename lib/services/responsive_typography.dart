@@ -23,7 +23,7 @@ class ResponsiveTypography {
       case 'phone':
         return 12;
       case 'tablet8':
-        return 20;
+        return 18;
       case 'tablet10':
         return 20;
       default:
@@ -79,7 +79,7 @@ class ResponsiveTypography {
       case 'phone':
         return 10;
       case 'tablet8':
-        return 24;
+        return 18;
       case 'tablet10':
         return 26;
       default:
@@ -93,7 +93,7 @@ class ResponsiveTypography {
       case 'phone':
         return 10;
       case 'tablet8':
-        return 24;
+        return 20;
       case 'tablet10':
         return 30;
       default:
@@ -107,9 +107,9 @@ class ResponsiveTypography {
       case 'phone':
         return 18;
       case 'tablet8':
-        return 20;
-      case 'tablet10':
         return 24;
+      case 'tablet10':
+        return 28;
       default:
         return 20;
     }

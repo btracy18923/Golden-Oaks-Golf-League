@@ -89,7 +89,6 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
             'skats_score': null, // Will be updated in Step A4
             'close_pin_winnings': 0.0, // Will be updated in Step A2
             'skat_winnings': 0.0, // Will be updated in Step A3
-            'handicap': dbPlayer['handicap'],
             'skat_number': dbPlayer['skat_number'],
           };
           

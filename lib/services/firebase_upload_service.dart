@@ -182,6 +182,7 @@ class FirebaseUploadService {
       for (final score in scores) {
         // Create document ID in format: MM-DD-YY_PlayerName_ID
         String docId;
+        String? wednesdayFormattedDate; // For Wednesday league date formatting
         if (league == League.monday) {
           // For Monday (M_player_scores): use MM-DD-YY_PlayerName_ID format
           final dateStr = score['date_played'] ?? '';
@@ -204,10 +205,21 @@ class FirebaseUploadService {
             formattedDate = 'unknown-date';
           }
           
-          docId = '${formattedDate}_${playerName}_${recordId}';
+          // Use player_id + date for consistent document IDs across devices (prevents duplicates)
+          docId = '${formattedDate}_${score['player_id']}';
         } else {
-          // For Wednesday: keep using numeric ID
-          docId = score['id'].toString();
+          // For Wednesday: use player_id + date for consistency (prevents duplicates)
+          if (score['date_played'] != null) {
+            try {
+              final date = DateTime.parse(score['date_played']);
+              wednesdayFormattedDate = '${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}-${date.year.toString().substring(2)}';
+            } catch (e) {
+              wednesdayFormattedDate = 'unknown-date';
+            }
+          } else {
+            wednesdayFormattedDate = 'unknown-date';
+          }
+          docId = '${wednesdayFormattedDate}_${score['player_id']}';
         }
         
         final docRef = collection.doc(docId);
@@ -245,10 +257,44 @@ class FirebaseUploadService {
           print('DEBUG: Firebase data being uploaded:');
           print('  Close Pin Winnings: ${firebaseData['Close Pin Winnings']}');
           print('  SKAT Winnings: ${firebaseData['SKAT Winnings']}');
+          
+          // Check if document already exists to prevent duplicates for Monday league
+          // Only check when WiFi is available to avoid blocking offline uploads
+          if (await _isWiFiConnected()) {
+            try {
+              final existingDoc = await docRef.get();
+              if (existingDoc.exists) {
+                String playerName = score['name']?.toString() ?? 'Unknown';
+                String dateFromDocId = docId.split('_')[0]; // Extract date from document ID
+                print('Skipping duplicate score upload for $playerName on $dateFromDocId');
+                continue; // Skip this score, it already exists in Firebase
+              }
+            } catch (e) {
+              print('Warning: Could not check for existing document: $e');
+              // Continue with upload if check fails
+            }
+          }
         } else {
           // For Wednesday: include all fields as before
           firebaseData = Map<String, dynamic>.from(score);
           firebaseData['upload_timestamp'] = FieldValue.serverTimestamp();
+          
+          // Check if document already exists to prevent duplicates for Wednesday league
+          // Only check when WiFi is available to avoid blocking offline uploads
+          if (await _isWiFiConnected()) {
+            try {
+              final existingDoc = await docRef.get();
+              if (existingDoc.exists) {
+                String playerName = score['name']?.toString() ?? 'Unknown';
+                String formattedDate = wednesdayFormattedDate ?? 'unknown-date';
+                print('Skipping duplicate score upload for ${playerName} on ${formattedDate}');
+                continue; // Skip this score, it already exists in Firebase
+              }
+            } catch (e) {
+              print('Warning: Could not check for existing Wednesday document: $e');
+              // Continue with upload if check fails
+            }
+          }
         }
         
         // Remove any null values

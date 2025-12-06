@@ -3,8 +3,8 @@ import 'package:flutter/services.dart';
 import '../../services/database_helper.dart';
 import '../../models/league.dart';
 import '../../services/firebase_upload_service.dart';
-import '../../widgets/responsive_wrapper.dart';
 import '../../services/responsive_typography.dart';
+import '../../services/device_detection_service.dart';
 
 class MondayPlayerScoresScreen extends StatefulWidget {
   final League? league;
@@ -65,12 +65,9 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
   }
 
   void _setOrientation() {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final screenHeight = MediaQuery.of(context).size.height;
-    
     // Only force landscape for phones (6.5" and smaller)
     // Let tablets use natural orientation
-    if (screenWidth <= 900 || screenHeight <= 600) {
+    if (DeviceDetectionService.is6Point5Phone(context)) {
       SystemChrome.setPreferredOrientations([
         DeviceOrientation.landscapeLeft,
         DeviceOrientation.landscapeRight,
@@ -202,8 +199,7 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
     // If the add score row is not showing, show it and populate fields
     if (!_showAddScoreRow) {
       final player = _players.firstWhere((p) => p['last'] == _selectedPlayer);
-      final screenWidth = MediaQuery.of(context).size.width;
-      final is6InchPhoneLandscape = screenWidth <= 900;
+      final is6InchPhoneLandscape = DeviceDetectionService.is6Point5Phone(context);
       
       setState(() {
         _showAddScoreRow = true;
@@ -726,14 +722,10 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
   }
 
   Widget _buildScoresTable() {
-    final screenSize = MediaQuery.of(context).size;
-    final screenWidth = screenSize.width;
-    final screenHeight = screenSize.height;
-    
-    // Define device categories
-    final isPhone = screenWidth <= 900;  // 6.5" phones
-    final isSmallTablet = screenWidth > 900 && screenWidth <= 1200;  // 8" tablets
-    final isLargeTablet = screenWidth > 1200;  // 10" tablets
+    // Define device categories using DeviceDetectionService
+    final isPhone = DeviceDetectionService.is6Point5Phone(context);  // 6.5" phones
+    final isSmallTablet = DeviceDetectionService.is8Tablet(context);  // 8" tablets
+    final isLargeTablet = DeviceDetectionService.is10Tablet(context);  // 10" tablets
     
     // Adjust table width based on screen size and orientation
     double tableWidth;
@@ -818,9 +810,7 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
   }
 
   Widget _buildScoreRow(Map<String, dynamic> score, bool isUnlocked, {bool isCompact = false, bool isMedium = false}) {
-    final screenSize = MediaQuery.of(context).size;
-    final screenWidth = screenSize.width;
-    final isPhone = screenWidth <= 900;
+    final isPhone = DeviceDetectionService.is6Point5Phone(context);
     
     if (_selectedLeague == League.monday) {
       // Monday League: Name, Date, Golf Course, SKATS, Close Pin, SKAT Winnings
@@ -862,9 +852,7 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
   }
 
   Widget _buildAddScoreRowContent({bool isCompact = false, bool isMedium = false}) {
-    final screenSize = MediaQuery.of(context).size;
-    final screenWidth = screenSize.width;
-    final isPhone = screenWidth <= 900;
+    final isPhone = DeviceDetectionService.is6Point5Phone(context);
     
     if (_selectedLeague == League.monday) {
       // Monday League: Name, Date, Golf Course, SKATS, Close Pin, SKAT Winnings
@@ -1030,9 +1018,7 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
   }
 
   Widget _buildHeaders({bool isCompact = false, bool isMedium = false}) {
-    final screenSize = MediaQuery.of(context).size;
-    final screenWidth = screenSize.width;
-    final isPhone = screenWidth <= 900;
+    final isPhone = DeviceDetectionService.is6Point5Phone(context);
     
     if (_selectedLeague == League.monday) {
       // Monday League: Name, Date, Golf Course, SKATS, Close Pin, SKAT Winnings
@@ -1297,8 +1283,7 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
   Widget _buildFlexEditableCellWithBorder(TextEditingController controller, FocusNode focusNode, int flex, TextInputType inputType, {bool isCompact = false}) {
     List<TextInputFormatter>? formatters;
     String? prefixText;
-    final screenWidth = MediaQuery.of(context).size.width;
-    final is6InchPhoneLandscape = screenWidth <= 900;
+    final is6InchPhoneLandscape = DeviceDetectionService.is6Point5Phone(context);
     
     if (inputType == TextInputType.number) {
       if (controller == _grossScoreController || controller == _skatsController) {
@@ -1417,51 +1402,31 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return ResponsiveWrapper(
-      phone: _buildPhoneLayout(),
-      tablet8: _buildTablet8Layout(),
-      tablet10: _buildTablet10Layout(),
-    );
+    if (DeviceDetectionService.is6Point5Phone(context)) {
+      return _buildPhoneLayout();
+    } else if (DeviceDetectionService.is8Tablet(context)) {
+      return _buildTablet8Layout();
+    } else {
+      return _buildTablet10Layout();
+    }
   }
 
   Widget _buildPhoneLayout() {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Player Scores - ${_getLeagueDisplayName()} League', 
+        title: Text('Player Scores - ${_getLeagueDisplayName()} League- ${DeviceDetectionService.getDeviceName(context)}',
           style: ResponsiveTypography.appBarTitleStyle(context, color: Colors.white)),
         centerTitle: true,
         backgroundColor: _selectedLeague == League.monday ? Colors.green[700] : Colors.orange[700],
         foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-            onPressed: _clearAllScoreData,
-            icon: Icon(Icons.delete, color: Colors.white),
-          ),
-        ],
       ),
       resizeToAvoidBottomInset: false,
-      body: Column(
-        children: [
-          Expanded(
-            child: Container(
-              color: Colors.grey[100],
-              padding: const EdgeInsets.only(
-                left: 10,
-                right: 10,
-                top: 10,
-                bottom: 0,
-              ),
-              child: SafeArea(
-                bottom: false,
-                child: _buildTabletStyleLayout(),
-              ),
-            ),
-          ),
-          Container(
-            height: 39,
-            child: _buildFullScreenButtonBar(),
-          ),
-        ],
+      body: Container(
+        color: Colors.grey[100],
+        padding: const EdgeInsets.all(10),
+        child: SafeArea(
+          child: _buildTabletStyleLayout(),
+        ),
       ),
     );
   }
@@ -1469,41 +1434,19 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
   Widget _buildTablet8Layout() {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Player Scores - ${_getLeagueDisplayName()} League', 
+        title: Text('Player Scores - ${_getLeagueDisplayName()} League- ${DeviceDetectionService.getDeviceName(context)}',
           style: ResponsiveTypography.appBarTitleStyle(context, color: Colors.white)),
         centerTitle: true,
         backgroundColor: _selectedLeague == League.monday ? Colors.green[700] : Colors.orange[700],
         foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-            onPressed: _clearAllScoreData,
-            icon: Icon(Icons.delete, color: Colors.white),
-          ),
-        ],
       ),
       resizeToAvoidBottomInset: false,
-      body: Column(
-        children: [
-          Expanded(
-            child: Container(
-              color: Colors.grey[100],
-              padding: const EdgeInsets.only(
-                left: 15,
-                right: 15,
-                top: 15,
-                bottom: 0,
-              ),
-              child: SafeArea(
-                bottom: false,
-                child: _buildTabletStyleLayoutMedium(),
-              ),
-            ),
-          ),
-          Container(
-            height: 39,
-            child: _buildFullScreenButtonBar(),
-          ),
-        ],
+      body: Container(
+        color: Colors.grey[100],
+        padding: const EdgeInsets.all(15),
+        child: SafeArea(
+          child: _buildTabletStyleLayoutMedium(),
+        ),
       ),
     );
   }
@@ -1511,41 +1454,19 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
   Widget _buildTablet10Layout() {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Player Scores - ${_getLeagueDisplayName()} League', 
+        title: Text('Player Scores - ${_getLeagueDisplayName()} League- ${DeviceDetectionService.getDeviceName(context)}',
           style: ResponsiveTypography.appBarTitleStyle(context, color: Colors.white)),
         centerTitle: true,
         backgroundColor: _selectedLeague == League.monday ? Colors.green[700] : Colors.orange[700],
         foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-            onPressed: _clearAllScoreData,
-            icon: Icon(Icons.delete, color: Colors.white),
-          ),
-        ],
       ),
       resizeToAvoidBottomInset: false,
-      body: Column(
-        children: [
-          Expanded(
-            child: Container(
-              color: Colors.grey[100],
-              padding: const EdgeInsets.only(
-                left: 20,
-                right: 20,
-                top: 20,
-                bottom: 0,
-              ),
-              child: SafeArea(
-                bottom: false,
-                child: _buildDesktopLayout(),
-              ),
-            ),
-          ),
-          Container(
-            height: 39,
-            child: _buildFullScreenButtonBar(),
-          ),
-        ],
+      body: Container(
+        color: Colors.grey[100],
+        padding: const EdgeInsets.all(20),
+        child: SafeArea(
+          child: _buildDesktopLayout(),
+        ),
       ),
     );
   }
