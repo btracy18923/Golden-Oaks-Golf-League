@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../services/UI/closest_pin_UI_service.dart';
+import '../../services/UI/closest_pin_UI_service.dart' as ClosestPinUI;
 import '../../services/shared/league_purse_service.dart';
 import '../../services/screen_data_retention_service.dart';
+import '../../services/device_detection_service.dart';
+import '../../services/responsive_typography.dart';
 
 class MondayClosestPinScreen extends StatefulWidget {
   final List<Map<String, dynamic>> selectedPlayers;
@@ -44,6 +46,14 @@ class _MondayClosestPinScreenState extends State<MondayClosestPinScreen> {
     
     // Lock screen to landscape mode only
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Use DeviceDetectionService for consistent device detection
+      final deviceType = DeviceDetectionService.getDeviceType(context);
+      final deviceName = DeviceDetectionService.getDeviceName(context);
+
+      // Debug info
+      DeviceDetectionService.printDebugInfo(context);
+
+      // Lock to landscape mode for all devices
       SystemChrome.setPreferredOrientations([
         DeviceOrientation.landscapeLeft,
         DeviceOrientation.landscapeRight,
@@ -107,11 +117,24 @@ class _MondayClosestPinScreenState extends State<MondayClosestPinScreen> {
     }
   }
 
+  /// Gets responsive padding based on device type
+  double _getResponsivePadding(BuildContext context) {
+    final deviceType = DeviceDetectionService.getDeviceType(context);
+
+    switch (deviceType) {
+      case DeviceType.phone6Point5:
+        return 5.0;
+      case DeviceType.tablet8Inch:
+        return 12.0;
+      case DeviceType.tablet10Inch:
+        return 16.0;
+    }
+  }
+
   Widget _buildPlayerGridItem(Map<String, dynamic> player, int index) {
-    final screenSize = MediaQuery.of(context).size;
-    final deviceType = ClosestPinUIService.getDeviceType(screenSize);
-    final fontSize = ClosestPinUIService.getResponsiveFontSize(deviceType);
-    final padding = ClosestPinUIService.getResponsivePadding(deviceType);
+    final deviceType = DeviceDetectionService.getDeviceType(context);
+    final fontSize = ResponsiveTypography.getBodyText(context);
+    final padding = _getResponsivePadding(context);
     
     String lastName = player['last'] ?? 'Unknown';
     int closestPinCount = _playerClosestPinCounts[lastName] ?? 0;
@@ -152,7 +175,7 @@ class _MondayClosestPinScreenState extends State<MondayClosestPinScreen> {
               child: Text(
                 lastName,
                 style: TextStyle(
-                  fontSize: fontSize - 2,
+                  fontSize: deviceType == DeviceType.phone6Point5 ? 10 : fontSize + 3,
                   fontWeight: FontWeight.bold,
                   color: closestPinCount > 0 ? Colors.green[800] : Colors.black,
                 ),
@@ -176,7 +199,7 @@ class _MondayClosestPinScreenState extends State<MondayClosestPinScreen> {
                 child: Text(
                   '$closestPinCount',
                   style: TextStyle(
-                    fontSize: fontSize - 2,
+                    fontSize: deviceType == DeviceType.tablet10Inch ? fontSize + 2 : fontSize - 2,
                     fontWeight: FontWeight.bold,
                     color: closestPinCount > 0 ? Colors.green[800] : Colors.grey[600],
                   ),
@@ -186,6 +209,8 @@ class _MondayClosestPinScreenState extends State<MondayClosestPinScreen> {
             Expanded(
               flex: 1,
               child: Container(
+                height: countSize,
+                alignment: Alignment.center,
                 margin: EdgeInsets.only(right: 4),
                 padding: EdgeInsets.symmetric(horizontal: 2, vertical: 1),
                 decoration: BoxDecoration(
@@ -199,7 +224,7 @@ class _MondayClosestPinScreenState extends State<MondayClosestPinScreen> {
                 child: Text(
                   winnings > 0 ? '\$${winnings.round()}' : '\$0',
                   style: TextStyle(
-                    fontSize: fontSize - 3,
+                    fontSize: deviceType == DeviceType.tablet10Inch ? fontSize + 2 : fontSize - 3,
                     fontWeight: FontWeight.w600,
                     color: winnings > 0 ? Colors.blue[800] : Colors.grey[500],
                   ),
@@ -216,12 +241,23 @@ class _MondayClosestPinScreenState extends State<MondayClosestPinScreen> {
   }
 
   Widget _buildCustomHeader(BuildContext context) {
-    final screenSize = MediaQuery.of(context).size;
-    final deviceType = ClosestPinUIService.getDeviceType(screenSize);
-    final headerFontSize = ClosestPinUIService.getResponsiveFontSize(deviceType, isHeader: true);
-    final padding = ClosestPinUIService.getResponsivePadding(deviceType);
-    final increasedPadding = EdgeInsets.all(padding.left * 0.5); // 100% increase from current
-    
+    final deviceType = DeviceDetectionService.getDeviceType(context);
+    final headerFontSize = ResponsiveTypography.getHeading(context);
+    final padding = _getResponsivePadding(context);
+    // For 6.5" phones, increase padding by 200% (2x) to increase height by 100%
+    // For 8" tablets, increase padding by 150% (1.5x) to increase height
+    double paddingMultiplier;
+    if (deviceType == DeviceType.phone6Point5) {
+      paddingMultiplier = 2.0;
+    } else if (deviceType == DeviceType.tablet8Inch) {
+      paddingMultiplier = 1.5;
+    } else {
+      paddingMultiplier = 0.5;
+    }
+    final increasedPadding = EdgeInsets.all(padding * paddingMultiplier);
+    // For 6.5" phones and 8" tablets, double the font size (100% increase)
+    final fontMultiplier = (deviceType == DeviceType.phone6Point5 || deviceType == DeviceType.tablet8Inch) ? 2.0 : 1.0;
+
     return Container(
       width: double.infinity,
       color: Colors.green,
@@ -232,7 +268,7 @@ class _MondayClosestPinScreenState extends State<MondayClosestPinScreen> {
           Text(
             'Players: ${widget.selectedPlayers.length}',
             style: TextStyle(
-              fontSize: (headerFontSize - 2) * 0.75,
+              fontSize: (headerFontSize - 2) * 0.75 * fontMultiplier,
               fontWeight: FontWeight.bold,
               color: Colors.black87,
             ),
@@ -240,7 +276,7 @@ class _MondayClosestPinScreenState extends State<MondayClosestPinScreen> {
           Text(
             'Closest Pin Purse: \$${_remainingPurseAmount.toStringAsFixed(2)}',
             style: TextStyle(
-              fontSize: (headerFontSize - 4) * 0.75,
+              fontSize: (headerFontSize - 4) * 0.75 * fontMultiplier,
               fontWeight: FontWeight.bold,
               color: Colors.black87,
             ),
@@ -255,7 +291,7 @@ class _MondayClosestPinScreenState extends State<MondayClosestPinScreen> {
             child: Text(
               'Remaining: $_remainingClosestPins / $_totalClosestPins',
               style: TextStyle(
-                fontSize: (headerFontSize - 2) * 0.5,
+                fontSize: (headerFontSize - 2) * 0.5 * fontMultiplier,
                 fontWeight: FontWeight.bold,
                 color: Colors.black87,
               ),
@@ -268,10 +304,9 @@ class _MondayClosestPinScreenState extends State<MondayClosestPinScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final screenSize = MediaQuery.of(context).size;
-    final deviceType = ClosestPinUIService.getDeviceType(screenSize);
-    final padding = ClosestPinUIService.getResponsivePadding(deviceType);
-    final reducedPadding = EdgeInsets.all(padding.left / 2);
+    final deviceType = DeviceDetectionService.getDeviceType(context);
+    final padding = _getResponsivePadding(context);
+    final reducedPadding = EdgeInsets.all(padding / 2);
     
     return Scaffold(
       backgroundColor: Colors.white,
@@ -287,7 +322,7 @@ class _MondayClosestPinScreenState extends State<MondayClosestPinScreen> {
                   color: Colors.transparent,
                   child: GridView.builder(
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 3,
+                  crossAxisCount: 4,
                   childAspectRatio: 5.3,
                   crossAxisSpacing: 4,
                   mainAxisSpacing: 4,
@@ -301,7 +336,7 @@ class _MondayClosestPinScreenState extends State<MondayClosestPinScreen> {
               ),
             ),
           ),
-          ClosestPinUIService.buildBottomButtons(
+          ClosestPinUI.ClosestPinUIService.buildBottomButtons(
             context,
             onClear: _handleClear,
             onSaveAndReturn: _handleSaveAndReturn,

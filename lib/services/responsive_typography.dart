@@ -79,7 +79,7 @@ class ResponsiveTypography {
       case 'phone':
         return 10;
       case 'tablet8':
-        return 18;
+        return 22;
       case 'tablet10':
         return 26;
       default:
@@ -98,6 +98,20 @@ class ResponsiveTypography {
         return 30;
       default:
         return 14;
+    }
+  }
+
+  /// Table header text size (for column headers in data tables)
+  static double getTableHeader(BuildContext context) {
+    switch (_getDeviceType(context)) {
+      case 'phone':
+        return 9;
+      case 'tablet8':
+        return 16;
+      case 'tablet10':
+        return 22;
+      default:
+        return 11;
     }
   }
 
@@ -153,6 +167,10 @@ class ResponsiveTypography {
 
   static TextStyle buttonStyle(BuildContext context, {FontWeight? fontWeight, Color? color}) {
     return getTextStyle(context, fontSize: getButton, fontWeight: fontWeight, color: color);
+  }
+
+  static TextStyle tableHeaderStyle(BuildContext context, {FontWeight? fontWeight, Color? color}) {
+    return getTextStyle(context, fontSize: getTableHeader, fontWeight: fontWeight, color: color);
   }
 
   static TextStyle appBarTitleStyle(BuildContext context, {FontWeight? fontWeight, Color? color}) {

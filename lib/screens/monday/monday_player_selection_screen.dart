@@ -713,7 +713,7 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
                             style: TextStyle(
                               color: Colors.black,
                               fontWeight: FontWeight.bold,
-                              fontSize: 18,
+                              fontSize: 10,
                               height: 1.0,
                             ),
                             textAlign: TextAlign.center,

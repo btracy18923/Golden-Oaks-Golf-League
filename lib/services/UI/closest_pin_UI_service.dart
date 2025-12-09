@@ -11,13 +11,16 @@ class ClosestPinUIService {
   
   /// Determines device type based on screen size
   static DeviceType getDeviceType(Size screenSize) {
-    final width = screenSize.width;
-    final height = screenSize.height;
-    final isLandscape = width > height;
-    
-    if (isLandscape && width <= 800 && height <= 600) {
+    // Use shortest side for consistent device detection (matches DeviceDetectionService)
+    final shortestSide = screenSize.shortestSide;
+
+    // Device breakpoints using shortest side
+    // 6.5" phone: shortestSide < 450
+    // 8" tablet: 450 <= shortestSide < 650
+    // 10" tablet: shortestSide >= 650
+    if (shortestSide < 450) {
       return DeviceType.phone6_5;
-    } else if (width <= 900 || height <= 900) {
+    } else if (shortestSide < 650) {
       return DeviceType.tablet8;
     } else {
       return DeviceType.tablet10;
@@ -272,10 +275,14 @@ class ClosestPinUIService {
     final deviceType = getDeviceType(screenSize);
     final fontSize = getResponsiveFontSize(deviceType, isHeader: true);
     final padding = getResponsivePadding(deviceType);
-    
+
+    // Increase button bar and button height by 50% for 10" tablets
+    final containerPaddingMultiplier = deviceType == DeviceType.tablet10 ? 0.6 : 0.4;
+    final buttonPaddingMultiplier = deviceType == DeviceType.tablet10 ? 0.6 : 0.4;
+
     return Container(
       color: Colors.grey[300],
-      padding: EdgeInsets.all(padding.left * 0.4),
+      padding: EdgeInsets.all(padding.left * containerPaddingMultiplier),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
@@ -286,7 +293,7 @@ class ClosestPinUIService {
                 onPressed: onClear,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue[200]!,
-                  padding: EdgeInsets.symmetric(vertical: padding.top * 0.4),
+                  padding: EdgeInsets.symmetric(vertical: padding.top * buttonPaddingMultiplier),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8.0),
                     side: const BorderSide(color: Colors.black, width: 1),
@@ -310,7 +317,7 @@ class ClosestPinUIService {
                 onPressed: onSaveAndReturn,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.green[200]!,
-                  padding: EdgeInsets.symmetric(vertical: padding.top * 0.4),
+                  padding: EdgeInsets.symmetric(vertical: padding.top * buttonPaddingMultiplier),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8.0),
                     side: const BorderSide(color: Colors.black, width: 1),

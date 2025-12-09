@@ -305,8 +305,9 @@ class EnterScoresUIService {
 
   /// Builds the scrollable groups grid containing all group rows
   /// Responsive design adapts spacing and layout to different screen sizes
+  /// 10" tablets show 3 columns, other devices show 2 columns
   static Widget buildGroupsGrid(
-    BuildContext context, 
+    BuildContext context,
     List<List<PlayerData>> groups, {
     Function(int groupIndex, int playerIndex, PlayerData player)? onPlayerTap,
     Function(int groupIndex, int playerIndex)? onEmptySlotTap,
@@ -319,107 +320,193 @@ class EnterScoresUIService {
     final deviceType = getDeviceType(context);
     final padding = getResponsivePadding(deviceType);
     final spacing = deviceType == DeviceType.phone6_5 ? 4.0 : 8.0;
-    
-    return Expanded(
-      child: Padding(
-        padding: padding,
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              buildGroupRow(
-                context, 
-                groups, 
-                0, 
-                1, 
-                'Group 1', 
-                'Group 2',
-                onPlayerTap: onPlayerTap,
-                onEmptySlotTap: onEmptySlotTap,
-                isPlayerSelected: isPlayerSelected,
-                isEmptySlotSelected: isEmptySlotSelected,
-                onSkatsChanged: onSkatsChanged,
-                skatsFocusNodes: skatsFocusNodes,
-                isPlayerFocused: isPlayerFocused,
-              ),
-              SizedBox(height: spacing),
-              buildGroupRow(
-                context, 
-                groups, 
-                2, 
-                3, 
-                'Group 3', 
-                'Group 4',
-                onPlayerTap: onPlayerTap,
-                onEmptySlotTap: onEmptySlotTap,
-                isPlayerSelected: isPlayerSelected,
-                isEmptySlotSelected: isEmptySlotSelected,
-                onSkatsChanged: onSkatsChanged,
-                skatsFocusNodes: skatsFocusNodes,
-                isPlayerFocused: isPlayerFocused,
-              ),
-              SizedBox(height: spacing),
-              buildGroupRow(
-                context, 
-                groups, 
-                4, 
-                5, 
-                'Group 5', 
-                'Group 6',
-                onPlayerTap: onPlayerTap,
-                onEmptySlotTap: onEmptySlotTap,
-                isPlayerSelected: isPlayerSelected,
-                isEmptySlotSelected: isEmptySlotSelected,
-                onSkatsChanged: onSkatsChanged,
-                skatsFocusNodes: skatsFocusNodes,
-                isPlayerFocused: isPlayerFocused,
-              ),
-              SizedBox(height: spacing),
-              buildGroupRow(
-                context, 
-                groups, 
-                6, 
-                7, 
-                'Group 7', 
-                'Group 8',
-                onPlayerTap: onPlayerTap,
-                onEmptySlotTap: onEmptySlotTap,
-                isPlayerSelected: isPlayerSelected,
-                isEmptySlotSelected: isEmptySlotSelected,
-                onSkatsChanged: onSkatsChanged,
-                skatsFocusNodes: skatsFocusNodes,
-                isPlayerFocused: isPlayerFocused,
-              ),
-              SizedBox(height: spacing),
-              buildGroupRow(
-                context, 
-                groups, 
-                8, 
-                9, 
-                'Group 9', 
-                'Group 10',
-                onPlayerTap: onPlayerTap,
-                onEmptySlotTap: onEmptySlotTap,
-                isPlayerSelected: isPlayerSelected,
-                isEmptySlotSelected: isEmptySlotSelected,
-                onSkatsChanged: onSkatsChanged,
-                skatsFocusNodes: skatsFocusNodes,
-                isPlayerFocused: isPlayerFocused,
-              ),
-            ],
+
+    // Use 3-column layout for 10" tablets, 2-column for other devices
+    if (deviceType == DeviceType.tablet10) {
+      return Expanded(
+        child: Padding(
+          padding: padding,
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                buildGroupRowThreeColumn(
+                  context,
+                  groups,
+                  0,
+                  1,
+                  2,
+                  'Group 1',
+                  'Group 2',
+                  'Group 3',
+                  onPlayerTap: onPlayerTap,
+                  onEmptySlotTap: onEmptySlotTap,
+                  isPlayerSelected: isPlayerSelected,
+                  isEmptySlotSelected: isEmptySlotSelected,
+                  onSkatsChanged: onSkatsChanged,
+                  skatsFocusNodes: skatsFocusNodes,
+                  isPlayerFocused: isPlayerFocused,
+                ),
+                SizedBox(height: spacing),
+                buildGroupRowThreeColumn(
+                  context,
+                  groups,
+                  3,
+                  4,
+                  5,
+                  'Group 4',
+                  'Group 5',
+                  'Group 6',
+                  onPlayerTap: onPlayerTap,
+                  onEmptySlotTap: onEmptySlotTap,
+                  isPlayerSelected: isPlayerSelected,
+                  isEmptySlotSelected: isEmptySlotSelected,
+                  onSkatsChanged: onSkatsChanged,
+                  skatsFocusNodes: skatsFocusNodes,
+                  isPlayerFocused: isPlayerFocused,
+                ),
+                SizedBox(height: spacing),
+                buildGroupRowThreeColumn(
+                  context,
+                  groups,
+                  6,
+                  7,
+                  8,
+                  'Group 7',
+                  'Group 8',
+                  'Group 9',
+                  onPlayerTap: onPlayerTap,
+                  onEmptySlotTap: onEmptySlotTap,
+                  isPlayerSelected: isPlayerSelected,
+                  isEmptySlotSelected: isEmptySlotSelected,
+                  onSkatsChanged: onSkatsChanged,
+                  skatsFocusNodes: skatsFocusNodes,
+                  isPlayerFocused: isPlayerFocused,
+                ),
+                SizedBox(height: spacing),
+                buildGroupRow(
+                  context,
+                  groups,
+                  9,
+                  -1, // Use -1 to indicate no second group
+                  'Group 10',
+                  '',
+                  onPlayerTap: onPlayerTap,
+                  onEmptySlotTap: onEmptySlotTap,
+                  isPlayerSelected: isPlayerSelected,
+                  isEmptySlotSelected: isEmptySlotSelected,
+                  onSkatsChanged: onSkatsChanged,
+                  skatsFocusNodes: skatsFocusNodes,
+                  isPlayerFocused: isPlayerFocused,
+                ),
+              ],
+            ),
           ),
         ),
-      ),
-    );
+      );
+    } else {
+      // 2-column layout for other devices
+      return Expanded(
+        child: Padding(
+          padding: padding,
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                buildGroupRow(
+                  context,
+                  groups,
+                  0,
+                  1,
+                  'Group 1',
+                  'Group 2',
+                  onPlayerTap: onPlayerTap,
+                  onEmptySlotTap: onEmptySlotTap,
+                  isPlayerSelected: isPlayerSelected,
+                  isEmptySlotSelected: isEmptySlotSelected,
+                  onSkatsChanged: onSkatsChanged,
+                  skatsFocusNodes: skatsFocusNodes,
+                  isPlayerFocused: isPlayerFocused,
+                ),
+                SizedBox(height: spacing),
+                buildGroupRow(
+                  context,
+                  groups,
+                  2,
+                  3,
+                  'Group 3',
+                  'Group 4',
+                  onPlayerTap: onPlayerTap,
+                  onEmptySlotTap: onEmptySlotTap,
+                  isPlayerSelected: isPlayerSelected,
+                  isEmptySlotSelected: isEmptySlotSelected,
+                  onSkatsChanged: onSkatsChanged,
+                  skatsFocusNodes: skatsFocusNodes,
+                  isPlayerFocused: isPlayerFocused,
+                ),
+                SizedBox(height: spacing),
+                buildGroupRow(
+                  context,
+                  groups,
+                  4,
+                  5,
+                  'Group 5',
+                  'Group 6',
+                  onPlayerTap: onPlayerTap,
+                  onEmptySlotTap: onEmptySlotTap,
+                  isPlayerSelected: isPlayerSelected,
+                  isEmptySlotSelected: isEmptySlotSelected,
+                  onSkatsChanged: onSkatsChanged,
+                  skatsFocusNodes: skatsFocusNodes,
+                  isPlayerFocused: isPlayerFocused,
+                ),
+                SizedBox(height: spacing),
+                buildGroupRow(
+                  context,
+                  groups,
+                  6,
+                  7,
+                  'Group 7',
+                  'Group 8',
+                  onPlayerTap: onPlayerTap,
+                  onEmptySlotTap: onEmptySlotTap,
+                  isPlayerSelected: isPlayerSelected,
+                  isEmptySlotSelected: isEmptySlotSelected,
+                  onSkatsChanged: onSkatsChanged,
+                  skatsFocusNodes: skatsFocusNodes,
+                  isPlayerFocused: isPlayerFocused,
+                ),
+                SizedBox(height: spacing),
+                buildGroupRow(
+                  context,
+                  groups,
+                  8,
+                  9,
+                  'Group 9',
+                  'Group 10',
+                  onPlayerTap: onPlayerTap,
+                  onEmptySlotTap: onEmptySlotTap,
+                  isPlayerSelected: isPlayerSelected,
+                  isEmptySlotSelected: isEmptySlotSelected,
+                  onSkatsChanged: onSkatsChanged,
+                  skatsFocusNodes: skatsFocusNodes,
+                  isPlayerFocused: isPlayerFocused,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
   }
 
   /// Builds a row containing two groups side by side
   /// Responsive design adapts spacing between groups
+  /// If rightIndex is -1, only displays the left group
   static Widget buildGroupRow(
-    BuildContext context, 
-    List<List<PlayerData>> groups, 
-    int leftIndex, 
-    int rightIndex, 
-    String leftTitle, 
+    BuildContext context,
+    List<List<PlayerData>> groups,
+    int leftIndex,
+    int rightIndex,
+    String leftTitle,
     String rightTitle, {
     Function(int groupIndex, int playerIndex, PlayerData player)? onPlayerTap,
     Function(int groupIndex, int playerIndex)? onEmptySlotTap,
@@ -431,14 +518,39 @@ class EnterScoresUIService {
   }) {
     final deviceType = getDeviceType(context);
     final spacing = deviceType == DeviceType.phone6_5 ? 4.0 : 8.0;
-    
+
+    // If rightIndex is -1, only show left group
+    if (rightIndex == -1) {
+      return Row(
+        children: [
+          Expanded(
+            child: buildGroup(
+              context,
+              groups,
+              leftIndex,
+              leftTitle,
+              onPlayerTap: onPlayerTap,
+              onEmptySlotTap: onEmptySlotTap,
+              isPlayerSelected: isPlayerSelected,
+              isEmptySlotSelected: isEmptySlotSelected,
+              onSkatsChanged: onSkatsChanged,
+              skatsFocusNodes: skatsFocusNodes,
+              isPlayerFocused: isPlayerFocused,
+            ),
+          ),
+          SizedBox(width: spacing),
+          Expanded(child: Container()), // Empty space to maintain layout
+        ],
+      );
+    }
+
     return Row(
       children: [
         Expanded(
           child: buildGroup(
-            context, 
-            groups, 
-            leftIndex, 
+            context,
+            groups,
+            leftIndex,
             leftTitle,
             onPlayerTap: onPlayerTap,
             onEmptySlotTap: onEmptySlotTap,
@@ -452,10 +564,85 @@ class EnterScoresUIService {
         SizedBox(width: spacing),
         Expanded(
           child: buildGroup(
-            context, 
-            groups, 
-            rightIndex, 
+            context,
+            groups,
+            rightIndex,
             rightTitle,
+            onPlayerTap: onPlayerTap,
+            onEmptySlotTap: onEmptySlotTap,
+            isPlayerSelected: isPlayerSelected,
+            isEmptySlotSelected: isEmptySlotSelected,
+            onSkatsChanged: onSkatsChanged,
+            skatsFocusNodes: skatsFocusNodes,
+            isPlayerFocused: isPlayerFocused,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Builds a row containing three groups side by side (for 10" tablets)
+  /// Responsive design adapts spacing between groups
+  static Widget buildGroupRowThreeColumn(
+    BuildContext context,
+    List<List<PlayerData>> groups,
+    int firstIndex,
+    int secondIndex,
+    int thirdIndex,
+    String firstTitle,
+    String secondTitle,
+    String thirdTitle, {
+    Function(int groupIndex, int playerIndex, PlayerData player)? onPlayerTap,
+    Function(int groupIndex, int playerIndex)? onEmptySlotTap,
+    bool Function(PlayerData player)? isPlayerSelected,
+    bool Function(int groupIndex, int playerIndex)? isEmptySlotSelected,
+    Function(PlayerData, String)? onSkatsChanged,
+    List<List<FocusNode?>>? skatsFocusNodes,
+    bool Function(PlayerData player)? isPlayerFocused,
+  }) {
+    final deviceType = getDeviceType(context);
+    final spacing = deviceType == DeviceType.phone6_5 ? 4.0 : 8.0;
+
+    return Row(
+      children: [
+        Expanded(
+          child: buildGroup(
+            context,
+            groups,
+            firstIndex,
+            firstTitle,
+            onPlayerTap: onPlayerTap,
+            onEmptySlotTap: onEmptySlotTap,
+            isPlayerSelected: isPlayerSelected,
+            isEmptySlotSelected: isEmptySlotSelected,
+            onSkatsChanged: onSkatsChanged,
+            skatsFocusNodes: skatsFocusNodes,
+            isPlayerFocused: isPlayerFocused,
+          ),
+        ),
+        SizedBox(width: spacing),
+        Expanded(
+          child: buildGroup(
+            context,
+            groups,
+            secondIndex,
+            secondTitle,
+            onPlayerTap: onPlayerTap,
+            onEmptySlotTap: onEmptySlotTap,
+            isPlayerSelected: isPlayerSelected,
+            isEmptySlotSelected: isEmptySlotSelected,
+            onSkatsChanged: onSkatsChanged,
+            skatsFocusNodes: skatsFocusNodes,
+            isPlayerFocused: isPlayerFocused,
+          ),
+        ),
+        SizedBox(width: spacing),
+        Expanded(
+          child: buildGroup(
+            context,
+            groups,
+            thirdIndex,
+            thirdTitle,
             onPlayerTap: onPlayerTap,
             onEmptySlotTap: onEmptySlotTap,
             isPlayerSelected: isPlayerSelected,
@@ -574,7 +761,7 @@ class EnterScoresUIService {
           child: Text(
             text,
             textAlign: TextAlign.center,
-            style: ResponsiveTypography.smallStyle(context,
+            style: ResponsiveTypography.tableHeaderStyle(context,
               fontWeight: FontWeight.bold,
             ),
           ),
