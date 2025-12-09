@@ -74,3 +74,5 @@ To Use This System:
    // 8" tablet specific code                                                                                                                                                      
    }
    "Update [screen_name] to use DeviceDetectionService for consistent device detection across 6" phones, 8" tablets, and 10" tablets"
+
+Check: ['id'] → ['player_number']

@@ -4,6 +4,8 @@ import 'package:flutter/services.dart';
 import '../../services/database_helper.dart';
 import '../../models/league.dart';
 import '../../services/screen_data_retention_service.dart';
+import '../../services/device_detection_service.dart';
+import '../../services/responsive_typography.dart';
 import 'monday_enter_scores_screen.dart';
 import '../../widgets/responsive_wrapper.dart';
 
@@ -39,11 +41,13 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
 
   void _setOrientation() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // Use consistent device detection with main menu screen
-      final screenWidth = MediaQuery.of(context).size.width;
-      final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
-      final is6Point5Phone = isLandscape && screenWidth >= 750 && screenWidth < 900; // 6.5" phone range
-      
+      // Use DeviceDetectionService for consistent device detection
+      final deviceType = DeviceDetectionService.getDeviceType(context);
+      final deviceName = DeviceDetectionService.getDeviceName(context);
+
+      // Debug info
+      DeviceDetectionService.printDebugInfo(context);
+
       // Lock to landscape mode for all devices
       SystemChrome.setPreferredOrientations([
         DeviceOrientation.landscapeLeft,
@@ -113,7 +117,7 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
         // If all players are now unselected, clear the shuffle state
         _clearShuffleState();
       } else {
-        selectedPlayerIds = players.map((p) => p['id'] as int).toSet();
+        selectedPlayerIds = players.map((p) => p['player_number'] as int).toSet();
       }
     });
   }
@@ -157,7 +161,7 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
           // Find the player name to remove
           String? playerNameToRemove;
           for (var player in players) {
-            if (player['id'] == playerId) {
+            if (player['player_number'] == playerId) {
               playerNameToRemove = player['last'];
               break;
             }
@@ -193,7 +197,7 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
           String? playerNameToAdd;
           String? playerSkNumber;
           for (var player in players) {
-            if (player['id'] == playerId) {
+            if (player['player_number'] == playerId) {
               playerNameToAdd = player['last'];
               playerSkNumber = player['skat_number']?.toString() ?? '';
               break;
@@ -380,7 +384,7 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
     return Scaffold(
       backgroundColor: Colors.grey[300],
       appBar: AppBar(
-        title: const Text("Select Players for Monday's Match"),
+        title: Text("Select Players for Monday's Match - ${DeviceDetectionService.getDeviceName(context)}"),
         backgroundColor: Colors.green[700],
         foregroundColor: Colors.white,
         centerTitle: true,
@@ -411,9 +415,9 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
                                         color: Colors.grey[400],
                                       ),
                                       const SizedBox(height: 8),
-                                      const Text(
+                                      Text(
                                         'No Monday players found\nTry importing players first',
-                                        style: TextStyle(fontSize: 14),
+                                        style: TextStyle(fontSize: ResponsiveTypography.getBodyText(context)),
                                         textAlign: TextAlign.center,
                                       ),
                                     ],
@@ -440,7 +444,7 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
     return Scaffold(
       backgroundColor: Colors.grey[300],
       appBar: AppBar(
-        title: const Text("Select Players for Monday's Match"),
+        title: Text("Select Players for Monday's Match - ${DeviceDetectionService.getDeviceName(context)}"),
         backgroundColor: Colors.green[700],
         foregroundColor: Colors.white,
         centerTitle: true,
@@ -463,8 +467,8 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
                           padding: const EdgeInsets.symmetric(vertical: 8),
                           child: Text(
                             'Selected Players: ${selectedPlayerIds.length}/${players.length}',
-                            style: const TextStyle(
-                              fontSize: 16,
+                            style: TextStyle(
+                              fontSize: ResponsiveTypography.getBodyText(context),
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -482,9 +486,9 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
                                         color: Colors.grey[400],
                                       ),
                                       const SizedBox(height: 16),
-                                      const Text(
+                                      Text(
                                         'No Monday players found\nTry importing players first',
-                                        style: TextStyle(fontSize: 18),
+                                        style: TextStyle(fontSize: ResponsiveTypography.getBodyText(context)),
                                         textAlign: TextAlign.center,
                                       ),
                                     ],
@@ -492,33 +496,11 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
                                 )
                               : _buildTabletPlayerGrid(),
                         ),
-                        const SizedBox(height: 20),
-                        ElevatedButton(
-                          onPressed: selectAllPlayers,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: _leagueColor,
-                            foregroundColor: Colors.black,
-                            padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              side: const BorderSide(color: Colors.black, width: 1),
-                            ),
-                          ),
-                          child: Text(
-                            selectedPlayerIds.length == players.length
-                                ? 'Uncheck All'
-                                : 'Check All',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
                       ],
                     ),
                   ),
                 ),
-                _buildTabletFooter(),
+                _buildTablet8Footer(),
               ],
             ),
     );
@@ -528,7 +510,7 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
     return Scaffold(
       backgroundColor: Colors.grey[300],
       appBar: AppBar(
-        title: const Text("Select Players for Monday's Match"),
+        title: Text("Select Players for Monday's Match - ${DeviceDetectionService.getDeviceName(context)}"),
         backgroundColor: Colors.green[700],
         foregroundColor: Colors.white,
         centerTitle: true,
@@ -551,8 +533,8 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
                           padding: const EdgeInsets.symmetric(vertical: 8),
                           child: Text(
                             'Selected Players: ${selectedPlayerIds.length}/${players.length}',
-                            style: const TextStyle(
-                              fontSize: 16,
+                            style: TextStyle(
+                              fontSize: ResponsiveTypography.getBodyText(context),
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -570,48 +552,26 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
                                         color: Colors.grey[400],
                                       ),
                                       const SizedBox(height: 16),
-                                      const Text(
+                                      Text(
                                         'No Monday players found\nTry importing players first',
-                                        style: TextStyle(fontSize: 18),
+                                        style: TextStyle(fontSize: ResponsiveTypography.getBodyText(context)),
                                         textAlign: TextAlign.center,
                                       ),
                                     ],
                                   ),
                                 )
-                              : _buildTabletPlayerGrid(),
-                        ),
-                        const SizedBox(height: 20),
-                        ElevatedButton(
-                          onPressed: selectAllPlayers,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: _leagueColor,
-                            foregroundColor: Colors.black,
-                            padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              side: const BorderSide(color: Colors.black, width: 1),
-                            ),
-                          ),
-                          child: Text(
-                            selectedPlayerIds.length == players.length
-                                ? 'Uncheck All'
-                                : 'Check All',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                              : _buildTablet10PlayerGrid(),
                         ),
                       ],
                     ),
                   ),
                 ),
-                _buildTabletFooter(),
+                _buildTablet10Footer(),
               ],
             ),
     );
   }
-  
+
   Widget _buildPhonePlayerGrid() {
     List<List<Map<String, dynamic>>> columns = _cachedColumns ?? [[], [], [], []];
     
@@ -633,7 +593,7 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
 
   Widget _buildTabletPlayerGrid() {
     List<List<Map<String, dynamic>>> columns = _cachedColumns ?? [[], [], [], []];
-    
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -649,13 +609,32 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
       ],
     );
   }
+
+  Widget _buildTablet10PlayerGrid() {
+    List<List<Map<String, dynamic>>> columns = _cachedColumns ?? [[], [], [], []];
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (int colIndex = 0; colIndex < 4; colIndex++)
+          Expanded(
+            child: Column(
+              children: [
+                for (var player in columns[colIndex])
+                  _buildTablet10PlayerCheckbox(player),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
   
 
   void _navigateToEnterScores() {
     try {
       // Get selected players
       List<Map<String, dynamic>> selectedPlayers = players
-          .where((player) => selectedPlayerIds.contains(player['id'] as int))
+          .where((player) => selectedPlayerIds.contains(player['player_number'] as int))
           .toList();
       
       // Capture data in the retention service before navigation
@@ -704,7 +683,7 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
   }
   
   Widget _buildPhonePlayerCheckbox(Map<String, dynamic> player) {
-    final int playerId = player['id'] as int;
+    final int playerId = player['player_number'] as int;
     final bool isSelected = selectedPlayerIds.contains(playerId);
     final String playerName = '${player['last']}';
     
@@ -720,8 +699,8 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
             child: Row(
               children: [
                 Container(
-                  width: 24,
-                  height: 24,
+                  width: 30,
+                  height: 30,
                   decoration: BoxDecoration(
                     color: isSelected ? _leagueColor : Colors.grey[300],
                     border: Border.all(color: Colors.black, width: 1),
@@ -734,7 +713,7 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
                             style: TextStyle(
                               color: Colors.black,
                               fontWeight: FontWeight.bold,
-                              fontSize: 14,
+                              fontSize: 18,
                               height: 1.0,
                             ),
                             textAlign: TextAlign.center,
@@ -746,8 +725,8 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
                 Expanded(
                   child: Text(
                     playerName,
-                    style: const TextStyle(
-                      fontSize: 12,
+                    style: TextStyle(
+                      fontSize: ResponsiveTypography.getBodyText(context),
                       fontWeight: FontWeight.w500,
                     ),
                     maxLines: 1,
@@ -763,7 +742,7 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
   }
 
   Widget _buildTabletPlayerCheckbox(Map<String, dynamic> player) {
-    final int playerId = player['id'] as int;
+    final int playerId = player['player_number'] as int;
     final bool isSelected = selectedPlayerIds.contains(playerId);
     final String playerName = '${player['last']}, ${player['first']}';
     
@@ -805,8 +784,67 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
                 Expanded(
                   child: Text(
                     playerName,
+                    style: TextStyle(
+                      fontSize: ResponsiveTypography.getSmall(context),
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTablet10PlayerCheckbox(Map<String, dynamic> player) {
+    final int playerId = player['player_number'] as int;
+    final bool isSelected = selectedPlayerIds.contains(playerId);
+    final String playerName = '${player['last']}, ${player['first']}';
+
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 1, horizontal: 2),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => togglePlayerSelection(playerId),
+          borderRadius: BorderRadius.circular(4),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: isSelected ? _leagueColor : Colors.grey[300],
+                    border: Border.all(color: Colors.black, width: 1),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: isSelected
+                      ? const Center(
+                          child: Text(
+                            'X',
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 24,
+                              height: 1.0,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        )
+                      : null,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    playerName,
                     style: const TextStyle(
-                      fontSize: 14,
+                      fontSize: 28,
                       fontWeight: FontWeight.w500,
                     ),
                     maxLines: 2,
@@ -844,10 +882,10 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
                     side: const BorderSide(color: Colors.black, width: 1),
                   ),
                 ),
-                child: const Text(
+                child: Text(
                   'Back',
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: ResponsiveTypography.getButton(context),
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -872,8 +910,8 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
                   selectedPlayerIds.length == players.length
                       ? 'Uncheck All'
                       : 'Check All',
-                  style: const TextStyle(
-                    fontSize: 12,
+                  style: TextStyle(
+                    fontSize: ResponsiveTypography.getButton(context),
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -896,10 +934,188 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
                     side: const BorderSide(color: Colors.black, width: 1),
                   ),
                 ),
-                child: const Text(
+                child: Text(
                   "Enter Skats",
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: ResponsiveTypography.getButton(context),
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTablet8Footer() {
+    return Container(
+      padding: const EdgeInsets.all(16.0),
+      decoration: BoxDecoration(
+        color: Colors.grey[300],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.lightBlue[300],
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    side: const BorderSide(color: Colors.black, width: 1),
+                  ),
+                ),
+                child: Text(
+                  'Back',
+                  style: TextStyle(
+                    fontSize: ResponsiveTypography.getButton(context),
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: ElevatedButton(
+                onPressed: selectAllPlayers,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.lightGreen[100],
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    side: const BorderSide(color: Colors.black, width: 1),
+                  ),
+                ),
+                child: Text(
+                  selectedPlayerIds.length == players.length
+                      ? 'Uncheck All'
+                      : 'Check All',
+                  style: TextStyle(
+                    fontSize: ResponsiveTypography.getButton(context),
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: ElevatedButton(
+                onPressed: selectedPlayerIds.isEmpty ? null : _navigateToEnterScores,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green[300],
+                  foregroundColor: Colors.black,
+                  disabledBackgroundColor: Colors.green[300],
+                  disabledForegroundColor: Colors.black.withOpacity(0.6),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    side: const BorderSide(color: Colors.black, width: 1),
+                  ),
+                ),
+                child: Text(
+                  "Enter Skats",
+                  style: TextStyle(
+                    fontSize: ResponsiveTypography.getButton(context),
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTablet10Footer() {
+    return Container(
+      padding: const EdgeInsets.all(16.0),
+      decoration: BoxDecoration(
+        color: Colors.grey[300],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.lightBlue[300],
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    side: const BorderSide(color: Colors.black, width: 1),
+                  ),
+                ),
+                child: Text(
+                  'Back',
+                  style: TextStyle(
+                    fontSize: ResponsiveTypography.getButton(context),
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: ElevatedButton(
+                onPressed: selectAllPlayers,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.lightGreen[100],
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    side: const BorderSide(color: Colors.black, width: 1),
+                  ),
+                ),
+                child: Text(
+                  selectedPlayerIds.length == players.length
+                      ? 'Uncheck All'
+                      : 'Check All',
+                  style: TextStyle(
+                    fontSize: ResponsiveTypography.getButton(context),
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: ElevatedButton(
+                onPressed: selectedPlayerIds.isEmpty ? null : _navigateToEnterScores,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green[300],
+                  foregroundColor: Colors.black,
+                  disabledBackgroundColor: Colors.green[300],
+                  disabledForegroundColor: Colors.black.withOpacity(0.6),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    side: const BorderSide(color: Colors.black, width: 1),
+                  ),
+                ),
+                child: Text(
+                  "Enter Skats",
+                  style: TextStyle(
+                    fontSize: ResponsiveTypography.getButton(context),
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -931,9 +1147,12 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
                 side: const BorderSide(color: Colors.black, width: 1),
               ),
             ),
-            child: const Text(
+            child: Text(
               'Back',
-              style: TextStyle(fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontSize: ResponsiveTypography.getButton(context),
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
           ElevatedButton(
@@ -949,9 +1168,12 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
                 side: const BorderSide(color: Colors.black, width: 1),
               ),
             ),
-            child: const Text(
+            child: Text(
               "Enter Skats",
-              style: TextStyle(fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontSize: ResponsiveTypography.getButton(context),
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ],

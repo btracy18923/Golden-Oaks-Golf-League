@@ -215,7 +215,7 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
       // Update all players' Skat # to 35
       final players = await _databaseHelper.getPlayersByLeague(_selectedLeague);
       for (var player in players) {
-        await _databaseHelper.updatePlayer(player['id'], {
+        await _databaseHelper.updatePlayer(player['player_number'], {
           'player_number': player['player_number'],
           'first': player['first'],
           'last': player['last'],
@@ -261,8 +261,8 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
                       _skatController.text.trim().isNotEmpty ||
                       _cellController.text.trim().isNotEmpty ||
                       _emailController.text.trim().isNotEmpty;
-    
-    if (hasFormData && _selectedPlayer?['id'] != player['id']) {
+
+    if (hasFormData && _selectedPlayer?['player_number'] != player['player_number']) {
       // Show confirmation dialog before overwriting form data
       showDialog(
         context: context,
@@ -405,8 +405,8 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
     
     try {
       final leagueStr = _selectedLeague == League.monday ? 'monday' : 'wednesday';
-      
-      await _databaseHelper.updatePlayer(_selectedPlayer!['id'], {
+
+      await _databaseHelper.updatePlayer(_selectedPlayer!['player_number'], {
         'player_number': int.tryParse(_idController.text) ?? 0,
         'first': _firstController.text.trim(),
         'last': _lastController.text.trim(),
@@ -462,8 +462,8 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
       try {
         // Clear focus first
         FocusScope.of(context).unfocus();
-        
-        await _databaseHelper.deletePlayer(_selectedPlayer!['id']);
+
+        await _databaseHelper.deletePlayer(_selectedPlayer!['player_number']);
         _clearForm();
         _refreshPlayerList();
         

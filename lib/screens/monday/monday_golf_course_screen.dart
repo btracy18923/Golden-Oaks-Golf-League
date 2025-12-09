@@ -352,119 +352,6 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
     }
   }
 
-  void _showCourseDetails(Map<String, dynamic> course) {
-    final addressController = TextEditingController(text: course['address'] ?? '');
-    final cityController = TextEditingController(text: course['city'] ?? '');
-    final stateController = TextEditingController(text: course['state'] ?? '');
-    final zipController = TextEditingController(text: course['zip'] ?? '');
-    final websiteController = TextEditingController(text: course['website'] ?? '');
-    
-    final screenWidth = MediaQuery.of(context).size.width;
-    final screenHeight = MediaQuery.of(context).size.height;
-    final isPhone = DeviceDetectionService.is6Point5Phone(context);
-    final dialogWidth = isPhone ? screenWidth * 0.9 : screenWidth * 0.6;
-    final maxHeight = screenHeight * 0.8;
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-          'Course Details - ${course['name']}',
-          style: ResponsiveTypography.headingStyle(context, fontWeight: FontWeight.w600),
-        ),
-        content: SizedBox(
-          width: dialogWidth,
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxHeight: maxHeight),
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _buildEditableDetailField('Address:', addressController),
-                  _buildEditableDetailField('City:', cityController),
-                  _buildEditableDetailField('State:', stateController),
-                  _buildEditableDetailField('ZIP Code:', zipController, keyboardType: TextInputType.number),
-                  _buildEditableDetailField('Website:', websiteController),
-                ],
-              ),
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text(
-              'Cancel',
-              style: ResponsiveTypography.buttonStyle(context),
-            ),
-          ),
-          TextButton(
-            onPressed: () async {
-              await _updateCourseDetails(course['id'], {
-                'address': addressController.text.trim(),
-                'city': cityController.text.trim(),
-                'state': stateController.text.trim(),
-                'zip': zipController.text.trim(),
-                'website': websiteController.text.trim(),
-              });
-              Navigator.of(context).pop();
-              _refreshCourseList();
-            },
-            child: Text(
-              'Save',
-              style: ResponsiveTypography.buttonStyle(context),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEditableDetailField(String label, TextEditingController controller, {TextInputType? keyboardType}) {
-    final isPhone = DeviceDetectionService.is6Point5Phone(context);
-    final labelWidth = isPhone ? 80.0 : 100.0;
-    
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: isPhone ? 6 : 8),
-      child: Row(
-        children: [
-          SizedBox(
-            width: labelWidth,
-            child: Text(
-              label,
-              style: ResponsiveTypography.labelStyle(context, fontWeight: FontWeight.bold),
-            ),
-          ),
-          Expanded(
-            child: TextFormField(
-              controller: controller,
-              keyboardType: keyboardType,
-              style: ResponsiveTypography.bodyTextStyle(context),
-              decoration: InputDecoration(
-                border: const OutlineInputBorder(),
-                isDense: true,
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: isPhone ? 6 : 8,
-                  vertical: isPhone ? 10 : 12,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _updateCourseDetails(int courseId, Map<String, dynamic> details) async {
-    try {
-      await _databaseHelper.updateGolfCourse(courseId, details);
-      _showSuccessDialog('Course details updated successfully!');
-    } catch (e) {
-      _showErrorDialog('Error updating course details: $e');
-    }
-  }
-
 
   void _showErrorDialog(String message) {
     showDialog(
@@ -685,23 +572,13 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
                 ),
               ],
             ),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  onPressed: () => _selectCourse(course),
-                  icon: Icon(
-                    isSelected ? Icons.check_circle : Icons.radio_button_unchecked,
-                    color: isSelected ? Colors.green : Colors.grey,
-                  ),
-                  tooltip: 'Select Course',
-                ),
-                IconButton(
-                  onPressed: () => _showCourseDetails(course),
-                  icon: const Icon(Icons.info_outline, color: Colors.blue),
-                  tooltip: 'Details',
-                ),
-              ],
+            trailing: IconButton(
+              onPressed: () => _selectCourse(course),
+              icon: Icon(
+                isSelected ? Icons.check_circle : Icons.radio_button_unchecked,
+                color: isSelected ? Colors.green : Colors.grey,
+              ),
+              tooltip: 'Select Course',
             ),
             onTap: () => _selectCourse(course),
           ),

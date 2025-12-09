@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../models/league.dart';
 import '../services/database_helper.dart';
 
@@ -14,6 +15,7 @@ class AdminScreen extends StatefulWidget {
 
 class _AdminScreenState extends State<AdminScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
   final DatabaseHelper _dbHelper = DatabaseHelper();
   bool _isDownloading = false;
 
@@ -124,6 +126,15 @@ class _AdminScreenState extends State<AdminScreen> {
                   () => _replaceAllSkatNumbersTo35(),
                 ),
 
+                const SizedBox(height: 16),
+
+                _buildDownloadButton(
+                  'Delete All Monday Player Profiles',
+                  Icons.person_remove,
+                  Colors.red[400]!,
+                  () => _deleteMondayPlayerProfiles(),
+                ),
+
                 const SizedBox(height: 20),
               ],
             ),
@@ -166,50 +177,51 @@ class _AdminScreenState extends State<AdminScreen> {
       // Download Monday players
       print('Downloading Monday players...');
       QuerySnapshot mondaySnapshot = await _firestore.collection('M_player_profile').get();
-      
-      // Download Wednesday players  
+
+      // Download Wednesday players
       print('Downloading Wednesday players...');
       QuerySnapshot wednesdaySnapshot = await _firestore.collection('wednesday_player_profile').get();
-      
-      // Combine both snapshots
-      List<QueryDocumentSnapshot> allDocs = [];
-      allDocs.addAll(mondaySnapshot.docs);
-      allDocs.addAll(wednesdaySnapshot.docs);
-      
+
       int mondayCount = 0;
       int wednesdayCount = 0;
       int errorCount = 0;
 
-      for (var doc in allDocs) {
+      // Process Monday players
+      for (var doc in mondaySnapshot.docs) {
         try {
           Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-          
+
           // Clean up Firebase metadata
           data.remove('uploaded_at');
           data.remove('source');
           data.remove('upload_timestamp');
-          
-          // Determine league and store in appropriate local database
-          String? league = data['league'];
-          if (league != null) {
-            if (league.toLowerCase() == 'monday') {
-              // Store/Update in Monday league local database
-              await _insertOrUpdatePlayer(data);
-              mondayCount++;
-            } else if (league.toLowerCase() == 'wednesday') {
-              // Store/Update in Wednesday league local database
-              await _insertOrUpdatePlayer(data);
-              wednesdayCount++;
-            } else {
-              // Unknown league, still insert/update but count as error
-              await _insertOrUpdatePlayer(data);
-              errorCount++;
-            }
-          } else {
-            // No league specified, count as error but still insert/update
-            await _insertOrUpdatePlayer(data);
-            errorCount++;
-          }
+
+          // Set league based on collection
+          data['league'] = 'monday';
+
+          await _insertOrUpdatePlayer(data);
+          mondayCount++;
+        } catch (e) {
+          print('Error processing player profile ${doc.id}: $e');
+          errorCount++;
+        }
+      }
+
+      // Process Wednesday players
+      for (var doc in wednesdaySnapshot.docs) {
+        try {
+          Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+
+          // Clean up Firebase metadata
+          data.remove('uploaded_at');
+          data.remove('source');
+          data.remove('upload_timestamp');
+
+          // Set league based on collection
+          data['league'] = 'wednesday';
+
+          await _insertOrUpdatePlayer(data);
+          wednesdayCount++;
         } catch (e) {
           print('Error processing player profile ${doc.id}: $e');
           errorCount++;
@@ -250,14 +262,14 @@ class _AdminScreenState extends State<AdminScreen> {
   /// Helper method to insert or update a player
   Future<void> _insertOrUpdatePlayer(Map<String, dynamic> playerData) async {
     try {
-      int? playerId = playerData['id'];
-      if (playerId != null) {
-        // Check if player exists
-        Map<String, dynamic>? existingPlayer = await _dbHelper.getPlayer(playerId);
-        
+      int? playerNumber = playerData['player_number'];
+      if (playerNumber != null) {
+        // Check if player exists by player_number
+        Map<String, dynamic>? existingPlayer = await _dbHelper.getPlayer(playerNumber);
+
         if (existingPlayer != null) {
           // Update existing player
-          await _dbHelper.updatePlayer(playerId, playerData);
+          await _dbHelper.updatePlayer(playerNumber, playerData);
           print('Updated player: ${playerData['first']} ${playerData['last']} (${playerData['league']})');
         } else {
           // Insert new player
@@ -265,9 +277,9 @@ class _AdminScreenState extends State<AdminScreen> {
           print('Inserted new player: ${playerData['first']} ${playerData['last']} (${playerData['league']})');
         }
       } else {
-        // No ID, try to insert anyway
+        // No player_number, try to insert anyway
         await _dbHelper.insertPlayer(playerData);
-        print('Inserted player without ID: ${playerData['first']} ${playerData['last']} (${playerData['league']})');
+        print('Inserted player without player_number: ${playerData['first']} ${playerData['last']} (${playerData['league']})');
       }
     } catch (e) {
       print('Error inserting/updating player ${playerData['first']} ${playerData['last']}: $e');
@@ -292,19 +304,20 @@ class _AdminScreenState extends State<AdminScreen> {
       );
 
       print('Attempting to connect to Firebase...');
-      
-      // Test connection first
-      try {
-        await _firestore.collection('test').limit(1).get();
-        print('Firebase connection successful');
-      } catch (e) {
-        print('Firebase connection test failed: $e');
-        throw Exception('Cannot connect to Firebase. Check internet connection and Firebase configuration.');
+
+      // Sign in anonymously if not already authenticated
+      if (_auth.currentUser == null) {
+        print('No current user, signing in anonymously...');
+        await _auth.signInAnonymously();
+        print('Anonymous sign-in successful: ${_auth.currentUser?.uid}');
+      } else {
+        print('Already authenticated: ${_auth.currentUser?.uid}');
       }
 
-      // Download from Monday golf courses collection only
+      // Download from Monday golf courses collection
       print('Downloading from M_golf_course collection...');
       QuerySnapshot snapshot = await _firestore.collection('M_golf_course').get();
+      print('Firebase connection successful - found ${snapshot.docs.length} golf courses');
       
       int courseCount = 0;
       int errorCount = 0;
@@ -360,24 +373,33 @@ class _AdminScreenState extends State<AdminScreen> {
   /// Helper method to insert or update a golf course
   Future<void> _insertOrUpdateGolfCourse(Map<String, dynamic> courseData) async {
     try {
-      int? courseId = courseData['id'];
-      if (courseId != null) {
-        // Check if golf course exists
-        Map<String, dynamic>? existingCourse = await _dbHelper.getGolfCourse(courseId);
-        
-        if (existingCourse != null) {
-          // Update existing golf course
-          await _dbHelper.updateGolfCourse(courseId, courseData);
-          print('Updated golf course: ${courseData['name']}');
-        } else {
-          // Insert new golf course
-          await _dbHelper.insertGolfCourse(courseData);
-          print('Inserted new golf course: ${courseData['name']}');
-        }
+      String? courseName = courseData['name'];
+      if (courseName == null || courseName.isEmpty) {
+        print('Skipping golf course without name');
+        return;
+      }
+
+      // Remove the id field from Firebase data - let local DB auto-generate it
+      courseData.remove('id');
+
+      // Check if golf course exists by name (since name is unique)
+      final db = await _dbHelper.database;
+      List<Map<String, dynamic>> existingCourses = await db.query(
+        'golf_courses',
+        where: 'name = ?',
+        whereArgs: [courseName],
+        limit: 1,
+      );
+
+      if (existingCourses.isNotEmpty) {
+        // Update existing golf course by ID
+        int existingId = existingCourses.first['id'] as int;
+        await _dbHelper.updateGolfCourse(existingId, courseData);
+        print('Updated golf course: $courseName');
       } else {
-        // No ID, try to insert anyway
+        // Insert new golf course (ID will be auto-generated)
         await _dbHelper.insertGolfCourse(courseData);
-        print('Inserted golf course without ID: ${courseData['name']}');
+        print('Inserted new golf course: $courseName');
       }
     } catch (e) {
       print('Error inserting/updating golf course ${courseData['name']}: $e');
@@ -783,7 +805,7 @@ class _AdminScreenState extends State<AdminScreen> {
 
       int count = 0;
       for (var player in mondayPlayers) {
-        await _dbHelper.updatePlayer(player['id'], {
+        await _dbHelper.updatePlayer(player['player_number'], {
           'player_number': player['player_number'],
           'first': player['first'],
           'last': player['last'],
@@ -796,7 +818,7 @@ class _AdminScreenState extends State<AdminScreen> {
       }
 
       for (var player in wednesdayPlayers) {
-        await _dbHelper.updatePlayer(player['id'], {
+        await _dbHelper.updatePlayer(player['player_number'], {
           'player_number': player['player_number'],
           'first': player['first'],
           'last': player['last'],
@@ -819,6 +841,73 @@ class _AdminScreenState extends State<AdminScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error updating players: $e'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+
+  Future<void> _deleteMondayPlayerProfiles() async {
+    // Show confirmation dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete All Monday Player Profiles'),
+        content: RichText(
+          text: const TextSpan(
+            style: TextStyle(color: Colors.black, fontSize: 16),
+            children: [
+              TextSpan(text: 'This will permanently delete ALL player profiles from the '),
+              TextSpan(text: 'Monday', style: TextStyle(fontWeight: FontWeight.bold)),
+              TextSpan(text: ' league.\n\n'),
+              TextSpan(text: 'All player data including names, contact information, and skat numbers will be removed.\n\n'),
+              TextSpan(
+                text: 'This CANNOT be undone.',
+                style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
+              ),
+              TextSpan(text: '\n\nAre you sure?'),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('DELETE ALL'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      // Get all Monday players
+      final mondayPlayers = await _dbHelper.getPlayersByLeague(League.monday);
+
+      int count = 0;
+      for (var player in mondayPlayers) {
+        await _dbHelper.deletePlayer(player['player_number']);
+        count++;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Successfully deleted $count Monday player profiles'),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    } catch (e) {
+      print('Error deleting Monday player profiles: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error deleting players: $e'),
           backgroundColor: Colors.red,
           duration: const Duration(seconds: 3),
         ),

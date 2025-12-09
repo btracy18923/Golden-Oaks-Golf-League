@@ -178,7 +178,7 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
   Future<void> _loadPlayerScores(String playerLast) async {
     try {
       final scores = await _databaseHelper.getPlayerScoresSimple(
-        _players.firstWhere((p) => p['last'] == playerLast)['id'],
+        _players.firstWhere((p) => p['last'] == playerLast)['player_number'],
         _selectedLeague
       );
       setState(() {
@@ -239,9 +239,9 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
     }
     
     // Check for duplicate date - prevent multiple entries for the same player on the same date
-    final playerId = _players.firstWhere((p) => p['last'] == _selectedPlayer)['id'];
+    final playerId = _players.firstWhere((p) => p['last'] == _selectedPlayer)['player_number'];
     final currentDate = DateTime.now().toIso8601String().split('T')[0]; // Get YYYY-MM-DD format
-    
+
     try {
       final existingScoreForDate = await _databaseHelper.getPlayerScoreByDate(playerId, currentDate, _selectedLeague);
       if (existingScoreForDate != null) {
@@ -289,10 +289,10 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
     // SKAT number no longer used - removed from Monday league
     
     try {
-      final playerId = _players.firstWhere((p) => p['last'] == _selectedPlayer)['id'];
+      final playerId = _players.firstWhere((p) => p['last'] == _selectedPlayer)['player_number'];
       final player = _players.firstWhere((p) => p['last'] == _selectedPlayer);
       final playerName = '${player['first']} ${player['last']}';
-      
+
       Map<String, dynamic> scoreData = {
         'player_id': playerId,
         'name': player['last'], // Use only Last Name

@@ -305,7 +305,7 @@ class PlayerProfileService {
       width: tableWidth,
       decoration: BoxDecoration(
         border: Border.all(color: Colors.grey),
-        color: Colors.grey[50],
+        color: Colors.white,
       ),
       child: Column(
         children: [
@@ -364,8 +364,8 @@ class PlayerProfileService {
                         itemCount: players.length,
                         itemBuilder: (context, index) {
                           final player = players[index];
-                          final isSelected = selectedPlayer?['id'] == player['id'];
-                          
+                          final isSelected = selectedPlayer?['player_number'] == player['player_number'];
+
                           return GestureDetector(
                             onTap: (isKeyboardVisible || anyFieldHasFocus) ? null : () {
                               // Clear focus before selecting player

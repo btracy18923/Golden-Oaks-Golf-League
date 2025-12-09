@@ -20,7 +20,7 @@ class DatabaseHelper {
     
     return await openDatabase(
       path,
-      version: 19,
+      version: 20,
       onCreate: (db, version) {
         // DatabaseHelper: Creating new database with version $version
         return _createTables(db, version);
@@ -591,6 +591,39 @@ class DatabaseHelper {
         print('Warning: Could not add id column to monday_scores table: $e');
       }
     }
+    if (oldVersion < 20) {
+      // Remove Handicap and other unwanted columns from golf_courses table
+      try {
+        // Create new golf_courses table with only the 6 required columns
+        await db.execute('''
+          CREATE TABLE golf_courses_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT UNIQUE NOT NULL,
+            phone TEXT,
+            Par3s INTEGER,
+            tees TEXT,
+            travel_time TEXT
+          )
+        ''');
+
+        // Copy data from old table to new table (only the 6 fields we want to keep)
+        await db.execute('''
+          INSERT INTO golf_courses_new (id, name, phone, Par3s, tees, travel_time)
+          SELECT id, name, phone,
+            CASE WHEN typeof(Par3s) = 'integer' THEN Par3s ELSE NULL END,
+            tees, travel_time
+          FROM golf_courses
+        ''');
+
+        // Drop old table and rename new table
+        await db.execute('DROP TABLE golf_courses');
+        await db.execute('ALTER TABLE golf_courses_new RENAME TO golf_courses');
+
+        print('Successfully removed unwanted columns from golf_courses table');
+      } catch (e) {
+        print('Warning: Could not migrate golf_courses table: $e');
+      }
+    }
   }
 
   Future<void> _insertDefaultSettings(Database db) async {
@@ -604,12 +637,12 @@ class DatabaseHelper {
   Future<void> _insertSampleData(Database db) async {
     // Insert sample players for both leagues
     List<Map<String, dynamic>> samplePlayers = [
-      {'player_number': 101, 'first': 'John', 'last': 'Smith', 'handicap': 12.5, 'skat_number': 1, 'cell': '555-123-4567', 'email': 'john@example.com', 'league': 'monday'},
-      {'player_number': 102, 'first': 'Mike', 'last': 'Jones', 'handicap': 18.0, 'skat_number': 2, 'cell': '555-234-5678', 'email': 'mike@example.com', 'league': 'monday'},
-      {'player_number': 103, 'first': 'Bob', 'last': 'Wilson', 'handicap': 8.5, 'skat_number': 3, 'cell': '555-345-6789', 'email': 'bob@example.com', 'league': 'monday'},
-      {'player_number': 201, 'first': 'Tom', 'last': 'Brown', 'handicap': 15.0, 'cell': '555-456-7890', 'email': 'tom@example.com', 'league': 'wednesday'},
-      {'player_number': 202, 'first': 'Dave', 'last': 'Davis', 'handicap': 22.0, 'cell': '555-567-8901', 'email': 'dave@example.com', 'league': 'wednesday'},
-      {'player_number': 203, 'first': 'Steve', 'last': 'Miller', 'handicap': 10.5, 'cell': '555-678-9012', 'email': 'steve@example.com', 'league': 'wednesday'},
+      {'player_number': 101, 'first': 'John', 'last': 'Smith', 'skat_number': 1, 'cell': '555-123-4567', 'email': 'john@example.com', 'league': 'monday'},
+      {'player_number': 102, 'first': 'Mike', 'last': 'Jones', 'skat_number': 2, 'cell': '555-234-5678', 'email': 'mike@example.com', 'league': 'monday'},
+      {'player_number': 103, 'first': 'Bob', 'last': 'Wilson', 'skat_number': 3, 'cell': '555-345-6789', 'email': 'bob@example.com', 'league': 'monday'},
+      {'player_number': 201, 'first': 'Tom', 'last': 'Brown', 'cell': '555-456-7890', 'email': 'tom@example.com', 'league': 'wednesday'},
+      {'player_number': 202, 'first': 'Dave', 'last': 'Davis', 'cell': '555-567-8901', 'email': 'dave@example.com', 'league': 'wednesday'},
+      {'player_number': 203, 'first': 'Steve', 'last': 'Miller', 'cell': '555-678-9012', 'email': 'steve@example.com', 'league': 'wednesday'},
     ];
 
     for (var player in samplePlayers) {
@@ -666,10 +699,9 @@ class DatabaseHelper {
   // PLAYER METHODS
   Future<List<Map<String, dynamic>>> getAllPlayers() async {
     final db = await database;
-    
+
     return await db.query(
       'players',
-      where: 'active = 1',
       orderBy: 'last ASC',
     );
   }
@@ -677,10 +709,10 @@ class DatabaseHelper {
   Future<List<Map<String, dynamic>>> getPlayersByLeague(League league) async {
     final db = await database;
     String leagueStr = league == League.monday ? 'monday' : 'wednesday';
-    
+
     return await db.query(
       'players',
-      where: 'league = ? AND active = 1',
+      where: 'league = ?',
       whereArgs: [leagueStr],
       orderBy: 'last ASC',
     );
@@ -688,42 +720,39 @@ class DatabaseHelper {
 
   Future<Map<String, dynamic>?> getPlayer(int playerId) async {
     final db = await database;
-    
+
     List<Map<String, dynamic>> results = await db.query(
       'players',
-      where: 'id = ?',
+      where: 'player_number = ?',
       whereArgs: [playerId],
       limit: 1,
     );
-    
+
     return results.isNotEmpty ? results.first : null;
   }
 
   Future<int> insertPlayer(Map<String, dynamic> player) async {
     final db = await database;
-    player['updated_at'] = DateTime.now().toIso8601String();
     return await db.insert('players', player);
   }
 
   Future<int> updatePlayer(int playerId, Map<String, dynamic> player) async {
     final db = await database;
-    player['updated_at'] = DateTime.now().toIso8601String();
-    
+
     return await db.update(
       'players',
       player,
-      where: 'id = ?',
+      where: 'player_number = ?',
       whereArgs: [playerId],
     );
   }
 
   Future<int> deletePlayer(int playerId) async {
     final db = await database;
-    
-    return await db.update(
+
+    return await db.delete(
       'players',
-      {'active': 0, 'updated_at': DateTime.now().toIso8601String()},
-      where: 'id = ?',
+      where: 'player_number = ?',
       whereArgs: [playerId],
     );
   }
@@ -957,11 +986,10 @@ class DatabaseHelper {
     await _cleanupOldScores(playerId, leagueStr);
     
     return await db.rawQuery('''
-      SELECT 
-        s.*,
-        p.handicap
+      SELECT
+        s.*
       FROM scores s
-      JOIN players p ON s.player_id = p.id
+      JOIN players p ON s.player_id = p.player_number
       WHERE s.player_id = ? AND s.league = ?
       ORDER BY s.id DESC
       LIMIT 20
@@ -1131,9 +1159,9 @@ class DatabaseHelper {
     String leagueStr = league == League.monday ? 'monday' : 'wednesday';
     
     return await db.rawQuery('''
-      SELECT s.*, p.first, p.last, p.handicap 
+      SELECT s.*, p.first, p.last
       FROM scores s
-      JOIN players p ON s.player_id = p.id
+      JOIN players p ON s.player_id = p.player_number
       WHERE s.date_played = ? AND s.league = ?
       ORDER BY s.net_score ASC
     ''', [date, leagueStr]);
@@ -1194,9 +1222,9 @@ class DatabaseHelper {
     final db = await database;
     
     return await db.rawQuery('''
-      SELECT gp.*, p.first, p.last, p.handicap 
+      SELECT gp.*, p.first, p.last
       FROM game_players gp
-      JOIN players p ON gp.player_id = p.id
+      JOIN players p ON gp.player_id = p.player_number
       WHERE gp.game_id = ?
       ORDER BY gp.place_ranking ASC
     ''', [gameId]);
@@ -1357,11 +1385,11 @@ class DatabaseHelper {
 
   Future<Map<String, int>> getDataCounts() async {
     final db = await database;
-    
-    List<Map<String, dynamic>> playerCount = await db.rawQuery('SELECT COUNT(*) as count FROM players WHERE active = 1');
+
+    List<Map<String, dynamic>> playerCount = await db.rawQuery('SELECT COUNT(*) as count FROM players');
     List<Map<String, dynamic>> gameCount = await db.rawQuery('SELECT COUNT(*) as count FROM games');
     List<Map<String, dynamic>> scoreCount = await db.rawQuery('SELECT COUNT(*) as count FROM scores');
-    
+
     return {
       'players': playerCount.first['count'] as int,
       'games': gameCount.first['count'] as int,
