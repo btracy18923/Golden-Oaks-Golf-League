@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../models/league.dart';
 import '../shared/league_purse_service.dart';
+import '../responsive_typography.dart';
 
 /// Device type enumeration for responsive design
 enum DeviceType { phone6_5, tablet8, tablet10 }
@@ -163,7 +164,10 @@ class EnterScoresUIService {
                   Text(
                     '${LeaguePurseService.getPrimaryPurseLabel(league)} = ',
                     style: TextStyle(
-                      fontSize: fontSize,
+                      fontSize: deviceType == DeviceType.phone6_5 ? 10.0 :
+                               deviceType == DeviceType.tablet8 ? 18.0 :
+                               deviceType == DeviceType.tablet10 ? 22.0 :
+                               ResponsiveTypography.getLabel(context),
                       fontWeight: FontWeight.bold,
                       color: Colors.black,
                     ),
@@ -177,7 +181,10 @@ class EnterScoresUIService {
                     child: Text(
                       LeaguePurseService.formatPurseAmount(LeaguePurseService.getPrimaryPurse(league)),
                       style: TextStyle(
-                        fontSize: fontSize,
+                        fontSize: deviceType == DeviceType.phone6_5 ? 10.0 :
+                                 deviceType == DeviceType.tablet8 ? 18.0 :
+                                 deviceType == DeviceType.tablet10 ? 22.0 :
+                                 ResponsiveTypography.getDisplay(context),
                         fontWeight: FontWeight.bold,
                         color: Colors.black,
                       ),
@@ -197,7 +204,10 @@ class EnterScoresUIService {
                   Text(
                     'Closest Pin Purse = ',
                     style: TextStyle(
-                      fontSize: fontSize,
+                      fontSize: deviceType == DeviceType.phone6_5 ? 10.0 :
+                               deviceType == DeviceType.tablet8 ? 18.0 :
+                               deviceType == DeviceType.tablet10 ? 22.0 :
+                               ResponsiveTypography.getLabel(context),
                       fontWeight: FontWeight.bold,
                       color: Colors.black,
                     ),
@@ -211,7 +221,10 @@ class EnterScoresUIService {
                     child: Text(
                       LeaguePurseService.formatPurseAmount(LeaguePurseService.closestPinPurse),
                       style: TextStyle(
-                        fontSize: fontSize,
+                        fontSize: deviceType == DeviceType.phone6_5 ? 10.0 :
+                                 deviceType == DeviceType.tablet8 ? 18.0 :
+                                 deviceType == DeviceType.tablet10 ? 22.0 :
+                                 ResponsiveTypography.getDisplay(context),
                         fontWeight: FontWeight.bold,
                         color: Colors.black,
                       ),
@@ -231,7 +244,10 @@ class EnterScoresUIService {
                   Text(
                     'Mulligan Purse = ',
                     style: TextStyle(
-                      fontSize: fontSize,
+                      fontSize: deviceType == DeviceType.phone6_5 ? 10.0 :
+                               deviceType == DeviceType.tablet8 ? 18.0 :
+                               deviceType == DeviceType.tablet10 ? 22.0 :
+                               ResponsiveTypography.getLabel(context),
                       fontWeight: FontWeight.bold,
                       color: Colors.black,
                     ),
@@ -245,7 +261,10 @@ class EnterScoresUIService {
                     child: Text(
                       LeaguePurseService.formatPurseAmount(LeaguePurseService.mulliganPurse),
                       style: TextStyle(
-                        fontSize: fontSize,
+                        fontSize: deviceType == DeviceType.phone6_5 ? 10.0 :
+                                 deviceType == DeviceType.tablet8 ? 18.0 :
+                                 deviceType == DeviceType.tablet10 ? 22.0 :
+                                 ResponsiveTypography.getDisplay(context),
                         fontWeight: FontWeight.bold,
                         color: Colors.black,
                       ),
@@ -483,8 +502,7 @@ class EnterScoresUIService {
             child: Text(
               '-----$groupTitle-----',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: fontSize,
+              style: ResponsiveTypography.headingStyle(context,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -556,9 +574,8 @@ class EnterScoresUIService {
           child: Text(
             text,
             textAlign: TextAlign.center,
-            style: TextStyle(
+            style: ResponsiveTypography.smallStyle(context,
               fontWeight: FontWeight.bold,
-              fontSize: fontSize,
             ),
           ),
         ),
@@ -720,9 +737,8 @@ class EnterScoresUIService {
         child: Text(
           displayText,
           textAlign: flex == 2 ? TextAlign.left : TextAlign.center, // Left align for Name column (flex: 2), center for others
-          style: TextStyle(
-            fontSize: fontSize,
-            fontWeight: FontWeight.bold, // Make all data fields bold
+          style: ResponsiveTypography.smallStyle(context,
+            fontWeight: FontWeight.bold,
           ),
         ),
       ),
@@ -766,10 +782,9 @@ class EnterScoresUIService {
           child: Text(
             displayText,
             textAlign: flex == 2 ? TextAlign.left : TextAlign.center, // Left align for Name column (flex: 2), center for others
-            style: TextStyle(
-              fontSize: fontSize,
-              fontWeight: FontWeight.bold, // Make all data fields bold
-              color: onTap != null ? Colors.blue[700] : Colors.black, // Blue color for clickable text
+            style: ResponsiveTypography.smallStyle(context,
+              fontWeight: FontWeight.bold,
+              color: onTap != null ? Colors.blue[700] : Colors.black,
             ),
           ),
         ),
@@ -834,9 +849,8 @@ class EnterScoresUIService {
             enableInteractiveSelection: false, // Disable text selection
             textAlign: TextAlign.center,
             textAlignVertical: TextAlignVertical.center,
-            style: TextStyle(
-              fontSize: fontSize,
-              fontWeight: FontWeight.bold, // Make input fields bold
+            style: ResponsiveTypography.smallStyle(context,
+              fontWeight: FontWeight.bold,
             ),
             decoration: InputDecoration(
               border: InputBorder.none,
@@ -905,8 +919,7 @@ class EnterScoresUIService {
           ),
           child: Text(
             displayText,
-            style: TextStyle(
-              fontSize: fontSize,
+            style: ResponsiveTypography.buttonStyle(context,
               fontWeight: FontWeight.bold,
               color: Colors.black,
             ),

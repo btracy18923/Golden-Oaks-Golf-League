@@ -10,6 +10,8 @@ import '../../services/payout_validation_service.dart';
 import '../../services/database_helper.dart';
 import '../../services/screen_data_retention_service.dart';
 import '../../services/skat_adjustment_service.dart';
+import '../../services/device_detection_service.dart' as DeviceDetection;
+import '../../services/responsive_typography.dart';
 import '../../models/league.dart';
 import 'monday_closest_pin_screen.dart';
 import 'monday_results_screen.dart';
@@ -1223,18 +1225,31 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     );
   }
 
+  /// Converts DeviceDetectionService.DeviceType to EnterScoresUIService.DeviceType
+  DeviceType _convertToUIServiceDeviceType(DeviceDetection.DeviceType detectionServiceType) {
+    switch (detectionServiceType) {
+      case DeviceDetection.DeviceType.phone6Point5:
+        return DeviceType.phone6_5;
+      case DeviceDetection.DeviceType.tablet8Inch:
+        return DeviceType.tablet8;
+      case DeviceDetection.DeviceType.tablet10Inch:
+        return DeviceType.tablet10;
+    }
+  }
+
   /// Builds bottom buttons with dynamic SWAP button text
   Widget _buildBottomButtonsWithSwap() {
-    final deviceType = EnterScoresUIService.getDeviceType(context);
+    final detectedDeviceType = DeviceDetection.DeviceDetectionService.getDeviceType(context);
+    final deviceType = _convertToUIServiceDeviceType(detectedDeviceType);
     final padding = EnterScoresUIService.getResponsivePadding(deviceType);
-    
+
     return Container(
       color: Colors.grey[300],
       padding: EdgeInsets.all(padding.left / 2),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _buildCustomButton(context, 'Return', Colors.blue[200]!, _handleReturn),
+          _buildCustomButton(context, 'Back', Colors.blue[200]!, _handleReturn),
           _buildCustomButton(context, 'Shuffle', _getShuffleButtonColor(), _getShuffleButtonHandler()),
           _buildCustomButton(context, 'ClosePin \$\$\$', _getClosestPinButtonColor(), _getClosestPinButtonHandler()),
           _buildCustomButton(context, _getSkatButtonText(), _getSkatButtonColor(), _getSkatButtonHandler()),
@@ -1246,13 +1261,14 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
 
   /// Builds a custom button with dynamic text support
   Widget _buildCustomButton(BuildContext context, String text, Color color, VoidCallback onPressed) {
-    final deviceType = EnterScoresUIService.getDeviceType(context);
+    final detectedDeviceType = DeviceDetection.DeviceDetectionService.getDeviceType(context);
+    final deviceType = _convertToUIServiceDeviceType(detectedDeviceType);
     final fontSize = EnterScoresUIService.getResponsiveFontSize(deviceType, isHeader: true);
     final padding = EnterScoresUIService.getResponsivePadding(deviceType);
-    
+
     // Adjust button text for smaller screens
     String displayText = text;
-    if (deviceType == DeviceType.phone6_5) {
+    if (detectedDeviceType == DeviceDetection.DeviceType.phone6Point5) {
       if (text == 'Closest Pin') displayText = 'ClosePin';
       if (text.startsWith('SWAP') && text != 'SWAP Players') displayText = 'SWAP'; // Keep swap service text short on phones
     }
@@ -1272,8 +1288,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
           ),
           child: Text(
             displayText,
-            style: TextStyle(
-              fontSize: fontSize,
+            style: ResponsiveTypography.buttonStyle(context,
               fontWeight: FontWeight.bold,
               color: Colors.black,
             ),
@@ -1302,7 +1317,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
             children: [
               EnterScoresUIService.buildPurseHeader(context, League.monday, onReturn: _handleReturn, onAutoFill: _handleAutoFill),
               EnterScoresUIService.buildGroupsGrid(
-                context, 
+                context,
                 groups,
                 onPlayerTap: _onPlayerTap,
                 onEmptySlotTap: _onEmptySlotTap,
