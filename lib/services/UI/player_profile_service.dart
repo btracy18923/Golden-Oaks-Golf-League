@@ -751,8 +751,7 @@ class PlayerProfileService {
       );
     }
     
-    // For other screen sizes, keep the scroll wrapper
-    if (is10Tablet) {
+    // For 10" tablets and other screen sizes, keep the scroll wrapper
     return Center(
       child: SingleChildScrollView(
         child: Padding(
@@ -760,28 +759,28 @@ class PlayerProfileService {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.start,
             children: [
-          buildCompactFormField('ID#', idController, idFocus, firstFocus, 
-            keyboardType: TextInputType.number, 
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
-          const SizedBox(height: 8),
-          buildCompactFormField('First Name', firstController, firstFocus, lastFocus),
-          const SizedBox(height: 8),
-          buildCompactFormField('Last Name', lastController, lastFocus, skatFocus),
-          const SizedBox(height: 8),
-          buildCompactFormField('SKAT#', skatController, skatFocus, cellFocus, 
-            keyboardType: TextInputType.number, 
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
-          const SizedBox(height: 8),
-          buildCompactFormField('Cell Phone', cellController, cellFocus, emailFocus, 
-            keyboardType: const TextInputType.numberWithOptions(decimal: false)),
-          const SizedBox(height: 8),
-          buildCompactFormField('Email', emailController, emailFocus, null),
-        ],
+              buildCompactFormField('ID#', idController, idFocus, firstFocus,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
+              const SizedBox(height: 8),
+              buildCompactFormField('First Name', firstController, firstFocus, lastFocus),
+              const SizedBox(height: 8),
+              buildCompactFormField('Last Name', lastController, lastFocus, skatFocus),
+              const SizedBox(height: 8),
+              buildCompactFormField('SKAT#', skatController, skatFocus, cellFocus,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
+              const SizedBox(height: 8),
+              buildCompactFormField('Cell Phone', cellController, cellFocus, emailFocus,
+                keyboardType: const TextInputType.numberWithOptions(decimal: false)),
+              const SizedBox(height: 8),
+              buildCompactFormField('Email', emailController, emailFocus, null),
+            ],
           ),
         ),
       ),
     );
-  }}
+  }
   
   static Widget buildButtonFooterLandscape(
     VoidCallback onAddPlayer,
