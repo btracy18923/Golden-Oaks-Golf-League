@@ -20,6 +20,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
   final ScreenDataRetentionService _retentionService = ScreenDataRetentionService();
   final DatabaseHelper _databaseHelper = DatabaseHelper();
   final FirebaseUploadService _firebaseUploadService = FirebaseUploadService();
+  bool _isSaving = false;
 
   @override
   void initState() {
@@ -58,7 +59,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
       // Get player database records for lookups
       final allDbPlayers = await _databaseHelper.getPlayersByLeague(League.monday);
       
-      // STEP A1: Create rows for ALL selected players from monday_enter_scores_screen
+      // STEP A0: Collect all selected players
       List<PlayerData> allSelectedPlayers = [];
       for (int groupIndex = 0; groupIndex < playerGroups.length; groupIndex++) {
         for (var player in playerGroups[groupIndex]) {
@@ -67,10 +68,51 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
           }
         }
       }
-      
+
+      // CRITICAL: Check for duplicate dates BEFORE saving anything
+      // If ANY player already has a score for today, abort the entire save operation
+      bool duplicateFound = false;
+      for (var player in allSelectedPlayers) {
+        final dbPlayer = allDbPlayers.firstWhere(
+          (p) => p['last'] == player.name,
+          orElse: () => <String, dynamic>{}
+        );
+
+        if (dbPlayer.isNotEmpty) {
+          final playerId = dbPlayer['player_number'];
+          final existingScoreForDate = await _databaseHelper.getPlayerScoreByDate(playerId, currentDate, League.monday);
+
+          if (existingScoreForDate != null) {
+            duplicateFound = true;
+            break; // Stop checking as soon as we find one duplicate
+          }
+        }
+      }
+
+      // If duplicate date found, show error and DO NOT SAVE
+      if (duplicateFound) {
+        if (!mounted) return;
+        final screenSize = MediaQuery.of(context).size;
+        final is6InchPhone = screenSize.width <= 900;
+        final is8InchTablet = screenSize.width > 900 && screenSize.width <= 1200;
+        final double fontSize = is6InchPhone ? 14 : (is8InchTablet ? 16 : 34);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Duplicate Play Dates - SKAT data not saved',
+              style: TextStyle(fontSize: fontSize),
+            ),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+        return; // STOP HERE - Do not save to database or Firebase
+      }
+
       //print("Step A1: Creating rows for ${allSelectedPlayers.length} selected players");
-      
-      // Create initial rows for all selected players
+
+      // STEP A1: Create initial rows for all selected players
       Map<String, int> playerToRecordId = {}; // Track record IDs for updates
       for (var player in allSelectedPlayers) {
         // Find matching player in database
@@ -82,7 +124,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
         if (dbPlayer.isNotEmpty) {
           // Create initial score record with basic data
           Map<String, dynamic> scoreData = {
-            'player_id': dbPlayer['id'],
+            'player_id': dbPlayer['player_number'],
             'name': player.name,
             'date_played': currentDate,
             'golf_course': selectedGolfCourse,
@@ -165,7 +207,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
         SnackBar(
           content: Text('Results saved successfully! ${allSelectedPlayers.length} player records created and updated.'),
           backgroundColor: Colors.green,
-          duration: Duration(seconds: 3),
+          duration: const Duration(seconds: 3),
         ),
       );
     } catch (e) {
@@ -174,7 +216,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
         SnackBar(
           content: Text('Error saving results: $e'),
           backgroundColor: Colors.red,
-          duration: Duration(seconds: 3),
+          duration: const Duration(seconds: 3),
         ),
       );
     }
@@ -197,32 +239,50 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
 
   /// Saves results to database and returns to the main menu
   Future<void> _saveResultsAndReturnToMainMenu() async {
-    // First save the results
-    await _saveResultsToDatabase();
-    
-    // Clear all retained data for a fresh session
-    _retentionService.clearAllData();
-    
-    // Immediately lock to landscape mode
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
-    
-    // Navigate back to main menu, removing all previous screens from stack
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (context) {
-        // Ensure orientation is locked again after navigation
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          SystemChrome.setPreferredOrientations([
-            DeviceOrientation.landscapeLeft,
-            DeviceOrientation.landscapeRight,
-          ]);
+    // Prevent multiple simultaneous saves
+    if (_isSaving) return;
+
+    setState(() {
+      _isSaving = true;
+    });
+
+    try {
+      // First save the results
+      await _saveResultsToDatabase();
+
+      // Clear all retained data for a fresh session
+      _retentionService.clearAllData();
+
+      // Immediately lock to landscape mode
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+
+      // Navigate back to main menu, removing all previous screens from stack
+      if (mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) {
+            // Ensure orientation is locked again after navigation
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              SystemChrome.setPreferredOrientations([
+                DeviceOrientation.landscapeLeft,
+                DeviceOrientation.landscapeRight,
+              ]);
+            });
+            return const UnifiedMainMenuScreen();
+          }),
+          (Route<dynamic> route) => false,
+        );
+      }
+    } finally {
+      // Reset saving state (though we're navigating away, this is good practice)
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
         });
-        return const UnifiedMainMenuScreen();
-      }),
-      (Route<dynamic> route) => false,
-    );
+      }
+    }
   }
 
   @override
@@ -235,11 +295,11 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
   }
 
   Widget _buildPhoneLayout() {
-    final double basePadding = 8.0;
-    final double contentPadding = 12.0;
-    final double iconSize = 18;
-    final double buttonHeight = 4;
-    final double buttonFontSize = 12;
+    const double basePadding = 8.0;
+    const double contentPadding = 12.0;
+    const double iconSize = 18;
+    const double buttonHeight = 4;
+    const double buttonFontSize = 12;
     
     return Scaffold(
       backgroundColor: Colors.grey[100],
@@ -258,12 +318,12 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
         toolbarHeight: 48,
       ),
       body: Padding(
-        padding: EdgeInsets.all(basePadding),
+        padding: const EdgeInsets.all(basePadding),
         child: Column(
           children: [
             Expanded(
               child: Container(
-                padding: EdgeInsets.all(contentPadding),
+                padding: const EdgeInsets.all(contentPadding),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(8.0),
@@ -273,7 +333,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      SizedBox(height: basePadding),
+                      const SizedBox(height: basePadding),
                       _buildDataSection(
                         '',
                         _buildUnifiedData(),
@@ -296,11 +356,11 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
   }
 
   Widget _buildTablet8Layout() {
-    final double basePadding = 12.0;
-    final double contentPadding = 16.0;
-    final double iconSize = 20;
-    final double buttonHeight = 5;
-    final double buttonFontSize = 13;
+    const double basePadding = 12.0;
+    const double contentPadding = 16.0;
+    const double iconSize = 20;
+    const double buttonHeight = 5;
+    const double buttonFontSize = 13;
     
     return Scaffold(
       backgroundColor: Colors.grey[100],
@@ -319,12 +379,12 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
         toolbarHeight: 56,
       ),
       body: Padding(
-        padding: EdgeInsets.all(basePadding),
+        padding: const EdgeInsets.all(basePadding),
         child: Column(
           children: [
             Expanded(
               child: Container(
-                padding: EdgeInsets.all(contentPadding),
+                padding: const EdgeInsets.all(contentPadding),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(8.0),
@@ -334,7 +394,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      SizedBox(height: basePadding),
+                      const SizedBox(height: basePadding),
                       _buildDataSection(
                         '',
                         _buildUnifiedData(),
@@ -357,11 +417,11 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
   }
 
   Widget _buildTablet10Layout() {
-    final double basePadding = 16.0;
-    final double contentPadding = 20.0;
-    final double iconSize = 22;
-    final double buttonHeight = 6;
-    final double buttonFontSize = 14;
+    const double basePadding = 16.0;
+    const double contentPadding = 20.0;
+    const double iconSize = 22;
+    const double buttonHeight = 6;
+    const double buttonFontSize = 24;
     
     return Scaffold(
       backgroundColor: Colors.grey[100],
@@ -370,7 +430,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
           'Monday League Results',
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            fontSize: 22,
+            fontSize: 24,
           ),
         ),
         backgroundColor: Colors.green[700],
@@ -380,12 +440,12 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
         toolbarHeight: 64,
       ),
       body: Padding(
-        padding: EdgeInsets.all(basePadding),
+        padding: const EdgeInsets.all(basePadding),
         child: Column(
           children: [
             Expanded(
               child: Container(
-                padding: EdgeInsets.all(contentPadding),
+                padding: const EdgeInsets.all(contentPadding),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(8.0),
@@ -395,7 +455,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      SizedBox(height: basePadding),
+                      const SizedBox(height: basePadding),
                       _buildDataSection(
                         '',
                         _buildUnifiedData(),
@@ -421,15 +481,15 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final buttonWidth = MediaQuery.of(context).size.width * widthRatio;
-        
+
         return Align(
-          alignment: Alignment.centerRight,
+          alignment: Alignment.centerLeft,
           child: SizedBox(
             width: buttonWidth,
             child: ElevatedButton(
-              onPressed: _saveResultsAndReturnToMainMenu,
+              onPressed: _isSaving ? null : _saveResultsAndReturnToMainMenu,
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green[600],
+                backgroundColor: Colors.blue[600],
                 foregroundColor: Colors.white,
                 padding: EdgeInsets.symmetric(vertical: buttonHeight),
                 shape: RoundedRectangleBorder(
@@ -437,23 +497,48 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
                   side: const BorderSide(color: Colors.black, width: 1),
                 ),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.save, size: iconSize),
-                  const SizedBox(width: 8),
-                  Flexible(
-                    child: Text(
-                      'Save Results',
-                      style: TextStyle(
-                        fontSize: buttonFontSize,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      overflow: TextOverflow.ellipsis,
+              child: _isSaving
+                  ? Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        SizedBox(
+                          width: iconSize,
+                          height: iconSize,
+                          child: const CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            'Saving...',
+                            style: TextStyle(
+                              fontSize: buttonFontSize,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    )
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.save, size: iconSize),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            'Save Results',
+                            style: TextStyle(
+                              fontSize: buttonFontSize,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                ],
-              ),
             ),
           ),
         );
@@ -558,7 +643,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
             final screenSize = MediaQuery.of(context).size;
             final is6InchPhone = screenSize.width <= 900;
             
-            final double fontSize = is6InchPhone ? 12 : 14;
+            final double fontSize = is6InchPhone ? 12 : 24;
             
             return Container(
               padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
@@ -633,7 +718,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
         builder: (context, constraints) {
           final screenSize = MediaQuery.of(context).size;
           final is6InchPhone = screenSize.width <= 900;
-          final double fontSize = is6InchPhone ? 12 : 14;
+          final double fontSize = is6InchPhone ? 12 : 24;
           
           return Row(
             children: [
@@ -660,7 +745,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
               ),
               Expanded(
                 child: Text(
-                  'Party Fund = \$${adjustedMulliganPurse.toStringAsFixed(2)}',
+                  "Party Fund = \$${adjustedMulliganPurse.toStringAsFixed(2)}",
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
                     color: Colors.black87,
@@ -686,7 +771,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
         builder: (context, constraints) {
           final screenSize = MediaQuery.of(context).size;
           final is6InchPhone = screenSize.width <= 900;
-          final double fontSize = is6InchPhone ? 12 : 14;
+          final double fontSize = is6InchPhone ? 12 : 24;
           
           return Text(
             'Golf Course: ${_retentionService.selectedGolfCourse ?? 'Not Selected'}',
@@ -707,62 +792,6 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
     return const SizedBox.shrink();
   }
 
-  /// Builds the player selection data display
-  Widget _buildPlayerSelectionData() {
-    if (!_retentionService.hasPlayerSelectionData()) {
-      return const Text(
-        'No player selection data available',
-        style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic),
-      );
-    }
-
-    final selectedPlayers = _retentionService.selectedPlayers ?? [];
-    final selectedCount = selectedPlayers.length;
-    
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Text(
-        'Total Players Selected: $selectedCount',
-        style: const TextStyle(
-          fontWeight: FontWeight.w600,
-          color: Colors.black87,
-        ),
-      ),
-    );
-  }
-
-  /// Builds the enter scores data display
-  Widget _buildEnterScoresData() {
-    if (!_retentionService.hasEnterScoresData()) {
-      return const Text(
-        'No game results data available',
-        style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic),
-      );
-    }
-
-    final playerGroups = _retentionService.playerGroups ?? [];
-    final groupsWithPlayers = playerGroups.where((group) => group.isNotEmpty).length;
-    final totalPlayers = playerGroups.fold<int>(0, (sum, group) => sum + group.length);
-    final playersWithMoney = _countPlayersWithMoney(playerGroups);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (_retentionService.hasMoneyCalculations == true)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4),
-            child: Text(
-              'Winners (with money): $playersWithMoney',
-              style: const TextStyle(
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-
   /// Builds the closest pin data display
   Widget _buildClosestPinData() {
     if (!_retentionService.hasClosestPinData()) {
@@ -772,14 +801,11 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
       );
     }
 
-    final totalPins = _retentionService.totalClosestPins ?? 0;
-    final remainingPins = _retentionService.remainingClosestPins ?? 0;
-    final remainingPurse = _retentionService.remainingClosestPinPurse ?? 0.0;
     final playerCounts = _retentionService.playerClosestPinCounts ?? {};
     final playerWinnings = _retentionService.playerClosestPinWinnings ?? {};
     
     final winnersCount = playerCounts.values.where((count) => count > 0).length;
-    final totalWinnings = playerWinnings.values.fold<double>(0.0, (sum, amount) => sum + amount);
+    playerWinnings.values.fold<double>(0.0, (sum, amount) => sum + amount);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -820,9 +846,9 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
     // Calculate Skat Value: $$$ / DIFF (prefer whole numbers, fallback to rounded)
     double skatValue = 0.0;
     double? fallbackValue;
-    
+
     for (var player in allPlayers) {
-      if (player.money.isNotEmpty && player.money.contains('\$') && 
+      if (player.money.isNotEmpty && player.money.contains('\$') &&
           player.diff.isNotEmpty && player.diff != '-') {
         try {
           final moneyValue = double.parse(player.money.replaceAll('\$', '').replaceAll(',', ''));
@@ -843,7 +869,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
         }
       }
     }
-    
+
     // If no whole number found, use rounded fallback value
     if (skatValue == 0.0 && fallbackValue != null) {
       skatValue = fallbackValue.round().toDouble();
@@ -856,8 +882,8 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
           builder: (context, constraints) {
             final screenSize = MediaQuery.of(context).size;
             final is6InchPhone = screenSize.width <= 900;
-            final double fontSize = is6InchPhone ? 14 : 16;
-            
+            final double fontSize = is6InchPhone ? 14 : 24;
+
             // Always use single row layout with Skat Value on the left
             return Row(
               children: [
@@ -887,15 +913,15 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
           },
         ),
         const SizedBox(height: 8),
-        
+
         // Table with responsive column widths
         LayoutBuilder(
           builder: (context, constraints) {
             final screenSize = MediaQuery.of(context).size;
             final is6InchPhone = screenSize.width <= 900;
-            
+
             // Adjust column widths for smaller screens
-            final Map<int, TableColumnWidth> columnWidths = is6InchPhone 
+            final Map<int, TableColumnWidth> columnWidths = is6InchPhone
               ? {
                   0: const FlexColumnWidth(3), // Name - wider on small screens
                   1: const FlexColumnWidth(1), // SK#
@@ -910,7 +936,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
                   3: const FlexColumnWidth(1), // Diff
                   4: const FlexColumnWidth(1), // Money
                 };
-            
+
             return Table(
               border: TableBorder.all(color: Colors.grey[400]!, width: 1),
               columnWidths: columnWidths,
@@ -926,7 +952,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
                     _buildTableCell('\$\$\$', isHeader: true, isCompact: false),
                   ],
                 ),
-                
+
                 // Player data rows
                 ...allPlayers.map((player) => TableRow(
                   children: [
@@ -935,103 +961,17 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
                     _buildTableCell(player.skats.isEmpty ? '-' : player.skats, isCompact: false),
                     _buildTableCell(player.diff.isEmpty ? '-' : player.diff, isCompact: false),
                     _buildTableCell(
-                      player.money.isEmpty ? '-' : player.money, 
+                      player.money.isEmpty ? '-' : player.money,
                       isCompact: false,
                       isMoneyColumn: true,
                     ),
                   ],
-                )).toList(),
+                )),
               ],
             );
           },
         ),
       ],
-    );
-  }
-
-  /// Builds a player details table showing scores and winnings
-  Widget _buildPlayerDetailsTable(bool isCompact) {
-    final playerGroups = _retentionService.playerGroups ?? [];
-    if (playerGroups.isEmpty) return const SizedBox.shrink();
-
-    // Flatten all players from all groups
-    List<PlayerData> allPlayers = [];
-    for (int groupIndex = 0; groupIndex < playerGroups.length; groupIndex++) {
-      for (var player in playerGroups[groupIndex]) {
-        allPlayers.add(player);
-      }
-    }
-
-    if (allPlayers.isEmpty) return const SizedBox.shrink();
-
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(isCompact ? 12 : 16),
-      decoration: BoxDecoration(
-        color: Colors.blue[50],
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.blue[200]!),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.table_chart, color: Colors.blue[700], size: isCompact ? 18 : 20),
-              const SizedBox(width: 8),
-              Text(
-                'Player Details',
-                style: TextStyle(
-                  fontSize: isCompact ? 16 : 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blue[800],
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: isCompact ? 8 : 12),
-          
-          // Table
-          Table(
-            border: TableBorder.all(color: Colors.grey[400]!, width: 1),
-            columnWidths: const {
-              0: FlexColumnWidth(2), // Name
-              1: FlexColumnWidth(1), // SK#
-              2: FlexColumnWidth(1), // Skats
-              3: FlexColumnWidth(1), // Diff
-              4: FlexColumnWidth(1), // Money
-            },
-            children: [
-              // Header row
-              TableRow(
-                decoration: BoxDecoration(color: Colors.grey[200]),
-                children: [
-                  _buildTableCell('Player', isHeader: true, isCompact: isCompact),
-                  _buildTableCell('SK#', isHeader: true, isCompact: isCompact),
-                  _buildTableCell('Skats', isHeader: true, isCompact: isCompact),
-                  _buildTableCell('Diff', isHeader: true, isCompact: isCompact),
-                  _buildTableCell('Money', isHeader: true, isCompact: isCompact),
-                ],
-              ),
-              
-              // Player data rows
-              ...allPlayers.map((player) => TableRow(
-                children: [
-                  _buildTableCell(player.name, isCompact: isCompact),
-                  _buildTableCell(player.skNumber, isCompact: isCompact),
-                  _buildTableCell(player.skats.isEmpty ? '-' : player.skats, isCompact: isCompact),
-                  _buildTableCell(player.diff.isEmpty ? '-' : player.diff, isCompact: isCompact),
-                  _buildTableCell(
-                    player.money.isEmpty ? '-' : player.money, 
-                    isCompact: isCompact,
-                    isMoneyColumn: true,
-                  ),
-                ],
-              )).toList(),
-            ],
-          ),
-        ],
-      ),
     );
   }
 
@@ -1042,7 +982,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
     final is8InchTablet = screenSize.width > 900 && screenSize.width <= 1200;
     
     // Responsive font sizes for table cells
-    final double fontSize = is6InchPhone ? 9 : (is8InchTablet ? 11 : 12);
+    final double fontSize = is6InchPhone ? 12 : (is8InchTablet ? 11 : 22);
     final double cellPadding = is6InchPhone ? 4 : (is8InchTablet ? 6 : 8);
     
     return Padding(
@@ -1052,80 +992,21 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
         style: TextStyle(
           fontSize: fontSize,
           fontWeight: isHeader ? FontWeight.bold : FontWeight.normal,
-          color: isMoneyColumn && text.contains('\$') ? Colors.green[700] : 
+          color: isMoneyColumn && text.contains('\$') ? Colors.black :
                  isHeader ? Colors.black87 : Colors.black,
         ),
-        textAlign: isHeader || isMoneyColumn ? TextAlign.center : TextAlign.left,
+        textAlign: isHeader || isMoneyColumn ? TextAlign.center : TextAlign.center,
         overflow: TextOverflow.ellipsis,
         maxLines: isHeader ? 2 : 1,
       ),
     );
   }
 
-  /// Builds a data row with label and value
-  Widget _buildDataRow(String label, dynamic value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 120,
-            child: Text(
-              '$label:',
-              style: const TextStyle(
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
-              ),
-            ),
-          ),
-          Expanded(
-            child: value is Widget
-                ? value
-                : Text(
-                    value.toString(),
-                    style: const TextStyle(color: Colors.black),
-                  ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Builds a formatted list of player names
-  Widget _buildPlayerNamesList(List<Map<String, dynamic>> players) {
-    if (players.isEmpty) {
-      return const Text('No players selected', style: TextStyle(color: Colors.grey));
-    }
-
-    final names = players
-        .map((player) => player['last']?.toString() ?? 'Unknown')
-        .toList();
-
-    return Text(
-      names.join(', '),
-      style: const TextStyle(color: Colors.black),
-    );
-  }
-
-  /// Counts players who have money earnings
-  int _countPlayersWithMoney(List<List<PlayerData>> groups) {
-    int count = 0;
-    for (var group in groups) {
-      for (var player in group) {
-        if (player.money.isNotEmpty && player.money.contains('\$')) {
-          count++;
-        }
-      }
-    }
-    return count;
-  }
-
   /// Builds a table showing closest pin winners and their winnings
   Widget _buildClosestPinWinnersTable() {
     final playerCounts = _retentionService.playerClosestPinCounts ?? {};
     final playerWinnings = _retentionService.playerClosestPinWinnings ?? {};
-    
+
     // Get only players who won closest pins
     final winners = playerCounts.entries
         .where((entry) => entry.value > 0)
@@ -1141,113 +1022,114 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
     // Sort by number of pins won (descending)
     winners.sort((a, b) => (b['pins'] as int).compareTo(a['pins'] as int));
 
-    return Container(
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey[400]!),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.green[300],
-              border: Border(bottom: BorderSide(color: Colors.grey[400]!)),
-            ),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final screenSize = MediaQuery.of(context).size;
-                final is6InchPhone = screenSize.width <= 900;
-                final double fontSize = is6InchPhone ? 12 : 14;
-                
-                return Row(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final screenSize = MediaQuery.of(context).size;
+        final is6InchPhone = screenSize.width <= 900;
+
+        // For 6.5" phones, constrain the table to minimum width
+        final tableWidget = Container(
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey[400]!),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.green[300],
+                  border: Border(bottom: BorderSide(color: Colors.grey[400]!)),
+                ),
+                child: Row(
                   children: [
                     Expanded(
-                      flex: is6InchPhone ? 3 : 2, 
+                      flex: is6InchPhone ? 3 : 2,
                       child: Text(
-                        'Closest Pin Winners', 
+                        'Closest Pin Winners',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: fontSize,
+                          fontSize: is6InchPhone ? 12 : 24,
                         ),
                       ),
                     ),
                     Expanded(
-                      flex: 1, 
+                      flex: 1,
                       child: Text(
-                        'Pins Won', 
+                        'Pins Won',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: fontSize,
-                        ), 
+                          fontSize: is6InchPhone ? 12 : 24,
+                        ),
                         textAlign: TextAlign.center,
                       ),
                     ),
                     Expanded(
-                      flex: 1, 
+                      flex: 1,
                       child: Text(
-                        'Winnings', 
+                        '\$\$\$',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: fontSize,
-                        ), 
+                          fontSize: is6InchPhone ? 12 : 24,
+                        ),
                         textAlign: TextAlign.center,
                       ),
                     ),
                   ],
-                );
-              },
-            ),
-          ),
-          ...winners.map((winner) => Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-            decoration: BoxDecoration(
-              border: Border(bottom: BorderSide(color: Colors.grey[300]!, width: 0.5)),
-            ),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final screenSize = MediaQuery.of(context).size;
-                final is6InchPhone = screenSize.width <= 900;
-                final double fontSize = is6InchPhone ? 11 : 13;
-                
-                return Row(
+                ),
+              ),
+              ...winners.map((winner) => Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                decoration: BoxDecoration(
+                  border: Border(bottom: BorderSide(color: Colors.grey[300]!, width: 0.5)),
+                ),
+                child: Row(
                   children: [
                     Expanded(
-                      flex: is6InchPhone ? 3 : 2, 
+                      flex: is6InchPhone ? 3 : 2,
                       child: Text(
                         winner['name'] as String,
-                        style: TextStyle(fontSize: fontSize),
+                        style: TextStyle(fontSize: is6InchPhone ? 11 : 24),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     Expanded(
-                      flex: 1, 
+                      flex: 1,
                       child: Text(
-                        '${winner['pins']}', 
+                        '${winner['pins']}',
                         textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: fontSize),
+                        style: TextStyle(fontSize: is6InchPhone ? 11 : 24),
                       ),
                     ),
                     Expanded(
-                      flex: 1, 
+                      flex: 1,
                       child: Text(
-                        '\$${(winner['winnings'] as double).round()}', 
+                        '\$${(winner['winnings'] as double).round()}',
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          color: Colors.green[700], 
+                          color: Colors.green[700],
                           fontWeight: FontWeight.w600,
-                          fontSize: fontSize,
+                          fontSize: is6InchPhone ? 11 : 24,
                         ),
                       ),
                     ),
                   ],
-                );
-              },
-            ),
-          )).toList(),
-        ],
-      ),
+                ),
+              )),
+            ],
+          ),
+        );
+
+        // Wrap in intrinsic width to minimize table width for all device sizes
+        return Align(
+          alignment: Alignment.center,
+          child: IntrinsicWidth(
+            child: tableWidget,
+          ),
+        );
+      },
     );
   }
+
 }

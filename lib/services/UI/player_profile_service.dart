@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../models/league.dart';
 import '../device_detection_service.dart';
 import '../responsive_typography.dart';
 
@@ -29,15 +28,15 @@ class PlayerProfileService {
     // Convert long labels to short labels for compact layouts
     String displayLabel = label;
     if (is6InchPhoneLandscape || (isTablet && isLandscape)) {
-      if (label == 'First Name') displayLabel = 'First';
-      else if (label == 'Last Name') displayLabel = 'Last';
-      else if (label == 'Cell Phone') displayLabel = 'Phone';
-      else if (label == 'SKAT#') displayLabel = 'SKAT#';
+      if (label == 'First Name') {displayLabel = 'First';}
+      else if (label == 'Last Name') {displayLabel = 'Last';}
+      else if (label == 'Cell Phone') {displayLabel = 'Phone';}
+      else if (label == 'SKAT#') {displayLabel = 'SKAT#';}
     }
     
     // Special two-row layout for Email field for all screen sizes
     if (label == 'Email') {
-      double labelFontSize = 16;  // Reduced from 20
+      double labelFontSize = 11;  // Reduced from 20
       double fieldHeight = 30;    // Reduced for phones
       double inputFontSize = 10;   // Reduced from 9
       
@@ -266,14 +265,12 @@ class PlayerProfileService {
     final size = MediaQuery.of(context).size;
     final orientation = MediaQuery.of(context).orientation;
     final screenWidth = size.width;
-    final screenHeight = size.height;
-    
+
     // Improved responsive breakpoints
     final isLargeTablet = screenWidth >= 1200;
     final isMediumTablet = screenWidth >= 800 && screenWidth < 1200;
     final isSmallTablet = screenWidth >= 600 && screenWidth < 800;
     final isPhone = screenWidth < 600;
-    final isTablet = isLargeTablet || isMediumTablet || isSmallTablet;
     final isLandscape = orientation == Orientation.landscape;
     final is6InchPhoneLandscape = isPhone && isLandscape;
     
@@ -314,7 +311,7 @@ class PlayerProfileService {
             height: rowHeight,
             decoration: BoxDecoration(
               color: Colors.green[300],
-              border: Border(bottom: BorderSide(color: Colors.grey)),
+              border: const Border(bottom: BorderSide(color: Colors.grey)),
             ),
             child: SizedBox(
               width: tableWidth,
@@ -401,7 +398,7 @@ class PlayerProfileService {
         // Overlay when keyboard is visible or fields have focus
         if (isKeyboardVisible || anyFieldHasFocus)
           Container(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black,       //.withOpacity(0.1),
             child: const Center(
               child: Icon(
                 Icons.keyboard,
@@ -415,7 +412,7 @@ class PlayerProfileService {
   }
   
   static Widget _buildMobilePlayerRow(Map<String, dynamic> player, double tableWidth, String Function(String?) formatPhoneNumber, double fontSize) {
-    final is6InchPhoneLandscape = tableWidth <= 540; // Infer from table width instead of screen width
+// Infer from table width instead of screen width
     
     return Row(
       children: [
@@ -555,7 +552,7 @@ class PlayerProfileService {
     
     if (is6InchPhoneLandscape) {
       // 6" phone landscape: 2-column layout with form on left, table on right
-      final footerHeight = 40.0; // Single row footer height
+      const footerHeight = 40.0; // Single row footer height
       final mainContentHeight = constraints.maxHeight - footerHeight - 5; // Content height minus footer and reduced spacing
       
       return Column(
@@ -585,7 +582,7 @@ class PlayerProfileService {
                 // Right column - Player Table (60% of width)
                 Expanded(
                   flex: 60,
-                  child: Container(
+                  child: SizedBox(
                     height: mainContentHeight,
                     child: playerTable,
                   ),
@@ -661,7 +658,7 @@ class PlayerProfileService {
                   keyboardType: TextInputType.number, 
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
                 buildFormField('Cell Phone', cellController, cellFocus, emailFocus, 
-                  keyboardType: TextInputType.numberWithOptions(decimal: false)),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: false)),
                 buildFormField('Email', emailController, emailFocus, null),
                 const SizedBox(height: 10),
               ],
@@ -716,7 +713,7 @@ class PlayerProfileService {
               inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
             const SizedBox(height: 0),
             buildCompactFormField('Cell Phone', cellController, cellFocus, emailFocus, 
-              keyboardType: TextInputType.numberWithOptions(decimal: false)),
+              keyboardType: const TextInputType.numberWithOptions(decimal: false)),
             const SizedBox(height: 0),
             buildCompactFormField('Email', emailController, emailFocus, null),
           ],
@@ -745,7 +742,7 @@ class PlayerProfileService {
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
               const SizedBox(height: 4),
               buildCompactFormField('Cell Phone', cellController, cellFocus, emailFocus, 
-                keyboardType: TextInputType.numberWithOptions(decimal: false)),
+                keyboardType: const TextInputType.numberWithOptions(decimal: false)),
               const SizedBox(height: 4),
               buildCompactFormField('Email', emailController, emailFocus, null),
             ],
@@ -755,6 +752,7 @@ class PlayerProfileService {
     }
     
     // For other screen sizes, keep the scroll wrapper
+    if (is10Tablet) {
     return Center(
       child: SingleChildScrollView(
         child: Padding(
@@ -775,7 +773,7 @@ class PlayerProfileService {
             inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
           const SizedBox(height: 8),
           buildCompactFormField('Cell Phone', cellController, cellFocus, emailFocus, 
-            keyboardType: TextInputType.numberWithOptions(decimal: false)),
+            keyboardType: const TextInputType.numberWithOptions(decimal: false)),
           const SizedBox(height: 8),
           buildCompactFormField('Email', emailController, emailFocus, null),
         ],
@@ -783,7 +781,7 @@ class PlayerProfileService {
         ),
       ),
     );
-  }
+  }}
   
   static Widget buildButtonFooterLandscape(
     VoidCallback onAddPlayer,

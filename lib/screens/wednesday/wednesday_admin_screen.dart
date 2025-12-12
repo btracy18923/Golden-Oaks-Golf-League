@@ -1,19 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../models/league.dart';
-import '../services/database_helper.dart';
+import '../../models/league.dart';
+import '../../services/database_helper.dart';
 
-class AdminScreen extends StatefulWidget {
+class WednesdayAdminScreen extends StatefulWidget {
   final League? currentLeague;
-  
-  const AdminScreen({super.key, this.currentLeague});
-  
+
+  const WednesdayAdminScreen({super.key, this.currentLeague});
+
   @override
-  State<AdminScreen> createState() => _AdminScreenState();
+  State<WednesdayAdminScreen> createState() => _WednesdayAdminScreenState();
 }
 
-class _AdminScreenState extends State<AdminScreen> {
+class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final DatabaseHelper _dbHelper = DatabaseHelper();
@@ -40,7 +40,7 @@ class _AdminScreenState extends State<AdminScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Administration Screen'),
+        title: const Text('Wednesday Administration'),
         backgroundColor: Colors.orange[800],
         foregroundColor: Colors.white,
       ),
@@ -52,53 +52,39 @@ class _AdminScreenState extends State<AdminScreen> {
               children: [
                 const SizedBox(height: 30),
                 const Text(
-                  'Firebase Management',
+                  'Wednesday League Firebase Management',
                   style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 40),
-                
-                // Row for Download Score buttons at the top
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildCompactDownloadButton(
-                        'Monday Scores',
-                        Colors.green[300]!,
-                        () => _downloadMondayPlayerScores(),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _buildCompactDownloadButton(
-                        'Wednesday Scores',
-                        Colors.orange[300]!,
-                        () => _downloadWednesdayPlayerScores(),
-                      ),
-                    ),
-                  ],
-                ),
-                
-                const SizedBox(height: 16),
-                
+
                 _buildDownloadButton(
-                  _isDownloading ? 'Downloading...' : 'Download Player Profiles',
+                  'Download Wednesday Player Scores',
+                  Icons.download,
+                  Colors.orange[300]!,
+                  () => _downloadWednesdayPlayerScores(),
+                ),
+
+                const SizedBox(height: 16),
+
+                _buildDownloadButton(
+                  _isDownloading ? 'Downloading...' : 'Download Wednesday Player Profiles',
                   _isDownloading ? Icons.hourglass_bottom : Icons.people,
                   _isDownloading ? Colors.grey[400]! : Colors.blue[300]!,
-                  _isDownloading ? () {} : () => _downloadPlayerProfiles(),
+                  _isDownloading ? () {} : () => _downloadWednesdayPlayerProfiles(),
                 ),
-                
+
                 const SizedBox(height: 16),
-                
+
                 _buildDownloadButton(
                   'Download Golf Courses',
                   Icons.golf_course,
                   Colors.green[300]!,
                   () => _downloadGolfCourses(),
                 ),
-                
+
                 const SizedBox(height: 16),
-                
+
                 _buildDownloadButton(
                   'Set All Golf Courses Par3s to 4',
                   Icons.update,
@@ -127,10 +113,10 @@ class _AdminScreenState extends State<AdminScreen> {
                 const SizedBox(height: 16),
 
                 _buildDownloadButton(
-                  'Delete All Monday Player Profiles',
+                  'Delete All Wednesday Player Profiles',
                   Icons.person_remove,
                   Colors.red[400]!,
-                  () => _deleteMondayPlayerProfiles(),
+                  () => _deleteWednesdayPlayerProfiles(),
                 ),
 
                 const SizedBox(height: 20),
@@ -141,10 +127,10 @@ class _AdminScreenState extends State<AdminScreen> {
       ),
     );
   }
-  
-  Future<void> _downloadPlayerProfiles() async {
+
+  Future<void> _downloadWednesdayPlayerProfiles() async {
     if (_isDownloading) return;
-    
+
     setState(() {
       _isDownloading = true;
     });
@@ -152,13 +138,13 @@ class _AdminScreenState extends State<AdminScreen> {
     try {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Downloading Player Profiles from Firebase...'),
+          content: Text('Downloading Wednesday Player Profiles from Firebase...'),
           backgroundColor: Colors.blue,
           duration: Duration(seconds: 2),
         ),
       );
 
-      
+
       // Test connection first
       try {
         await _firestore.collection('test').limit(1).get();
@@ -166,37 +152,11 @@ class _AdminScreenState extends State<AdminScreen> {
         throw Exception('Cannot connect to Firebase. Check internet connection and Firebase configuration.');
       }
 
-      // Download from both Monday and Wednesday player profile collections
-      
-      // Download Monday players
-      QuerySnapshot mondaySnapshot = await _firestore.collection('M_player_profile').get();
-
-      // Download Wednesday players
+      // Download from Wednesday player profile collection only
       QuerySnapshot wednesdaySnapshot = await _firestore.collection('wednesday_player_profile').get();
 
-      int mondayCount = 0;
       int wednesdayCount = 0;
       int errorCount = 0;
-
-      // Process Monday players
-      for (var doc in mondaySnapshot.docs) {
-        try {
-          Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-
-          // Clean up Firebase metadata
-          data.remove('uploaded_at');
-          data.remove('source');
-          data.remove('upload_timestamp');
-
-          // Set league based on collection
-          data['league'] = 'monday';
-
-          await _insertOrUpdatePlayer(data);
-          mondayCount++;
-        } catch (e) {
-          errorCount++;
-        }
-      }
 
       // Process Wednesday players
       for (var doc in wednesdaySnapshot.docs) {
@@ -223,10 +183,9 @@ class _AdminScreenState extends State<AdminScreen> {
         SnackBar(
           content: Text(
             'Download Complete!\n'
-            'Monday: $mondayCount players\n'
             'Wednesday: $wednesdayCount players\n'
             '${errorCount > 0 ? 'Errors: $errorCount\n' : ''}'
-            'Total: ${mondayCount + wednesdayCount} players downloaded'
+            'Total: $wednesdayCount players downloaded'
           ),
           backgroundColor: Colors.green,
           duration: const Duration(seconds: 4),
@@ -274,7 +233,7 @@ class _AdminScreenState extends State<AdminScreen> {
 
   Future<void> _downloadGolfCourses() async {
     if (_isDownloading) return;
-    
+
     setState(() {
       _isDownloading = true;
     });
@@ -296,21 +255,21 @@ class _AdminScreenState extends State<AdminScreen> {
       } else {
       }
 
-      // Download from Monday golf courses collection
+      // Download from Monday golf courses collection (shared between leagues)
       QuerySnapshot snapshot = await _firestore.collection('M_golf_course').get();
-      
+
       int courseCount = 0;
       int errorCount = 0;
 
       for (var doc in snapshot.docs) {
         try {
           Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-          
+
           // Clean up Firebase metadata
           data.remove('uploaded_at');
           data.remove('source');
           data.remove('upload_timestamp');
-          
+
           // Insert or update golf course in local database
           await _insertOrUpdateGolfCourse(data);
           courseCount++;
@@ -381,92 +340,9 @@ class _AdminScreenState extends State<AdminScreen> {
     }
   }
 
-  Future<void> _downloadMondayPlayerScores() async {
-    if (_isDownloading) return;
-    
-    setState(() {
-      _isDownloading = true;
-    });
-
-    try {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Downloading Monday Player Scores from Firebase...'),
-          backgroundColor: Colors.purple,
-          duration: Duration(seconds: 2),
-        ),
-      );
-
-      
-      // Test connection first
-      try {
-        await _firestore.collection('test').limit(1).get();
-      } catch (e) {
-        throw Exception('Cannot connect to Firebase. Check internet connection and Firebase configuration.');
-      }
-
-      // Download from M_player_scores collection only
-      
-      // Download Monday scores
-      QuerySnapshot mondaySnapshot = await _firestore.collection('M_player_scores').get();
-      
-      // Use only Monday docs
-      List<QueryDocumentSnapshot> allDocs = mondaySnapshot.docs;
-      
-      int mondayCount = 0;
-      int errorCount = 0;
-
-      
-      for (var doc in allDocs) {
-        try {
-          Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-          
-          // Clean up Firebase metadata
-          data.remove('uploaded_at');
-          data.remove('source');
-          data.remove('upload_timestamp');
-          
-          // All documents from M_player_scores go to Monday database
-          await _insertOrUpdatePlayerScore(data, 'monday');
-          mondayCount++;
-          
-        } catch (e) {
-          errorCount++;
-        }
-      }
-
-      // Show success message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Download Complete!\n'
-            'Monday Scores: $mondayCount downloaded\n'
-            '${errorCount > 0 ? 'Errors: $errorCount\n' : ''}'
-            'Total: $mondayCount scores downloaded from M_player_scores'
-          ),
-          backgroundColor: Colors.green,
-          duration: const Duration(seconds: 4),
-        ),
-      );
-
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Download Failed: ${e.toString()}'),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 3),
-        ),
-      );
-    } finally {
-      setState(() {
-        _isDownloading = false;
-      });
-    }
-  }
-
   Future<void> _downloadWednesdayPlayerScores() async {
     if (_isDownloading) return;
-    
+
     setState(() {
       _isDownloading = true;
     });
@@ -480,7 +356,7 @@ class _AdminScreenState extends State<AdminScreen> {
         ),
       );
 
-      
+
       // Test connection first
       try {
         await _firestore.collection('test').limit(1).get();
@@ -489,30 +365,30 @@ class _AdminScreenState extends State<AdminScreen> {
       }
 
       // Download from wednesday_player_scores collection only
-      
+
       // Download Wednesday scores
       QuerySnapshot wednesdaySnapshot = await _firestore.collection('wednesday_player_scores').get();
-      
+
       // Use only Wednesday docs
       List<QueryDocumentSnapshot> allDocs = wednesdaySnapshot.docs;
-      
+
       int wednesdayCount = 0;
       int errorCount = 0;
 
-      
+
       for (var doc in allDocs) {
         try {
           Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-          
+
           // Clean up Firebase metadata
           data.remove('uploaded_at');
           data.remove('source');
           data.remove('upload_timestamp');
-          
+
           // All documents from wednesday_player_scores go to Wednesday database
           await _insertOrUpdatePlayerScore(data, 'wednesday');
           wednesdayCount++;
-          
+
         } catch (e) {
           errorCount++;
         }
@@ -550,7 +426,7 @@ class _AdminScreenState extends State<AdminScreen> {
   /// Helper method to insert or update a player score
   Future<void> _insertOrUpdatePlayerScore(Map<String, dynamic> scoreData, String league) async {
     try {
-      
+
       // Convert Firebase field names back to local database field names
       // Note: Don't include 'league' field as it's not in the local database schema
       Map<String, dynamic> localScoreData = <String, dynamic>{
@@ -585,7 +461,7 @@ class _AdminScreenState extends State<AdminScreen> {
         }
       }
 
-      
+
       // Use the passed league parameter
       League leagueEnum = league == 'monday' ? League.monday : League.wednesday;
 
@@ -609,7 +485,7 @@ class _AdminScreenState extends State<AdminScreen> {
 
   Future<void> _updateAllGolfCoursesPar3sTo4() async {
     if (_isDownloading) return;
-    
+
     setState(() {
       _isDownloading = true;
     });
@@ -686,7 +562,7 @@ class _AdminScreenState extends State<AdminScreen> {
           SnackBar(
             content: Text('Error clearing data: $e'),
             backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
+            duration: Duration(seconds: 3),
           ),
         );
       }
@@ -779,18 +655,18 @@ class _AdminScreenState extends State<AdminScreen> {
     }
   }
 
-  Future<void> _deleteMondayPlayerProfiles() async {
+  Future<void> _deleteWednesdayPlayerProfiles() async {
     // Show confirmation dialog
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete All Monday Player Profiles'),
+        title: const Text('Delete All Wednesday Player Profiles'),
         content: RichText(
           text: const TextSpan(
             style: TextStyle(color: Colors.black, fontSize: 16),
             children: [
               TextSpan(text: 'This will permanently delete ALL player profiles from the '),
-              TextSpan(text: 'Monday', style: TextStyle(fontWeight: FontWeight.bold)),
+              TextSpan(text: 'Wednesday', style: TextStyle(fontWeight: FontWeight.bold)),
               TextSpan(text: ' league.\n\n'),
               TextSpan(text: 'All player data including names, contact information, and skat numbers will be removed.\n\n'),
               TextSpan(
@@ -818,18 +694,18 @@ class _AdminScreenState extends State<AdminScreen> {
     if (confirmed != true) return;
 
     try {
-      // Get all Monday players
-      final mondayPlayers = await _dbHelper.getPlayersByLeague(League.monday);
+      // Get all Wednesday players
+      final wednesdayPlayers = await _dbHelper.getPlayersByLeague(League.wednesday);
 
       int count = 0;
-      for (var player in mondayPlayers) {
+      for (var player in wednesdayPlayers) {
         await _dbHelper.deletePlayer(player['player_number']);
         count++;
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Successfully deleted $count Monday player profiles'),
+          content: Text('Successfully deleted $count Wednesday player profiles'),
           backgroundColor: Colors.green,
           duration: const Duration(seconds: 3),
         ),
@@ -872,49 +748,6 @@ class _AdminScreenState extends State<AdminScreen> {
                 fontWeight: FontWeight.bold,
               ),
               textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCompactDownloadButton(String title, Color bgColor, VoidCallback onPressed) {
-    return SizedBox(
-      height: 60,
-      child: ElevatedButton(
-        onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: bgColor,
-          foregroundColor: Colors.black,
-          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 6),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: const BorderSide(color: Colors.black, width: 2),
-          ),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text(
-              'Download',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-                height: 1.0,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                height: 1.1,
-              ),
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),

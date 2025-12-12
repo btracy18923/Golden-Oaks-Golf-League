@@ -270,6 +270,7 @@ class ClosestPinUIService {
     BuildContext context, {
     required VoidCallback onClear,
     required VoidCallback onSaveAndReturn,
+    bool isEnterSkatsEnabled = true,
   }) {
     final screenSize = MediaQuery.of(context).size;
     final deviceType = getDeviceType(screenSize);
@@ -284,11 +285,12 @@ class ClosestPinUIService {
       color: Colors.grey[300],
       padding: EdgeInsets.all(padding.left * containerPaddingMultiplier),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Expanded(
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: padding.left / 2),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: padding.left / 2),
+            child: SizedBox(
+              width: screenSize.width * 0.25, // Same width as Enter SKATS button
               child: ElevatedButton(
                 onPressed: onClear,
                 style: ElevatedButton.styleFrom(
@@ -300,7 +302,7 @@ class ClosestPinUIService {
                   ),
                 ),
                 child: Text(
-                  'Undo',
+                  'Clear',
                   style: TextStyle(
                     fontSize: fontSize * 0.8,
                     fontWeight: FontWeight.bold,
@@ -310,13 +312,15 @@ class ClosestPinUIService {
               ),
             ),
           ),
-          Expanded(
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: padding.left / 2),
+          Spacer(),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: padding.left / 2),
+            child: SizedBox(
+              width: screenSize.width * 0.25, // 50% smaller than half width
               child: ElevatedButton(
-                onPressed: onSaveAndReturn,
+                onPressed: isEnterSkatsEnabled ? onSaveAndReturn : null,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green[200]!,
+                  backgroundColor: isEnterSkatsEnabled ? Colors.green[200]! : Colors.grey[300]!,
                   padding: EdgeInsets.symmetric(vertical: padding.top * buttonPaddingMultiplier),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8.0),
@@ -324,12 +328,13 @@ class ClosestPinUIService {
                   ),
                 ),
                 child: Text(
-                  'Save and Return',
+                  'Enter SKATS ---➤',
                   style: TextStyle(
                     fontSize: fontSize * 0.8,
                     fontWeight: FontWeight.bold,
-                    color: Colors.black,
+                    color: isEnterSkatsEnabled ? Colors.black : Colors.grey[600],
                   ),
+                  textAlign: TextAlign.center,
                 ),
               ),
             ),

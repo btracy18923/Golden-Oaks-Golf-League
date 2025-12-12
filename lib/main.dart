@@ -30,7 +30,7 @@ void main() async {
   try {
     await DatabaseHelper().database;
   } catch (e) {
-    print('Database initialization failed: $e');
+   // print('Database initialization failed: $e');
   }
   
   // Initialize connectivity monitoring

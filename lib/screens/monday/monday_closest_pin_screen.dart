@@ -5,11 +5,13 @@ import '../../services/shared/league_purse_service.dart';
 import '../../services/screen_data_retention_service.dart';
 import '../../services/device_detection_service.dart';
 import '../../services/responsive_typography.dart';
+import 'monday_enter_scores_screen.dart';
 
 class MondayClosestPinScreen extends StatefulWidget {
   final List<Map<String, dynamic>> selectedPlayers;
-  
-  const MondayClosestPinScreen({Key? key, required this.selectedPlayers}) : super(key: key);
+  final double? playersAnte;
+
+  const MondayClosestPinScreen({Key? key, required this.selectedPlayers, this.playersAnte}) : super(key: key);
 
   @override
   _MondayClosestPinScreenState createState() => _MondayClosestPinScreenState();
@@ -20,22 +22,30 @@ class _MondayClosestPinScreenState extends State<MondayClosestPinScreen> {
   late int _remainingClosestPins;
   late double _closestPinValue;
   late double _remainingPurseAmount;
+  late double _initialPurseAmount; // Store the original purse amount for Clear button
   Map<String, int> _playerClosestPinCounts = {};
   Map<String, double> _playerWinnings = {};
   @override
   void initState() {
     super.initState();
-    
+
+    // Calculate Closest Pin Purse based on number of selected players
+    // This happens when navigating from player selection screen
+    LeaguePurseService.calculateClosestPinPurseFromCount(widget.selectedPlayers.length);
+
+    // Store the initial purse amount for Clear button resets
+    _initialPurseAmount = LeaguePurseService.closestPinPurse;
+
     // Calculate total closest pins to process (closestPinAmount / $1.00)
     double closestPinAmount = LeaguePurseService.closestPinAmount;
     _totalClosestPins = (closestPinAmount / 1.0).round();
     _remainingClosestPins = _totalClosestPins;
-    
+
     // Calculate the value per closest pin (Closest Pin Purse / initial remaining amount)
-    _closestPinValue = LeaguePurseService.closestPinPurse / _totalClosestPins;
-    
+    _closestPinValue = _initialPurseAmount / _totalClosestPins;
+
     // Initialize remaining purse amount to track decreases
-    _remainingPurseAmount = LeaguePurseService.closestPinPurse;
+    _remainingPurseAmount = _initialPurseAmount;
     
     // Initialize player closest pin counts and winnings
     for (var player in widget.selectedPlayers) {
@@ -67,9 +77,9 @@ class _MondayClosestPinScreenState extends State<MondayClosestPinScreen> {
       double closestPinAmount = LeaguePurseService.closestPinAmount;
       _totalClosestPins = (closestPinAmount / 1.0).round();
       _remainingClosestPins = _totalClosestPins;
-      _closestPinValue = LeaguePurseService.closestPinPurse / _totalClosestPins;
-      _remainingPurseAmount = LeaguePurseService.closestPinPurse;
-      
+      _closestPinValue = _initialPurseAmount / _totalClosestPins;
+      _remainingPurseAmount = _initialPurseAmount;
+
       // Reset all player counts and winnings to 0
       for (var player in widget.selectedPlayers) {
         String lastName = player['last'] ?? 'Unknown';
@@ -88,13 +98,21 @@ class _MondayClosestPinScreenState extends State<MondayClosestPinScreen> {
       totalClosestPins: _totalClosestPins,
       remainingClosestPins: _remainingClosestPins,
     );
-    
+
     // Update the LeaguePurseService with the remaining purse amount
     // This mirrors the current state to the enter scores screen
     LeaguePurseService.setClosestPinPurse(_remainingPurseAmount);
-    
-    // Return to the monday_enter_scores_screen
-    Navigator.pop(context);
+
+    // Navigate to Monday Enter Scores Screen
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => MondayEnterScoresScreen(
+          selectedPlayers: widget.selectedPlayers,
+          playersAnte: widget.playersAnte,
+        ),
+      ),
+    );
   }
 
   void _handlePlayerTap(String lastName) {
@@ -175,7 +193,7 @@ class _MondayClosestPinScreenState extends State<MondayClosestPinScreen> {
               child: Text(
                 lastName,
                 style: TextStyle(
-                  fontSize: deviceType == DeviceType.phone6Point5 ? 10 : fontSize + 3,
+                  fontSize: deviceType == DeviceType.phone6Point5 ? 12 : fontSize + 3,
                   fontWeight: FontWeight.bold,
                   color: closestPinCount > 0 ? Colors.green[800] : Colors.black,
                 ),
@@ -188,6 +206,7 @@ class _MondayClosestPinScreenState extends State<MondayClosestPinScreen> {
               width: countSize,
               height: countSize,
               margin: EdgeInsets.only(right: 4),
+              alignment: Alignment.center,
               decoration: BoxDecoration(
                 color: closestPinCount > 0 ? Colors.green[200] : Colors.grey[100],
                 border: Border.all(
@@ -195,24 +214,23 @@ class _MondayClosestPinScreenState extends State<MondayClosestPinScreen> {
                   width: 1,
                 ),
               ),
-              child: Center(
-                child: Text(
-                  '$closestPinCount',
-                  style: TextStyle(
-                    fontSize: deviceType == DeviceType.tablet10Inch ? fontSize + 2 : fontSize - 2,
-                    fontWeight: FontWeight.bold,
-                    color: closestPinCount > 0 ? Colors.green[800] : Colors.grey[600],
-                  ),
+              child: Text(
+                '$closestPinCount',
+                style: TextStyle(
+                  fontSize: deviceType == DeviceType.tablet10Inch ? fontSize + 2 : fontSize - 0,
+                  fontWeight: FontWeight.bold,
+                  color: closestPinCount > 0 ? Colors.green[800] : Colors.grey[600],
+                  height: 1.0,
                 ),
+                textAlign: TextAlign.center,
               ),
             ),
             Expanded(
-              flex: 1,
+              flex: 2,
               child: Container(
                 height: countSize,
                 alignment: Alignment.center,
                 margin: EdgeInsets.only(right: 4),
-                padding: EdgeInsets.symmetric(horizontal: 2, vertical: 1),
                 decoration: BoxDecoration(
                   color: winnings > 0 ? Colors.blue[100] : Colors.grey[50],
                   border: Border.all(
@@ -222,11 +240,12 @@ class _MondayClosestPinScreenState extends State<MondayClosestPinScreen> {
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
-                  winnings > 0 ? '\$${winnings.round()}' : '\$0',
+                  '\$${winnings.toStringAsFixed(2)}',
                   style: TextStyle(
-                    fontSize: deviceType == DeviceType.tablet10Inch ? fontSize + 2 : fontSize - 3,
+                    fontSize: deviceType == DeviceType.tablet10Inch ? fontSize + 2 : fontSize,
                     fontWeight: FontWeight.w600,
                     color: winnings > 0 ? Colors.blue[800] : Colors.grey[500],
+                    height: 1.0,
                   ),
                   textAlign: TextAlign.center,
                   maxLines: 1,
@@ -340,6 +359,7 @@ class _MondayClosestPinScreenState extends State<MondayClosestPinScreen> {
             context,
             onClear: _handleClear,
             onSaveAndReturn: _handleSaveAndReturn,
+            isEnterSkatsEnabled: _remainingPurseAmount == 0.0,
           ),
         ],
       ),

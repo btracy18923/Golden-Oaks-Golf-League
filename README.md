@@ -1,5 +1,5 @@
 # golf_app_v3
-# Located at: "C:\Users\Acer\AndroidStudioProjects\golf_app_v3"
+# Located at: "C:\Users\Acer\AndroidStudioProjecwts\golf_app_v3"
 
 
 A new Flutter project.
@@ -30,7 +30,8 @@ Firebase browser key: AIzaSyCNbOi-C2QsZIa9H6XTzQw62BNVNx5_nkQ
 - Monday Tablet: Local SQLite + manual Firebase upload capability
 - Wednesday Tablet: Local SQLite + manual Firebase upload capability
 - Web Interface: Can read from Firebase (via your Netlify site)
-
+- 
+Galaxy S25 - 1080 x 2300
 6.5" phone resolution: 720 x 1600 px; 412 x 915 dp
 8" Fire Tablet: 800 x 1280 px
 10.2" tablet: 800 x 1280
@@ -40,7 +41,7 @@ Expected dp values:
 - 8" Fire Tablet: ~533dp shortest side → 450-600 range
 - 10.2" tablet: >600dp shortest side → >= 600
   ✅ ParentScreenUI is NOW FULLY FINISHED!
-
+[.flutter-plugins-dependencies](.flutter-plugins-dependencies)
   What was completed:
 
   ✅ All text widgets updated to use ResponsiveTypography:
@@ -76,3 +77,26 @@ To Use This System:
    "Update [screen_name] to use DeviceDetectionService for consistent device detection across 6" phones, 8" tablets, and 10" tablets"
 
 Check: ['id'] → ['player_number']
+
+
+Font Size Summary for 10" Tablets, monday_results)screen
+
+- Table cells (headers & data): 12 (line 1122), 1249
+- Skat Value/Winners: 16 (line 936)
+- Summary sections: 14 (lines 638, 713, 766)
+- 
+- 
+  Step 1: Calculate pixel density (DPI)
+    - Diagonal in pixels: √(1080² + 2300²) = √6,456,400 ≈ 2541 pixels
+    - DPI = 2541 pixels ÷ 6.2 inches ≈ 410 DPI
+
+  Step 2: Convert shortest side to dp
+    - Shortest side = 1080 pixels (the narrower dimension)
+    - dp = pixels ÷ (dpi ÷ 160)
+    - dp = 1080 ÷ (410 ÷ 160)
+    - dp = 1080 ÷ 2.5625
+    - dp ≈ 421 dp
+
+  Classification Result:
+
+  Since 421 dp < 450 dp, this device falls into the phone6Point5 category, confirming it will use your phone-optimized layouts.

@@ -8,8 +8,6 @@ import '../services/mulligan_manager.dart';
 import '../services/device_detection_service.dart';
 import 'monday/monday_parent_screen.dart';
 import 'wednesday/wednesday_parent_screen.dart';
-import 'firebase_test_screen.dart';
-import 'admin_screen.dart';
 import '../widgets/responsive_wrapper.dart';
 
 class UnifiedMainMenuScreen extends StatefulWidget {
@@ -489,17 +487,17 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
                   child: Column(
                     children: [
                       _buildLeagueSelectionCompact(context),
-                      
+
                       const SizedBox(height: 6),
-                      
+
                       if (currentLeague != null) _buildLeagueConfigurationCompact(context),
                     ],
                   ),
                 ),
               ),
-              
+
               const SizedBox(width: 12),
-              
+
               // Right side - Image only
               Expanded(
                 flex: 1,
@@ -533,7 +531,7 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
             ],
           ),
         ),
-        
+
       ],
     );
   }

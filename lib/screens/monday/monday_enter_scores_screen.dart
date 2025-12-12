@@ -13,7 +13,6 @@ import '../../services/skat_adjustment_service.dart';
 import '../../services/device_detection_service.dart' as DeviceDetection;
 import '../../services/responsive_typography.dart';
 import '../../models/league.dart';
-import 'monday_closest_pin_screen.dart';
 import 'monday_results_screen.dart';
 
 class MondayEnterScoresScreen extends StatefulWidget {
@@ -1144,30 +1143,6 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     //print("Players shuffled successfully! Total players redistributed: ${allPlayers.length}");
   }
 
-  /// Handles the Closest Pin button press and navigates to the closest pin screen
-  void _handleClosestPin() async {
-    if (widget.selectedPlayers != null && widget.selectedPlayers!.isNotEmpty) {
-      await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => MondayClosestPinScreen(
-            selectedPlayers: widget.selectedPlayers!,
-          ),
-        ),
-      );
-      // Refresh the UI to reflect any changes to the Closest Pin Purse
-      setState(() {
-        // Trigger UI rebuild to show updated purse amounts
-      });
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No players selected for closest pin contest'),
-          duration: Duration(seconds: 2),
-        ),
-      );
-    }
-  }
 
   /// Gets the color for the shuffle button based on navigation state and SKATS data
   Color _getShuffleButtonColor() {
@@ -1251,9 +1226,8 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
         children: [
           _buildCustomButton(context, 'Back', Colors.blue[200]!, _handleReturn),
           _buildCustomButton(context, 'Shuffle', _getShuffleButtonColor(), _getShuffleButtonHandler()),
-          _buildCustomButton(context, 'ClosePin \$\$\$', _getClosestPinButtonColor(), _getClosestPinButtonHandler()),
-          _buildCustomButton(context, _getSkatButtonText(), _getSkatButtonColor(), _getSkatButtonHandler()),
           _buildCustomButton(context, _swapService.getSwapButtonText(), _getSwapButtonColor(), _getSwapButtonHandler()),
+          _buildCustomButton(context, _getSkatButtonText(), _getSkatButtonColor(), _getSkatButtonHandler()),
         ],
       ),
     );
@@ -1269,6 +1243,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     // Adjust button text for smaller screens
     String displayText = text;
     if (detectedDeviceType == DeviceDetection.DeviceType.phone6Point5) {
+      if (text == 'Back') displayText = '◄---- Back';
       if (text == 'Closest Pin') displayText = 'ClosePin';
       if (text.startsWith('SWAP') && text != 'SWAP Players') displayText = 'SWAP'; // Keep swap service text short on phones
     }
@@ -1346,24 +1321,12 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     );
   }
 
-  /// Gets the color for the Closest Pin button based on purse amount
-  Color _getClosestPinButtonColor() {
-    return LeaguePurseService.closestPinPurse > 0 ? Colors.green[200]! : Colors.grey[400]!;
-  }
-
-  /// Gets the handler for the Closest Pin button based on purse amount
-  VoidCallback _getClosestPinButtonHandler() {
-    return LeaguePurseService.closestPinPurse > 0 ? _handleClosestPin : () {};
-  }
-
   /// Gets the text for the Skat/Results button based on purse amounts
   String _getSkatButtonText() {
     if (LeaguePurseService.skatPurse > 0) {
       return 'Skat \$\$\$';
-    } else if (LeaguePurseService.skatPurse <= 0 && LeaguePurseService.closestPinPurse <= 0) {
-      return 'RESULTS';
     } else {
-      return 'Skat \$\$\$';
+      return 'PAYOUT ---➤';
     }
   }
 
@@ -1372,10 +1335,8 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     if (LeaguePurseService.skatPurse > 0) {
       // Only show green if all SKATS data is complete
       return _areAllSkatsFieldsComplete() ? Colors.green[200]! : Colors.grey[400]!;
-    } else if (LeaguePurseService.skatPurse <= 0 && LeaguePurseService.closestPinPurse <= 0) {
-      return Colors.orange[200]!;
     } else {
-      return Colors.grey[400]!;
+      return Colors.orange[200]!;
     }
   }
 
@@ -1383,10 +1344,8 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
   VoidCallback _getSkatButtonHandler() {
     if (LeaguePurseService.skatPurse > 0) {
       return _handleSkatMoney;
-    } else if (LeaguePurseService.skatPurse <= 0 && LeaguePurseService.closestPinPurse <= 0) {
-      return _handleResults;
     } else {
-      return () {}; // Empty function when Skat is done but ClosePin is still active
+      return _handleResults;
     }
   }
 

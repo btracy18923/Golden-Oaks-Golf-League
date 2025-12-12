@@ -11,6 +11,8 @@ class LeaguePurseService {
   static double _antePurse = 0.0; // Wednesday league specific
   static double _remainingSkatPurse = 0.0; // Remaining skat purse after distributions
   static bool _hasDistributedMoney = false; // Flag to track if money has been distributed
+  static bool _closestPinPurseSetExplicitly = false; // Track if closest pin purse was set by closest pin screen
+  static bool _mulliganPurseSetExplicitly = false; // Track if mulligan purse was set explicitly
   
   /// Gets the closest pin purse amount
   static double get closestPinPurse => _closestPinPurse;
@@ -25,13 +27,19 @@ class LeaguePurseService {
   static double get antePurse => _antePurse;
   
   /// Sets the closest pin purse amount
-  static void setClosestPinPurse(double amount) {
+  static void setClosestPinPurse(double amount, {bool isExplicit = true}) {
     _closestPinPurse = amount;
+    if (isExplicit) {
+      _closestPinPurseSetExplicitly = true;
+    }
   }
   
   /// Sets the mulligan purse amount
-  static void setMulliganPurse(double amount) {
+  static void setMulliganPurse(double amount, {bool isExplicit = true}) {
     _mulliganPurse = amount;
+    if (isExplicit) {
+      _mulliganPurseSetExplicitly = true;
+    }
   }
   
   /// Sets the skat purse amount (Monday league)
@@ -51,9 +59,20 @@ class LeaguePurseService {
   }
   
   /// Resets the distribution state (useful for new game sessions)
+  /// Does NOT reset explicit purse flags - those persist across screen transitions
   static void resetDistributionState() {
     _remainingSkatPurse = 0.0;
     _hasDistributedMoney = false;
+    // Don't reset explicit flags here - they should persist when navigating between screens
+  }
+
+  /// Resets all purse states including explicit flags
+  /// Only call this when starting a completely new game session
+  static void resetAllPurseStates() {
+    _remainingSkatPurse = 0.0;
+    _hasDistributedMoney = false;
+    _closestPinPurseSetExplicitly = false;
+    _mulliganPurseSetExplicitly = false;
   }
   
   /// Gets the league-specific primary purse amount
@@ -135,10 +154,16 @@ class LeaguePurseService {
   
   /// Loads secondary purse amounts (Closest Pin, Mulligan) without overwriting primary purse
   /// Used when Players Ante is already set and we don't want to reset it
+  /// Only sets default values if purses haven't been explicitly set by other screens
   static Future<void> loadSecondaryPurseAmounts() async {
-    // Only load Closest Pin and Mulligan purses, preserve existing primary purse values
-    setClosestPinPurse(15.0);
-    setMulliganPurse(20.0);
+    // Only load default values if purses haven't been explicitly set
+    // This preserves values that were updated by other screens (like Closest Pin screen)
+    if (!_closestPinPurseSetExplicitly) {
+      setClosestPinPurse(15.0, isExplicit: false);
+    }
+    if (!_mulliganPurseSetExplicitly) {
+      setMulliganPurse(20.0, isExplicit: false);
+    }
   }
   
   /// Saves purse amounts to database or storage
@@ -216,23 +241,35 @@ class LeaguePurseService {
   }
   
   /// Calculates and sets the Closest Pin Purse based on Closest Pin amount and selected players count
+  /// Only calculates if not explicitly set by another screen (like Closest Pin screen)
   static void calculateClosestPinPurse(double closestPinAmount, int selectedPlayersCount) {
-    _closestPinPurse = closestPinAmount * selectedPlayersCount;
+    if (!_closestPinPurseSetExplicitly) {
+      _closestPinPurse = closestPinAmount * selectedPlayersCount;
+    }
   }
-  
+
   /// Calculates and sets the Closest Pin Purse based on current Closest Pin amount and selected players count
+  /// Only calculates if not explicitly set by another screen (like Closest Pin screen)
   static void calculateClosestPinPurseFromCount(int selectedPlayersCount) {
-    _closestPinPurse = _closestPinAmount * selectedPlayersCount;
+    if (!_closestPinPurseSetExplicitly) {
+      _closestPinPurse = _closestPinAmount * selectedPlayersCount;
+    }
   }
   
   /// Calculates and sets the Mulligan Purse based on Mulligan amount and selected players count
+  /// Only calculates if not explicitly set by another screen
   static void calculateMulliganPurse(double mulliganAmount, int selectedPlayersCount) {
-    _mulliganPurse = mulliganAmount * selectedPlayersCount;
+    if (!_mulliganPurseSetExplicitly) {
+      _mulliganPurse = mulliganAmount * selectedPlayersCount;
+    }
   }
-  
+
   /// Calculates and sets the Mulligan Purse based on current Mulligan amount and selected players count
+  /// Only calculates if not explicitly set by another screen
   static void calculateMulliganPurseFromCount(int selectedPlayersCount) {
-    _mulliganPurse = _mulliganAmount * selectedPlayersCount;
+    if (!_mulliganPurseSetExplicitly) {
+      _mulliganPurse = _mulliganAmount * selectedPlayersCount;
+    }
   }
   
   /// Gets all purse amounts as a map for debugging or export

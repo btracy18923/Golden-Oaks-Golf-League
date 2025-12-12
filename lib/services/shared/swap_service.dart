@@ -86,7 +86,7 @@ class SwapService {
       String displayName2 = getDisplayName(selectedForSwap[1]);
       return 'SWAP:\n$displayName1 <-> $displayName2';
     } else {
-      return 'SWAP Players';
+      return 'Swap Players';
     }
   }
   

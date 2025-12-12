@@ -4,7 +4,7 @@ import 'monday_player_selection_screen.dart';
 import 'monday_player_scores_screen.dart';
 import 'monday_player_profile_screen.dart';
 import 'monday_golf_course_screen.dart';
-import '../admin_screen.dart';
+import 'monday_admin_screen.dart';
 import '../../models/league.dart';
 import '../../services/database_helper.dart';
 import '../../services/shared/league_purse_service.dart';
@@ -295,7 +295,7 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
             onPressed: () => Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => AdminScreen(currentLeague: League.monday),
+                builder: (context) => const MondayAdminScreen(currentLeague: League.monday),
               ),
             ),
             tooltip: 'Administration',
@@ -382,7 +382,7 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
             onPressed: () => Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => AdminScreen(currentLeague: League.monday),
+                builder: (context) => const MondayAdminScreen(currentLeague: League.monday),
               ),
             ),
             tooltip: 'Administration',
@@ -469,7 +469,7 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
             onPressed: () => Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => AdminScreen(currentLeague: League.monday),
+                builder: (context) => const MondayAdminScreen(currentLeague: League.monday),
               ),
             ),
             tooltip: 'Administration',
@@ -572,7 +572,14 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
         'Golf Courses',
         Icons.golf_course,
         Colors.green[100]!,
-        () => navigateToScreen(const MondayGolfCourseScreen(league: League.monday)),
+        () async {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const MondayGolfCourseScreen(league: League.monday)),
+          );
+          // Reload golf courses when returning from golf course screen
+          _loadGolfCourses();
+        },
         isCompact: true,
         is8InchTablet: false,
         is10InchTablet: false,
@@ -622,7 +629,14 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
         'Golf Courses',
         Icons.golf_course,
         Colors.green[100]!,
-        () => navigateToScreen(const MondayGolfCourseScreen(league: League.monday)),
+        () async {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const MondayGolfCourseScreen(league: League.monday)),
+          );
+          // Reload golf courses when returning from golf course screen
+          _loadGolfCourses();
+        },
         isCompact: false,
         is8InchTablet: true,
         is10InchTablet: false,
@@ -675,7 +689,14 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
         'Golf Courses',
         Icons.golf_course,
         Colors.green[100]!,
-        () => navigateToScreen(const MondayGolfCourseScreen(league: League.monday)),
+        () async {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const MondayGolfCourseScreen(league: League.monday)),
+          );
+          // Reload golf courses when returning from golf course screen
+          _loadGolfCourses();
+        },
         isCompact: false,
         is8InchTablet: false,
         is10InchTablet: true,

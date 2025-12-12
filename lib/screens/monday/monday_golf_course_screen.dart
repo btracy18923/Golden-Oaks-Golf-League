@@ -124,10 +124,10 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
   Future<void> _saveCurrentField(TextEditingController controller) async {
     if (_selectedCourse == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        const SnackBar(
           content: Text('No course selected - cannot save field'),
           backgroundColor: Colors.orange,
-          duration: const Duration(seconds: 2),
+          duration: Duration(seconds: 2),
         ),
       );
       return;
@@ -911,14 +911,14 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
           children: [
             Expanded(
               child: ElevatedButton(
-                onPressed: _addCourse,
+                onPressed: () => Navigator.of(context).pop(),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green[300],
+                  backgroundColor: Colors.blue[300],
                   foregroundColor: Colors.black,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
                   padding: EdgeInsets.all(isPhone ? 8.0 : 12.0),
                 ),
-                child: Text('Add Course', style: ResponsiveTypography.buttonStyle(context, fontWeight: FontWeight.bold)),
+                child: Text('◄---- Back', style: ResponsiveTypography.buttonStyle(context, fontWeight: FontWeight.bold)),
               ),
             ),
             const SizedBox(width: 4),
@@ -950,14 +950,14 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
             const SizedBox(width: 4),
             Expanded(
               child: ElevatedButton(
-                onPressed: () => Navigator.of(context).pop(),
+                onPressed: _addCourse,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue[300],
+                  backgroundColor: Colors.green[300],
                   foregroundColor: Colors.black,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
                   padding: EdgeInsets.all(isPhone ? 8.0 : 12.0),
                 ),
-                child: Text('Back', style: ResponsiveTypography.buttonStyle(context, fontWeight: FontWeight.bold)),
+                child: Text('Add Course', style: ResponsiveTypography.buttonStyle(context, fontWeight: FontWeight.bold)),
               ),
             ),
           ],

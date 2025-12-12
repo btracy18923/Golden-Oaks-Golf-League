@@ -85,11 +85,11 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
 
   @override
   void dispose() {
-    // Upload player scores to Firebase before leaving
-    _uploadPlayerScoresDataToFirebase();
-    
+    // Firebase upload disabled for this screen
+    // _uploadPlayerScoresDataToFirebase();
+
     // Keep landscape mode locked for Monday screens
-    
+
     _grossScoreController.dispose();
     _skatsController.dispose();
     _winningsController.dispose();
@@ -238,7 +238,8 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
       return;
     }
     
-    // Check for duplicate date - prevent multiple entries for the same player on the same date
+    // IMPORTANT: DUPLICATE DATE CHECK - Prevent multiple entries for the same player on the same date
+    // This validation ensures only ONE score per player per day is allowed
     final playerId = _players.firstWhere((p) => p['last'] == _selectedPlayer)['player_number'];
     final currentDate = DateTime.now().toIso8601String().split('T')[0]; // Get YYYY-MM-DD format
 
@@ -246,7 +247,7 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
       final existingScoreForDate = await _databaseHelper.getPlayerScoreByDate(playerId, currentDate, _selectedLeague);
       if (existingScoreForDate != null) {
         final formattedDate = _formatDateToMMDDYY(currentDate);
-        _showErrorDialog('A score for $_selectedPlayer on $formattedDate already exists. Only one score per player per day is allowed.');
+        _showErrorDialog('A score for $_selectedPlayer on $formattedDate already exists.\n\nOnly one score per player per day is allowed.');
         return;
       }
     } catch (e) {
@@ -334,14 +335,9 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
       });
       
       _loadPlayerScores(_selectedPlayer!);
-      
-      // Immediately try to upload to Firebase
-      final uploadSuccess = await _firebaseUploadService.uploadPlayerScoresTableWithQueue(_selectedLeague);
-      if (uploadSuccess) {
-        _showSuccessDialog('Score added and uploaded to Firebase!');
-      } else {
-        _showSuccessDialog('Score added locally! Firebase upload queued for when WiFi is available.');
-      }
+
+      // Firebase upload disabled for this screen
+      _showSuccessDialog('Score added successfully!');
     } catch (e) {
       _showErrorDialog('Error adding score: $e');
     }
@@ -400,14 +396,9 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
           _unlockedScoreIds.remove(scoreId);
         });
         _loadPlayerScores(_selectedPlayer!);
-        
-        // Immediately try to upload to Firebase
-        final uploadSuccess = await _firebaseUploadService.uploadPlayerScoresTableWithQueue(_selectedLeague);
-        if (uploadSuccess) {
-          _showSuccessDialog('Score deleted and uploaded to Firebase!');
-        } else {
-          _showSuccessDialog('Score deleted locally! Firebase upload queued for when WiFi is available.');
-        }
+
+        // Firebase upload disabled for this screen
+        _showSuccessDialog('Score deleted successfully!');
       } catch (e) {
         // Re-lock the row if deletion failed
         setState(() {
@@ -576,14 +567,9 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
                     _unlockedScoreIds.remove(scoreId);
                   });
                   _loadPlayerScores(_selectedPlayer!);
-                  
-                  // Immediately try to upload to Firebase
-                  final uploadSuccess = await _firebaseUploadService.uploadPlayerScoresTableWithQueue(_selectedLeague);
-                  if (uploadSuccess) {
-                    _showSuccessDialog('Score updated and uploaded to Firebase!');
-                  } else {
-                    _showSuccessDialog('Score updated locally! Firebase upload queued for when WiFi is available.');
-                  }
+
+                  // Firebase upload disabled for this screen
+                  _showSuccessDialog('Score updated successfully!');
                 } catch (e) {
                   // Close the edit dialog first, then show error
                   Navigator.of(context).pop();
@@ -1357,7 +1343,7 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
     
     // Convert to whole dollar amount (no cents)
     int amount = winnings is int ? winnings : (winnings as double).round();
-    return '\$${amount}';
+    return '\$$amount';
   }
 
   String _formatWinningsWithCents(dynamic winnings) {
@@ -1421,12 +1407,19 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
         foregroundColor: Colors.white,
       ),
       resizeToAvoidBottomInset: false,
-      body: Container(
-        color: Colors.grey[100],
-        padding: const EdgeInsets.all(10),
-        child: SafeArea(
-          child: _buildTabletStyleLayout(),
-        ),
+      body: Column(
+        children: [
+          Expanded(
+            child: Container(
+              color: Colors.grey[100],
+              padding: const EdgeInsets.all(10),
+              child: SafeArea(
+                child: _buildTabletStyleLayout(),
+              ),
+            ),
+          ),
+          _buildPhoneButtonBar(),
+        ],
       ),
     );
   }
@@ -1461,12 +1454,19 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
         foregroundColor: Colors.white,
       ),
       resizeToAvoidBottomInset: false,
-      body: Container(
-        color: Colors.grey[100],
-        padding: const EdgeInsets.all(20),
-        child: SafeArea(
-          child: _buildDesktopLayout(),
-        ),
+      body: Column(
+        children: [
+          Expanded(
+            child: Container(
+              color: Colors.grey[100],
+              padding: const EdgeInsets.all(20),
+              child: SafeArea(
+                child: _buildDesktopLayout(),
+              ),
+            ),
+          ),
+          _buildPhoneButtonBar(),
+        ],
       ),
     );
   }
@@ -1500,7 +1500,7 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
                             padding: const EdgeInsets.all(4),
                             decoration: BoxDecoration(
                               color: Colors.grey[200],
-                              border: Border(bottom: BorderSide(color: Colors.grey)),
+                              border: const Border(bottom: BorderSide(color: Colors.grey)),
                             ),
                             child: Text(
                               'Players',
@@ -1568,7 +1568,7 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
                             padding: const EdgeInsets.all(6),
                             decoration: BoxDecoration(
                               color: Colors.grey[200],
-                              border: Border(bottom: BorderSide(color: Colors.grey)),
+                              border: const Border(bottom: BorderSide(color: Colors.grey)),
                             ),
                             child: Text(
                               'Players',
@@ -1645,17 +1645,17 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
   Widget _buildMobileLayout() {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final titleHeight = 30.0;
+        const titleHeight = 30.0;
         final playerListHeight = constraints.maxHeight * 0.22; // Reduced from 0.25
-        final spacing = 16.0; // Total spacing (2 gaps of ~8px each)
+        const spacing = 16.0; // Total spacing (2 gaps of ~8px each)
         final remainingHeight = constraints.maxHeight - titleHeight - playerListHeight - spacing;
         
         return Column(
           children: [
             // Compact title
-            SizedBox(
+            const SizedBox(
               height: titleHeight,
-              child: const Center(
+              child: Center(
                 child: Text(
                   'Player Scores',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold), // Reduced font size
@@ -1720,6 +1720,44 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
         _showErrorDialog('Error clearing data: $e');
       }
     }
+  }
+
+  Widget _buildPhoneButtonBar() {
+    return Container(
+      width: double.infinity,
+      height: 60.0,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.3),
+            spreadRadius: 1,
+            blurRadius: 3,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(12.0),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 1,
+            child: ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue[300],
+                foregroundColor: Colors.black,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+                padding: const EdgeInsets.all(8.0),
+                alignment: Alignment.center,
+              ),
+              child: Text('◄---- Back', style: TextStyle(fontSize: ResponsiveTypography.getButton(context), fontWeight: FontWeight.bold)),
+            ),
+          ),
+          const Spacer(flex: 3),
+        ],
+      ),
+    );
   }
 
   Widget _buildFullScreenButtonBar() {
