@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../models/league.dart';
 import '../../services/database_helper.dart';
+import '../../services/device_detection_service.dart';
 
 class MondayAdminScreen extends StatefulWidget {
   final League? currentLeague;
@@ -176,15 +177,8 @@ class _MondayAdminScreenState extends State<MondayAdminScreen> {
         ),
       );
 
-
-      // Test connection first
-      try {
-        await _firestore.collection('test').limit(1).get();
-      } catch (e) {
-        throw Exception('Cannot connect to Firebase. Check internet connection and Firebase configuration.');
-      }
-
       // Download from Monday player profile collection only
+      // No need to test connection separately - the actual query will fail if there's a connection issue
       QuerySnapshot mondaySnapshot = await _firestore.collection('M_player_profile').get();
 
       int mondayCount = 0;
@@ -244,21 +238,36 @@ class _MondayAdminScreenState extends State<MondayAdminScreen> {
   /// Helper method to insert or update a player
   Future<void> _insertOrUpdatePlayer(Map<String, dynamic> playerData) async {
     try {
-      int? playerNumber = playerData['player_number'];
+      // Clean the data to only include fields that exist in the local database schema
+      // Local players table has: player_number, first, last, skat_number, cell, email, league
+      Map<String, dynamic> cleanData = {
+        'player_number': playerData['player_number'],
+        'first': playerData['first'],
+        'last': playerData['last'],
+        'skat_number': playerData['skat_number'],
+        'cell': playerData['cell'],
+        'email': playerData['email'],
+        'league': playerData['league'],
+      };
+
+      // Remove null values
+      cleanData.removeWhere((key, value) => value == null);
+
+      int? playerNumber = cleanData['player_number'];
       if (playerNumber != null) {
         // Check if player exists by player_number
         Map<String, dynamic>? existingPlayer = await _dbHelper.getPlayer(playerNumber);
 
         if (existingPlayer != null) {
           // Update existing player
-          await _dbHelper.updatePlayer(playerNumber, playerData);
+          await _dbHelper.updatePlayer(playerNumber, cleanData);
         } else {
           // Insert new player
-          await _dbHelper.insertPlayer(playerData);
+          await _dbHelper.insertPlayer(cleanData);
         }
       } else {
         // No player_number, try to insert anyway
-        await _dbHelper.insertPlayer(playerData);
+        await _dbHelper.insertPlayer(cleanData);
       }
     } catch (e) {
       rethrow;
@@ -396,17 +405,8 @@ class _MondayAdminScreenState extends State<MondayAdminScreen> {
         ),
       );
 
-
-      // Test connection first
-      try {
-        await _firestore.collection('test').limit(1).get();
-      } catch (e) {
-        throw Exception('Cannot connect to Firebase. Check internet connection and Firebase configuration.');
-      }
-
       // Download from M_player_scores collection only
-
-      // Download Monday scores
+      // No need to test connection separately - the actual query will fail if there's a connection issue
       QuerySnapshot mondaySnapshot = await _firestore.collection('M_player_scores').get();
 
       // Use only Monday docs
@@ -579,8 +579,8 @@ class _MondayAdminScreenState extends State<MondayAdminScreen> {
     bool? confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Clear All Score Data'),
-        content: const Text('This will permanently delete ALL scores, games, and winnings data for ALL players. This cannot be undone. Are you sure?'),
+        title: const Text('Clear Monday Score Data'),
+        content: const Text('This will permanently delete ALL scores, games, and winnings data for Monday league players only. This cannot be undone. Are you sure?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
@@ -597,10 +597,10 @@ class _MondayAdminScreenState extends State<MondayAdminScreen> {
 
     if (confirmed == true) {
       try {
-        await _dbHelper.clearAllScoreData();
+        await _dbHelper.clearMondayScoreData();
         scaffoldMessenger.showSnackBar(
           const SnackBar(
-            content: Text('All score data has been cleared from the database'),
+            content: Text('All Monday score data has been cleared from the database'),
             backgroundColor: Colors.green,
             duration: Duration(seconds: 3),
           ),
@@ -841,6 +841,10 @@ class _MondayAdminScreenState extends State<MondayAdminScreen> {
   }
 
   Widget _buildDownloadButton(String title, IconData icon, Color bgColor, VoidCallback onPressed) {
+    final fontScale = DeviceDetectionService.getFontScale(context);
+    final baseFontSize = 18.0;
+    final responsiveFontSize = baseFontSize * fontScale;
+
     return SizedBox(
       height: 70,
       child: ElevatedButton(
@@ -856,8 +860,8 @@ class _MondayAdminScreenState extends State<MondayAdminScreen> {
         ),
         child: Text(
           title,
-          style: const TextStyle(
-            fontSize: 12,
+          style: TextStyle(
+            fontSize: responsiveFontSize,
             fontWeight: FontWeight.bold,
           ),
           textAlign: TextAlign.center,

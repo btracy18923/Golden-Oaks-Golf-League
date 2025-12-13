@@ -22,10 +22,10 @@ class _WednesdayParentScreenState extends State<WednesdayParentScreen> {
   // Wednesday always plays at Golden Oaks - fixed course
   static const String fixedGolfCourse = 'Golden Oaks';
 
-  // Editable league settings
-  double playersAnte = 5.00;
-  double closestPin = 1.00;
-  double mulligans = 2.00;
+  // Editable league settings - will be loaded from LeaguePurseService
+  late double playersAnte;
+  late double closestPin;
+  late double mulligans;
 
   // Controllers for edit fields
   final TextEditingController _playersAnteController = TextEditingController();
@@ -43,16 +43,28 @@ class _WednesdayParentScreenState extends State<WednesdayParentScreen> {
     super.initState();
     _setOrientation();
     _keypadController = CustomKeypadService.createController();
+
+    // Load values from LeaguePurseService if they exist, otherwise use defaults
+    playersAnte = LeaguePurseService.playersAnte;
+    closestPin = LeaguePurseService.closestPinAmount;
+    mulligans = LeaguePurseService.mulliganAmount;
+
+    // If values are still at defaults (first time), initialize with reasonable defaults
+    if (playersAnte == 5.0 && closestPin == 4.0 && mulligans == 2.0) {
+      // Use hardcoded defaults only on first launch
+      playersAnte = 5.00;
+      closestPin = 1.00;
+      mulligans = 2.00;
+
+      // Save these defaults to LeaguePurseService
+      LeaguePurseService.setPlayersAnte(playersAnte);
+      LeaguePurseService.setClosestPinAmount(closestPin);
+      LeaguePurseService.setMulliganAmount(mulligans);
+    }
+
     _playersAnteController.text = playersAnte.toStringAsFixed(2);
     _closestPinController.text = closestPin.toStringAsFixed(2);
     _mulligansController.text = mulligans.toStringAsFixed(2);
-
-    // Set the initial Players Ante value in the league service
-    LeaguePurseService.setPlayersAnte(playersAnte);
-    // Set the initial Closest Pin amount in the league service
-    LeaguePurseService.setClosestPinAmount(closestPin);
-    // Set the initial Mulligan amount in the league service
-    LeaguePurseService.setMulliganAmount(mulligans);
   }
 
   void _setOrientation() {

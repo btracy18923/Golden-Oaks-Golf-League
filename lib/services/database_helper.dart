@@ -17,10 +17,10 @@ class DatabaseHelper {
   Future<Database> _initDatabase() async {
     String path = join(await getDatabasesPath(), 'golden_oaks.db');
     // DatabaseHelper: Initializing database at: $path
-    
+
     return await openDatabase(
       path,
-      version: 20,
+      version: 21,
       onCreate: (db, version) {
         // DatabaseHelper: Creating new database with version $version
         return _createTables(db, version);
@@ -41,6 +41,7 @@ class DatabaseHelper {
         first TEXT NOT NULL,
         last TEXT NOT NULL,
         skat_number INTEGER,
+        HC REAL,
         cell TEXT,
         email TEXT,
         league TEXT NOT NULL
@@ -624,6 +625,15 @@ class DatabaseHelper {
         print('Warning: Could not migrate golf_courses table: $e');
       }
     }
+    if (oldVersion < 21) {
+      // Add HC column to players table for Wednesday league handicaps
+      try {
+        await db.execute('ALTER TABLE players ADD COLUMN HC REAL');
+        print('Successfully added HC column to players table');
+      } catch (e) {
+        print('Warning: Could not add HC column to players table: $e');
+      }
+    }
   }
 
   Future<void> _insertDefaultSettings(Database db) async {
@@ -1195,20 +1205,80 @@ class DatabaseHelper {
   // Clear all score data from the database
   Future<void> clearAllScoreData() async {
     final db = await database;
-    
+
     await db.transaction((txn) async {
       // Clear scores table
       await txn.delete('scores');
-      
+
       // Clear league-specific score tables
       await txn.delete('monday_scores');
       await txn.delete('wednesday_scores');
-      
+
       // Clear game_players table
       await txn.delete('game_players');
-      
+
       // Clear games table
       await txn.delete('games');
+    });
+  }
+
+  /// Clear score data for Monday league only
+  Future<void> clearMondayScoreData() async {
+    final db = await database;
+
+    await db.transaction((txn) async {
+      // Clear Monday-specific score table
+      await txn.delete('monday_scores');
+
+      // Clear legacy scores table for Monday league only
+      await txn.delete('scores', where: 'league = ?', whereArgs: ['monday']);
+
+      // Clear game_players and games for Monday league only
+      // First get all Monday game IDs
+      List<Map<String, dynamic>> mondayGames = await txn.query(
+        'games',
+        columns: ['id'],
+        where: 'league = ?',
+        whereArgs: ['monday'],
+      );
+
+      // Delete game_players for Monday games
+      for (var game in mondayGames) {
+        await txn.delete('game_players', where: 'game_id = ?', whereArgs: [game['id']]);
+      }
+
+      // Delete Monday games
+      await txn.delete('games', where: 'league = ?', whereArgs: ['monday']);
+    });
+  }
+
+  /// Clear score data for Wednesday league only
+  Future<void> clearWednesdayScoreData() async {
+    final db = await database;
+
+    await db.transaction((txn) async {
+      // Clear Wednesday-specific score table
+      await txn.delete('wednesday_scores');
+
+      // Clear legacy scores table for Wednesday league only
+      await txn.delete('scores', where: 'league = ?', whereArgs: ['wednesday']);
+
+      // Clear game_players and games for Wednesday league only
+      // First get all Wednesday game IDs
+      List<Map<String, dynamic>> wednesdayGames = await txn.query(
+        'games',
+        columns: ['id'],
+        where: 'league = ?',
+        whereArgs: ['wednesday'],
+      );
+
+      // Delete game_players for Wednesday games
+      for (var game in wednesdayGames) {
+        await txn.delete('game_players', where: 'game_id = ?', whereArgs: [game['id']]);
+      }
+
+      // Delete Wednesday games
+      await txn.delete('games', where: 'league = ?', whereArgs: ['wednesday']);
     });
   }
 

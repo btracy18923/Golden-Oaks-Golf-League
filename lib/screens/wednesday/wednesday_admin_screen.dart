@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../models/league.dart';
 import '../../services/database_helper.dart';
+import '../../services/device_detection_service.dart';
 
 class WednesdayAdminScreen extends StatefulWidget {
   final League? currentLeague;
@@ -51,72 +52,50 @@ class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
             child: Column(
               children: [
                 const SizedBox(height: 30),
-                const Text(
-                  'Wednesday League Firebase Management',
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 40),
 
-                _buildDownloadButton(
-                  'Download Wednesday Player Scores',
-                  Icons.download,
-                  Colors.orange[300]!,
-                  () => _downloadWednesdayPlayerScores(),
-                ),
+                GridView.count(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  crossAxisCount: 2,
+                  mainAxisSpacing: 16,
+                  crossAxisSpacing: 16,
+                  childAspectRatio: 7.5,
+                  children: [
+                    _buildDownloadButton(
+                      'Download Wednesday Player Scores',
+                      Icons.download,
+                      Colors.orange[300]!,
+                      () => _downloadWednesdayPlayerScores(),
+                    ),
 
-                const SizedBox(height: 16),
+                    _buildDownloadButton(
+                      'Clear Wednesday Player Scores',
+                      Icons.delete_forever,
+                      Colors.red[400]!,
+                      () => _clearAllScoreData(),
+                    ),
 
-                _buildDownloadButton(
-                  _isDownloading ? 'Downloading...' : 'Download Wednesday Player Profiles',
-                  _isDownloading ? Icons.hourglass_bottom : Icons.people,
-                  _isDownloading ? Colors.grey[400]! : Colors.blue[300]!,
-                  _isDownloading ? () {} : () => _downloadWednesdayPlayerProfiles(),
-                ),
+                    _buildDownloadButton(
+                      _isDownloading ? 'Downloading...' : 'Download Wednesday Player Profiles',
+                      _isDownloading ? Icons.hourglass_bottom : Icons.people,
+                      _isDownloading ? Colors.grey[400]! : Colors.blue[300]!,
+                      _isDownloading ? () {} : () => _downloadWednesdayPlayerProfiles(),
+                    ),
 
-                const SizedBox(height: 16),
+                    _buildDownloadButton(
+                      'Delete All Wednesday Player Profiles',
+                      Icons.person_remove,
+                      Colors.red[400]!,
+                      () => _deleteWednesdayPlayerProfiles(),
+                    ),
 
-                _buildDownloadButton(
-                  'Download Golf Courses',
-                  Icons.golf_course,
-                  Colors.green[300]!,
-                  () => _downloadGolfCourses(),
-                ),
-
-                const SizedBox(height: 16),
-
-                _buildDownloadButton(
-                  'Set All Golf Courses Par3s to 4',
-                  Icons.update,
-                  Colors.amber[300]!,
-                  () => _updateAllGolfCoursesPar3sTo4(),
-                ),
-
-                const SizedBox(height: 16),
-
-                _buildDownloadButton(
-                  'Clear All Score Data',
-                  Icons.delete_forever,
-                  Colors.red[300]!,
-                  () => _clearAllScoreData(),
-                ),
-
-                const SizedBox(height: 16),
-
-                _buildDownloadButton(
-                  'Set All Skat Numbers to 35',
-                  Icons.settings,
-                  Colors.purple[300]!,
-                  () => _replaceAllSkatNumbersTo35(),
-                ),
-
-                const SizedBox(height: 16),
-
-                _buildDownloadButton(
-                  'Delete All Wednesday Player Profiles',
-                  Icons.person_remove,
-                  Colors.red[400]!,
-                  () => _deleteWednesdayPlayerProfiles(),
+                    _buildDownloadButton(
+                      'Change all HC values to 15',
+                      Icons.settings,
+                      Colors.purple[300]!,
+                      () => _changeAllWednesdayHandicapsTo15(),
+                    ),
+                  ],
                 ),
 
                 const SizedBox(height: 20),
@@ -144,16 +123,9 @@ class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
         ),
       );
 
-
-      // Test connection first
-      try {
-        await _firestore.collection('test').limit(1).get();
-      } catch (e) {
-        throw Exception('Cannot connect to Firebase. Check internet connection and Firebase configuration.');
-      }
-
       // Download from Wednesday player profile collection only
-      QuerySnapshot wednesdaySnapshot = await _firestore.collection('wednesday_player_profile').get();
+      // No need to test connection separately - the actual query will fail if there's a connection issue
+      QuerySnapshot wednesdaySnapshot = await _firestore.collection('W_player_profile').get();
 
       int wednesdayCount = 0;
       int errorCount = 0;
@@ -210,21 +182,36 @@ class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
   /// Helper method to insert or update a player
   Future<void> _insertOrUpdatePlayer(Map<String, dynamic> playerData) async {
     try {
-      int? playerNumber = playerData['player_number'];
+      // Clean the data to only include fields that exist in the local database schema
+      // Local players table has: player_number, first, last, skat_number, cell, email, league
+      Map<String, dynamic> cleanData = {
+        'player_number': playerData['player_number'],
+        'first': playerData['first'],
+        'last': playerData['last'],
+        'skat_number': playerData['skat_number'],
+        'cell': playerData['cell'],
+        'email': playerData['email'],
+        'league': playerData['league'],
+      };
+
+      // Remove null values
+      cleanData.removeWhere((key, value) => value == null);
+
+      int? playerNumber = cleanData['player_number'];
       if (playerNumber != null) {
         // Check if player exists by player_number
         Map<String, dynamic>? existingPlayer = await _dbHelper.getPlayer(playerNumber);
 
         if (existingPlayer != null) {
           // Update existing player
-          await _dbHelper.updatePlayer(playerNumber, playerData);
+          await _dbHelper.updatePlayer(playerNumber, cleanData);
         } else {
           // Insert new player
-          await _dbHelper.insertPlayer(playerData);
+          await _dbHelper.insertPlayer(cleanData);
         }
       } else {
         // No player_number, try to insert anyway
-        await _dbHelper.insertPlayer(playerData);
+        await _dbHelper.insertPlayer(cleanData);
       }
     } catch (e) {
       throw e;
@@ -356,18 +343,9 @@ class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
         ),
       );
 
-
-      // Test connection first
-      try {
-        await _firestore.collection('test').limit(1).get();
-      } catch (e) {
-        throw Exception('Cannot connect to Firebase. Check internet connection and Firebase configuration.');
-      }
-
-      // Download from wednesday_player_scores collection only
-
-      // Download Wednesday scores
-      QuerySnapshot wednesdaySnapshot = await _firestore.collection('wednesday_player_scores').get();
+      // Download from W_player_scores collection only
+      // No need to test connection separately - the actual query will fail if there's a connection issue
+      QuerySnapshot wednesdaySnapshot = await _firestore.collection('W_player_scores').get();
 
       // Use only Wednesday docs
       List<QueryDocumentSnapshot> allDocs = wednesdaySnapshot.docs;
@@ -385,7 +363,7 @@ class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
           data.remove('source');
           data.remove('upload_timestamp');
 
-          // All documents from wednesday_player_scores go to Wednesday database
+          // All documents from W_player_scores go to Wednesday database
           await _insertOrUpdatePlayerScore(data, 'wednesday');
           wednesdayCount++;
 
@@ -401,7 +379,7 @@ class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
             'Download Complete!\n'
             'Wednesday Scores: $wednesdayCount downloaded\n'
             '${errorCount > 0 ? 'Errors: $errorCount\n' : ''}'
-            'Total: $wednesdayCount scores downloaded from wednesday_player_scores'
+            'Total: $wednesdayCount scores downloaded from W_player_scores'
           ),
           backgroundColor: Colors.green,
           duration: const Duration(seconds: 4),
@@ -531,8 +509,8 @@ class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
     bool? confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Clear All Score Data'),
-        content: const Text('This will permanently delete ALL scores, games, and winnings data for ALL players. This cannot be undone. Are you sure?'),
+        title: const Text('Clear Wednesday Score Data'),
+        content: const Text('This will permanently delete ALL scores, games, and winnings data for Wednesday league players only. This cannot be undone. Are you sure?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
@@ -549,10 +527,10 @@ class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
 
     if (confirmed == true) {
       try {
-        await _dbHelper.clearAllScoreData();
+        await _dbHelper.clearWednesdayScoreData();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('All score data has been cleared from the database'),
+            content: Text('All Wednesday score data has been cleared from the database'),
             backgroundColor: Colors.green,
             duration: Duration(seconds: 3),
           ),
@@ -569,23 +547,26 @@ class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
     }
   }
 
-  Future<void> _replaceAllSkatNumbersTo35() async {
+  Future<void> _changeAllWednesdayHandicapsTo15() async {
     // Show confirmation dialog first
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Confirm Replace to 35'),
+        title: const Text('Confirm Change Handicaps to 15'),
         content: RichText(
           text: const TextSpan(
             style: TextStyle(color: Colors.black, fontSize: 16),
             children: [
-              TextSpan(text: 'Are you sure you want to replace all Skat # values to 35?\n'),
+              TextSpan(text: 'Are you sure you want to change all handicap values to 15?\n'),
               TextSpan(text: 'This usually is done only for testing purposes.\n'),
               TextSpan(text: 'Click '),
               TextSpan(text: 'Cancel', style: TextStyle(fontWeight: FontWeight.bold)),
               TextSpan(text: ' if you are not sure.\n'),
               TextSpan(text: 'This cannot be undone.\n\n'),
-              TextSpan(text: 'This will affect all players in BOTH Monday and Wednesday leagues.'),
+              TextSpan(
+                text: 'This will affect all players in the Wednesday league ONLY.',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
             ],
           ),
         ),
@@ -606,9 +587,74 @@ class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
     if (confirmed != true) return;
 
     try {
-      // Update all players' Skat # to 35 for both leagues
+      // Update HC column in players table for all Wednesday players
+      final db = await _dbHelper.database;
+      int rowsAffected = await db.rawUpdate('''
+        UPDATE players
+        SET HC = 15.0
+        WHERE league = 'wednesday'
+      ''');
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Successfully updated $rowsAffected Wednesday players with HC = 15'),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error updating handicaps: $e'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+
+  Future<void> _replaceAllSkatNumbersTo35() async {
+    // Show confirmation dialog first
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirm Replace to 35'),
+        content: RichText(
+          text: const TextSpan(
+            style: TextStyle(color: Colors.black, fontSize: 16),
+            children: [
+              TextSpan(text: 'Are you sure you want to replace all Skat # values to 35?\n'),
+              TextSpan(text: 'This usually is done only for testing purposes.\n'),
+              TextSpan(text: 'Click '),
+              TextSpan(text: 'Cancel', style: TextStyle(fontWeight: FontWeight.bold)),
+              TextSpan(text: ' if you are not sure.\n'),
+              TextSpan(text: 'This cannot be undone.\n\n'),
+              TextSpan(
+                text: 'This will affect all players in the Monday league ONLY.',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Replace'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      // Update all Monday players' Skat # to 35
       final mondayPlayers = await _dbHelper.getPlayersByLeague(League.monday);
-      final wednesdayPlayers = await _dbHelper.getPlayersByLeague(League.wednesday);
 
       int count = 0;
       for (var player in mondayPlayers) {
@@ -624,22 +670,9 @@ class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
         count++;
       }
 
-      for (var player in wednesdayPlayers) {
-        await _dbHelper.updatePlayer(player['player_number'], {
-          'player_number': player['player_number'],
-          'first': player['first'],
-          'last': player['last'],
-          'skat_number': 35,
-          'league': player['league'],
-          'cell': player['cell'],
-          'email': player['email'],
-        });
-        count++;
-      }
-
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('All Skat # values replaced to 35 for $count players'),
+          content: Text('All Monday Skat # values replaced to 35 for $count players'),
           backgroundColor: Colors.green,
           duration: const Duration(seconds: 3),
         ),
@@ -722,34 +755,31 @@ class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
   }
 
   Widget _buildDownloadButton(String title, IconData icon, Color bgColor, VoidCallback onPressed) {
-    return SizedBox(
-      width: double.infinity,
-      height: 70,
-      child: ElevatedButton(
-        onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: bgColor,
-          foregroundColor: Colors.black,
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: const BorderSide(color: Colors.black, width: 2),
-          ),
+    final fontScale = DeviceDetectionService.getFontScale(context);
+    final baseFontSize = 20.0;
+    final responsiveFontSize = baseFontSize * fontScale;
+
+    return ElevatedButton(
+      onPressed: onPressed,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: bgColor,
+        foregroundColor: Colors.black,
+        padding: const EdgeInsets.all(12),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: const BorderSide(color: Colors.black, width: 2),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 28),
-            const SizedBox(width: 16),
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
+      ),
+      child: Center(
+        child: Text(
+          title,
+          style: TextStyle(
+            fontSize: responsiveFontSize,
+            fontWeight: FontWeight.bold,
+          ),
+          textAlign: TextAlign.center,
+          maxLines: 3,
+          overflow: TextOverflow.ellipsis,
         ),
       ),
     );

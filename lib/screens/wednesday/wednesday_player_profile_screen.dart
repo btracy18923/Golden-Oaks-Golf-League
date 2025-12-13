@@ -2,10 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../services/database_helper.dart';
 import '../../models/league.dart';
+import '../../services/UI/player_profile_service.dart';
+import '../../services/firebase_upload_service.dart';
+import '../../services/device_detection_service.dart';
+import '../../services/responsive_typography.dart';
 import '../../widgets/responsive_wrapper.dart';
 
 class WednesdayPlayerProfileScreen extends StatefulWidget {
-  const WednesdayPlayerProfileScreen({super.key});
+  final League? league;
+
+  const WednesdayPlayerProfileScreen({super.key, this.league});
 
   @override
   State<WednesdayPlayerProfileScreen> createState() => _WednesdayPlayerProfileScreenState();
@@ -13,62 +19,221 @@ class WednesdayPlayerProfileScreen extends StatefulWidget {
 
 class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScreen> {
   final DatabaseHelper _databaseHelper = DatabaseHelper();
+  final FirebaseUploadService _firebaseUploadService = FirebaseUploadService();
+  League _selectedLeague = League.wednesday;
   Map<String, dynamic>? _selectedPlayer;
   List<Map<String, dynamic>> _players = [];
-  
-  // Form controllers
+  bool _isTableInteracting = false;
+  bool _isKeyboardVisible = false;
+  bool _anyFieldHasFocus = false;
+
+  // Form controllers - using handicap instead of skat
   final TextEditingController _idController = TextEditingController();
   final TextEditingController _firstController = TextEditingController();
   final TextEditingController _lastController = TextEditingController();
-  final TextEditingController _playerNumberController = TextEditingController();
+  final TextEditingController _handicapController = TextEditingController();
   final TextEditingController _cellController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
-  
+
   // Focus nodes for TAB navigation
   final FocusNode _idFocus = FocusNode();
   final FocusNode _firstFocus = FocusNode();
   final FocusNode _lastFocus = FocusNode();
-  final FocusNode _playerNumberFocus = FocusNode();
+  final FocusNode _handicapFocus = FocusNode();
   final FocusNode _cellFocus = FocusNode();
   final FocusNode _emailFocus = FocusNode();
-
-  // Hard-coded Wednesday league values
-  static const MaterialColor _leagueColor = Colors.orange;
-  static const String _leagueTitle = 'Wednesday League Player Profiles';
 
   @override
   void initState() {
     super.initState();
-    _refreshPlayerList();
+    _selectedLeague = widget.league ?? League.wednesday;
+    _loadPlayerList();
+    _setupFocusListeners();
   }
 
   @override
   void dispose() {
+    // Upload player table to Firebase before leaving
+    _uploadPlayerDataToFirebase();
+
     _idController.dispose();
     _firstController.dispose();
     _lastController.dispose();
-    _playerNumberController.dispose();
+    _handicapController.dispose();
     _cellController.dispose();
     _emailController.dispose();
-    
+
     _idFocus.dispose();
     _firstFocus.dispose();
     _lastFocus.dispose();
-    _playerNumberFocus.dispose();
+    _handicapFocus.dispose();
     _cellFocus.dispose();
     _emailFocus.dispose();
-    
+
     super.dispose();
   }
 
-  Future<void> _refreshPlayerList() async {
+  /// Upload player table data to Firebase when leaving the screen
+  void _uploadPlayerDataToFirebase() async {
     try {
-      final players = await _databaseHelper.getPlayersByLeague(League.wednesday);
+      final success = await _firebaseUploadService.uploadPlayerTableWithQueue(_selectedLeague);
+      if (success) {
+      } else {
+      }
+    } catch (e) {
+    }
+  }
+
+  void _setupFocusListeners() {
+    _idFocus.addListener(_onFocusChange);
+    _firstFocus.addListener(_onFocusChange);
+    _lastFocus.addListener(_onFocusChange);
+    _handicapFocus.addListener(_onFocusChange);
+    _cellFocus.addListener(_onFocusChange);
+    _emailFocus.addListener(_onFocusChange);
+  }
+
+  void _onFocusChange() {
+    final anyFocused = _idFocus.hasFocus ||
+                      _firstFocus.hasFocus ||
+                      _lastFocus.hasFocus ||
+                      _handicapFocus.hasFocus ||
+                      _cellFocus.hasFocus ||
+                      _emailFocus.hasFocus;
+
+    if (_anyFieldHasFocus != anyFocused) {
+      setState(() {
+        _anyFieldHasFocus = anyFocused;
+      });
+    }
+  }
+
+  /// Manual Firebase upload for testing
+  Future<void> _manualFirebaseUpload() async {
+    try {
+
+      // Test Firebase connection first
+      final isConnected = await _firebaseUploadService.isFirebaseConnected();
+
+      if (!isConnected) {
+        _showErrorDialog('Cannot connect to Firebase. Check your internet connection.');
+        return;
+      }
+
+      // Get current player count
+      final players = await _databaseHelper.getPlayersByLeague(_selectedLeague);
+
+      // Show loading dialog
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const AlertDialog(
+          content: Row(
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(width: 16),
+              Text('Uploading to Firebase...'),
+            ],
+          ),
+        ),
+      );
+
+      // Attempt upload
+      final success = await _firebaseUploadService.uploadPlayerTable(_selectedLeague);
+
+      // Close loading dialog
+      Navigator.of(context).pop();
+
+      if (success) {
+        _showSuccessDialog('Successfully uploaded ${players.length} players to Firebase!\\n\\nCheck Firebase collections:\\n• M_player_profile\\n• W_player_profile');
+      } else {
+        _showErrorDialog('Failed to upload players to Firebase. Check console for details.');
+      }
+
+
+    } catch (e) {
+      // Close loading dialog if still open
+      Navigator.of(context).pop();
+      _showErrorDialog('Upload error: $e');
+    }
+  }
+
+  Future<void> _loadPlayerList() async {
+    try {
+      final players = await _databaseHelper.getPlayersByLeague(_selectedLeague);
       setState(() {
         _players = players;
       });
     } catch (e) {
-      _showErrorDialog('Error loading Wednesday players: $e');
+      _showErrorDialog('Error loading players: $e');
+    }
+  }
+
+  /// Simple refresh without any dialog - just reload the player list
+  Future<void> _refreshPlayerList() async {
+    await _loadPlayerList();
+  }
+
+  /// Special function to replace all Handicap numbers to 0 (testing feature)
+  Future<void> _replaceAllHandicapsTo0() async {
+    // Show confirmation dialog first
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirm Replace to 0'),
+        content: RichText(
+          text: const TextSpan(
+            style: TextStyle(color: Colors.black, fontSize: 16),
+            children: [
+              TextSpan(text: 'Are you sure you want to replace all Handicap values to 0?\n'),
+              TextSpan(text: 'This usually is done only for testing purposes.\n'),
+              TextSpan(text: 'Click '),
+              TextSpan(text: 'Cancel', style: TextStyle(fontWeight: FontWeight.bold)),
+              TextSpan(text: ' if you are not sure.\n'),
+              TextSpan(text: 'This cannot be undone.\n\n'),
+              TextSpan(text: 'This will affect all players in the current league.'),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Replace'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      // Update all players' Handicap to 0
+      final players = await _databaseHelper.getPlayersByLeague(_selectedLeague);
+      for (var player in players) {
+        await _databaseHelper.updatePlayer(player['player_number'], {
+          'player_number': player['player_number'],
+          'first': player['first'],
+          'last': player['last'],
+          'HC': 0.0,
+          'league': player['league'],
+          'cell': player['cell'],
+          'email': player['email'],
+        });
+      }
+
+      // Reload the updated player list
+      await _refreshPlayerList();
+
+      _showSuccessDialog('All Handicap values replaced to 0');
+    } catch (e) {
+      _showErrorDialog('Error updating players: $e');
+      // Ensure player list is reloaded even if update fails
+      await _loadPlayerList();
     }
   }
 
@@ -76,90 +241,246 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
     _idController.clear();
     _firstController.clear();
     _lastController.clear();
-    _playerNumberController.clear();
+    _handicapController.clear();
     _cellController.clear();
     _emailController.clear();
+
+    // Remove focus from all form fields
+    FocusScope.of(context).unfocus();
+
     setState(() {
       _selectedPlayer = null;
     });
   }
 
-  void _populateForm(Map<String, dynamic> player) {
-    _idController.text = player['id']?.toString() ?? '';
-    _firstController.text = player['first'] ?? '';
-    _lastController.text = player['last'] ?? '';
-    _playerNumberController.text = player['player_number']?.toString() ?? '';
-    _cellController.text = player['cell'] ?? '';
-    _emailController.text = player['email'] ?? '';
-    
+  void _selectPlayer(Map<String, dynamic> player) {
+    // Check if any form data exists that would be overwritten
+    bool hasFormData = _idController.text.trim().isNotEmpty ||
+                      _firstController.text.trim().isNotEmpty ||
+                      _lastController.text.trim().isNotEmpty ||
+                      _handicapController.text.trim().isNotEmpty ||
+                      _cellController.text.trim().isNotEmpty ||
+                      _emailController.text.trim().isNotEmpty;
+
+    if (hasFormData && _selectedPlayer?['player_number'] != player['player_number']) {
+      // Show confirmation dialog before overwriting form data
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('Load Player Data?', style: ResponsiveTypography.headingStyle(context, fontWeight: FontWeight.w600)),
+          content: Text('This will replace the current form data with "${player['first']} ${player['last']}". Continue?', style: ResponsiveTypography.bodyTextStyle(context)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text('Cancel', style: ResponsiveTypography.buttonStyle(context)),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(true);
+                _loadPlayerData(player);
+              },
+              child: Text('Load', style: ResponsiveTypography.buttonStyle(context)),
+            ),
+          ],
+        ),
+      );
+    } else {
+      _loadPlayerData(player);
+    }
+  }
+
+  void _loadPlayerData(Map<String, dynamic> player) {
     setState(() {
-      _selectedPlayer = player;
+      _selectedPlayer = Map<String, dynamic>.from(player);
+      _idController.text = player['player_number']?.toString() ?? '';
+      _firstController.text = player['first'] ?? '';
+      _lastController.text = player['last'] ?? '';
+      _handicapController.text = player['HC']?.toString() ?? '';
+      _cellController.text = player['cell'] ?? '';
+      _emailController.text = player['email'] ?? '';
     });
   }
 
-  Future<void> _savePlayer() async {
-    try {
-      Map<String, dynamic> playerData = {
-        'first': _firstController.text,
-        'last': _lastController.text,
-        'player_number': int.tryParse(_playerNumberController.text) ?? 0,
-        'cell': _cellController.text,
-        'email': _emailController.text,
-        'league': 'wednesday', // Hard-coded for Wednesday league
-      };
+  String _formatPhoneNumber(String? phone) {
+    if (phone == null || phone.isEmpty) return '';
 
-      if (_selectedPlayer != null) {
-        // Update existing player
-        await _databaseHelper.updatePlayer(_selectedPlayer!['id'], playerData);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Wednesday player updated successfully')),
-        );
-      } else {
-        // Add new player
-        await _databaseHelper.insertPlayer(playerData);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Wednesday player added successfully')),
-        );
+    final digits = phone.replaceAll(RegExp(r'\D'), '');
+
+    if (digits.length == 10) {
+      return '${digits.substring(0, 3)}-${digits.substring(3, 6)}-${digits.substring(6)}';
+    } else if (digits.length == 11 && digits.startsWith('1')) {
+      return '${digits.substring(1, 4)}-${digits.substring(4, 7)}-${digits.substring(7)}';
+    }
+
+    return phone;
+  }
+
+  bool _validateForm() {
+    if (_idController.text.trim().isEmpty) {
+      _showErrorDialog('Player Number is required!');
+      return false;
+    }
+
+    if (_firstController.text.trim().isEmpty) {
+      _showErrorDialog('First Name is required!');
+      return false;
+    }
+
+    if (_lastController.text.trim().isEmpty) {
+      _showErrorDialog('Last Name is required!');
+      return false;
+    }
+
+    return true;
+  }
+
+  bool _checkForDuplicates() {
+    final playerId = int.tryParse(_idController.text.trim()) ?? 0;
+    final firstName = _firstController.text.trim().toLowerCase();
+    final lastName = _lastController.text.trim().toLowerCase();
+
+    // Check for duplicate player_number
+    for (var player in _players) {
+      if (player['player_number'] == playerId) {
+        _showErrorDialog('Player #$playerId already exists!');
+        return true;
       }
-      
+    }
+
+    // Check for duplicate name combination
+    for (var player in _players) {
+      final existingFirst = (player['first'] ?? '').toString().toLowerCase();
+      final existingLast = (player['last'] ?? '').toString().toLowerCase();
+
+      if (existingFirst == firstName && existingLast == lastName) {
+        _showErrorDialog('Player "$firstName $lastName" already exists!');
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  Future<void> _addPlayer() async {
+    if (!_validateForm()) return;
+
+    // Check for duplicates
+    if (_checkForDuplicates()) return;
+
+    try {
+      final leagueStr = _selectedLeague == League.monday ? 'monday' : 'wednesday';
+
+      await _databaseHelper.insertPlayer({
+        'player_number': int.tryParse(_idController.text) ?? 0,
+        'first': _firstController.text.trim(),
+        'last': _lastController.text.trim(),
+        'HC': double.tryParse(_handicapController.text) ?? 0.0,
+        'league': leagueStr,
+        'cell': _cellController.text.trim(),
+        'email': _emailController.text.trim(),
+      });
+
+      _clearForm();
+      _refreshPlayerList();
+
+      // Immediately try to upload to Firebase
+      final uploadSuccess = await _firebaseUploadService.uploadPlayerTableWithQueue(_selectedLeague);
+      if (uploadSuccess) {
+        _showSuccessDialog('Player added and uploaded to Firebase!');
+      } else {
+        _showSuccessDialog('Player added locally! Firebase upload queued for when WiFi is available.');
+      }
+    } catch (e) {
+      _showErrorDialog('Error adding player: $e');
+    }
+  }
+
+  Future<void> _updatePlayer() async {
+    if (_selectedPlayer == null) {
+      _showErrorDialog('Please select a player to update');
+      return;
+    }
+
+    if (!_validateForm()) return;
+
+    try {
+      final leagueStr = _selectedLeague == League.monday ? 'monday' : 'wednesday';
+
+      await _databaseHelper.updatePlayer(_selectedPlayer!['player_number'], {
+        'player_number': int.tryParse(_idController.text) ?? 0,
+        'first': _firstController.text.trim(),
+        'last': _lastController.text.trim(),
+        'HC': double.tryParse(_handicapController.text) ?? 0.0,
+        'league': leagueStr,
+        'cell': _cellController.text.trim(),
+        'email': _emailController.text.trim(),
+      });
+
       _refreshPlayerList();
       _clearForm();
+
+      // Immediately try to upload to Firebase
+      final uploadSuccess = await _firebaseUploadService.uploadPlayerTableWithQueue(_selectedLeague);
+      if (uploadSuccess) {
+        _showSuccessDialog('Player updated and uploaded to Firebase!');
+      } else {
+        _showSuccessDialog('Player updated locally! Firebase upload queued for when WiFi is available.');
+      }
     } catch (e) {
-      _showErrorDialog('Error saving Wednesday player: $e');
+      _showErrorDialog('Error updating player: $e');
     }
   }
 
   Future<void> _deletePlayer() async {
-    if (_selectedPlayer == null) return;
+    if (_selectedPlayer == null) {
+      _showErrorDialog('Please select a player to delete');
+      return;
+    }
 
-    bool confirm = await showDialog(
+    final playerName = '${_selectedPlayer!['first']} ${_selectedPlayer!['last']}';
+
+    final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Confirm Delete'),
-        content: Text('Are you sure you want to delete ${_selectedPlayer!['first']} ${_selectedPlayer!['last']} from the Wednesday league?'),
+        title: Text('Confirm Delete', style: TextStyle(fontSize: ResponsiveTypography.getHeading(context))),
+        content: Text('Are you sure you want to delete $playerName?\n\nThis action cannot be undone.', style: TextStyle(fontSize: ResponsiveTypography.getBodyText(context))),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text('Cancel', style: TextStyle(fontSize: ResponsiveTypography.getButton(context))),
           ),
           TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete'),
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: Text('Delete', style: TextStyle(fontSize: ResponsiveTypography.getButton(context))),
           ),
         ],
       ),
-    ) ?? false;
+    );
 
-    if (confirm) {
+    if (confirmed == true) {
       try {
-        await _databaseHelper.deletePlayer(_selectedPlayer!['id']);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Wednesday player deleted successfully')),
-        );
-        _refreshPlayerList();
+        // Clear focus first
+        FocusScope.of(context).unfocus();
+
+        await _databaseHelper.deletePlayer(_selectedPlayer!['player_number']);
         _clearForm();
+        _refreshPlayerList();
+
+        // Ensure absolutely no field has focus after deletion
+        FocusScope.of(context).unfocus();
+
+        // Also clear focus from all individual focus nodes
+        _idFocus.unfocus();
+        _firstFocus.unfocus();
+        _lastFocus.unfocus();
+        _handicapFocus.unfocus();
+        _cellFocus.unfocus();
+        _emailFocus.unfocus();
+
+        _showSuccessDialog('Player deleted successfully!');
       } catch (e) {
-        _showErrorDialog('Error deleting Wednesday player: $e');
+        _showErrorDialog('Error deleting player: $e');
       }
     }
   }
@@ -168,463 +489,762 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Error'),
-        content: Text(message),
+        title: Text('Error', style: TextStyle(fontSize: ResponsiveTypography.getHeading(context))),
+        content: Text(message, style: TextStyle(fontSize: ResponsiveTypography.getBodyText(context))),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('OK', style: TextStyle(fontSize: ResponsiveTypography.getButton(context))),
           ),
         ],
       ),
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return ResponsiveWrapper(
-      phone: _buildPhoneLayout(),
-      tablet8: _buildTablet8Layout(),
-      tablet10: _buildTablet10Layout(),
-    );
-  }
-  
-  Widget _buildPhoneLayout() {
-    return Scaffold(
-      backgroundColor: Colors.grey[300],
-      appBar: AppBar(
-        title: const Text('Wednesday Player Profiles'),
-        backgroundColor: _leagueColor[700],
-        foregroundColor: Colors.white,
-        centerTitle: true,
-        toolbarHeight: 48,
-      ),
-      body: Container(
-        margin: const EdgeInsets.all(8),
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(4),
-        ),
-        child: Column(
-          children: [
-            Expanded(
-              child: DefaultTabController(
-                length: 2,
-                child: Column(
-                  children: [
-                    TabBar(
-                      labelColor: _leagueColor[800],
-                      unselectedLabelColor: Colors.grey[600],
-                      indicatorColor: _leagueColor[600],
-                      tabs: const [
-                        Tab(text: 'Players'),
-                        Tab(text: 'Form'),
-                      ],
-                    ),
-                    Expanded(
-                      child: TabBarView(
-                        children: [
-                          _buildPhonePlayerList(),
-                          _buildPhoneForm(),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-  
-  Widget _buildTablet8Layout() {
-    return Scaffold(
-      backgroundColor: Colors.grey[300],
-      appBar: AppBar(
-        title: const Text(_leagueTitle),
-        backgroundColor: _leagueColor[700],
-        foregroundColor: Colors.white,
-        centerTitle: true,
-        toolbarHeight: 56,
-      ),
-      body: Container(
-        margin: const EdgeInsets.all(12),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              flex: 1,
-              child: _buildPlayerListSection(16, 12),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              flex: 1,
-              child: _buildFormSection(16, 12),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-  
-  Widget _buildTablet10Layout() {
-    return Scaffold(
-      backgroundColor: Colors.grey[300],
-      appBar: AppBar(
-        title: const Text(_leagueTitle),
-        backgroundColor: _leagueColor[700],
-        foregroundColor: Colors.white,
-        centerTitle: true,
-        toolbarHeight: 64,
-      ),
-      body: Container(
-        margin: const EdgeInsets.all(16),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              flex: 1,
-              child: _buildPlayerListSection(18, 12),
-            ),
-            const SizedBox(width: 20),
-            Expanded(
-              flex: 1,
-              child: _buildFormSection(18, 12),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-  
-  Widget _buildPhonePlayerList() {
-    return Column(
-      children: [
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(8),
-          margin: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: _leagueColor[100],
-            borderRadius: BorderRadius.circular(4),
+  void _showSuccessDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Success', style: TextStyle(fontSize: ResponsiveTypography.getHeading(context))),
+        content: Text(message, style: TextStyle(fontSize: ResponsiveTypography.getBodyText(context))),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('OK', style: TextStyle(fontSize: ResponsiveTypography.getButton(context))),
           ),
-          child: Text(
-            'Wednesday League Players',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-              color: _leagueColor[800],
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ),
-        Expanded(
-          child: ListView.builder(
-            itemCount: _players.length,
-            itemBuilder: (context, index) {
-              final player = _players[index];
-              final isSelected = _selectedPlayer != null && _selectedPlayer!['id'] == player['id'];
-              
-              return Container(
-                margin: const EdgeInsets.symmetric(vertical: 1),
-                child: ListTile(
-                  dense: true,
-                  title: Text(
-                    '${player['last']}, ${player['first']}',
-                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                  ),
-                  subtitle: Text('Player #${player['player_number'] ?? 'N/A'}', style: const TextStyle(fontSize: 11)),
-                  selected: isSelected,
-                  selectedTileColor: _leagueColor[200],
-                  onTap: () => _populateForm(player),
-                  leading: CircleAvatar(
-                    backgroundColor: _leagueColor[400],
-                    radius: 16,
-                    child: Text(
-                      '${player['first']?[0] ?? ''}${player['last']?[0] ?? ''}',
-                      style: const TextStyle(color: Colors.white, fontSize: 10),
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-  
-  Widget _buildPhoneForm() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(8),
-      child: Column(
-        children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: _leagueColor[100],
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Text(
-              _selectedPlayer == null ? 'Add New Player' : 'Edit Player',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: _leagueColor[800],
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ),
-          const SizedBox(height: 16),
-          _buildFormFields(12, 10),
-          const SizedBox(height: 16),
-          _buildPhoneActionButtons(),
         ],
       ),
     );
   }
-  
-  Widget _buildPlayerListSection(double fontSize, double padding) {
+
+  Widget _buildCompactFormField(String label, TextEditingController controller, FocusNode focusNode, FocusNode? nextFocus, {TextInputType? keyboardType, List<TextInputFormatter>? inputFormatters}) {
+    return PlayerProfileService.buildCompactFormField(
+      context,
+      label,
+      controller,
+      focusNode,
+      nextFocus,
+      _selectedPlayer != null ? _updatePlayer : null,
+      keyboardType: keyboardType,
+      inputFormatters: inputFormatters,
+      enabled: !_isTableInteracting,
+    );
+  }
+
+  Widget _buildFormField(String label, TextEditingController controller, FocusNode focusNode, FocusNode? nextFocus, {TextInputType? keyboardType, List<TextInputFormatter>? inputFormatters}) {
+    return PlayerProfileService.buildFormField(
+      context,
+      label,
+      controller,
+      focusNode,
+      nextFocus,
+      _selectedPlayer != null ? _updatePlayer : null,
+      keyboardType: keyboardType,
+      inputFormatters: inputFormatters,
+    );
+  }
+
+  Widget _buildPlayerTable() {
+    return _buildWednesdayPlayerTable(
+      context,
+      _players,
+      _selectedPlayer,
+      _selectPlayer,
+      _formatPhoneNumber,
+      onInteractionChange: (bool isInteracting) {
+        setState(() {
+          _isTableInteracting = isInteracting;
+        });
+      },
+      isKeyboardVisible: _isKeyboardVisible,
+      anyFieldHasFocus: _anyFieldHasFocus,
+    );
+  }
+
+
+  @override
+  Widget build(BuildContext context) {
+    // Detect keyboard visibility
+    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+    final isKeyboardVisible = keyboardHeight > 0;
+
+    // Update keyboard visibility state
+    if (_isKeyboardVisible != isKeyboardVisible) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        setState(() {
+          _isKeyboardVisible = isKeyboardVisible;
+        });
+      });
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          'Player Profile - ${_selectedLeague == League.monday ? 'Monday' : 'Wednesday'} League - ${DeviceDetectionService.getDeviceName(context)}',
+          style: TextStyle(fontSize: ResponsiveTypography.getAppBarTitle(context)),
+        ),
+        centerTitle: true,
+        backgroundColor: _selectedLeague == League.monday ? Colors.green[700] : Colors.orange[700],
+        foregroundColor: Colors.white,
+      ),
+      body: SafeArea(
+        child: ResponsiveWrapper(
+          phone: _buildPhoneLayout(),
+          tablet8: _buildTablet8Layout(),
+          tablet10: _buildTablet10Layout(),
+        ),
+      ),
+    );
+  }
+
+
+  // Phone layout (6.5" phone)
+  Widget _buildPhoneLayout() {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          width: double.infinity,
-          padding: EdgeInsets.all(padding),
-          decoration: BoxDecoration(
-            color: _leagueColor[100],
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Text(
-            'Wednesday League Players',
-            style: TextStyle(
-              fontSize: fontSize,
-              fontWeight: FontWeight.bold,
-              color: _leagueColor[800],
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
         Expanded(
-          child: ListView.builder(
-            itemCount: _players.length,
-            itemBuilder: (context, index) {
-              final player = _players[index];
-              final isSelected = _selectedPlayer != null && _selectedPlayer!['id'] == player['id'];
-              
-              return Container(
-                margin: const EdgeInsets.symmetric(vertical: 2),
-                child: ListTile(
-                  title: Text(
-                    '${player['last']}, ${player['first']}',
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                  subtitle: Text('Player #${player['player_number'] ?? 'N/A'}'),
-                  selected: isSelected,
-                  selectedTileColor: _leagueColor[200],
-                  onTap: () => _populateForm(player),
-                  leading: CircleAvatar(
-                    backgroundColor: _leagueColor[400],
-                    child: Text(
-                      '${player['first']?[0] ?? ''}${player['last']?[0] ?? ''}',
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                  ),
-                ),
-              );
-            },
+          child: Container(
+            color: Colors.grey[100],
+            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 12.0),
+            child: _buildPhoneLandscapeLayout(),
           ),
         ),
+        _buildFullScreenButtonBar(),
       ],
     );
   }
-  
-  Widget _buildFormSection(double fontSize, double padding) {
+
+  // 8" tablet layout
+  Widget _buildTablet8Layout() {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          width: double.infinity,
-          padding: EdgeInsets.all(padding),
-          decoration: BoxDecoration(
-            color: _leagueColor[100],
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Text(
-            _selectedPlayer == null ? 'Add New Wednesday Player' : 'Edit Wednesday Player',
-            style: TextStyle(
-              fontSize: fontSize,
-              fontWeight: FontWeight.bold,
-              color: _leagueColor[800],
-            ),
+        Expanded(
+          child: Container(
+            color: Colors.grey[100],
+            padding: const EdgeInsets.all(16.0),
+            child: _buildTabletLayoutContent(),
           ),
         ),
-        const SizedBox(height: 20),
+        _buildFullScreenButtonBar(),
+      ],
+    );
+  }
+
+  // 10" tablet layout
+  Widget _buildTablet10Layout() {
+    return Column(
+      children: [
+        Expanded(
+          child: Container(
+            color: Colors.grey[100],
+            padding: const EdgeInsets.all(24.0),
+            child: _buildTabletLayoutContent(),
+          ),
+        ),
+        _buildFullScreenButtonBar(),
+      ],
+    );
+  }
+
+  Widget _buildTabletLayoutContent() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return PlayerProfileService.buildTabletLayout(
+          context,
+          constraints,
+          _buildFormSectionWithoutButtons(),
+          _buildPlayerTable(),
+        );
+      },
+    );
+  }
+
+
+  Widget _buildFormSection() {
+    return _buildWednesdayFormSection(
+      context,
+      _buildFormField,
+      _idController,
+      _firstController,
+      _lastController,
+      _handicapController,
+      _cellController,
+      _emailController,
+      _idFocus,
+      _firstFocus,
+      _lastFocus,
+      _handicapFocus,
+      _cellFocus,
+      _emailFocus,
+      _buildActionButtons(),
+    );
+  }
+
+  Widget _buildFormSectionWithoutButtons() {
+    return _buildWednesdayFormSectionWithoutButtons(
+      context,
+      _buildCompactFormField,
+      _idController,
+      _firstController,
+      _lastController,
+      _handicapController,
+      _cellController,
+      _emailController,
+      _idFocus,
+      _firstFocus,
+      _lastFocus,
+      _handicapFocus,
+      _cellFocus,
+      _emailFocus,
+    );
+  }
+
+
+
+  Widget _buildButtonFooterLandscape() {
+    return PlayerProfileService.buildButtonFooterLandscape(
+      _addPlayer,
+      _deletePlayer,
+      _clearForm,
+      () => Navigator.of(context).pop(),
+    );
+  }
+
+  Widget _buildActionButtons() {
+    return PlayerProfileService.buildActionButtons(
+      _addPlayer,
+      _updatePlayer,
+      _deletePlayer,
+      _clearForm,
+      () => Navigator.of(context).popUntil((route) => route.isFirst),
+    );
+  }
+
+
+  Widget _buildPhoneLandscapeLayout() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Form section (35% width)
+            Expanded(
+              flex: 35,
+              child: Container(
+                height: constraints.maxHeight,
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.shade300),
+                  borderRadius: BorderRadius.circular(8.0),
+                  color: Colors.white,
+                ),
+                padding: const EdgeInsets.all(12.0),
+                child: _buildFormSectionWithoutButtons(),
+              ),
+            ),
+
+            const SizedBox(width: 12),
+
+            // Player table (65% width)
+            Expanded(
+              flex: 65,
+              child: Container(
+                height: constraints.maxHeight,
+                child: _buildPlayerTable(),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+
+
+  Widget _buildFullScreenButtonBar() {
+    // Reduce height for 6.5" phones to prevent overflow
+    final isPhone = DeviceDetectionService.is6Point5Phone(context);
+    final buttonBarHeight = isPhone ? 60.0 : 90.0;
+
+    return Container(
+      width: double.infinity,
+      height: buttonBarHeight,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.3),
+            spreadRadius: 1,
+            blurRadius: 3,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(12.0),
+      child: Row(
+        children: [
+          Expanded(
+            child: ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue[300],
+                foregroundColor: Colors.black,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+                padding: EdgeInsets.all(isPhone ? 8.0 : 12.0),
+                alignment: Alignment.center,
+              ),
+              child: Text('◄---- Back', style: TextStyle(fontSize: ResponsiveTypography.getButton(context), fontWeight: FontWeight.bold)),
+            ),
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: ElevatedButton(
+              onPressed: _clearForm,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange[300],
+                foregroundColor: Colors.black,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+                padding: EdgeInsets.all(isPhone ? 8.0 : 12.0),
+                alignment: Alignment.center,
+              ),
+              child: Text('Clear', style: TextStyle(fontSize: ResponsiveTypography.getButton(context), fontWeight: FontWeight.bold)),
+            ),
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: ElevatedButton(
+              onPressed: _selectedPlayer != null ? _deletePlayer : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _selectedPlayer != null ? Colors.red[300] : Colors.grey[400],
+                foregroundColor: Colors.black,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+                padding: EdgeInsets.all(isPhone ? 8.0 : 12.0),
+                alignment: Alignment.center,
+              ),
+              child: Text('Delete', style: TextStyle(fontSize: ResponsiveTypography.getButton(context), fontWeight: FontWeight.bold)),
+            ),
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: ElevatedButton(
+              onPressed: _addPlayer,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green[300],
+                foregroundColor: Colors.black,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+                padding: EdgeInsets.all(isPhone ? 8.0 : 12.0),
+                alignment: Alignment.center,
+              ),
+              child: Text('Add Player', style: TextStyle(fontSize: ResponsiveTypography.getButton(context), fontWeight: FontWeight.bold)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Wednesday-specific form section with HC instead of SKAT#
+  Widget _buildWednesdayFormSection(
+    BuildContext context,
+    Widget Function(String, TextEditingController, FocusNode, FocusNode?, {TextInputType? keyboardType, List<TextInputFormatter>? inputFormatters}) buildFormField,
+    TextEditingController idController,
+    TextEditingController firstController,
+    TextEditingController lastController,
+    TextEditingController handicapController,
+    TextEditingController cellController,
+    TextEditingController emailController,
+    FocusNode idFocus,
+    FocusNode firstFocus,
+    FocusNode lastFocus,
+    FocusNode handicapFocus,
+    FocusNode cellFocus,
+    FocusNode emailFocus,
+    Widget actionButtons,
+  ) {
+    return Column(
+      children: [
+        // Form fields - scrollable area that takes up available space
         Expanded(
           child: SingleChildScrollView(
             child: Column(
               children: [
-                _buildFormFields(16, 12),
-                const SizedBox(height: 24),
-                _buildActionButtons(),
+                buildFormField('ID#', idController, idFocus, firstFocus,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
+                buildFormField('First Name', firstController, firstFocus, lastFocus),
+                buildFormField('Last Name', lastController, lastFocus, handicapFocus),
+                buildFormField('HC', handicapController, handicapFocus, cellFocus,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true)),
+                buildFormField('Cell Phone', cellController, cellFocus, emailFocus,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: false)),
+                buildFormField('Email', emailController, emailFocus, null),
+                const SizedBox(height: 10),
               ],
             ),
           ),
         ),
+
+        // Action buttons - fixed at bottom
+        actionButtons,
       ],
     );
   }
-  
-  Widget _buildFormFields(double spacing, double fieldSpacing) {
-    return Column(
-      children: [
-        TextField(
-          controller: _firstController,
-          focusNode: _firstFocus,
-          decoration: const InputDecoration(
-            labelText: 'First Name',
-            border: OutlineInputBorder(),
-          ),
-          onSubmitted: (_) => _lastFocus.requestFocus(),
-        ),
-        SizedBox(height: fieldSpacing),
-        TextField(
-          controller: _lastController,
-          focusNode: _lastFocus,
-          decoration: const InputDecoration(
-            labelText: 'Last Name',
-            border: OutlineInputBorder(),
-          ),
-          onSubmitted: (_) => _playerNumberFocus.requestFocus(),
-        ),
-        SizedBox(height: fieldSpacing),
-        TextField(
-          controller: _playerNumberController,
-          focusNode: _playerNumberFocus,
-          decoration: const InputDecoration(
-            labelText: 'Player Number',
-            border: OutlineInputBorder(),
-          ),
-          keyboardType: TextInputType.number,
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-          onSubmitted: (_) => _cellFocus.requestFocus(),
-        ),
-        SizedBox(height: fieldSpacing),
-        TextField(
-          controller: _cellController,
-          focusNode: _cellFocus,
-          decoration: const InputDecoration(
-            labelText: 'Cell Phone',
-            border: OutlineInputBorder(),
-          ),
-          keyboardType: TextInputType.numberWithOptions(decimal: false),
-          onSubmitted: (_) => _emailFocus.requestFocus(),
-        ),
-        SizedBox(height: fieldSpacing),
-        TextField(
-          controller: _emailController,
-          focusNode: _emailFocus,
-          decoration: const InputDecoration(
-            labelText: 'Email',
-            border: OutlineInputBorder(),
-          ),
-          keyboardType: TextInputType.emailAddress,
-        ),
-      ],
-    );
-  }
-  
-  Widget _buildPhoneActionButtons() {
-    return Column(
-      children: [
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-            onPressed: _savePlayer,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _leagueColor[400],
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 12),
-            ),
-            child: Text(_selectedPlayer == null ? 'Add Player' : 'Update Player'),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: ElevatedButton(
-                onPressed: _clearForm,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.grey[400],
-                  foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                ),
-                child: const Text('Clear'),
-              ),
-            ),
-            if (_selectedPlayer != null) ...[
-              const SizedBox(width: 8),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: _deletePlayer,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red[400],
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
-                  child: const Text('Delete'),
-                ),
-              ),
+
+  Widget _buildWednesdayFormSectionWithoutButtons(
+    BuildContext context,
+    Widget Function(String, TextEditingController, FocusNode, FocusNode?, {TextInputType? keyboardType, List<TextInputFormatter>? inputFormatters}) buildCompactFormField,
+    TextEditingController idController,
+    TextEditingController firstController,
+    TextEditingController lastController,
+    TextEditingController handicapController,
+    TextEditingController cellController,
+    TextEditingController emailController,
+    FocusNode idFocus,
+    FocusNode firstFocus,
+    FocusNode lastFocus,
+    FocusNode handicapFocus,
+    FocusNode cellFocus,
+    FocusNode emailFocus,
+  ) {
+    // Use unified device detection service for consistent classification
+    final isPhone = DeviceDetectionService.is6Point5Phone(context);
+    final is8Tablet = DeviceDetectionService.is8Tablet(context);
+    final is10Tablet = DeviceDetectionService.is10Tablet(context);
+
+    // For 6.5" phones, use compact layout with SingleChildScrollView to prevent overflow
+    if (isPhone) {
+      return SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.only(top: 0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              buildCompactFormField('ID#', idController, idFocus, firstFocus,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
+              const SizedBox(height: 0),
+              buildCompactFormField('First Name', firstController, firstFocus, lastFocus),
+              const SizedBox(height: 0),
+              buildCompactFormField('Last Name', lastController, lastFocus, handicapFocus),
+              const SizedBox(height: 0),
+              buildCompactFormField('HC', handicapController, handicapFocus, cellFocus,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true)),
+              const SizedBox(height: 0),
+              buildCompactFormField('Cell Phone', cellController, cellFocus, emailFocus,
+                keyboardType: const TextInputType.numberWithOptions(decimal: false)),
+              const SizedBox(height: 0),
+              buildCompactFormField('Email', emailController, emailFocus, null),
             ],
-          ],
+          ),
         ),
+      );
+    }
+
+    // For 8" tablets, don't use scroll wrapper but reduce spacing
+    if (is8Tablet) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.only(top: 10),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              buildCompactFormField('ID#', idController, idFocus, firstFocus,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
+              const SizedBox(height: 4),
+              buildCompactFormField('First Name', firstController, firstFocus, lastFocus),
+              const SizedBox(height: 4),
+              buildCompactFormField('Last Name', lastController, lastFocus, handicapFocus),
+              const SizedBox(height: 4),
+              buildCompactFormField('HC', handicapController, handicapFocus, cellFocus,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true)),
+              const SizedBox(height: 4),
+              buildCompactFormField('Cell Phone', cellController, cellFocus, emailFocus,
+                keyboardType: const TextInputType.numberWithOptions(decimal: false)),
+              const SizedBox(height: 4),
+              buildCompactFormField('Email', emailController, emailFocus, null),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // For 10" tablets and other screen sizes, keep the scroll wrapper
+    return Center(
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.only(top: 20),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              buildCompactFormField('Player #', idController, idFocus, firstFocus,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
+              const SizedBox(height: 8),
+              buildCompactFormField('First Name', firstController, firstFocus, lastFocus),
+              const SizedBox(height: 8),
+              buildCompactFormField('Last Name', lastController, lastFocus, handicapFocus),
+              const SizedBox(height: 8),
+              buildCompactFormField('HC', handicapController, handicapFocus, cellFocus,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true)),
+              const SizedBox(height: 8),
+              buildCompactFormField('Cell Phone', cellController, cellFocus, emailFocus,
+                keyboardType: const TextInputType.numberWithOptions(decimal: false)),
+              const SizedBox(height: 8),
+              buildCompactFormField('Email', emailController, emailFocus, null),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Wednesday-specific player table with HC instead of SKAT#
+  Widget _buildWednesdayPlayerTable(
+    BuildContext context,
+    List<Map<String, dynamic>> players,
+    Map<String, dynamic>? selectedPlayer,
+    Function(Map<String, dynamic>) onSelectPlayer,
+    String Function(String?) formatPhoneNumber, {
+    Function(bool)? onInteractionChange,
+    bool isKeyboardVisible = false,
+    bool anyFieldHasFocus = false,
+  }) {
+    final size = MediaQuery.of(context).size;
+    final orientation = MediaQuery.of(context).orientation;
+    final screenWidth = size.width;
+
+    // Improved responsive breakpoints
+    final isLargeTablet = screenWidth >= 1200;
+    final isMediumTablet = screenWidth >= 800 && screenWidth < 1200;
+    final isSmallTablet = screenWidth >= 600 && screenWidth < 800;
+    final isPhone = screenWidth < 600;
+    final isLandscape = orientation == Orientation.landscape;
+    final is6InchPhoneLandscape = isPhone && isLandscape;
+
+    // Adaptive table width calculation
+    double tableWidth;
+    double rowHeight;
+    // Use ResponsiveTypography for consistent font sizing
+    double fontSize = ResponsiveTypography.getSmall(context);
+
+    if (isLargeTablet) {
+      tableWidth = isLandscape ? (screenWidth * 0.7) - 40 : screenWidth - 60;
+      rowHeight = 48;
+    } else if (isMediumTablet) {
+      tableWidth = isLandscape ? (screenWidth * 0.65) - 30 : screenWidth - 50;
+      rowHeight = 44;
+    } else if (isSmallTablet) {
+      tableWidth = isLandscape ? (screenWidth * 0.6) - 25 : screenWidth - 40;
+      rowHeight = 40;
+    } else if (is6InchPhoneLandscape) {
+      tableWidth = (screenWidth * 0.65) - 20;
+      rowHeight = 36;
+    } else {
+      // Phone portrait
+      tableWidth = screenWidth - 32;
+      rowHeight = 48;
+    }
+
+    Widget tableWidget = Container(
+      width: tableWidth,
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey),
+        color: Colors.white,
+      ),
+      child: Column(
+        children: [
+          // Header row
+          Container(
+            height: rowHeight,
+            decoration: BoxDecoration(
+              color: Colors.orange[300],
+              border: const Border(bottom: BorderSide(color: Colors.grey)),
+            ),
+            child: SizedBox(
+              width: tableWidth,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: is6InchPhoneLandscape ? [
+                    _buildHeaderCellLeftAlign('Name', tableWidth * 0.40, fontSize),
+                    _buildHeaderCellLeftAlign('HC', tableWidth * 0.15, fontSize),
+                    _buildHeaderCellLeftAlign('Phone', tableWidth * 0.45, fontSize),
+                  ] : [
+                    _buildHeaderCellLeftAlign('Name', tableWidth * 0.45, fontSize),
+                    _buildHeaderCell('HC', tableWidth * 0.20, fontSize),
+                    _buildHeaderCell('Phone', tableWidth * 0.35, fontSize),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          // Player rows
+          Expanded(
+            child: SizedBox(
+              width: tableWidth,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: SizedBox(
+                  width: tableWidth, // Use full available table width
+                  child: GestureDetector(
+                    onTap: () {
+                      // Clear focus when tapping in the table area
+                      FocusScope.of(context).unfocus();
+                    },
+                    child: NotificationListener<ScrollNotification>(
+                      onNotification: (ScrollNotification scrollInfo) {
+                        // Clear focus and disable form when scrolling starts
+                        if (scrollInfo is ScrollStartNotification) {
+                          FocusScope.of(context).unfocus();
+                          onInteractionChange?.call(true);
+                        } else if (scrollInfo is ScrollEndNotification) {
+                          // Re-enable form when scrolling ends
+                          onInteractionChange?.call(false);
+                        }
+                        return false;
+                      },
+                      child: ListView.builder(
+                        itemCount: players.length,
+                        itemBuilder: (context, index) {
+                          final player = players[index];
+                          final isSelected = selectedPlayer?['player_number'] == player['player_number'];
+
+                          return GestureDetector(
+                            onTap: (isKeyboardVisible || anyFieldHasFocus) ? null : () {
+                              // Clear focus before selecting player
+                              FocusScope.of(context).unfocus();
+                              onSelectPlayer(player);
+                            },
+                            child: Container(
+                              height: rowHeight,
+                              decoration: BoxDecoration(
+                                color: isSelected ? Colors.orange[200] : Colors.transparent,
+                                border: Border(bottom: BorderSide(color: Colors.grey[300]!)),
+                              ),
+                              child: is6InchPhoneLandscape
+                                ? _buildWednesdayMobilePlayerRow(player, tableWidth, formatPhoneNumber, fontSize)
+                                : _buildWednesdayTabletPlayerRow(player, tableWidth, formatPhoneNumber, fontSize),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    return Stack(
+      children: [
+        tableWidget,
+        // Overlay when keyboard is visible or fields have focus
+        if (isKeyboardVisible || anyFieldHasFocus)
+          Container(
+            color: Colors.black,       //.withOpacity(0.1),
+            child: const Center(
+              child: Icon(
+                Icons.keyboard,
+                size: 50,
+                color: Colors.grey,
+              ),
+            ),
+          ),
       ],
     );
   }
-  
-  Widget _buildActionButtons() {
+
+  Widget _buildWednesdayMobilePlayerRow(Map<String, dynamic> player, double tableWidth, String Function(String?) formatPhoneNumber, double fontSize) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
-        ElevatedButton(
-          onPressed: _clearForm,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.grey[400],
-            foregroundColor: Colors.black,
-          ),
-          child: const Text('Clear'),
-        ),
-        ElevatedButton(
-          onPressed: _savePlayer,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: _leagueColor[400],
-            foregroundColor: Colors.white,
-          ),
-          child: Text(_selectedPlayer == null ? 'Add' : 'Update'),
-        ),
-        if (_selectedPlayer != null)
-          ElevatedButton(
-            onPressed: _deletePlayer,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red[400],
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Delete'),
-          ),
+        _buildDataCell('${player['first'] ?? ''} ${player['last'] ?? ''}',
+                      tableWidth * 0.40, fontSize, alignLeft: true),
+        _buildDataCell(player['HC']?.toString() ?? '',
+                      tableWidth * 0.15, fontSize),
+        _buildDataCell(formatPhoneNumber(player['cell']),
+                      tableWidth * 0.45, fontSize),
       ],
+    );
+  }
+
+  Widget _buildWednesdayTabletPlayerRow(Map<String, dynamic> player, double tableWidth, String Function(String?) formatPhoneNumber, double fontSize) {
+    return Row(
+      children: [
+        _buildDataCell('${player['first'] ?? ''} ${player['last'] ?? ''}', tableWidth * 0.45, fontSize, alignLeft: true),
+        _buildDataCell(player['HC']?.toString() ?? '', tableWidth * 0.20, fontSize),
+        _buildDataCell(formatPhoneNumber(player['cell']), tableWidth * 0.35, fontSize),
+      ],
+    );
+  }
+
+  Widget _buildHeaderCell(String text, double width, double fontSize) {
+    return Container(
+      width: width,
+      height: 40,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      decoration: const BoxDecoration(
+        border: Border(
+          right: BorderSide(color: Colors.grey, width: 1),
+        ),
+      ),
+      child: Center(
+        child: Text(
+          text,
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: fontSize),
+          textAlign: TextAlign.center,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeaderCellLeftAlign(String text, double width, double fontSize) {
+    return Container(
+      width: width,
+      height: 40,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      decoration: const BoxDecoration(
+        border: Border(
+          right: BorderSide(color: Colors.grey, width: 1),
+        ),
+      ),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Text(
+          text,
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: fontSize),
+          textAlign: TextAlign.left,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDataCell(String text, double width, double fontSize, {bool alignLeft = false}) {
+    return Container(
+      width: width,
+      height: 40,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: alignLeft
+        ? Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              text,
+              style: TextStyle(fontSize: fontSize),
+              textAlign: TextAlign.left,
+              overflow: TextOverflow.ellipsis,
+            ),
+          )
+        : Center(
+            child: Text(
+              text,
+              style: TextStyle(fontSize: fontSize),
+              textAlign: TextAlign.center,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
     );
   }
 }

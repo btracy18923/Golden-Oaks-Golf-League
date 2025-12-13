@@ -24,8 +24,7 @@ class _WednesdayPlayerSelectionScreenState extends State<WednesdayPlayerSelectio
   
   // Hard-coded Wednesday league colors and values
   static const Color _leagueColor = Color.fromRGBO(255, 214, 0, 1); // Gold
-  static const Color _appBarColor = Colors.orange;
-  
+
   @override
   void initState() {
     super.initState();
@@ -598,7 +597,7 @@ class _WednesdayPlayerSelectionScreenState extends State<WednesdayPlayerSelectio
               child: ElevatedButton(
                 onPressed: () => Navigator.of(context).pop(),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange[300],
+                  backgroundColor: Colors.blue[300],
                   foregroundColor: Colors.black,
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   shape: RoundedRectangleBorder(
@@ -622,7 +621,7 @@ class _WednesdayPlayerSelectionScreenState extends State<WednesdayPlayerSelectio
               child: ElevatedButton(
                 onPressed: selectAllPlayers,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: _leagueColor,
+                  backgroundColor: Colors.yellow[100],
                   foregroundColor: Colors.black,
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   shape: RoundedRectangleBorder(
@@ -650,8 +649,8 @@ class _WednesdayPlayerSelectionScreenState extends State<WednesdayPlayerSelectio
                 style: ElevatedButton.styleFrom(
                   backgroundColor: _leagueColor,
                   foregroundColor: Colors.black,
-                  disabledBackgroundColor: _leagueColor.withOpacity(0.6),
-                  disabledForegroundColor: Colors.black.withOpacity(0.6),
+                  disabledBackgroundColor: _leagueColor.withValues(alpha: 0.6),
+                  disabledForegroundColor: Colors.black.withValues(alpha: 0.6),
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
@@ -661,6 +660,7 @@ class _WednesdayPlayerSelectionScreenState extends State<WednesdayPlayerSelectio
                 child: Text(
                   "Enter Scores ---➤",
                   style: TextStyle(
+                    backgroundColor: Colors.orange[300],
                     fontSize: ResponsiveTypography.getButton(context),
                     fontWeight: FontWeight.bold,
                   ),
@@ -711,7 +711,7 @@ class _WednesdayPlayerSelectionScreenState extends State<WednesdayPlayerSelectio
               child: ElevatedButton(
                 onPressed: selectAllPlayers,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: _leagueColor,
+                  backgroundColor: Colors.yellow[100],
                   foregroundColor: Colors.black,
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                   shape: RoundedRectangleBorder(
@@ -739,8 +739,8 @@ class _WednesdayPlayerSelectionScreenState extends State<WednesdayPlayerSelectio
                 style: ElevatedButton.styleFrom(
                   backgroundColor: _leagueColor,
                   foregroundColor: Colors.black,
-                  disabledBackgroundColor: _leagueColor.withOpacity(0.6),
-                  disabledForegroundColor: Colors.black.withOpacity(0.6),
+                  disabledBackgroundColor: _leagueColor.withValues (alpha: 0.6),
+                  disabledForegroundColor: Colors.black.withValues(alpha: 0.6),
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
@@ -800,7 +800,7 @@ class _WednesdayPlayerSelectionScreenState extends State<WednesdayPlayerSelectio
               child: ElevatedButton(
                 onPressed: selectAllPlayers,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: _leagueColor,
+                  backgroundColor: Colors.yellow[100],
                   foregroundColor: Colors.black,
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                   shape: RoundedRectangleBorder(
@@ -828,8 +828,8 @@ class _WednesdayPlayerSelectionScreenState extends State<WednesdayPlayerSelectio
                 style: ElevatedButton.styleFrom(
                   backgroundColor: _leagueColor,
                   foregroundColor: Colors.black,
-                  disabledBackgroundColor: _leagueColor.withOpacity(0.6),
-                  disabledForegroundColor: Colors.black.withOpacity(0.6),
+                  disabledBackgroundColor: _leagueColor.withValues(alpha: 0.6),
+                  disabledForegroundColor: Colors.black.withValues(alpha: 0.6),
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),

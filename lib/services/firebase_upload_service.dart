@@ -40,7 +40,7 @@ class FirebaseUploadService {
       final batch = db.batch();
       
       // Upload to league-specific player profile collection
-      final collectionName = league == League.monday ? 'M_player_profile' : 'wednesday_player_profile';
+      final collectionName = league == League.monday ? 'M_player_profile' : 'W_player_profile';
       final collection = db.collection(collectionName);
       
       // Add each player to the batch
@@ -175,7 +175,7 @@ class FirebaseUploadService {
       final batch = db.batch();
       
       // Get collection reference based on league
-      final collectionName = league == League.monday ? 'M_player_scores' : 'wednesday_player_scores';
+      final collectionName = league == League.monday ? 'M_player_scores' : 'W_player_scores';
       final collection = db.collection(collectionName);
       
       // Add each score record to the batch

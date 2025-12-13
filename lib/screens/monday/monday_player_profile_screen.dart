@@ -145,7 +145,7 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
       Navigator.of(context).pop();
       
       if (success) {
-        _showSuccessDialog('Successfully uploaded ${players.length} players to Firebase!\\n\\nCheck Firebase collections:\\n• M_player_profile\\n• wednesday_player_profile');
+        _showSuccessDialog('Successfully uploaded ${players.length} players to Firebase!\\n\\nCheck Firebase collections:\\n• M_player_profile\\n• W_player_profile');
       } else {
         _showErrorDialog('Failed to upload players to Firebase. Check console for details.');
       }
