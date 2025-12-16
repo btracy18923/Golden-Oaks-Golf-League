@@ -6,6 +6,7 @@ import '../../services/device_detection_service.dart';
 import '../../services/responsive_typography.dart';
 import '../../models/league.dart';
 import 'wednesday_enter_scores_screen.dart';
+import 'wednesday_closest_pin_screen.dart';
 import '../../widgets/responsive_wrapper.dart';
 
 class WednesdayPlayerSelectionScreen extends StatefulWidget {
@@ -384,7 +385,7 @@ class _WednesdayPlayerSelectionScreenState extends State<WednesdayPlayerSelectio
         groups.add(group);
       }
       
-      // Navigate to Wednesday Enter Scores Screen
+      // Navigate to Wednesday ores Screen
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -404,7 +405,34 @@ class _WednesdayPlayerSelectionScreenState extends State<WednesdayPlayerSelectio
       );
     }
   }
-  
+
+  void _navigateToClosestPin() {
+    try {
+      // Get selected players
+      List<Map<String, dynamic>> selectedPlayers = players
+          .where((player) => selectedPlayerIds.contains(player['player_number'] as int))
+          .toList();
+
+      // Navigate to Wednesday Closest Pin Screen
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => WednesdayClosestPinScreen(
+            selectedPlayers: selectedPlayers,
+          ),
+        ),
+      );
+
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error navigating to Wednesday closest pin: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   Widget _buildPhonePlayerCheckbox(Map<String, dynamic> player) {
     final int playerId = player['player_number'] as int;
     final bool isSelected = selectedPlayerIds.contains(playerId);
@@ -436,7 +464,7 @@ class _WednesdayPlayerSelectionScreenState extends State<WednesdayPlayerSelectio
                             style: TextStyle(
                               color: Colors.black,
                               fontWeight: FontWeight.bold,
-                              fontSize: 10,
+                              fontSize: 18,
                               height: 1.0,
                             ),
                             textAlign: TextAlign.center,
@@ -606,7 +634,7 @@ class _WednesdayPlayerSelectionScreenState extends State<WednesdayPlayerSelectio
                   ),
                 ),
                 child: Text(
-                  '◄---- Back',
+                  '◄---- Back      ',
                   style: TextStyle(
                     fontSize: ResponsiveTypography.getButton(context),
                     fontWeight: FontWeight.bold,
@@ -645,11 +673,11 @@ class _WednesdayPlayerSelectionScreenState extends State<WednesdayPlayerSelectio
             child: Container(
               margin: const EdgeInsets.symmetric(horizontal: 4),
               child: ElevatedButton(
-                onPressed: selectedPlayerIds.isEmpty ? null : _navigateToEnterScores,
+                onPressed: selectedPlayerIds.isEmpty ? null : _navigateToClosestPin,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: _leagueColor,
+                  backgroundColor: Colors.orange[300],
                   foregroundColor: Colors.black,
-                  disabledBackgroundColor: _leagueColor.withValues(alpha: 0.6),
+                  disabledBackgroundColor: Colors.orange[300]!.withValues(alpha: 0.6),
                   disabledForegroundColor: Colors.black.withValues(alpha: 0.6),
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   shape: RoundedRectangleBorder(
@@ -658,9 +686,8 @@ class _WednesdayPlayerSelectionScreenState extends State<WednesdayPlayerSelectio
                   ),
                 ),
                 child: Text(
-                  "Enter Scores ---➤",
+                  "Close Pin Winner ---➤",
                   style: TextStyle(
-                    backgroundColor: Colors.orange[300],
                     fontSize: ResponsiveTypography.getButton(context),
                     fontWeight: FontWeight.bold,
                   ),
@@ -696,7 +723,7 @@ class _WednesdayPlayerSelectionScreenState extends State<WednesdayPlayerSelectio
                   ),
                 ),
                 child: Text(
-                  '◄---- Back',
+                  '◄---- Back     ',
                   style: TextStyle(
                     fontSize: ResponsiveTypography.getButton(context),
                     fontWeight: FontWeight.bold,
@@ -785,7 +812,7 @@ class _WednesdayPlayerSelectionScreenState extends State<WednesdayPlayerSelectio
                   ),
                 ),
                 child: Text(
-                  '◄---- Back',
+                  '◄---- Back      ',
                   style: TextStyle(
                     fontSize: ResponsiveTypography.getButton(context),
                     fontWeight: FontWeight.bold,

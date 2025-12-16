@@ -1243,7 +1243,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     // Adjust button text for smaller screens
     String displayText = text;
     if (detectedDeviceType == DeviceDetection.DeviceType.phone6Point5) {
-      if (text == 'Back') displayText = '◄---- Back';
+      if (text == 'Back') displayText = '◄---- Back   ';
       if (text == 'Closest Pin') displayText = 'ClosePin';
       if (text.startsWith('SWAP') && text != 'SWAP Players') displayText = 'SWAP'; // Keep swap service text short on phones
     }

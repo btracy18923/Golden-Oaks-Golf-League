@@ -792,7 +792,7 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
                 padding: EdgeInsets.all(isPhone ? 8.0 : 12.0),
                 alignment: Alignment.center,
               ),
-              child: Text('◄---- Back', style: TextStyle(fontSize: ResponsiveTypography.getButton(context), fontWeight: FontWeight.bold)),
+              child: Text('◄---- Back      ', style: TextStyle(fontSize: ResponsiveTypography.getButton(context), fontWeight: FontWeight.bold)),
             ),
           ),
           const SizedBox(width: 4),

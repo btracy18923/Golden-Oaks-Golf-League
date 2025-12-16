@@ -21,13 +21,13 @@ class ResponsiveTypography {
   static double getBodyText(BuildContext context) {
     switch (_getDeviceType(context)) {
       case 'phone':
-        return 12;
+        return 22;
       case 'tablet8':
         return 18;
       case 'tablet10':
         return 20;
       default:
-        return 16;
+        return 22;
     }
   }
 
@@ -35,13 +35,13 @@ class ResponsiveTypography {
   static double getLabel(BuildContext context) {
     switch (_getDeviceType(context)) {
       case 'phone':
-        return 12;
+        return 21;
       case 'tablet8':
         return 24;
       case 'tablet10':
         return 30;
       default:
-        return 14;
+        return 21;
     }
   }
 
@@ -49,13 +49,13 @@ class ResponsiveTypography {
   static double getHeading(BuildContext context) {
     switch (_getDeviceType(context)) {
       case 'phone':
-        return 12;
+        return 22;
       case 'tablet8':
         return 20;
       case 'tablet10':
         return 30;
       default:
-        return 20;
+        return 22;
     }
   }
 
@@ -63,7 +63,7 @@ class ResponsiveTypography {
   static double getDisplay(BuildContext context) {
     switch (_getDeviceType(context)) {
       case 'phone':
-        return 18;
+        return 24;
       case 'tablet8':
         return 24;
       case 'tablet10':
@@ -77,13 +77,13 @@ class ResponsiveTypography {
   static double getSmall(BuildContext context) {
     switch (_getDeviceType(context)) {
       case 'phone':
-        return 10;
+        return 20;
       case 'tablet8':
         return 22;
       case 'tablet10':
         return 26;
       default:
-        return 12;
+        return 20;
     }
   }
 
@@ -91,13 +91,12 @@ class ResponsiveTypography {
   static double getButton(BuildContext context) {
     switch (_getDeviceType(context)) {
       case 'phone':
-        return 10;
-      case 'tablet8':
+        return 18;
         return 20;
       case 'tablet10':
         return 30;
       default:
-        return 14;
+        return 18;
     }
   }
 
@@ -105,13 +104,13 @@ class ResponsiveTypography {
   static double getTableHeader(BuildContext context) {
     switch (_getDeviceType(context)) {
       case 'phone':
-        return 9;
+        return 18;
       case 'tablet8':
         return 16;
       case 'tablet10':
         return 22;
       default:
-        return 11;
+        return 9;
     }
   }
 
@@ -119,13 +118,13 @@ class ResponsiveTypography {
   static double getAppBarTitle(BuildContext context) {
     switch (_getDeviceType(context)) {
       case 'phone':
-        return 18;
+        return 24;
       case 'tablet8':
         return 24;
       case 'tablet10':
         return 28;
       default:
-        return 20;
+        return 24;
     }
   }
 

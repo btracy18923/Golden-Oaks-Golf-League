@@ -53,8 +53,8 @@ class FirebaseUploadService {
           // For Monday (M_player_profile): use just the last name
           docId = lastName;
         } else {
-          // For Wednesday: keep the league_lastname format
-          docId = 'wednesday_$lastName';
+          // For Wednesday (W_player_profile): use just the last name
+          docId = lastName;
         }
         
         final docRef = collection.doc(docId);

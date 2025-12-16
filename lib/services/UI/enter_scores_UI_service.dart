@@ -27,7 +27,7 @@ class LeagueUIConfig {
   /// Monday league green color scheme
   static const monday = LeagueUIConfig(
     headerColor: Color(0xFF81C784), // Colors.green[300]
-    headerValueBackground: Color(0xFFA5D6A7), // Colors.lightGreen[200]
+    headerValueBackground: Color(0xFFFFFFFF), // Colors.white
     inputCellColor: Color(0xFFFFF59D), // Colors.yellow[200]
     selectedColor: Color(0xFFBBDEFB), // Colors.blue[100]
     buttonBarColor: Color(0xFFE0E0E0), // Colors.grey[300]
@@ -36,7 +36,7 @@ class LeagueUIConfig {
   /// Wednesday league orange color scheme
   static const wednesday = LeagueUIConfig(
     headerColor: Color(0xFFFFCC80), // Colors.orange[200]
-    headerValueBackground: Color(0xFFFFE0B2), // Colors.orange[100]
+    headerValueBackground: Color(0xFFFFFFFF), // Colors.white
     inputCellColor: Color(0xFFFFD700), // Gold
     selectedColor: Color(0xFFFFFF00), // Yellow
     buttonBarColor: Color(0xFFFFE0B2), // Colors.orange[100]
@@ -175,7 +175,7 @@ class EnterScoresUIService {
       child: Row(
         children: [
           // Left arrow return button (if callback provided)
-          if (onReturn != null)
+          /*if (onReturn != null)
             GestureDetector(
               onTap: onReturn,
               child: Container(
@@ -194,7 +194,7 @@ class EnterScoresUIService {
                   ),
                 ),
               ),
-            ),
+            ),*/
           // Purse information section
           Expanded(
             child: Row(
@@ -210,7 +210,7 @@ class EnterScoresUIService {
                   Text(
                     '${LeaguePurseService.getPrimaryPurseLabel(league)} = ',
                     style: TextStyle(
-                      fontSize: deviceType == DeviceType.phone6_5 ? 10.0 :
+                      fontSize: deviceType == DeviceType.phone6_5 ? 22.0 :
                                deviceType == DeviceType.tablet8 ? 18.0 :
                                deviceType == DeviceType.tablet10 ? 22.0 :
                                ResponsiveTypography.getLabel(context),
@@ -219,15 +219,15 @@ class EnterScoresUIService {
                     ),
                   ),
                   Container(
-                    padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
+                    padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
                     decoration: BoxDecoration(
-                      color: Colors.lightGreen[200],
+                      color: Colors.white,
                       borderRadius: BorderRadius.circular(4.0),
                     ),
                     child: Text(
                       LeaguePurseService.formatPurseAmount(LeaguePurseService.getPrimaryPurse(league)),
                       style: TextStyle(
-                        fontSize: deviceType == DeviceType.phone6_5 ? 10.0 :
+                        fontSize: deviceType == DeviceType.phone6_5 ? 22.0 :
                                  deviceType == DeviceType.tablet8 ? 18.0 :
                                  deviceType == DeviceType.tablet10 ? 22.0 :
                                  ResponsiveTypography.getDisplay(context),
@@ -248,9 +248,9 @@ class EnterScoresUIService {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Text(
-                    'Closest Pin Purse = ',
+                    'Close Pin Purse = ',
                     style: TextStyle(
-                      fontSize: deviceType == DeviceType.phone6_5 ? 10.0 :
+                      fontSize: deviceType == DeviceType.phone6_5 ? 22.0 :
                                deviceType == DeviceType.tablet8 ? 18.0 :
                                deviceType == DeviceType.tablet10 ? 22.0 :
                                ResponsiveTypography.getLabel(context),
@@ -259,15 +259,15 @@ class EnterScoresUIService {
                     ),
                   ),
                   Container(
-                    padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
+                    padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
                     decoration: BoxDecoration(
-                      color: Colors.lightGreen[200],
+                      color: Colors.white,
                       borderRadius: BorderRadius.circular(4.0),
                     ),
                     child: Text(
                       LeaguePurseService.formatPurseAmount(LeaguePurseService.closestPinPurse),
                       style: TextStyle(
-                        fontSize: deviceType == DeviceType.phone6_5 ? 10.0 :
+                        fontSize: deviceType == DeviceType.phone6_5 ? 22.0 :
                                  deviceType == DeviceType.tablet8 ? 18.0 :
                                  deviceType == DeviceType.tablet10 ? 22.0 :
                                  ResponsiveTypography.getDisplay(context),
@@ -290,7 +290,7 @@ class EnterScoresUIService {
                   Text(
                     'Mulligan Purse = ',
                     style: TextStyle(
-                      fontSize: deviceType == DeviceType.phone6_5 ? 10.0 :
+                      fontSize: deviceType == DeviceType.phone6_5 ? 22.0 :
                                deviceType == DeviceType.tablet8 ? 18.0 :
                                deviceType == DeviceType.tablet10 ? 22.0 :
                                ResponsiveTypography.getLabel(context),
@@ -299,15 +299,15 @@ class EnterScoresUIService {
                     ),
                   ),
                   Container(
-                    padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
+                    padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
                     decoration: BoxDecoration(
-                      color: Colors.lightGreen[200],
+                      color: Colors.white,
                       borderRadius: BorderRadius.circular(4.0),
                     ),
                     child: Text(
                       LeaguePurseService.formatPurseAmount(LeaguePurseService.mulliganPurse),
                       style: TextStyle(
-                        fontSize: deviceType == DeviceType.phone6_5 ? 10.0 :
+                        fontSize: deviceType == DeviceType.phone6_5 ? 22.0 :
                                  deviceType == DeviceType.tablet8 ? 18.0 :
                                  deviceType == DeviceType.tablet10 ? 22.0 :
                                  ResponsiveTypography.getDisplay(context),
@@ -332,12 +332,12 @@ class EnterScoresUIService {
               height: fontSize * 2.0,
               margin: EdgeInsets.only(left: padding.left / 2),
               decoration: BoxDecoration(
-                border: Border.all(color: Colors.black, width: 1),
-                borderRadius: BorderRadius.circular(4.0),
+                //border: Border.all(color: Colors.black, width: 1),
+                //borderRadius: BorderRadius.circular(4.0),
               ),
               child: Center(
                 child: Icon(
-                  Icons.refresh,
+                  Icons.arrow_downward,
                   color: Colors.black,
                   size: fontSize * 1.5,
                 ),
@@ -722,7 +722,7 @@ class EnterScoresUIService {
     final fontSize = getResponsiveFontSize(deviceType, isHeader: true);
     final padding = getResponsivePadding(deviceType);
     
-    return Container(
+    return SizedBox(
       height: groupHeight,
       child: Column(
         children: [
@@ -791,12 +791,17 @@ class EnterScoresUIService {
     final rowHeight = getResponsiveRowHeight(deviceType);
     final fontSize = getResponsiveFontSize(deviceType);
     final padding = getResponsivePadding(deviceType);
-    
+
     return Expanded(
       flex: flex,
       child: Container(
         height: rowHeight,
-        padding: EdgeInsets.all(padding.left / 2),
+        padding: EdgeInsets.only(
+          left: padding.left / 2,
+          right: padding.left / 2,
+          top: padding.top,
+          bottom: padding.bottom,
+        ),
         decoration: BoxDecoration(
           border: Border(
             left: hasLeftBorder ? const BorderSide(color: Colors.black, width: 1) : BorderSide.none,
@@ -1085,7 +1090,7 @@ class EnterScoresUIService {
             style: ResponsiveTypography.smallStyle(context,
               fontWeight: FontWeight.bold,
             ),
-            decoration: InputDecoration(
+            decoration: const InputDecoration(
               border: InputBorder.none,
               contentPadding: EdgeInsets.zero,
               isDense: true,
@@ -1169,8 +1174,7 @@ class EnterScoresUIService {
   static Widget buildWednesdayPurseHeader(
     BuildContext context, {
     required double playersPurse,
-    required double closestPinPurse,
-    required double mulliganPurse,
+    required double closestPinPurse, required double mulliganPurse,
     required bool groupsProcessed,
     VoidCallback? onReturn,
     VoidCallback? onAutoFill,
@@ -1178,18 +1182,18 @@ class EnterScoresUIService {
     final isPhone = DeviceDetectionService.isPhone(context);
     final headerFontSize = ResponsiveTypography.getLabel(context);
     final spacing = isPhone ? 10.0 : 30.0;
-    final config = LeagueUIConfig.wednesday;
+    const config = LeagueUIConfig.wednesday;
 
-    String purseLabel = groupsProcessed ? "Total Group Purse" : "Total Players' Purse";
+    String purseLabel = groupsProcessed ? "Total Group Purse" : "Players' Purse";
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.symmetric(vertical: 5, horizontal: 10),
+      padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
       color: config.headerColor,
       child: Row(
         children: [
           // Return button
-          if (onReturn != null)
+          /*if (onReturn != null)
             GestureDetector(
               onTap: onReturn,
               child: Container(
@@ -1205,12 +1209,12 @@ class EnterScoresUIService {
                   child: Icon(Icons.arrow_back, color: Colors.black, size: isPhone ? 18 : 24),
                 ),
               ),
-            ),
+            ),*/
           // Purse information
           Expanded(
             child: FittedBox(
               fit: BoxFit.scaleDown,
-              alignment: Alignment.centerLeft,
+              alignment: Alignment.center,
               child: Row(
                 children: [
                   Text(
@@ -1218,7 +1222,7 @@ class EnterScoresUIService {
                     style: TextStyle(fontSize: headerFontSize, fontWeight: FontWeight.bold, color: Colors.black),
                   ),
                   Container(
-                    padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
+                    padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
                     decoration: BoxDecoration(
                       color: config.headerValueBackground,
                       borderRadius: BorderRadius.circular(4.0),
@@ -1230,11 +1234,11 @@ class EnterScoresUIService {
                   ),
                   SizedBox(width: spacing),
                   Text(
-                    "Closest Pin Purse = ",
+                    "Close Pin Purse = ",
                     style: TextStyle(fontSize: headerFontSize, fontWeight: FontWeight.bold, color: Colors.black),
                   ),
                   Container(
-                    padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
+                    padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
                     decoration: BoxDecoration(
                       color: config.headerValueBackground,
                       borderRadius: BorderRadius.circular(4.0),
@@ -1250,7 +1254,7 @@ class EnterScoresUIService {
                     style: TextStyle(fontSize: headerFontSize, fontWeight: FontWeight.bold, color: Colors.black),
                   ),
                   Container(
-                    padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
+                    padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
                     decoration: BoxDecoration(
                       color: config.headerValueBackground,
                       borderRadius: BorderRadius.circular(4.0),
@@ -1273,12 +1277,12 @@ class EnterScoresUIService {
                 height: isPhone ? 28 : 36,
                 margin: EdgeInsets.only(left: isPhone ? 8 : 16),
                 decoration: BoxDecoration(
-                  border: Border.all(color: Colors.black, width: 1),
-                  borderRadius: BorderRadius.circular(4.0),
-                  color: Colors.white,
+                  //border: Border.all(color: Colors.black, width: 1),
+                  //borderRadius: BorderRadius.circular(4.0),
+                  color: Colors.orange[200],
                 ),
                 child: Center(
-                  child: Icon(Icons.refresh, color: Colors.black, size: isPhone ? 18 : 24),
+                  child: Icon(Icons.arrow_downward, color: Colors.black, size: isPhone ? 18 : 24),
                 ),
               ),
             ),
@@ -1558,29 +1562,27 @@ class EnterScoresUIService {
       return Container(height: groupHeight);
     }
 
-    return Container(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Group title
-          Container(
-            width: double.infinity,
-            padding: EdgeInsets.symmetric(vertical: 2, horizontal: 4),
-            child: Text(
-              '-----$groupTitle-----',
-              textAlign: TextAlign.center,
-              style: ResponsiveTypography.headingStyle(context, fontWeight: FontWeight.bold),
-            ),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Group title
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 4),
+          child: Text(
+            '-----$groupTitle-----',
+            textAlign: TextAlign.center,
+            style: ResponsiveTypography.headingStyle(context, fontWeight: FontWeight.bold),
           ),
-          // Column headers
-          _buildWednesdayGroupHeader(context, groupsProcessed),
-          // Player rows
-          _buildWednesdayGroupRows(context, groups, groupIndex, groupsProcessed,
-            onPlayerTap: onPlayerTap, onEmptySlotTap: onEmptySlotTap, isPlayerSelected: isPlayerSelected,
-            isEmptySlotSelected: isEmptySlotSelected, onGrossScoreChanged: onGrossScoreChanged,
-            grossFocusNodes: grossFocusNodes, isPlayerFocused: isPlayerFocused),
-        ],
-      ),
+        ),
+        // Column headers
+        _buildWednesdayGroupHeader(context, groupsProcessed),
+        // Player rows
+        _buildWednesdayGroupRows(context, groups, groupIndex, groupsProcessed,
+          onPlayerTap: onPlayerTap, onEmptySlotTap: onEmptySlotTap, isPlayerSelected: isPlayerSelected,
+          isEmptySlotSelected: isEmptySlotSelected, onGrossScoreChanged: onGrossScoreChanged,
+          grossFocusNodes: grossFocusNodes, isPlayerFocused: isPlayerFocused),
+      ],
     );
   }
 
@@ -1588,8 +1590,8 @@ class EnterScoresUIService {
     final rowHeight = getWednesdayRowHeight(context);
 
     return Container(
-      height: rowHeight * 0.75,
-      decoration: BoxDecoration(
+      height: rowHeight,
+      decoration: const BoxDecoration(
         border: Border(
           top: BorderSide(color: Colors.black, width: 1),
           bottom: BorderSide(color: Colors.black, width: 1),
@@ -1597,25 +1599,40 @@ class EnterScoresUIService {
       ),
       child: Row(
         children: [
-          _buildWednesdayHeaderCell(context, 'Name', flex: 3),
-          if (!groupsProcessed) _buildWednesdayHeaderCell(context, 'HC', flex: 1),
-          if (!groupsProcessed) _buildWednesdayHeaderCell(context, 'Gross', flex: 1),
-          if (groupsProcessed) _buildWednesdayHeaderCell(context, 'Grp#', flex: 1),
-          _buildWednesdayHeaderCell(context, 'Net', flex: 1),
-          if (groupsProcessed) _buildWednesdayHeaderCell(context, 'AVG', flex: 1),
-          _buildWednesdayHeaderCell(context, 'Pos', flex: 1),
-          _buildWednesdayHeaderCell(context, '\$\$\$', flex: 2),
+          _buildWednesdayHeaderCell(context, 'Name', flex: 30, hasLeftBorder: true),
+          if (!groupsProcessed) _buildWednesdayHeaderCell(context, 'HC', flex: 10),
+          if (!groupsProcessed) _buildWednesdayHeaderCell(context, 'Gross', flex: 11, reducedPadding: true),
+          if (groupsProcessed) _buildWednesdayHeaderCell(context, 'Grp#', flex: 10),
+          _buildWednesdayHeaderCell(context, 'Net', flex: 10),
+          if (groupsProcessed) _buildWednesdayHeaderCell(context, 'AVG', flex: 10),
+          _buildWednesdayHeaderCell(context, 'Pos', flex: 10),
+          _buildWednesdayHeaderCell(context, '\$\$\$', flex: 20),
         ],
       ),
     );
   }
 
-  static Widget _buildWednesdayHeaderCell(BuildContext context, String text, {int flex = 1}) {
+  static Widget _buildWednesdayHeaderCell(BuildContext context, String text, {int flex = 1, bool reducedPadding = false, bool hasLeftBorder = false}) {
+    final isPhone = DeviceDetectionService.isPhone(context);
+    final padding = isPhone ? 4.0 : 8.0;
+
+    // Use reduced padding for columns that need to fit more text
+    final leftRightPadding = reducedPadding ? 1.0 : padding / 2;
+
     return Expanded(
       flex: flex,
       child: Container(
+        padding: EdgeInsets.only(
+          left: leftRightPadding,
+          right: leftRightPadding,
+          top: padding,
+          bottom: padding,
+        ),
         decoration: BoxDecoration(
-          border: Border(right: BorderSide(color: Colors.black, width: 1)),
+          border: Border(
+            left: hasLeftBorder ? const BorderSide(color: Colors.black, width: 1) : BorderSide.none,
+            right: const BorderSide(color: Colors.black, width: 1),
+          ),
         ),
         child: Center(
           child: Text(
@@ -1680,7 +1697,7 @@ class EnterScoresUIService {
     bool showFocus = false,
   }) {
     final rowHeight = getWednesdayRowHeight(context);
-    final config = LeagueUIConfig.wednesday;
+    const config = LeagueUIConfig.wednesday;
 
     // Extract player data
     String name = player['last'] ?? '';
@@ -1694,35 +1711,35 @@ class EnterScoresUIService {
 
     return Container(
       height: rowHeight,
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         border: Border(bottom: BorderSide(color: Colors.black, width: 1)),
       ),
       child: Row(
         children: [
           // Name cell (clickable)
-          _buildWednesdayClickableNameCell(context, name, isWildCard, flex: 3, onTap: onPlayerTap, isSelected: isSelected),
+          _buildWednesdayClickableNameCell(context, name, isWildCard, flex: 30, onTap: onPlayerTap, isSelected: isSelected),
           // Handicap (only when not processed)
           if (!groupsProcessed)
-            _buildWednesdayDataCell(context, handicap.toStringAsFixed(1), flex: 1),
+            _buildWednesdayDataCell(context, handicap.toStringAsFixed(1), flex: 10),
           // Gross score input (only when not processed)
           if (!groupsProcessed)
-            _buildWednesdayGrossInputCell(context, player, flex: 1,
+            _buildWednesdayGrossInputCell(context, player, flex: 11,
               onChanged: onGrossScoreChanged,
               focusNode: grossFocusNode,
               showFocus: showFocus),
           // Group number (only when processed)
           if (groupsProcessed)
-            _buildWednesdayDataCell(context, manualGroup?.toString() ?? '', flex: 1,
+            _buildWednesdayDataCell(context, manualGroup?.toString() ?? '', flex: 10,
               backgroundColor: config.inputCellColor),
           // Net score
-          _buildWednesdayDataCell(context, netScore?.toString() ?? '', flex: 1),
+          _buildWednesdayDataCell(context, netScore?.toString() ?? '', flex: 10),
           // AVG (only when processed) - calculated per group
           if (groupsProcessed)
-            _buildWednesdayDataCell(context, '', flex: 1), // AVG calculated externally
+            _buildWednesdayDataCell(context, '', flex: 10), // AVG calculated externally
           // Position
-          _buildWednesdayDataCell(context, position, flex: 1),
+          _buildWednesdayDataCell(context, position, flex: 10),
           // Prize money
-          _buildWednesdayDataCell(context, prizeMoney, flex: 2),
+          _buildWednesdayDataCell(context, prizeMoney, flex: 20),
         ],
       ),
     );
@@ -1735,26 +1752,26 @@ class EnterScoresUIService {
     bool isSelected = false,
   }) {
     final rowHeight = getWednesdayRowHeight(context);
-    final config = LeagueUIConfig.wednesday;
+    const config = LeagueUIConfig.wednesday;
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
         height: rowHeight,
         decoration: BoxDecoration(
-          border: Border(bottom: BorderSide(color: Colors.black, width: 1)),
+          border: const Border(bottom: BorderSide(color: Colors.black, width: 1)),
           color: isSelected ? config.selectedColor : null,
         ),
         child: Row(
           children: [
-            _buildWednesdayDataCell(context, '', flex: 3),
-            if (!groupsProcessed) _buildWednesdayDataCell(context, '', flex: 1),
-            if (!groupsProcessed) _buildWednesdayDataCell(context, '', flex: 1),
-            if (groupsProcessed) _buildWednesdayDataCell(context, '', flex: 1),
-            _buildWednesdayDataCell(context, '', flex: 1),
-            if (groupsProcessed) _buildWednesdayDataCell(context, '', flex: 1),
-            _buildWednesdayDataCell(context, '', flex: 1),
-            _buildWednesdayDataCell(context, '', flex: 2),
+            _buildWednesdayDataCell(context, '', flex: 30, hasLeftBorder: true),
+            if (!groupsProcessed) _buildWednesdayDataCell(context, '', flex: 10),
+            if (!groupsProcessed) _buildWednesdayDataCell(context, '', flex: 11),
+            if (groupsProcessed) _buildWednesdayDataCell(context, '', flex: 10),
+            _buildWednesdayDataCell(context, '', flex: 10),
+            if (groupsProcessed) _buildWednesdayDataCell(context, '', flex: 10),
+            _buildWednesdayDataCell(context, '', flex: 10),
+            _buildWednesdayDataCell(context, '', flex: 20),
           ],
         ),
       ),
@@ -1770,7 +1787,7 @@ class EnterScoresUIService {
     bool isSelected = false,
   }) {
     final isPhone = DeviceDetectionService.isPhone(context);
-    final config = LeagueUIConfig.wednesday;
+    const config = LeagueUIConfig.wednesday;
 
     return Expanded(
       flex: flex,
@@ -1778,7 +1795,10 @@ class EnterScoresUIService {
         onTap: onTap,
         child: Container(
           decoration: BoxDecoration(
-            border: Border(right: BorderSide(color: Colors.black, width: 1)),
+            border: const Border(
+              left: BorderSide(color: Colors.black, width: 1),
+              right: BorderSide(color: Colors.black, width: 1),
+            ),
             color: isSelected ? config.selectedColor : Colors.white,
           ),
           padding: EdgeInsets.symmetric(horizontal: isPhone ? 2 : 4),
@@ -1786,7 +1806,7 @@ class EnterScoresUIService {
             children: [
               if (isWildCard) ...[
                 Container(
-                  padding: EdgeInsets.symmetric(horizontal: 2, vertical: 1),
+                  padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
                   decoration: BoxDecoration(
                     color: Colors.orange,
                     borderRadius: BorderRadius.circular(3),
@@ -1818,12 +1838,16 @@ class EnterScoresUIService {
     String text, {
     int flex = 1,
     Color? backgroundColor,
+    bool hasLeftBorder = false,
   }) {
     return Expanded(
       flex: flex,
       child: Container(
         decoration: BoxDecoration(
-          border: Border(right: BorderSide(color: Colors.black, width: 1)),
+          border: Border(
+            left: hasLeftBorder ? const BorderSide(color: Colors.black, width: 1) : BorderSide.none,
+            right: const BorderSide(color: Colors.black, width: 1),
+          ),
           color: backgroundColor,
         ),
         child: Center(
@@ -1845,7 +1869,7 @@ class EnterScoresUIService {
     FocusNode? focusNode,
     bool showFocus = false,
   }) {
-    final config = LeagueUIConfig.wednesday;
+    const config = LeagueUIConfig.wednesday;
     int? grossScore = player['gross_score'] as int?;
     String playerName = player['last'] ?? '';
 
@@ -1855,9 +1879,9 @@ class EnterScoresUIService {
         decoration: BoxDecoration(
           border: Border(
             right: BorderSide(color: showFocus ? Colors.blue : Colors.black, width: showFocus ? 3 : 1),
-            top: showFocus ? BorderSide(color: Colors.blue, width: 3) : BorderSide.none,
-            bottom: showFocus ? BorderSide(color: Colors.blue, width: 3) : BorderSide.none,
-            left: showFocus ? BorderSide(color: Colors.blue, width: 3) : BorderSide.none,
+            top: showFocus ? const BorderSide(color: Colors.blue, width: 3) : BorderSide.none,
+            bottom: showFocus ? const BorderSide(color: Colors.blue, width: 3) : BorderSide.none,
+            left: showFocus ? const BorderSide(color: Colors.blue, width: 3) : BorderSide.none,
           ),
           color: config.inputCellColor,
         ),
@@ -1871,7 +1895,7 @@ class EnterScoresUIService {
             textAlign: TextAlign.center,
             textAlignVertical: TextAlignVertical.center,
             style: ResponsiveTypography.smallStyle(context, fontWeight: FontWeight.bold),
-            decoration: InputDecoration(
+            decoration:  const InputDecoration(
               border: InputBorder.none,
               contentPadding: EdgeInsets.zero,
               isDense: true,
@@ -1898,7 +1922,7 @@ class EnterScoresUIService {
     VoidCallback? onSwap,
   }) {
     final isPhone = DeviceDetectionService.isPhone(context);
-    final config = LeagueUIConfig.wednesday;
+    const config = LeagueUIConfig.wednesday;
 
     return Container(
       height: isPhone ? 55 : 70,
@@ -1908,7 +1932,7 @@ class EnterScoresUIService {
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
           if (onAutoFill != null) _buildWednesdayActionButton(context, 'Auto Fill', Colors.orange[200]!, onAutoFill),
-          _buildWednesdayActionButton(context, '◄---- Back', Colors.lightBlue[100]!, onMainMenu),
+          _buildWednesdayActionButton(context, '◄---- Back     ', Colors.lightBlue[100]!, onMainMenu),
           _buildWednesdayActionButton(context, 'Shuffle', shuffleButtonColor ?? Colors.purple[200]!, onShuffle),
           _buildWednesdayActionButton(context, swapButtonText, swapButtonColor, onSwap),
           _buildWednesdayActionButton(context, 'Individual \$\$\$', Colors.grey[300]!, onIndividuals),

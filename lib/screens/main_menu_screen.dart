@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/league.dart';
 import '../services/ante_manager.dart';
-import '../services/percentage_manager.dart';
 import '../services/closest_pin_manager.dart';
 import '../services/mulligan_manager.dart';
 import '../services/device_detection_service.dart';
@@ -220,7 +219,6 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
     AnteManager().setAnteAmount(5.0);
     ClosestPinManager().setClosestPinAmount(1.0);
     MulliganManager().setMulliganAmount(1.0);
-    PercentageManager().setIndividualPercent(40.0);
     
     Navigator.push(
       context,
@@ -250,7 +248,7 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
           'Golden Oaks Golf League - ${DeviceDetectionService.getDeviceName(context)}',
           style: const TextStyle(
             fontWeight: FontWeight.bold,
-            fontSize: 18,
+            fontSize: 24,
           ),
         ),
         backgroundColor: Colors.green[700],
@@ -1081,7 +1079,7 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
         const Text(
           'Select League:',
           style: TextStyle(
-            fontSize: 12,
+            fontSize: 22,
             fontWeight: FontWeight.bold,
           ),
           textAlign: TextAlign.center,
@@ -1115,7 +1113,7 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
                     child: const Text(
                       'Monday',
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: 24,
                         fontWeight: FontWeight.bold,
                       ),
                       textAlign: TextAlign.center,
@@ -1149,7 +1147,7 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
                     child: const Text(
                       'Wednesday',
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: 24,
                         fontWeight: FontWeight.bold,
                       ),
                       textAlign: TextAlign.center,

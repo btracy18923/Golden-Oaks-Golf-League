@@ -6,11 +6,9 @@ import '../popup_utils.dart';
 import '../main_menu_screen.dart';
 import 'wednesday_auto_process_groups_screen.dart';
 import '../../services/database_helper.dart';
-import '../../services/percentage_manager.dart';
 import '../../services/shared/league_purse_service.dart';
 import '../../services/csv_payout_service.dart';
 import '../../services/group_csv_payout_service.dart';
-import '../../services/payout_validation_service.dart';
 import '../../services/device_detection_service.dart';
 import '../../services/responsive_typography.dart';
 import '../../services/UI/enter_scores_UI_service.dart';
@@ -213,8 +211,6 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
       double anteAmount = LeaguePurseService.playersAnte;
       double closestPinAmount = LeaguePurseService.closestPinAmount;
       double mulliganAmount = LeaguePurseService.mulliganAmount;
-      double percentageIndividual = PercentageManager().individualPercent;
-      double percentageGroup = PercentageManager().groupPercent;
 
       int playerCount = 0;
       for (var group in groups) {
@@ -224,11 +220,6 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
       }
 
       totalPurse = anteAmount * playerCount;
-      individualPercent = percentageIndividual.round();
-      groupPercent = percentageGroup.round();
-      individualPurse = totalPurse * (percentageIndividual / 100);
-      groupPurse = totalPurse * (percentageGroup / 100);
-
       double closestPinPurse = closestPinAmount * playerCount;
       double mulliganPurse = mulliganAmount * playerCount;
 

@@ -271,6 +271,7 @@ class ClosestPinUIService {
     required VoidCallback onClear,
     required VoidCallback onSaveAndReturn,
     bool isEnterSkatsEnabled = true,
+    String league = 'Monday', // Add league parameter with default value
   }) {
     final screenSize = MediaQuery.of(context).size;
     final deviceType = getDeviceType(screenSize);
@@ -281,6 +282,12 @@ class ClosestPinUIService {
     final containerPaddingMultiplier = deviceType == DeviceType.tablet10 ? 0.6 : 0.4;
     final buttonPaddingMultiplier = deviceType == DeviceType.tablet10 ? 0.6 : 0.4;
 
+    // Determine button text based on league
+    final buttonText = league == 'Monday' ? 'Enter SKATS ---➤' : 'Enter Gross ---➤';
+
+    // Determine button color based on league
+    final buttonColor = league == 'Monday' ? Colors.green[200]! : Colors.orange[300]!;
+
     return Container(
       color: Colors.grey[300],
       padding: EdgeInsets.all(padding.left * containerPaddingMultiplier),
@@ -290,7 +297,7 @@ class ClosestPinUIService {
           Padding(
             padding: EdgeInsets.symmetric(horizontal: padding.left / 2),
             child: SizedBox(
-              width: screenSize.width * 0.25, // Same width as Enter SKATS button
+              width: screenSize.width * 0.25, // Same width as Enter button
               child: ElevatedButton(
                 onPressed: onClear,
                 style: ElevatedButton.styleFrom(
@@ -320,7 +327,7 @@ class ClosestPinUIService {
               child: ElevatedButton(
                 onPressed: isEnterSkatsEnabled ? onSaveAndReturn : null,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: isEnterSkatsEnabled ? Colors.green[200]! : Colors.grey[300]!,
+                  backgroundColor: isEnterSkatsEnabled ? buttonColor : Colors.grey[300]!,
                   padding: EdgeInsets.symmetric(vertical: padding.top * buttonPaddingMultiplier),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8.0),
@@ -328,7 +335,7 @@ class ClosestPinUIService {
                   ),
                 ),
                 child: Text(
-                  'Enter SKATS ---➤',
+                  buttonText,
                   style: TextStyle(
                     fontSize: fontSize * 0.8,
                     fontWeight: FontWeight.bold,

@@ -62,28 +62,28 @@ class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
                   childAspectRatio: 7.5,
                   children: [
                     _buildDownloadButton(
-                      'Download Wednesday Player Scores',
+                      'Download Wed Player Scores',
                       Icons.download,
                       Colors.orange[300]!,
                       () => _downloadWednesdayPlayerScores(),
                     ),
 
                     _buildDownloadButton(
-                      'Clear Wednesday Player Scores',
+                      'Delete Wed Player Scores',
                       Icons.delete_forever,
                       Colors.red[400]!,
                       () => _clearAllScoreData(),
                     ),
 
                     _buildDownloadButton(
-                      _isDownloading ? 'Downloading...' : 'Download Wednesday Player Profiles',
+                      _isDownloading ? 'Downloading...' : 'Download Wed Player Profiles',
                       _isDownloading ? Icons.hourglass_bottom : Icons.people,
                       _isDownloading ? Colors.grey[400]! : Colors.blue[300]!,
                       _isDownloading ? () {} : () => _downloadWednesdayPlayerProfiles(),
                     ),
 
                     _buildDownloadButton(
-                      'Delete All Wednesday Player Profiles',
+                      'Delete All Wed Player Profiles',
                       Icons.person_remove,
                       Colors.red[400]!,
                       () => _deleteWednesdayPlayerProfiles(),
@@ -94,6 +94,13 @@ class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
                       Icons.settings,
                       Colors.purple[300]!,
                       () => _changeAllWednesdayHandicapsTo15(),
+                    ),
+
+                    _buildDownloadButton(
+                      _isDownloading ? 'Uploading...' : 'Copy M to W Profiles',
+                      _isDownloading ? Icons.hourglass_bottom : Icons.upload,
+                      _isDownloading ? Colors.grey[400]! : Colors.green[300]!,
+                      _isDownloading ? () {} : () => _copyMondayProfilesToWednesday(),
                     ),
                   ],
                 ),
@@ -183,12 +190,13 @@ class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
   Future<void> _insertOrUpdatePlayer(Map<String, dynamic> playerData) async {
     try {
       // Clean the data to only include fields that exist in the local database schema
-      // Local players table has: player_number, first, last, skat_number, cell, email, league
+      // Local players table has: player_number, first, last, skat_number, HC, cell, email, league
       Map<String, dynamic> cleanData = {
         'player_number': playerData['player_number'],
         'first': playerData['first'],
         'last': playerData['last'],
         'skat_number': playerData['skat_number'],
+        'HC': playerData['HC'],
         'cell': playerData['cell'],
         'email': playerData['email'],
         'league': playerData['league'],
@@ -198,19 +206,34 @@ class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
       cleanData.removeWhere((key, value) => value == null);
 
       int? playerNumber = cleanData['player_number'];
-      if (playerNumber != null) {
-        // Check if player exists by player_number
-        Map<String, dynamic>? existingPlayer = await _dbHelper.getPlayer(playerNumber);
+      String? incomingLeague = cleanData['league'];
 
-        if (existingPlayer != null) {
-          // Update existing player
+      if (playerNumber != null && incomingLeague != null) {
+        // Check if player exists by player_number
+        final db = await _dbHelper.database;
+        List<Map<String, dynamic>> existingPlayers = await db.query(
+          'players',
+          where: 'player_number = ?',
+          whereArgs: [playerNumber],
+          limit: 1,
+        );
+
+        if (existingPlayers.isNotEmpty) {
+          String existingLeague = existingPlayers.first['league'] as String;
+
+          // If player is in a different league, mark them as being in BOTH leagues
+          if (existingLeague != incomingLeague) {
+            cleanData['league'] = 'both';
+          }
+
+          // Update existing player (preserving multi-league status)
           await _dbHelper.updatePlayer(playerNumber, cleanData);
         } else {
           // Insert new player
           await _dbHelper.insertPlayer(cleanData);
         }
       } else {
-        // No player_number, try to insert anyway
+        // No player_number or league, try to insert anyway
         await _dbHelper.insertPlayer(cleanData);
       }
     } catch (e) {
@@ -509,7 +532,7 @@ class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
     bool? confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Clear Wednesday Score Data'),
+        title: const Text('Delete Wed Player Scores'),
         content: const Text('This will permanently delete ALL scores, games, and winnings data for Wednesday league players only. This cannot be undone. Are you sure?'),
         actions: [
           TextButton(
@@ -540,7 +563,7 @@ class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
           SnackBar(
             content: Text('Error clearing data: $e'),
             backgroundColor: Colors.red,
-            duration: Duration(seconds: 3),
+            duration: const Duration(seconds: 3),
           ),
         );
       }
@@ -693,7 +716,7 @@ class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete All Wednesday Player Profiles'),
+        title: const Text('Delete All Wed Player Profiles'),
         content: RichText(
           text: const TextSpan(
             style: TextStyle(color: Colors.black, fontSize: 16),
@@ -754,9 +777,93 @@ class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
     }
   }
 
+  Future<void> _copyMondayProfilesToWednesday() async {
+    if (_isDownloading) return;
+
+    setState(() {
+      _isDownloading = true;
+    });
+
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Copying Monday player profiles to W_player_profile collection...'),
+          backgroundColor: Colors.blue,
+          duration: Duration(seconds: 2),
+        ),
+      );
+
+      // Read all documents from M_player_profile collection
+      QuerySnapshot mondaySnapshot = await _firestore.collection('M_player_profile').get();
+
+      if (mondaySnapshot.docs.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No profiles found in M_player_profile collection'),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 3),
+          ),
+        );
+        return;
+      }
+
+      // Create a batch to write to W_player_profile
+      WriteBatch batch = _firestore.batch();
+      int count = 0;
+
+      for (var doc in mondaySnapshot.docs) {
+        Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+
+        // Convert skat_number to HC and set value to 15
+        if (data.containsKey('skat_number')) {
+          data['HC'] = 15.0;
+          data.remove('skat_number');
+        } else if (data.containsKey('SKAT#')) {
+          data['HC'] = 15.0;
+          data.remove('SKAT#');
+        } else {
+          // If neither field exists, just add HC
+          data['HC'] = 15.0;
+        }
+
+        // Use the same document ID (last name)
+        String docId = doc.id;
+
+        // Write to W_player_profile collection
+        DocumentReference wedRef = _firestore.collection('W_player_profile').doc(docId);
+        batch.set(wedRef, data);
+        count++;
+      }
+
+      // Commit the batch
+      await batch.commit();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Successfully copied $count player profiles to W_player_profile!'),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Copy Failed: ${e.toString()}'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    } finally {
+      setState(() {
+        _isDownloading = false;
+      });
+    }
+  }
+
   Widget _buildDownloadButton(String title, IconData icon, Color bgColor, VoidCallback onPressed) {
     final fontScale = DeviceDetectionService.getFontScale(context);
-    final baseFontSize = 20.0;
+    const baseFontSize = 20.0;
     final responsiveFontSize = baseFontSize * fontScale;
 
     return ElevatedButton(

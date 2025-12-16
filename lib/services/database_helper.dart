@@ -720,10 +720,11 @@ class DatabaseHelper {
     final db = await database;
     String leagueStr = league == League.monday ? 'monday' : 'wednesday';
 
+    // Include players who are in the specific league OR in both leagues
     return await db.query(
       'players',
-      where: 'league = ?',
-      whereArgs: [leagueStr],
+      where: 'league = ? OR league = ?',
+      whereArgs: [leagueStr, 'both'],
       orderBy: 'last ASC',
     );
   }

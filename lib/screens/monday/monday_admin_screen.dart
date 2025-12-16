@@ -254,19 +254,34 @@ class _MondayAdminScreenState extends State<MondayAdminScreen> {
       cleanData.removeWhere((key, value) => value == null);
 
       int? playerNumber = cleanData['player_number'];
-      if (playerNumber != null) {
-        // Check if player exists by player_number
-        Map<String, dynamic>? existingPlayer = await _dbHelper.getPlayer(playerNumber);
+      String? incomingLeague = cleanData['league'];
 
-        if (existingPlayer != null) {
-          // Update existing player
+      if (playerNumber != null && incomingLeague != null) {
+        // Check if player exists by player_number
+        final db = await _dbHelper.database;
+        List<Map<String, dynamic>> existingPlayers = await db.query(
+          'players',
+          where: 'player_number = ?',
+          whereArgs: [playerNumber],
+          limit: 1,
+        );
+
+        if (existingPlayers.isNotEmpty) {
+          String existingLeague = existingPlayers.first['league'] as String;
+
+          // If player is in a different league, mark them as being in BOTH leagues
+          if (existingLeague != incomingLeague) {
+            cleanData['league'] = 'both';
+          }
+
+          // Update existing player (preserving multi-league status)
           await _dbHelper.updatePlayer(playerNumber, cleanData);
         } else {
           // Insert new player
           await _dbHelper.insertPlayer(cleanData);
         }
       } else {
-        // No player_number, try to insert anyway
+        // No player_number or league, try to insert anyway
         await _dbHelper.insertPlayer(cleanData);
       }
     } catch (e) {
@@ -842,7 +857,7 @@ class _MondayAdminScreenState extends State<MondayAdminScreen> {
 
   Widget _buildDownloadButton(String title, IconData icon, Color bgColor, VoidCallback onPressed) {
     final fontScale = DeviceDetectionService.getFontScale(context);
-    final baseFontSize = 18.0;
+    final baseFontSize = 20.0;
     final responsiveFontSize = baseFontSize * fontScale;
 
     return SizedBox(
