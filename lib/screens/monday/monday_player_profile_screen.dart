@@ -772,7 +772,7 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.3),
+            color: Colors.grey.withValues(alpha: 0.3),
             spreadRadius: 1,
             blurRadius: 3,
             offset: const Offset(0, -2),
@@ -789,7 +789,7 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
                 backgroundColor: Colors.blue[300],
                 foregroundColor: Colors.black,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
-                padding: EdgeInsets.all(isPhone ? 8.0 : 12.0),
+                padding: EdgeInsets.all(isPhone ? 6.0 : 12.0),
                 alignment: Alignment.center,
               ),
               child: Text('◄---- Back      ', style: TextStyle(fontSize: ResponsiveTypography.getButton(context), fontWeight: FontWeight.bold)),

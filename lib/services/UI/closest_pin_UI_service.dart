@@ -311,7 +311,7 @@ class ClosestPinUIService {
                 child: Text(
                   'Clear',
                   style: TextStyle(
-                    fontSize: fontSize * 0.8,
+                    fontSize: fontSize * 1.2,
                     fontWeight: FontWeight.bold,
                     color: Colors.black,
                   ),
@@ -337,7 +337,7 @@ class ClosestPinUIService {
                 child: Text(
                   buttonText,
                   style: TextStyle(
-                    fontSize: fontSize * 0.8,
+                    fontSize: fontSize * 1.2,
                     fontWeight: FontWeight.bold,
                     color: isEnterSkatsEnabled ? Colors.black : Colors.grey[600],
                   ),

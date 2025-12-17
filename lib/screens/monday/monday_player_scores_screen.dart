@@ -1748,7 +1748,7 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
                 backgroundColor: Colors.blue[300],
                 foregroundColor: Colors.black,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
-                padding: const EdgeInsets.all(8.0),
+                padding: const EdgeInsets.all(6.0),
                 alignment: Alignment.center,
               ),
               child: Text('◄---- Back     ', style: TextStyle(fontSize: ResponsiveTypography.getButton(context), fontWeight: FontWeight.bold)),
