@@ -14,6 +14,7 @@ import '../../services/device_detection_service.dart' as DeviceDetection;
 import '../../services/responsive_typography.dart';
 import '../../models/league.dart';
 import 'monday_results_screen.dart';
+import 'monday_closest_pin_screen.dart';
 
 class MondayEnterScoresScreen extends StatefulWidget {
   final List<Map<String, dynamic>>? selectedPlayers;
@@ -80,33 +81,50 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     
     // Reset distribution state for fresh calculations
     LeaguePurseService.resetDistributionState();
-    
+
     // Set the Players Ante value if it was passed as a parameter
     if (widget.playersAnte != null) {
       LeaguePurseService.setPlayersAnte(widget.playersAnte!);
     }
-    
+
     // Load secondary purse amounts (Closest Pin, Mulligan) without overwriting Players Ante
     LeaguePurseService.loadSecondaryPurseAmounts();
-    
+
     // Recalculate Skat Purse fresh every time: # of players × Player Ante
     if (widget.selectedPlayers != null && widget.playersAnte != null) {
       double freshSkatPurse = widget.selectedPlayers!.length * widget.playersAnte!;
       LeaguePurseService.setSkatPurse(freshSkatPurse);
-      
+
       //print("Fresh Skat Purse calculation:");
       //print("  Players: ${widget.selectedPlayers!.length}");
       //print("  Player Ante: \$${widget.playersAnte!.toStringAsFixed(2)}");
       //print("  Skat Purse: \$${freshSkatPurse.toStringAsFixed(2)}");
-      
-      // Calculate other purses based on selected players count
-      LeaguePurseService.calculateClosestPinPurseFromCount(widget.selectedPlayers!.length);
-      LeaguePurseService.calculateMulliganPurseFromCount(widget.selectedPlayers!.length);
+
+      // Only calculate Closest Pin Purse if NOT returning from Closest Pin screen
+      // If returning from Closest Pin screen, the purse has already been updated with remaining amount
+      if (!ScreenDataRetentionService().hasClosestPinData()) {
+        // Calculate Closest Pin Purse: Closest Pin Amount × Number of Players
+        double closestPinPurse = LeaguePurseService.closestPinAmount * widget.selectedPlayers!.length;
+        LeaguePurseService.setClosestPinPurse(closestPinPurse, isExplicit: false);
+      }
+
+      // Calculate Mulligan Purse: Mulligan Amount × Number of Players
+      double mulliganPurse = LeaguePurseService.mulliganAmount * widget.selectedPlayers!.length;
+      LeaguePurseService.setMulliganPurse(mulliganPurse, isExplicit: false);
     } else if (widget.selectedPlayers != null) {
       // Fallback to existing method if playersAnte is not provided
       LeaguePurseService.calculateSkatPurseFromCount(widget.selectedPlayers!.length);
-      LeaguePurseService.calculateClosestPinPurseFromCount(widget.selectedPlayers!.length);
-      LeaguePurseService.calculateMulliganPurseFromCount(widget.selectedPlayers!.length);
+
+      // Only calculate Closest Pin Purse if NOT returning from Closest Pin screen
+      if (!ScreenDataRetentionService().hasClosestPinData()) {
+        // Calculate Closest Pin Purse: Closest Pin Amount × Number of Players
+        double closestPinPurse = LeaguePurseService.closestPinAmount * widget.selectedPlayers!.length;
+        LeaguePurseService.setClosestPinPurse(closestPinPurse, isExplicit: false);
+      }
+
+      // Calculate Mulligan Purse: Mulligan Amount × Number of Players
+      double mulliganPurse = LeaguePurseService.mulliganAmount * widget.selectedPlayers!.length;
+      LeaguePurseService.setMulliganPurse(mulliganPurse, isExplicit: false);
     }
     
     // Check if shuffle was previously done first, then populate if no saved order
@@ -364,9 +382,9 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
   /// Handles keypad input
   void _handleKeypadInput(String key) {
     if (_currentFocusedPlayer == null) return;
-    
+
     //print("Keypad key pressed: $key");
-    
+
     if (key == 'backspace') {
       // Handle normal backspace functionality
       String? newInput = _keypadController.handleKeyPress(key);
@@ -378,13 +396,18 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
         //print("Current keypad input: ${_keypadController.currentInput}");
       }
     } else if (key == 'enter') {
-      
+
       // Apply current input and move to next field
       String currentInput = _keypadController.currentInput;
       if (currentInput.isNotEmpty) {
         _updateSkatsField(_currentFocusedPlayer!, currentInput);
       }
-      
+
+      // Check if all SKATS are complete and calculate money if so
+      if (_areAllSkatsFieldsComplete()) {
+        _handleSkatMoney();
+      }
+
       // Find current player position and move to next
       for (int groupIndex = 0; groupIndex < groups.length; groupIndex++) {
         for (int playerIndex = 0; playerIndex < groups[groupIndex].length; playerIndex++) {
@@ -403,11 +426,16 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
           _updateSkatsField(_currentFocusedPlayer!, _keypadController.currentInput);
         });
         //print("Current keypad input: ${_keypadController.currentInput}");
-        
+
         // Auto-advance when 2 digits are entered
         if (_keypadController.currentInput.length == 2) {
           //print("Auto-advancing to next field after 2 digits");
-          
+
+          // Check if all SKATS are complete and calculate money if so
+          if (_areAllSkatsFieldsComplete()) {
+            _handleSkatMoney();
+          }
+
           // Find current player position and move to next after a short delay
           Future.delayed(Duration(milliseconds: 300), () {
             for (int groupIndex = 0; groupIndex < groups.length; groupIndex++) {
@@ -452,19 +480,24 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
   }
 
   /// Auto fills SKATS data with random values between 30-40 for all players
-  void _handleAutoFill() {
+  void _handleAutoFill() async {
     //print("Auto Fill button pressed!");
     //print("Groups before auto fill: ${groups.map((g) => g.map((p) => "${p.name}: ${p.skats}").toList()).toList()}");
-    
+
     setState(() {
       final autoFillService = AutoFillFactory.create(League.monday);
       groups = autoFillService.autoFillData(groups);
     });
-    
+
     // Hide keypad after auto-fill is complete
     _hideKeypad();
-    
+
     //print("Groups after auto fill: ${groups.map((g) => g.map((p) => "${p.name}: ${p.skats}").toList()).toList()}");
+
+    // Automatically calculate money after auto-fill completes all SKATS
+    if (_areAllSkatsFieldsComplete()) {
+      await _handleSkatMoney();
+    }
   }
 
   /// Calculates Skat money payouts for players with positive DIFF values
@@ -865,25 +898,60 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
   /// Initializes player groups - either from saved order or fresh population
   Future<void> _initializePlayerGroups() async {
     try {
+      // First check if we're returning from Closest Pin screen with saved data
+      if (ScreenDataRetentionService().hasEnterScoresData()) {
+        // Restore player groups from retention service (includes SKAT values)
+        List<List<PlayerData>>? savedGroups = ScreenDataRetentionService().playerGroups;
+        if (savedGroups != null) {
+          // Deep copy the saved groups to avoid reference issues
+          for (int i = 0; i < groups.length && i < savedGroups.length; i++) {
+            groups[i].clear();
+            for (var player in savedGroups[i]) {
+              groups[i].add(PlayerData(
+                name: player.name,
+                skNumber: player.skNumber,
+                skats: player.skats,
+                diff: player.diff,
+                money: player.money,
+              ));
+            }
+          }
+
+          // Restore shuffle state
+          _hasBeenShuffled = ScreenDataRetentionService().playersShuffled ?? false;
+
+          //print("Restored player groups with SKAT data from retention service");
+
+          // Money calculation is now handled before navigation to Closest Pin screen
+          // No need to recalculate when returning
+
+          setState(() {
+            // Trigger UI update after loading
+          });
+          return;
+        }
+      }
+
+      // Otherwise, check for saved shuffle state from database
       final shuffleState = await DatabaseHelper().getSetting('monday_players_shuffled', league: League.monday);
       final playerOrder = await DatabaseHelper().getSetting('monday_player_order', league: League.monday);
-      
+
       _hasBeenShuffled = (shuffleState == 'true');
-      
+
       // If shuffled and we have saved order, restore it
       if (_hasBeenShuffled && playerOrder != null && playerOrder.isNotEmpty) {
         _deserializePlayerOrder(playerOrder);
-        
+
         // Validate and sync with current selected players
         _validateAndSyncWithSelectedPlayers();
-        
+
         //print("Restored and synchronized shuffled player order from previous session");
       } else {
         // No saved order, populate normally
         _populateGroupsWithSelectedPlayers();
         //print("Populated groups with fresh player selection");
       }
-      
+
       setState(() {
         // Trigger UI update after loading/populating
       });
@@ -1144,19 +1212,17 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
   }
 
 
-  /// Gets the color for the shuffle button based on navigation state and SKATS data
+  /// Gets the color for the shuffle button based on SKATS data only
   Color _getShuffleButtonColor() {
-    if (_hasBeenShuffled || _hasAnySkatsData()) {
+    if (_hasAnySkatsData()) {
       return Colors.grey[400]!;
     }
     return Colors.purple[200]!;
   }
 
-  /// Gets the handler for the shuffle button based on navigation state and SKATS data
+  /// Gets the handler for the shuffle button based on SKATS data only
   VoidCallback _getShuffleButtonHandler() {
-    if (_hasBeenShuffled) {
-      return _handleShuffleDisabled;
-    } else if (_hasAnySkatsData()) {
+    if (_hasAnySkatsData()) {
       return _handleShuffleDisabledDueToSkats;
     }
     return _handleShuffle;
@@ -1324,7 +1390,9 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
   /// Gets the text for the Skat/Results button based on purse amounts
   String _getSkatButtonText() {
     if (LeaguePurseService.skatPurse > 0) {
-      return 'Skat \$\$\$';
+      return 'Close Pin Winners';
+    } else if (_hasMoneyCalculations()) {
+      return 'Close Pin Winners ---➤';
     } else {
       return 'PAYOUT ---➤';
     }
@@ -1343,10 +1411,49 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
   /// Gets the handler for the Skat/Results button based on purse amounts
   VoidCallback _getSkatButtonHandler() {
     if (LeaguePurseService.skatPurse > 0) {
-      return _handleSkatMoney;
+      return _handleClosePinWinners;
+    } else if (_hasMoneyCalculations()) {
+      return _handleClosePinWinners;
     } else {
       return _handleResults;
     }
+  }
+
+  /// Handles the Close Pin Winners button press to navigate to Closest Pin screen
+  void _handleClosePinWinners() {
+    //print("Close Pin Winners button pressed!");
+
+    // Check if all SKATS data is entered before proceeding
+    if (!_areAllSkatsFieldsComplete()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter SKATS data for all players before proceeding'),
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
+    // Money is already calculated automatically when last SKATS value was entered
+    // No need to calculate again here
+
+    // Capture data in the retention service before transitioning to Closest Pin screen
+    ScreenDataRetentionService().captureEnterScoresData(
+      playerGroups: groups,
+      hasMoneyCalculations: _hasMoneyCalculations(),
+      playersShuffled: _shuffledInCurrentSession || _hasBeenShuffled,
+    );
+
+    // Navigate to Monday Closest Pin Screen
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => MondayClosestPinScreen(
+          selectedPlayers: widget.selectedPlayers ?? [],
+          playersAnte: widget.playersAnte,
+        ),
+      ),
+    );
   }
 
   /// Handles the RESULTS button press to show game results

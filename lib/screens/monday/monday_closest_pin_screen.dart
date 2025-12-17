@@ -6,6 +6,7 @@ import '../../services/screen_data_retention_service.dart';
 import '../../services/device_detection_service.dart';
 import '../../services/responsive_typography.dart';
 import 'monday_enter_scores_screen.dart';
+import 'monday_results_screen.dart';
 
 class MondayClosestPinScreen extends StatefulWidget {
   final List<Map<String, dynamic>> selectedPlayers;
@@ -29,9 +30,8 @@ class _MondayClosestPinScreenState extends State<MondayClosestPinScreen> {
   void initState() {
     super.initState();
 
-    // Calculate Closest Pin Purse based on number of selected players
-    // This happens when navigating from player selection screen
-    LeaguePurseService.calculateClosestPinPurseFromCount(widget.selectedPlayers.length);
+    // Don't recalculate Closest Pin Purse - use the value already set in LeaguePurseService
+    // The Enter Scores Screen already calculated this in its initState
 
     // Store the initial purse amount for Clear button resets
     _initialPurseAmount = LeaguePurseService.closestPinPurse;
@@ -80,6 +80,9 @@ class _MondayClosestPinScreenState extends State<MondayClosestPinScreen> {
       _closestPinValue = _initialPurseAmount / _totalClosestPins;
       _remainingPurseAmount = _initialPurseAmount;
 
+      // Sync the reset Closest Pin Purse back to LeaguePurseService
+      LeaguePurseService.setClosestPinPurse(_initialPurseAmount, isExplicit: false);
+
       // Reset all player counts and winnings to 0
       for (var player in widget.selectedPlayers) {
         String lastName = player['last'] ?? 'Unknown';
@@ -100,17 +103,13 @@ class _MondayClosestPinScreenState extends State<MondayClosestPinScreen> {
     );
 
     // Update the LeaguePurseService with the remaining purse amount
-    // This mirrors the current state to the enter scores screen
-    LeaguePurseService.setClosestPinPurse(_remainingPurseAmount);
+    LeaguePurseService.setClosestPinPurse(_remainingPurseAmount, isExplicit: false);
 
-    // Navigate to Monday Enter Scores Screen
-    Navigator.pushReplacement(
+    // Navigate to Monday Results Screen
+    Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => MondayEnterScoresScreen(
-          selectedPlayers: widget.selectedPlayers,
-          playersAnte: widget.playersAnte,
-        ),
+        builder: (context) => const MondayResultsScreen(),
       ),
     );
   }
@@ -124,6 +123,8 @@ class _MondayClosestPinScreenState extends State<MondayClosestPinScreen> {
         _playerWinnings[lastName] = _playerClosestPinCounts[lastName]! * _closestPinValue;
         // Decrease the remaining purse amount by the closest pin value
         _remainingPurseAmount -= _closestPinValue;
+        // Sync the Closest Pin Purse in LeaguePurseService to keep it in sync
+        LeaguePurseService.setClosestPinPurse(_remainingPurseAmount, isExplicit: false);
       });
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
