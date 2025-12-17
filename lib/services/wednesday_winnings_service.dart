@@ -8,8 +8,9 @@ class WednesdayWinningsService {
   factory WednesdayWinningsService() => _instance;
   WednesdayWinningsService._internal();
 
-  /// Calculates individual winnings based on net scores and purse amount
+  /// Calculates individual winnings based on net scores and CSV payout data
   /// Returns a map of player names to their calculated winnings
+  /// Note: totalPurse parameter is not used - payouts come directly from CSV
   Future<Map<String, WinningsResult>> calculateIndividualWinnings(
     List<Map<String, dynamic>> playerScores,
     double totalPurse,
@@ -26,9 +27,9 @@ class WednesdayWinningsService {
       return netA.compareTo(netB);
     });
 
-    // Get payout percentages from CSV service
+    // Get payout amounts (dollar values) from CSV service
     int playerCount = sortedPlayers.length;
-    List<double> payoutPercentages = await _getPayoutPercentages(playerCount);
+    List<double> payoutAmounts = await _getPayoutAmounts(playerCount);
 
     // Calculate positions with tie handling
     int currentPlace = 1;
@@ -52,19 +53,19 @@ class WednesdayWinningsService {
       double winnings = 0.0;
       bool isTied = false;
 
-      if (currentPlace <= payoutPercentages.length) {
+      if (currentPlace <= payoutAmounts.length) {
         // Check for tie at this position
         int tiedPlayers = _countPlayersWithScore(sortedPlayers, netScore);
         if (tiedPlayers > 1) {
           isTied = true;
           // Split prize money among tied players
-          double combinedPercentage = 0.0;
-          for (int j = currentPlace - 1; j < currentPlace - 1 + tiedPlayers && j < payoutPercentages.length; j++) {
-            combinedPercentage += payoutPercentages[j];
+          double combinedAmount = 0.0;
+          for (int j = currentPlace - 1; j < currentPlace - 1 + tiedPlayers && j < payoutAmounts.length; j++) {
+            combinedAmount += payoutAmounts[j];
           }
-          winnings = (combinedPercentage / tiedPlayers) * totalPurse / 100;
+          winnings = combinedAmount / tiedPlayers;
         } else {
-          winnings = payoutPercentages[currentPlace - 1] * totalPurse / 100;
+          winnings = payoutAmounts[currentPlace - 1];
         }
       }
 
@@ -81,8 +82,8 @@ class WednesdayWinningsService {
     return results;
   }
 
-  /// Gets payout percentages for a given player count
-  Future<List<double>> _getPayoutPercentages(int playerCount) async {
+  /// Gets payout amounts (dollar values) for a given player count from CSV
+  Future<List<double>> _getPayoutAmounts(int playerCount) async {
     try {
       final csvService = CsvPayoutService();
       await csvService.loadPayoutData();
@@ -91,24 +92,24 @@ class WednesdayWinningsService {
       Map<String, double> payouts = await csvService.getPayoutAmounts(playerCount);
 
       if (payouts.isNotEmpty) {
-        // Extract position payouts in order
-        List<double> percentages = [];
+        // Extract position payouts in order (these are dollar amounts from CSV)
+        List<double> amounts = [];
         List<String> positions = ['1st', '2nd', '3rd', '4th', '5th', '6th'];
         for (String pos in positions) {
           double amount = payouts[pos] ?? 0.0;
           if (amount > 0) {
-            percentages.add(amount);
+            amounts.add(amount);
           }
         }
-        if (percentages.isNotEmpty) {
-          return percentages;
+        if (amounts.isNotEmpty) {
+          return amounts;
         }
       }
     } catch (e) {
       // Fall back to default percentages
     }
 
-    // Default payout percentages if CSV not available
+    // Default payout percentages if CSV not available (legacy fallback)
     return _getDefaultPayoutPercentages(playerCount);
   }
 

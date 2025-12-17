@@ -12,6 +12,7 @@ import '../../services/group_csv_payout_service.dart';
 import '../../services/device_detection_service.dart';
 import '../../services/responsive_typography.dart';
 import '../../services/UI/enter_scores_UI_service.dart';
+import '../../services/UI/custom_keypad_service.dart';
 import '../../services/wednesday_winnings_service.dart';
 import '../../models/league.dart';
 import '../../models/wednesday_player_data.dart';
@@ -70,6 +71,9 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
   // Services
   final WednesdayWinningsService _winningsService = WednesdayWinningsService();
 
+  // Custom keypad controller
+  CustomKeypadController? _keypadController;
+
   // Swap selection tracking (inline, since SwapService uses PlayerData)
   List<String> selectedForSwap = [];
 
@@ -112,6 +116,7 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
   @override
   void initState() {
     super.initState();
+    _keypadController = CustomKeypadService.createController();
     _initializeServices();
     _initializeFocusNodes();
 
@@ -135,6 +140,9 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
         focusNode.addListener(() {
           if (focusNode.hasFocus) {
             _onPlayerFocused(g, p);
+            _showKeypadForPlayer(g, p);
+          } else {
+            _hideKeypad();
           }
         });
         _focusNodeMatrix[g][p] = focusNode;
@@ -160,7 +168,17 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
   void setPlayers(List<Map<String, dynamic>> players, List<List<Map<String, dynamic>?>> groupsData, String league) {
     setState(() {
       selectedPlayers = List.from(players);
-      groups = groupsData.map((g) => g.map((p) => p != null ? Map<String, dynamic>.from(p) : null).toList()).toList();
+      groups = groupsData.map((g) => g.map((p) {
+        if (p != null) {
+          Map<String, dynamic> playerCopy = Map<String, dynamic>.from(p);
+          // Map HC field to handicap if it exists
+          if (playerCopy.containsKey('HC') && !playerCopy.containsKey('handicap')) {
+            playerCopy['handicap'] = playerCopy['HC'];
+          }
+          return playerCopy;
+        }
+        return null;
+      }).toList()).toList();
 
       // Ensure we have 10 groups with 4 slots each
       while (groups.length < 10) {
@@ -201,6 +219,101 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
         setState(() {
           _currentFocusedPlayer = WednesdayPlayerData.fromMap(player);
         });
+      }
+    }
+  }
+
+  /// Shows the keypad for a specific player's Gross score input
+  void _showKeypadForPlayer(int groupIndex, int playerIndex) {
+    if (_keypadController == null) return;
+    if (groupIndex < groups.length && playerIndex < groups[groupIndex].length) {
+      var player = groups[groupIndex][playerIndex];
+      if (player != null) {
+        _currentFocusedPlayer = WednesdayPlayerData.fromMap(player);
+        _keypadController!.setInput(player['gross_score']?.toString() ?? '');
+        setState(() {
+          _keypadController!.show();
+        });
+      }
+    }
+  }
+
+  /// Hides the keypad
+  void _hideKeypad({bool keepFocus = false}) {
+    if (_keypadController == null) return;
+    setState(() {
+      _keypadController!.hide();
+      if (!keepFocus) {
+        _currentFocusedPlayer = null;
+      }
+    });
+  }
+
+  /// Handles keypad input
+  void _handleKeypadInput(String key) {
+    if (_keypadController == null || _currentFocusedPlayer == null) return;
+
+    if (key == 'backspace') {
+      String? newInput = _keypadController!.handleKeyPress(key);
+      if (newInput != null) {
+        setState(() {
+          _updateGrossScoreFromKeypad(_keypadController!.currentInput);
+        });
+      }
+    } else if (key == 'enter') {
+      String currentInput = _keypadController!.currentInput;
+      if (currentInput.isNotEmpty) {
+        _updateGrossScoreFromKeypad(currentInput);
+      }
+
+      // Find current player position and move to next
+      for (int groupIndex = 0; groupIndex < groups.length; groupIndex++) {
+        for (int playerIndex = 0; playerIndex < groups[groupIndex].length; playerIndex++) {
+          var player = groups[groupIndex][playerIndex];
+          if (player != null && player['last'] == _currentFocusedPlayer!.name) {
+            _moveToNextGrossInput(groupIndex, playerIndex);
+            return;
+          }
+        }
+      }
+    } else {
+      // Handle digit input
+      String? newInput = _keypadController!.handleKeyPress(key);
+      if (newInput != null) {
+        setState(() {
+          _updateGrossScoreFromKeypad(_keypadController!.currentInput);
+        });
+
+        // Auto-advance when 2 digits are entered
+        if (_keypadController!.currentInput.length == 2) {
+          Future.delayed(Duration(milliseconds: 300), () {
+            for (int groupIndex = 0; groupIndex < groups.length; groupIndex++) {
+              for (int playerIndex = 0; playerIndex < groups[groupIndex].length; playerIndex++) {
+                var player = groups[groupIndex][playerIndex];
+                if (player != null && player['last'] == _currentFocusedPlayer!.name) {
+                  _moveToNextGrossInput(groupIndex, playerIndex);
+                  return;
+                }
+              }
+            }
+          });
+        }
+      }
+    }
+  }
+
+  /// Updates gross score from keypad input
+  void _updateGrossScoreFromKeypad(String value) {
+    if (_currentFocusedPlayer == null) return;
+
+    // Find the player in groups and update
+    for (int g = 0; g < groups.length; g++) {
+      for (int p = 0; p < groups[g].length; p++) {
+        var player = groups[g][p];
+        if (player != null && player['last'] == _currentFocusedPlayer!.name) {
+          _onGrossScoreChanged(g, p, value);
+          return;
+        }
       }
     }
   }
@@ -296,32 +409,20 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
     _createControllersForPlayers();
   }
 
-  /// Gets the color for the shuffle button based on state and score data
+  /// Gets the color for the shuffle button based on score data only
   Color _getShuffleButtonColor() {
-    if (_hasBeenShuffled || _hasAnyScoreData()) {
+    if (_hasAnyScoreData()) {
       return Colors.grey[400]!;
     }
     return Colors.purple[200]!;
   }
 
-  /// Gets the handler for the shuffle button based on state and score data
+  /// Gets the handler for the shuffle button based on score data only
   VoidCallback? _getShuffleButtonHandler() {
-    if (_hasBeenShuffled) {
-      return _handleShuffleDisabled;
-    } else if (_hasAnyScoreData()) {
+    if (_hasAnyScoreData()) {
       return _handleShuffleDisabledDueToScores;
     }
     return _handleShuffle;
-  }
-
-  /// Handles when shuffle button is pressed but disabled due to previous shuffle
-  void _handleShuffleDisabled() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Players were already shuffled in this session'),
-        duration: Duration(seconds: 2),
-      ),
-    );
   }
 
   /// Handles when shuffle button is pressed but disabled due to score data
@@ -458,7 +559,11 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
     for (var group in groups) {
       for (var player in group) {
         if (player != null && player['gross_score'] != null) {
-          return true;
+          // Check if it's a complete score (2 digits)
+          String scoreStr = player['gross_score'].toString();
+          if (scoreStr.length >= 2) {
+            return true;
+          }
         }
       }
     }
@@ -507,22 +612,22 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
       }
     });
 
-    // Auto-advance after 2 digits
-    if (value.length == 2) {
-      _moveToNextGrossInput(groupIndex, playerIndex);
-    }
+    // Note: Auto-advance is handled by the keypad input handler
+    // Do NOT move focus here to avoid double advancement
 
-    // Auto-calculate if all scores entered
-    _checkAndAutoCalculate();
+    // Auto-calculate if all scores entered (schedule after setState completes)
+    Future.microtask(() => _checkAndAutoCalculate());
   }
 
   void _moveToNextGrossInput(int currentGroup, int currentPlayer) {
     // Try next player in same group
     for (int p = currentPlayer + 1; p < groups[currentGroup].length; p++) {
       if (groups[currentGroup][p] != null) {
-        String key = '${groups[currentGroup][p]!['last']}_gross';
-        grossFocusNodes[key]?.requestFocus();
-        return;
+        FocusNode? nextFocus = _focusNodeMatrix[currentGroup][p];
+        if (nextFocus != null) {
+          nextFocus.requestFocus();
+          return;
+        }
       }
     }
 
@@ -530,18 +635,20 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
     for (int g = currentGroup + 1; g < groups.length; g++) {
       for (int p = 0; p < groups[g].length; p++) {
         if (groups[g][p] != null) {
-          String key = '${groups[g][p]!['last']}_gross';
-          grossFocusNodes[key]?.requestFocus();
-          return;
+          FocusNode? nextFocus = _focusNodeMatrix[g][p];
+          if (nextFocus != null) {
+            nextFocus.requestFocus();
+            return;
+          }
         }
       }
     }
 
-    // End of inputs - unfocus
-    FocusScope.of(context).unfocus();
+    // End of inputs - hide keypad
+    _hideKeypad();
   }
 
-  void _checkAndAutoCalculate() {
+  Future<void> _checkAndAutoCalculate() async {
     // Check if all players have gross scores
     bool allComplete = true;
     for (var group in groups) {
@@ -557,7 +664,34 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
     }
 
     if (allComplete && !winnersCalculated) {
-      // All scores entered - can proceed to calculate
+      // Hide keypad first
+      _hideKeypad();
+
+      // Auto-process individuals to calculate prize money (without closest pin dialog)
+      // Note: Payout amounts come directly from CSV, not percentage-based calculation
+      await _autoProcessIndividuals();
+    }
+  }
+
+  Future<void> _autoProcessIndividuals() async {
+    try {
+      List<Map<String, dynamic>> playerScores = _collectPlayerScores();
+      if (playerScores.isEmpty) return;
+
+      // Skip closest pin processing - just calculate winnings
+      await _calculateWednesdayWinnings(playerScores);
+
+      // Update groups with calculated values
+      _updateGroupsWithWinnings(playerScores);
+
+      setState(() {
+        individualsProcessingComplete = true;
+      });
+
+      await _saveResultsToDatabase(playerScores);
+      await updateTitleInformation();
+    } catch (e) {
+      // Handle error silently for auto-processing
     }
   }
 
@@ -592,12 +726,20 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
 
     setState(() {
       groups = newGroups;
+      winnersCalculated = false; // Reset winners flag so auto-calculate will run
+      individualsProcessingComplete = false;
     });
+
+    // Hide keypad after auto-fill is complete
+    _hideKeypad();
+
+    // Trigger auto-calculate to process individual payouts
+    Future.microtask(() => _checkAndAutoCalculate());
   }
 
   // ============== PROCESS INDIVIDUALS ==============
 
-  void _processIndividuals() async {
+  Future<void> _processIndividuals() async {
     try {
       FocusScope.of(context).unfocus();
 
@@ -883,11 +1025,7 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
 
   void _returnToMainMenu() {
     EnterScoresUIService.resetOrientation();
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (context) => UnifiedMainMenuScreen()),
-      (route) => false,
-    );
+    Navigator.pop(context);
   }
 
   // ============== BUILD ==============
@@ -901,40 +1039,56 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
 
     return Scaffold(
       backgroundColor: Colors.grey[100],
-      body: Column(
+      body: Stack(
         children: [
-          EnterScoresUIService.buildWednesdayPurseHeader(
-            context,
-            playersPurse: playersPurse,
-            closestPinPurse: closestPinPurse,
-            mulliganPurse: mulliganPurse,
-            groupsProcessed: groupsProcessed,
-            onReturn: _returnToMainMenu,
-            onAutoFill: _handleAutoFill,
+          // Main content
+          Column(
+            children: [
+              EnterScoresUIService.buildWednesdayPurseHeader(
+                context,
+                playersPurse: playersPurse,
+                closestPinPurse: closestPinPurse,
+                mulliganPurse: mulliganPurse,
+                groupsProcessed: groupsProcessed,
+                onReturn: _returnToMainMenu,
+                onAutoFill: _handleAutoFill,
+              ),
+              EnterScoresUIService.buildWednesdayGroupsGrid(
+                context,
+                groups,
+                groupsProcessed: groupsProcessed,
+                onPlayerTap: _onPlayerTap,
+                onEmptySlotTap: _onEmptySlotTap,
+                isPlayerSelected: _isPlayerSelected,
+                isEmptySlotSelected: _isEmptySlotSelected,
+                onGrossScoreChanged: _onGrossScoreChangedWrapper,
+                grossFocusNodes: _focusNodeMatrix,
+                isPlayerFocused: _isPlayerFocusedWrapper,
+              ),
+              EnterScoresUIService.buildWednesdayBottomButtons(
+                context,
+                swapButtonText: _getSwapButtonText(),
+                swapButtonColor: _getSwapButtonColor(),
+                individualsComplete: individualsProcessingComplete,
+                onMainMenu: _returnToMainMenu,
+                onShuffle: _getShuffleButtonHandler(),
+                shuffleButtonColor: _getShuffleButtonColor(),
+                onIndividuals: _handleIndividuals,
+                onProcessGroups: _handleAutoProcessGroups,
+                onSwap: selectedForSwap.length == 2 ? _handleSwap : null,
+              ),
+            ],
           ),
-          EnterScoresUIService.buildWednesdayGroupsGrid(
-            context,
-            groups,
-            groupsProcessed: groupsProcessed,
-            onPlayerTap: _onPlayerTap,
-            onEmptySlotTap: _onEmptySlotTap,
-            isPlayerSelected: _isPlayerSelected,
-            isEmptySlotSelected: _isEmptySlotSelected,
-            onGrossScoreChanged: _onGrossScoreChangedWrapper,
-            grossFocusNodes: _focusNodeMatrix,
-            isPlayerFocused: _isPlayerFocusedWrapper,
-          ),
-          EnterScoresUIService.buildWednesdayBottomButtons(
-            context,
-            swapButtonText: _getSwapButtonText(),
-            swapButtonColor: _getSwapButtonColor(),
-            individualsComplete: individualsProcessingComplete,
-            onMainMenu: _returnToMainMenu,
-            onShuffle: _getShuffleButtonHandler(),
-            shuffleButtonColor: _getShuffleButtonColor(),
-            onIndividuals: _handleIndividuals,
-            onProcessGroups: _handleAutoProcessGroups,
-            onSwap: selectedForSwap.length == 2 ? _handleSwap : null,
+          // Custom keypad overlay
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: CustomKeypadService.buildCustomKeypad(
+              context: context,
+              onKeyPress: _handleKeypadInput,
+              isVisible: _keypadController?.isVisible ?? false,
+            ),
           ),
         ],
       ),
