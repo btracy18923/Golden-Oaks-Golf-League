@@ -101,7 +101,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
           SnackBar(
             content: Text(
               'Duplicate Play Dates - SKAT data not saved',
-              style: TextStyle(fontSize: fontSize),
+              style: TextStyle(fontSize: fontSize + 10),
             ),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 5),
@@ -299,7 +299,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
     const double contentPadding = 12.0;
     const double iconSize = 18;
     const double buttonHeight = 4;
-    const double buttonFontSize = 12;
+    const double buttonFontSize = 22;
     
     return Scaffold(
       backgroundColor: Colors.grey[100],
@@ -308,7 +308,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
           'Monday League Results',
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            fontSize: 18,
+            fontSize: 24,
           ),
         ),
         backgroundColor: Colors.green[700],
@@ -369,7 +369,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
           'Monday League Results',
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            fontSize: 20,
+            fontSize: 22,
           ),
         ),
         backgroundColor: Colors.green[700],
@@ -643,7 +643,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
             final screenSize = MediaQuery.of(context).size;
             final is6InchPhone = screenSize.width <= 900;
             
-            final double fontSize = is6InchPhone ? 12 : 24;
+            final double fontSize = is6InchPhone ? 22 : 24;
             
             return Container(
               padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
@@ -718,7 +718,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
         builder: (context, constraints) {
           final screenSize = MediaQuery.of(context).size;
           final is6InchPhone = screenSize.width <= 900;
-          final double fontSize = is6InchPhone ? 12 : 24;
+          final double fontSize = is6InchPhone ? 22 : 24;
           
           return Row(
             children: [
@@ -771,7 +771,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
         builder: (context, constraints) {
           final screenSize = MediaQuery.of(context).size;
           final is6InchPhone = screenSize.width <= 900;
-          final double fontSize = is6InchPhone ? 12 : 24;
+          final double fontSize = is6InchPhone ? 22 : 24;
           
           return Text(
             'Golf Course: ${_retentionService.selectedGolfCourse ?? 'Not Selected'}',
@@ -891,7 +891,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
                   child: Text(
                     'Skat Value: \$${skatValue.toStringAsFixed(2)}',
                     style: TextStyle(
-                      fontSize: fontSize,
+                      fontSize: fontSize + 9,
                       fontWeight: FontWeight.w600,
                       color: Colors.black87,
                     ),
@@ -901,7 +901,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
                   child: Text(
                     'SKAT Winners: $playersWithMoney',
                     style: TextStyle(
-                      fontSize: fontSize,
+                      fontSize: fontSize + 9,
                       fontWeight: FontWeight.w600,
                       color: Colors.black87,
                     ),
@@ -982,7 +982,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
     final is8InchTablet = screenSize.width > 900 && screenSize.width <= 1200;
     
     // Responsive font sizes for table cells
-    final double fontSize = is6InchPhone ? 12 : (is8InchTablet ? 11 : 22);
+    final double fontSize = is6InchPhone ? 22 : (is8InchTablet ? 11 : 22);
     final double cellPadding = is6InchPhone ? 4 : (is8InchTablet ? 6 : 8);
     
     return Padding(
@@ -1050,7 +1050,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
                         'Closest Pin Winners',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: is6InchPhone ? 12 : 24,
+                          fontSize: is6InchPhone ? 22 : 24,
                         ),
                       ),
                     ),
@@ -1060,7 +1060,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
                         'Pins Won',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: is6InchPhone ? 12 : 24,
+                          fontSize: is6InchPhone ? 22 : 24,
                         ),
                         textAlign: TextAlign.center,
                       ),
@@ -1071,7 +1071,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
                         '\$\$\$',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: is6InchPhone ? 12 : 24,
+                          fontSize: is6InchPhone ? 22 : 24,
                         ),
                         textAlign: TextAlign.center,
                       ),
@@ -1090,7 +1090,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
                       flex: is6InchPhone ? 3 : 2,
                       child: Text(
                         winner['name'] as String,
-                        style: TextStyle(fontSize: is6InchPhone ? 11 : 24),
+                        style: TextStyle(fontSize: is6InchPhone ? 22 : 24),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -1099,7 +1099,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
                       child: Text(
                         '${winner['pins']}',
                         textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: is6InchPhone ? 11 : 24),
+                        style: TextStyle(fontSize: is6InchPhone ? 22 : 24),
                       ),
                     ),
                     Expanded(
@@ -1110,7 +1110,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
                         style: TextStyle(
                           color: Colors.green[700],
                           fontWeight: FontWeight.w600,
-                          fontSize: is6InchPhone ? 11 : 24,
+                          fontSize: is6InchPhone ? 22 : 24,
                         ),
                       ),
                     ),

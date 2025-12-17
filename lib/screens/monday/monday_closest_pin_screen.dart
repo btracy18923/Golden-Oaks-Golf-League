@@ -193,7 +193,7 @@ class _MondayClosestPinScreenState extends State<MondayClosestPinScreen> {
               child: Text(
                 lastName,
                 style: TextStyle(
-                  fontSize: deviceType == DeviceType.phone6Point5 ? 12 : fontSize + 3,
+                  fontSize: deviceType == DeviceType.phone6Point5 ? 18 : fontSize + 3,
                   fontWeight: FontWeight.bold,
                   color: closestPinCount > 0 ? Colors.green[800] : Colors.black,
                 ),
