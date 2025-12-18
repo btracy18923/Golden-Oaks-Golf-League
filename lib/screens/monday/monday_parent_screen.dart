@@ -26,11 +26,11 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
   String? selectedGolfCourse;
   List<Map<String, dynamic>> golfCourses = [];
   bool isLoadingCourses = true;
-  
-  // Editable league settings
-  double skatsAnte = 5.00;
-  double closestPin = 4.00;
-  double mulligans = 2.00;
+
+  // Editable league settings - will be loaded from LeaguePurseService
+  late double skatsAnte;
+  late double closestPin;
+  late double mulligans;
   
   // Controllers for edit fields
   final TextEditingController _skatsAnteController = TextEditingController();
@@ -49,16 +49,15 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
     _setOrientation();
     _loadGolfCourses();
     _keypadController = CustomKeypadService.createController();
+
+    // Load values from LeaguePurseService for Monday league - these persist during the app session
+    skatsAnte = LeaguePurseService.getPlayersAnte(league: League.monday);
+    closestPin = LeaguePurseService.getClosestPinAmount(league: League.monday);
+    mulligans = LeaguePurseService.getMulliganAmount(league: League.monday);
+
     _skatsAnteController.text = skatsAnte.toStringAsFixed(2);
     _closestPinController.text = closestPin.toStringAsFixed(2);
     _mulligansController.text = mulligans.toStringAsFixed(2);
-    
-    // Set the initial Players Ante value in the league service
-    LeaguePurseService.setPlayersAnte(skatsAnte);
-    // Set the initial Closest Pin amount in the league service
-    LeaguePurseService.setClosestPinAmount(closestPin);
-    // Set the initial Mulligan amount in the league service
-    LeaguePurseService.setMulliganAmount(mulligans);
   }
 
   void _setOrientation() {
@@ -193,33 +192,33 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
   /// Applies the amount input to the appropriate field
   void _applyAmountInput(String input) {
     if (_currentEditField == null) return;
-    
+
     // Convert input to dollars (input is already in dollars)
     double amount = double.tryParse(input) ?? 0.0;
-    
+
     // Allow $0.00 values
     if (amount < 0.0) amount = 0.0;
-    
+
     switch (_currentEditField) {
       case 'ante':
         setState(() {
           skatsAnte = amount;
           _skatsAnteController.text = amount.toStringAsFixed(2);
-          LeaguePurseService.setPlayersAnte(amount);
+          LeaguePurseService.setPlayersAnte(amount, league: League.monday);
         });
         break;
       case 'closestPin':
         setState(() {
           closestPin = amount;
           _closestPinController.text = amount.toStringAsFixed(2);
-          LeaguePurseService.setClosestPinAmount(amount);
+          LeaguePurseService.setClosestPinAmount(amount, league: League.monday);
         });
         break;
       case 'mulligans':
         setState(() {
           mulligans = amount;
           _mulligansController.text = amount.toStringAsFixed(2);
-          LeaguePurseService.setMulliganAmount(amount);
+          LeaguePurseService.setMulliganAmount(amount, league: League.monday);
         });
         break;
     }
@@ -233,15 +232,15 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
         (course) => course['name'] == courseName,
         orElse: () => <String, dynamic>{},
       );
-      
+
       if (selectedCourse.isNotEmpty && selectedCourse['holes'] != null) {
         final par3s = selectedCourse['holes'] as int;
         final newClosestPin = par3s * 1.00; // Multiply by $1.00
-        
+
         setState(() {
           closestPin = newClosestPin;
           _closestPinController.text = closestPin.toStringAsFixed(2);
-          LeaguePurseService.setClosestPinAmount(closestPin);
+          LeaguePurseService.setClosestPinAmount(closestPin, league: League.monday);
         });
       }
     } catch (e) {

@@ -197,38 +197,68 @@ class LeaguePurseService {
     }
   }
   
-  // Current Players Ante amount for calculation
-  static double _playersAnte = 5.0; // Default value
-  
-  // Current Closest Pin amount for calculation
-  static double _closestPinAmount = 4.0; // Default value
-  
-  // Current Mulligan amount for calculation
-  static double _mulliganAmount = 2.0; // Default value
-  
-  /// Sets the current Players Ante amount
-  static void setPlayersAnte(double amount) {
-    _playersAnte = amount;
+  // League-specific Players Ante amounts for calculation
+  static double _mondayPlayersAnte = 5.0; // Default value for Monday
+  static double _wednesdayPlayersAnte = 5.0; // Default value for Wednesday
+
+  // League-specific Closest Pin amounts for calculation
+  static double _mondayClosestPinAmount = 4.0; // Default value for Monday
+  static double _wednesdayClosestPinAmount = 1.0; // Default value for Wednesday
+
+  // League-specific Mulligan amounts for calculation
+  static double _mondayMulliganAmount = 2.0; // Default value for Monday
+  static double _wednesdayMulliganAmount = 2.0; // Default value for Wednesday
+
+  /// Sets the Players Ante amount for a specific league
+  static void setPlayersAnte(double amount, {League league = League.monday}) {
+    if (league == League.monday) {
+      _mondayPlayersAnte = amount;
+    } else {
+      _wednesdayPlayersAnte = amount;
+    }
   }
-  
-  /// Gets the current Players Ante amount
-  static double get playersAnte => _playersAnte;
-  
-  /// Sets the current Closest Pin amount
-  static void setClosestPinAmount(double amount) {
-    _closestPinAmount = amount;
+
+  /// Gets the Players Ante amount for a specific league
+  static double getPlayersAnte({League league = League.monday}) {
+    return league == League.monday ? _mondayPlayersAnte : _wednesdayPlayersAnte;
   }
-  
-  /// Gets the current Closest Pin amount
-  static double get closestPinAmount => _closestPinAmount;
-  
-  /// Sets the current Mulligan amount
-  static void setMulliganAmount(double amount) {
-    _mulliganAmount = amount;
+
+  /// Gets the current Players Ante amount (deprecated - use getPlayersAnte instead)
+  static double get playersAnte => _mondayPlayersAnte;
+
+  /// Sets the Closest Pin amount for a specific league
+  static void setClosestPinAmount(double amount, {League league = League.monday}) {
+    if (league == League.monday) {
+      _mondayClosestPinAmount = amount;
+    } else {
+      _wednesdayClosestPinAmount = amount;
+    }
   }
-  
-  /// Gets the current Mulligan amount
-  static double get mulliganAmount => _mulliganAmount;
+
+  /// Gets the Closest Pin amount for a specific league
+  static double getClosestPinAmount({League league = League.monday}) {
+    return league == League.monday ? _mondayClosestPinAmount : _wednesdayClosestPinAmount;
+  }
+
+  /// Gets the current Closest Pin amount (deprecated - use getClosestPinAmount instead)
+  static double get closestPinAmount => _mondayClosestPinAmount;
+
+  /// Sets the Mulligan amount for a specific league
+  static void setMulliganAmount(double amount, {League league = League.monday}) {
+    if (league == League.monday) {
+      _mondayMulliganAmount = amount;
+    } else {
+      _wednesdayMulliganAmount = amount;
+    }
+  }
+
+  /// Gets the Mulligan amount for a specific league
+  static double getMulliganAmount({League league = League.monday}) {
+    return league == League.monday ? _mondayMulliganAmount : _wednesdayMulliganAmount;
+  }
+
+  /// Gets the current Mulligan amount (deprecated - use getMulliganAmount instead)
+  static double get mulliganAmount => _mondayMulliganAmount;
   
   /// Calculates and sets the Skat Purse based on Players Ante and selected players count
   static void calculateSkatPurse(double playersAnte, int selectedPlayersCount) {
@@ -237,9 +267,9 @@ class LeaguePurseService {
   
   /// Calculates and sets the Skat Purse based on current Players Ante and selected players count
   static void calculateSkatPurseFromCount(int selectedPlayersCount) {
-    _skatPurse = _playersAnte * selectedPlayersCount;
+    _skatPurse = _mondayPlayersAnte * selectedPlayersCount;
   }
-  
+
   /// Calculates and sets the Closest Pin Purse based on Closest Pin amount and selected players count
   /// Only calculates if not explicitly set by another screen (like Closest Pin screen)
   static void calculateClosestPinPurse(double closestPinAmount, int selectedPlayersCount) {
@@ -252,10 +282,10 @@ class LeaguePurseService {
   /// Only calculates if not explicitly set by another screen (like Closest Pin screen)
   static void calculateClosestPinPurseFromCount(int selectedPlayersCount) {
     if (!_closestPinPurseSetExplicitly) {
-      _closestPinPurse = _closestPinAmount * selectedPlayersCount;
+      _closestPinPurse = _mondayClosestPinAmount * selectedPlayersCount;
     }
   }
-  
+
   /// Calculates and sets the Mulligan Purse based on Mulligan amount and selected players count
   /// Only calculates if not explicitly set by another screen
   static void calculateMulliganPurse(double mulliganAmount, int selectedPlayersCount) {
@@ -268,7 +298,7 @@ class LeaguePurseService {
   /// Only calculates if not explicitly set by another screen
   static void calculateMulliganPurseFromCount(int selectedPlayersCount) {
     if (!_mulliganPurseSetExplicitly) {
-      _mulliganPurse = _mulliganAmount * selectedPlayersCount;
+      _mulliganPurse = _mondayMulliganAmount * selectedPlayersCount;
     }
   }
   

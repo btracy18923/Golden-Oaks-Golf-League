@@ -44,23 +44,10 @@ class _WednesdayParentScreenState extends State<WednesdayParentScreen> {
     _setOrientation();
     _keypadController = CustomKeypadService.createController();
 
-    // Load values from LeaguePurseService if they exist, otherwise use defaults
-    playersAnte = LeaguePurseService.playersAnte;
-    closestPin = LeaguePurseService.closestPinAmount;
-    mulligans = LeaguePurseService.mulliganAmount;
-
-    // If values are still at defaults (first time), initialize with reasonable defaults
-    if (playersAnte == 5.0 && closestPin == 4.0 && mulligans == 2.0) {
-      // Use hardcoded defaults only on first launch
-      playersAnte = 5.00;
-      closestPin = 1.00;
-      mulligans = 2.00;
-
-      // Save these defaults to LeaguePurseService
-      LeaguePurseService.setPlayersAnte(playersAnte);
-      LeaguePurseService.setClosestPinAmount(closestPin);
-      LeaguePurseService.setMulliganAmount(mulligans);
-    }
+    // Load values from LeaguePurseService for Wednesday league - these persist during the app session
+    playersAnte = LeaguePurseService.getPlayersAnte(league: League.wednesday);
+    closestPin = LeaguePurseService.getClosestPinAmount(league: League.wednesday);
+    mulligans = LeaguePurseService.getMulliganAmount(league: League.wednesday);
 
     _playersAnteController.text = playersAnte.toStringAsFixed(2);
     _closestPinController.text = closestPin.toStringAsFixed(2);
@@ -180,21 +167,21 @@ class _WednesdayParentScreenState extends State<WednesdayParentScreen> {
         setState(() {
           playersAnte = amount;
           _playersAnteController.text = amount.toStringAsFixed(2);
-          LeaguePurseService.setPlayersAnte(amount);
+          LeaguePurseService.setPlayersAnte(amount, league: League.wednesday);
         });
         break;
       case 'closestPin':
         setState(() {
           closestPin = amount;
           _closestPinController.text = amount.toStringAsFixed(2);
-          LeaguePurseService.setClosestPinAmount(amount);
+          LeaguePurseService.setClosestPinAmount(amount, league: League.wednesday);
         });
         break;
       case 'mulligans':
         setState(() {
           mulligans = amount;
           _mulligansController.text = amount.toStringAsFixed(2);
-          LeaguePurseService.setMulliganAmount(amount);
+          LeaguePurseService.setMulliganAmount(amount, league: League.wednesday);
         });
         break;
     }
