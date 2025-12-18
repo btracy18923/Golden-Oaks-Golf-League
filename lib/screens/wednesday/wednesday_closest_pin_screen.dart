@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../services/UI/closest_pin_UI_service.dart' as ClosestPinUI;
 import '../../services/shared/league_purse_service.dart';
-import '../../services/screen_data_retention_service.dart';
 import '../../services/device_detection_service.dart';
 import '../../services/responsive_typography.dart';
-import 'wednesday_enter_scores_screen.dart';
+import '../../models/league.dart';
+import 'wednesday_parent_screen.dart';
 
 class WednesdayClosestPinScreen extends StatefulWidget {
   final List<Map<String, dynamic>> selectedPlayers;
@@ -29,9 +29,9 @@ class _WednesdayClosestPinScreenState extends State<WednesdayClosestPinScreen> {
     super.initState();
 
     // Calculate Closest Pin Purse based on number of selected players
-    // This happens when navigating from player selection screen
-    // Force calculation: closestPinAmount × playerCount
-    double closestPinAmount = LeaguePurseService.closestPinAmount;
+    // Wednesday league has only 1 closest pin (not 4 like Monday)
+    // Each player contributes $1.00 to the single closest pin purse
+    double closestPinAmount = LeaguePurseService.getClosestPinAmount(league: League.wednesday);
     double calculatedPurse = closestPinAmount * widget.selectedPlayers.length;
 
     // Set the purse explicitly
@@ -40,12 +40,12 @@ class _WednesdayClosestPinScreenState extends State<WednesdayClosestPinScreen> {
     // Store the initial purse amount for Clear button resets
     _initialPurseAmount = calculatedPurse;
 
-    // Calculate total closest pins to process (closestPinAmount / $1.00)
-    _totalClosestPins = (closestPinAmount / 1.0).round();
+    // Wednesday has only 1 closest pin to award (not 4 like Monday)
+    _totalClosestPins = 1;
     _remainingClosestPins = _totalClosestPins;
 
-    // Calculate the value per closest pin (Closest Pin Purse / initial remaining amount)
-    _closestPinValue = _initialPurseAmount / _totalClosestPins;
+    // Calculate the value per closest pin (entire purse goes to the single winner)
+    _closestPinValue = _initialPurseAmount;
 
     // Initialize remaining purse amount to track decreases
     _remainingPurseAmount = _initialPurseAmount;
@@ -77,10 +77,10 @@ class _WednesdayClosestPinScreenState extends State<WednesdayClosestPinScreen> {
   void _handleClear() {
     setState(() {
       // Reset to initial state values
-      double closestPinAmount = LeaguePurseService.closestPinAmount;
-      _totalClosestPins = (closestPinAmount / 1.0).round();
+      // Wednesday has only 1 closest pin to award
+      _totalClosestPins = 1;
       _remainingClosestPins = _totalClosestPins;
-      _closestPinValue = _initialPurseAmount / _totalClosestPins;
+      _closestPinValue = _initialPurseAmount;
       _remainingPurseAmount = _initialPurseAmount;
 
       // Reset all player counts and winnings to 0
@@ -93,49 +93,13 @@ class _WednesdayClosestPinScreenState extends State<WednesdayClosestPinScreen> {
   }
 
   void _handleSaveAndReturn() {
-    // Capture data in the retention service before saving
-    ScreenDataRetentionService().captureClosestPinData(
-      playerClosestPinCounts: _playerClosestPinCounts,
-      playerClosestPinWinnings: _playerWinnings,
-      remainingClosestPinPurse: _remainingPurseAmount,
-      totalClosestPins: _totalClosestPins,
-      remainingClosestPins: _remainingClosestPins,
-    );
-
-    // Update the LeaguePurseService with the remaining purse amount
-    // This mirrors the current state to the enter scores screen
-    LeaguePurseService.setClosestPinPurse(_remainingPurseAmount);
-
-    // Get selected players and create groups
-    List<Map<String, dynamic>> selectedPlayers = widget.selectedPlayers;
-
-    // Organize players into groups of 4
-    List<List<Map<String, dynamic>?>> groups = [];
-
-    for (int i = 0; i < selectedPlayers.length; i += 4) {
-      List<Map<String, dynamic>?> group = [];
-
-      // Add up to 4 players to each group
-      for (int j = 0; j < 4; j++) {
-        if (i + j < selectedPlayers.length) {
-          group.add(selectedPlayers[i + j]);
-        } else {
-          group.add(null); // Empty slot
-        }
-      }
-
-      groups.add(group);
-    }
-
-    // Navigate to Wednesday Enter Scores Screen
-    Navigator.pushReplacement(
+    // Navigate back to Wednesday Parent Screen
+    Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(
-        builder: (context) => WednesdayEnterScoresScreen(
-          initialPlayers: selectedPlayers,
-          initialGroups: groups,
-        ),
+        builder: (context) => const WednesdayParentScreen(),
       ),
+      (route) => false, // Remove all previous routes
     );
   }
 

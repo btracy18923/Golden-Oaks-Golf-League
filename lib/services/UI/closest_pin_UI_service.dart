@@ -283,7 +283,7 @@ class ClosestPinUIService {
     final buttonPaddingMultiplier = deviceType == DeviceType.tablet10 ? 0.6 : 0.4;
 
     // Determine button text based on league
-    final buttonText = league == 'Monday' ? 'PAYOUT ---➤' : 'Enter Gross ---➤';
+    final buttonText = league == 'Monday' ? 'PAYOUT ---➤' : 'Payout ---➤';
 
     // Determine button color based on league
     final buttonColor = league == 'Monday' ? Colors.blue[300]! : Colors.blue[300]!;

@@ -1186,11 +1186,13 @@ class EnterScoresUIService {
     const config = LeagueUIConfig.wednesday;
 
     // Determine the labels based on processing state
-    String firstPurseLabel = "Ind Purse";
+    String firstPurseLabel;
     String secondPurseLabel;
     if (groupsProcessed) {
-      secondPurseLabel = "Total Group Purse";
+      firstPurseLabel = "Group Purse";
+      secondPurseLabel = "Group Payout";
     } else {
+      firstPurseLabel = "Ind Purse";
       // Default to "Payout" for initial state and after individuals processing
       secondPurseLabel = "Payout";
     }
@@ -1950,35 +1952,82 @@ class EnterScoresUIService {
     required String swapButtonText,
     required Color swapButtonColor,
     required bool individualsComplete,
+    bool groupsProcessed = false,
     VoidCallback? onAutoFill,
     VoidCallback? onMainMenu,
     VoidCallback? onShuffle,
     Color? shuffleButtonColor,
+    Color? backButtonColor,
     VoidCallback? onIndividuals,
     VoidCallback? onProcessGroups,
+    VoidCallback? onClosestPin,
     VoidCallback? onSwap,
   }) {
     final isPhone = DeviceDetectionService.isPhone(context);
     const config = LeagueUIConfig.wednesday;
+
+    // Determine button text and callback based on groups processing state
+    String processButtonText = groupsProcessed ? 'Close Pin Winner ---➤' : 'Process Groups ---➤';
+    VoidCallback? processButtonCallback = groupsProcessed
+        ? onClosestPin
+        : (individualsComplete ? onProcessGroups : null);
+    Color processButtonColor = groupsProcessed
+        ? Colors.green[300]!
+        : (individualsComplete ? Colors.green[300]! : Colors.grey[400]!);
+
+    // Disable Back button when groups are processed
+    VoidCallback? backButtonCallback = groupsProcessed ? null : onMainMenu;
+    Color finalBackButtonColor = backButtonColor ?? Colors.lightBlue[100]!;
+
+    // Get screen width to calculate button width (1/4 of screen)
+    final screenWidth = MediaQuery.of(context).size.width;
+    final buttonWidth = screenWidth / 4;
 
     return Container(
       height: isPhone ? 55 : 70,
       color: config.buttonBarColor,
       padding: EdgeInsets.symmetric(horizontal: isPhone ? 2 : 5, vertical: 5),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        mainAxisAlignment: groupsProcessed ? MainAxisAlignment.end : MainAxisAlignment.spaceEvenly,
         children: [
-          if (onAutoFill != null) _buildWednesdayActionButton(context, 'Auto Fill', Colors.orange[200]!, onAutoFill),
-          _buildWednesdayActionButton(context, '◄---- Back     ', Colors.lightBlue[100]!, onMainMenu),
-          _buildWednesdayActionButton(context, 'Shuffle', shuffleButtonColor ?? Colors.purple[200]!, onShuffle),
-          _buildWednesdayActionButton(context, swapButtonText, swapButtonColor, onSwap),
-          _buildWednesdayActionButton(context, 'Individual \$\$\$', Colors.grey[300]!, onIndividuals),
-          _buildWednesdayActionButton(
-            context,
-            'Auto Process Groups',
-            individualsComplete ? Colors.green[300]! : Colors.grey[400]!,
-            individualsComplete ? onProcessGroups : null,
-          ),
+          // Show all buttons when not processed, only Close Pin Winner when processed
+          if (!groupsProcessed) ...[
+            if (onAutoFill != null) _buildWednesdayActionButton(context, 'Auto Fill', Colors.orange[200]!, onAutoFill),
+            _buildWednesdayActionButton(context, '◄---- Back     ', finalBackButtonColor, backButtonCallback),
+            _buildWednesdayActionButton(context, 'Shuffle', shuffleButtonColor ?? Colors.purple[200]!, onShuffle),
+            _buildWednesdayActionButton(context, swapButtonText, swapButtonColor, onSwap),
+            _buildWednesdayActionButton(
+              context,
+              processButtonText,
+              processButtonColor,
+              processButtonCallback,
+            ),
+          ] else ...[
+            // Only show the Close Pin Winner button when groups are processed
+            Container(
+              width: buttonWidth,
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: isPhone ? 3 : 10),
+                child: ElevatedButton(
+                  onPressed: processButtonCallback,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: processButtonColor,
+                    foregroundColor: processButtonCallback != null ? Colors.black : Colors.grey[600],
+                    padding: EdgeInsets.symmetric(vertical: isPhone ? 4 : 8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(isPhone ? 6 : 10)),
+                  ),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      processButtonText,
+                      style: TextStyle(fontSize: ResponsiveTypography.getButton(context), fontWeight: FontWeight.bold),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );

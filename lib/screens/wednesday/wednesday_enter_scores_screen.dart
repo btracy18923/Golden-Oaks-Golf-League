@@ -13,8 +13,10 @@ import '../../services/responsive_typography.dart';
 import '../../services/UI/enter_scores_UI_service.dart';
 import '../../services/UI/custom_keypad_service.dart';
 import '../../services/wednesday_winnings_service.dart';
+import '../../services/process_groups_service.dart';
 import '../../models/league.dart';
 import '../../models/wednesday_player_data.dart';
+import 'wednesday_closest_pin_screen.dart';
 
 /// Helper class to track positions in the groups grid
 class Position {
@@ -69,6 +71,7 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
 
   // Services
   final WednesdayWinningsService _winningsService = WednesdayWinningsService();
+  final ProcessGroupsService _processGroupsService = ProcessGroupsService();
 
   // Custom keypad controller
   CustomKeypadController? _keypadController;
@@ -99,6 +102,8 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
   double _adjustedMulliganPurse = 0.0;
   double _totalPrizeMoney = 0.0;
   double _totalPayoutSum = 0.0;
+  double _groupPurseAmount = 0.0;
+  double _groupPayoutAmount = 0.0;
 
   // Processing state
   double totalPurse = 0.0;
@@ -359,6 +364,7 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
         }
       } else if (groupsProcessed) {
         displayPurse = groupPurse;
+        displayMulliganPurse = _adjustedMulliganPurse; // Use adjusted Mulligan after groups processing
       }
 
       setState(() {
@@ -377,21 +383,18 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
   // ============== SHUFFLE FUNCTIONALITY ==============
 
   /// Handles the Shuffle button press to randomize player order
+  /// Ensures each group has at least 3 players
   void _handleShuffle() {
     // Collect all players from all groups
     List<Map<String, dynamic>> allPlayers = [];
-    List<int> groupSizes = [];
 
-    // Store original group sizes and collect all players
+    // Collect all players
     for (int groupIndex = 0; groupIndex < groups.length; groupIndex++) {
-      int groupSize = 0;
       for (var player in groups[groupIndex]) {
         if (player != null) {
-          groupSize++;
           allPlayers.add(Map<String, dynamic>.from(player));
         }
       }
-      groupSizes.add(groupSize);
     }
 
     if (allPlayers.isEmpty) {
@@ -404,9 +407,85 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
       return;
     }
 
+    final totalPlayers = allPlayers.length;
+
+    // Handle edge cases
+    if (totalPlayers < 4) {
+      // If less than 4 players, put all in Group 1
+      setState(() {
+        for (int i = 0; i < groups.length; i++) {
+          groups[i].clear();
+          groups[i] = [null, null, null, null];
+        }
+        for (int i = 0; i < allPlayers.length; i++) {
+          groups[0][i] = allPlayers[i];
+        }
+        _shuffledInCurrentSession = true;
+        _hasBeenShuffled = true;
+      });
+      _createControllersForPlayers();
+      return;
+    }
+
+    if (totalPlayers == 5) {
+      // Special case: 5 players - put 3 in first group, 2 in second group
+      final random = Random();
+      allPlayers.shuffle(random);
+
+      setState(() {
+        for (int i = 0; i < groups.length; i++) {
+          groups[i].clear();
+          groups[i] = [null, null, null, null];
+        }
+
+        // Add first 3 players to Group 1
+        for (int i = 0; i < 3; i++) {
+          groups[0][i] = allPlayers[i];
+        }
+
+        // Add remaining 2 players to Group 2
+        for (int i = 3; i < 5; i++) {
+          groups[1][i - 3] = allPlayers[i];
+        }
+
+        _shuffledInCurrentSession = true;
+        _hasBeenShuffled = true;
+      });
+      _createControllersForPlayers();
+      return;
+    }
+
     // Shuffle all players randomly
     final random = Random();
     allPlayers.shuffle(random);
+
+    // Calculate optimal group distribution ensuring 3+ players per group
+    int numGroups;
+    if (totalPlayers <= 4) {
+      numGroups = 1;
+    } else if (totalPlayers <= 8) {
+      numGroups = 2;
+    } else if (totalPlayers <= 12) {
+      numGroups = 3;
+    } else if (totalPlayers <= 16) {
+      numGroups = 4;
+    } else if (totalPlayers <= 20) {
+      numGroups = 5;
+    } else if (totalPlayers <= 24) {
+      numGroups = 6;
+    } else if (totalPlayers <= 28) {
+      numGroups = 7;
+    } else if (totalPlayers <= 32) {
+      numGroups = 8;
+    } else if (totalPlayers <= 36) {
+      numGroups = 9;
+    } else {
+      numGroups = 10;
+    }
+
+    // Distribute players evenly across calculated number of groups
+    int playersPerGroup = totalPlayers ~/ numGroups;
+    int remainingPlayers = totalPlayers % numGroups;
 
     setState(() {
       // Clear all groups
@@ -416,13 +495,22 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
         groups[i] = [null, null, null, null];
       }
 
-      // Redistribute shuffled players back into groups with original sizes
+      // Redistribute shuffled players
       int playerIndex = 0;
-      for (int groupIndex = 0; groupIndex < groupSizes.length; groupIndex++) {
-        int groupSize = groupSizes[groupIndex];
-        for (int i = 0; i < groupSize && playerIndex < allPlayers.length; i++) {
-          groups[groupIndex][i] = allPlayers[playerIndex];
-          playerIndex++;
+      for (int groupIndex = 0; groupIndex < numGroups; groupIndex++) {
+        int playersInThisGroup = playersPerGroup;
+
+        // Distribute remaining players to first groups
+        if (groupIndex < remainingPlayers) {
+          playersInThisGroup++;
+        }
+
+        // Add players to this group
+        for (int i = 0; i < playersInThisGroup; i++) {
+          if (playerIndex < allPlayers.length) {
+            groups[groupIndex][i] = allPlayers[playerIndex];
+            playerIndex++;
+          }
         }
       }
 
@@ -434,18 +522,21 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
     _createControllersForPlayers();
   }
 
-  /// Gets the color for the shuffle button based on score data only
+  /// Gets the color for the shuffle button based on score data or group processing
   Color _getShuffleButtonColor() {
-    if (_hasAnyScoreData()) {
+    if (_hasAnyScoreData() || groupsProcessed) {
       return Colors.grey[400]!;
     }
     return Colors.purple[200]!;
   }
 
-  /// Gets the handler for the shuffle button based on score data only
+  /// Gets the handler for the shuffle button based on score data or group processing
   VoidCallback? _getShuffleButtonHandler() {
     if (_hasAnyScoreData()) {
       return _handleShuffleDisabledDueToScores;
+    }
+    if (groupsProcessed) {
+      return _handleShuffleDisabledDueToGroupProcessing;
     }
     return _handleShuffle;
   }
@@ -460,10 +551,20 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
     );
   }
 
+  /// Handles when shuffle button is pressed but disabled due to group processing
+  void _handleShuffleDisabledDueToGroupProcessing() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Cannot shuffle players after groups have been processed'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
   // ============== SWAP FUNCTIONALITY ==============
 
   void _onPlayerTap(int groupIndex, int playerIndex, Map<String, dynamic> player) {
-    if (_hasAnyScoreData()) return;
+    if (_hasAnyScoreData() || groupsProcessed) return;
 
     String playerLast = player['last'] ?? '';
     setState(() {
@@ -481,7 +582,7 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
   }
 
   void _onEmptySlotTap(int groupIndex, int playerIndex) {
-    if (_hasAnyScoreData()) return;
+    if (_hasAnyScoreData() || groupsProcessed) return;
 
     String slotKey = 'empty_${groupIndex + 1}_$playerIndex';
     setState(() {
@@ -499,12 +600,12 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
   }
 
   bool _isPlayerSelected(String playerName) {
-    if (_hasAnyScoreData()) return false;
+    if (_hasAnyScoreData() || groupsProcessed) return false;
     return selectedForSwap.contains(playerName);
   }
 
   bool _isEmptySlotSelected(int groupIndex, int playerIndex) {
-    if (_hasAnyScoreData()) return false;
+    if (_hasAnyScoreData() || groupsProcessed) return false;
     String slotKey = 'empty_${groupIndex + 1}_$playerIndex';
     return selectedForSwap.contains(slotKey);
   }
@@ -596,9 +697,15 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
   }
 
   Color _getSwapButtonColor() {
-    if (_hasAnyScoreData()) return Colors.grey[400]!;
+    if (_hasAnyScoreData() || groupsProcessed) return Colors.grey[400]!;
     if (selectedForSwap.length == 2) return Colors.orange[300]!;
     return Colors.grey[400]!;
+  }
+
+  /// Gets the color for the back button based on group processing state
+  Color _getBackButtonColor() {
+    if (groupsProcessed) return Colors.grey[400]!;
+    return Colors.lightBlue[100]!;
   }
 
   // ============== SCORE INPUT ==============
@@ -1100,138 +1207,22 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
   }
 
   /// Processes groups in the current screen without navigation
+  /// Uses ProcessGroupsService to handle the logic
   Future<void> _processGroupsInPlace() async {
-    // Collect all players from all groups
-    List<Map<String, dynamic>> allPlayers = [];
-    for (var group in groups) {
-      for (var player in group) {
-        if (player != null) {
-          // Create a clean copy, keeping only Last Name and Net score
-          Map<String, dynamic> cleanedPlayer = {
-            'first': player['first'],
-            'last': player['last'],
-            'player_number': player['player_number'],
-            'net_score': player['net_score'],
-          };
-          allPlayers.add(cleanedPlayer);
-        }
-      }
-    }
+    // Use the service to process groups, passing the adjusted Mulligan Purse as carryover
+    ProcessGroupsResult result = await _processGroupsService.processGroups(groups, _adjustedMulliganPurse);
 
-    // Randomly shuffle all players
-    allPlayers.shuffle();
-
-    // Redistribute players into new groups (4 players per group)
-    List<List<Map<String, dynamic>?>> newGroups = [];
-    int playerIndex = 0;
-    for (int groupIndex = 0; groupIndex < 10; groupIndex++) {
-      List<Map<String, dynamic>?> group = [];
-      for (int slotIndex = 0; slotIndex < 4; slotIndex++) {
-        if (playerIndex < allPlayers.length) {
-          // Assign group number to player
-          allPlayers[playerIndex]['manual_group'] = groupIndex + 1;
-          group.add(allPlayers[playerIndex]);
-          playerIndex++;
-        } else {
-          group.add(null);
-        }
-      }
-      newGroups.add(group);
-    }
-
-    // Calculate group averages and rankings
-    List<Map<String, dynamic>> groupRankings = [];
-
-    for (int groupIndex = 0; groupIndex < newGroups.length; groupIndex++) {
-      var group = newGroups[groupIndex];
-      List<int> netScores = [];
-      List<Map<String, dynamic>> playersInGroup = [];
-
-      for (var player in group) {
-        if (player != null && player['net_score'] != null) {
-          try {
-            int netScore = player['net_score'] is int
-                ? player['net_score']
-                : int.parse(player['net_score'].toString());
-            netScores.add(netScore);
-            playersInGroup.add(player);
-          } catch (e) {
-            // Skip players with invalid net scores
-          }
-        }
-      }
-
-      if (netScores.isNotEmpty) {
-        double averageNet = netScores.reduce((a, b) => a + b) / netScores.length;
-
-        // Assign average to all players in group
-        for (var player in playersInGroup) {
-          player['avg_net'] = averageNet.toStringAsFixed(1);
-        }
-
-        groupRankings.add({
-          'group_index': groupIndex,
-          'average_net': averageNet,
-          'players': playersInGroup,
-        });
-      }
-    }
-
-    // Sort groups by average net score
-    groupRankings.sort((a, b) => a['average_net'].compareTo(b['average_net']));
-
-    // Assign group places and prizes from CSV
-    await _assignGroupPlacesAndPrizes(groupRankings);
-
-    // Update state
+    // Update state with the results
     setState(() {
-      groups = newGroups;
+      groups = result.newGroups;
+      _groupPurseAmount = result.groupPurseAmount;
+      _groupPayoutAmount = result.groupPayoutAmount;
+      _adjustedMulliganPurse = result.mulliganPurseAmount; // Use the carryover value
       groupsProcessed = true;
+      selectedForSwap.clear(); // Clear swap selection when groups are processed
     });
 
     await updateTitleInformation();
-  }
-
-  /// Assigns group places and prize money using CSV data
-  Future<void> _assignGroupPlacesAndPrizes(List<Map<String, dynamic>> groupRankings) async {
-    if (groupRankings.isEmpty) return;
-
-    try {
-      // Get total number of players
-      int totalPlayers = 0;
-      for (var groupData in groupRankings) {
-        List<Map<String, dynamic>> players = groupData['players'];
-        totalPlayers += players.length;
-      }
-
-      // Load prize amounts from CSV
-      Map<String, double> payouts = await GroupCsvPayoutService().getPayoutAmounts(totalPlayers);
-
-      // Individual team amounts for each place
-      Map<int, double> individualTeamAmounts = {
-        1: payouts['1st_team_ind'] ?? 0.0,
-        2: payouts['2nd_team_ind'] ?? 0.0,
-        3: payouts['3rd_team_ind'] ?? 0.0,
-        4: payouts['4th_team_ind'] ?? 0.0,
-      };
-
-      // Assign places and prizes
-      for (int rankIndex = 0; rankIndex < groupRankings.length; rankIndex++) {
-        int place = rankIndex + 1;
-        var groupData = groupRankings[rankIndex];
-        List<Map<String, dynamic>> players = groupData['players'];
-
-        double individualTeamAmount = individualTeamAmounts[place] ?? 0.0;
-        int roundedAmount = individualTeamAmount.round();
-
-        for (var player in players) {
-          player['pos'] = place.toString();
-          player['prize_money'] = '\$${roundedAmount}';
-        }
-      }
-    } catch (e) {
-      // Continue without prize assignment if CSV fails
-    }
   }
 
   // ============== NAVIGATION ==============
@@ -1241,22 +1232,51 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
     Navigator.pop(context);
   }
 
+  void _navigateToClosestPin() {
+    // Collect all players from all groups to pass to closest pin screen
+    List<Map<String, dynamic>> allPlayers = [];
+    for (var group in groups) {
+      for (var player in group) {
+        if (player != null && player['is_wild_card'] != true) {
+          allPlayers.add(player);
+        }
+      }
+    }
+
+    // Navigate to wednesday_closest_pin_screen
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => WednesdayClosestPinScreen(
+          selectedPlayers: allPlayers,
+        ),
+      ),
+    );
+  }
+
   // ============== BUILD ==============
 
   @override
   Widget build(BuildContext context) {
-    // Ind Purse always shows the initial calculated value (never changes)
-    double playersPurse = double.tryParse(_playersPurseDisplayText.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0.0;
+    // First purse position:
+    // - Before groups processing: shows "Ind Purse" with individual purse amount
+    // - After groups processing: shows "Group Purse" with team_total from CSV
+    double playersPurse;
+    if (groupsProcessed) {
+      playersPurse = _groupPurseAmount;
+    } else {
+      playersPurse = double.tryParse(_playersPurseDisplayText.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0.0;
+    }
 
     // For the second purse position (now "Payout"):
     // - Initially and during score entry: show $0.00
     // - After individuals processing: show total payout sum
-    // - After groups processing: show group purse (handled by groupsProcessed flag)
+    // - After groups processing: show group payout (sum of $$$ column)
     double payoutAmount = 0.0;
     if (individualsProcessingComplete && !groupsProcessed) {
       payoutAmount = _totalPayoutSum;
     } else if (groupsProcessed) {
-      payoutAmount = double.tryParse(_closestPinPurseDisplayText.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0.0;
+      payoutAmount = _groupPayoutAmount;
     }
 
     double mulliganPurse = double.tryParse(_mulliganPurseDisplayText.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0.0;
@@ -1295,11 +1315,14 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
                 swapButtonText: _getSwapButtonText(),
                 swapButtonColor: _getSwapButtonColor(),
                 individualsComplete: individualsProcessingComplete,
+                groupsProcessed: groupsProcessed,
                 onMainMenu: _returnToMainMenu,
                 onShuffle: _getShuffleButtonHandler(),
                 shuffleButtonColor: _getShuffleButtonColor(),
+                backButtonColor: _getBackButtonColor(),
                 onIndividuals: _handleIndividuals,
                 onProcessGroups: _handleAutoProcessGroups,
+                onClosestPin: _navigateToClosestPin,
                 onSwap: selectedForSwap.length == 2 ? _handleSwap : null,
               ),
             ],

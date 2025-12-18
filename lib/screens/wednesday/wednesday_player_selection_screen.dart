@@ -363,22 +363,91 @@ class _WednesdayPlayerSelectionScreenState extends State<WednesdayPlayerSelectio
           .where((player) => selectedPlayerIds.contains(player['player_number'] as int))
           .toList();
 
-      // Organize players into groups of 4
+      // Organize players into groups, ensuring each group has at least 3 players
       List<List<Map<String, dynamic>?>> groups = [];
-      
-      for (int i = 0; i < selectedPlayers.length; i += 4) {
+      final totalPlayers = selectedPlayers.length;
+
+      // Handle edge cases
+      if (totalPlayers < 4) {
+        // If less than 4 players, put all in Group 1
         List<Map<String, dynamic>?> group = [];
-        
-        // Add up to 4 players to each group
-        for (int j = 0; j < 4; j++) {
-          if (i + j < selectedPlayers.length) {
-            group.add(selectedPlayers[i + j]);
-          } else {
-            group.add(null); // Empty slot
-          }
+        for (var player in selectedPlayers) {
+          group.add(player);
         }
-        
+        while (group.length < 4) {
+          group.add(null);
+        }
         groups.add(group);
+      } else if (totalPlayers == 5) {
+        // Special case: 5 players - put 3 in first group, 2 in second group
+        List<Map<String, dynamic>?> group1 = [
+          selectedPlayers[0],
+          selectedPlayers[1],
+          selectedPlayers[2],
+          null,
+        ];
+        List<Map<String, dynamic>?> group2 = [
+          selectedPlayers[3],
+          selectedPlayers[4],
+          null,
+          null,
+        ];
+        groups.add(group1);
+        groups.add(group2);
+      } else {
+        // Calculate optimal group distribution ensuring 3+ players per group
+        int numGroups;
+        if (totalPlayers <= 4) {
+          numGroups = 1;
+        } else if (totalPlayers <= 8) {
+          numGroups = 2;
+        } else if (totalPlayers <= 12) {
+          numGroups = 3;
+        } else if (totalPlayers <= 16) {
+          numGroups = 4;
+        } else if (totalPlayers <= 20) {
+          numGroups = 5;
+        } else if (totalPlayers <= 24) {
+          numGroups = 6;
+        } else if (totalPlayers <= 28) {
+          numGroups = 7;
+        } else if (totalPlayers <= 32) {
+          numGroups = 8;
+        } else if (totalPlayers <= 36) {
+          numGroups = 9;
+        } else {
+          numGroups = 10;
+        }
+
+        // Distribute players evenly across calculated number of groups
+        int playersPerGroup = totalPlayers ~/ numGroups;
+        int remainingPlayers = totalPlayers % numGroups;
+
+        int playerIndex = 0;
+        for (int groupIndex = 0; groupIndex < numGroups; groupIndex++) {
+          List<Map<String, dynamic>?> group = [];
+          int playersInThisGroup = playersPerGroup;
+
+          // Distribute remaining players to first groups
+          if (groupIndex < remainingPlayers) {
+            playersInThisGroup++;
+          }
+
+          // Add players to this group
+          for (int i = 0; i < playersInThisGroup; i++) {
+            if (playerIndex < selectedPlayers.length) {
+              group.add(selectedPlayers[playerIndex]);
+              playerIndex++;
+            }
+          }
+
+          // Fill remaining slots with null
+          while (group.length < 4) {
+            group.add(null);
+          }
+
+          groups.add(group);
+        }
       }
       
       // Navigate to Wednesday ores Screen
