@@ -1200,10 +1200,23 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
     await _processGroupsInPlace();
   }
 
-  /// Saves individual processing results to database before group processing
+  /// Saves individual processing results before group processing
+  /// Preserves the data to pass to results screen
+  List<Map<String, dynamic>> _individualWinners = [];
+
   Future<void> _saveIndividualResultsToDatabase() async {
-    // TODO: Implementation will save individual results for PAYOUT/Results screen
-    // This preserves the data before group processing transforms the UI
+    // Collect players with individual winnings (before groups processing)
+    _individualWinners.clear();
+    for (var group in groups) {
+      for (var player in group) {
+        if (player != null &&
+            player['prize_money'] != null &&
+            player['manual_group'] == null &&
+            player['last'] != null) {
+          _individualWinners.add(Map<String, dynamic>.from(player));
+        }
+      }
+    }
   }
 
   /// Processes groups in the current screen without navigation
@@ -1243,12 +1256,25 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
       }
     }
 
-    // Navigate to wednesday_closest_pin_screen
+    // Get base amounts from LeaguePurseService
+    double playersAnte = LeaguePurseService.getPlayersAnte(league: League.wednesday);
+    double closestPinAmount = LeaguePurseService.getClosestPinAmount(league: League.wednesday);
+    double mulliganAmount = LeaguePurseService.getMulliganAmount(league: League.wednesday);
+
+    // Navigate to wednesday_closest_pin_screen with group data, purse amounts, and individual winners
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => WednesdayClosestPinScreen(
           selectedPlayers: allPlayers,
+          groups: groups,
+          groupPurseAmount: _groupPurseAmount,
+          groupPayoutAmount: _groupPayoutAmount,
+          adjustedMulliganPurse: _adjustedMulliganPurse,
+          individualWinners: _individualWinners,
+          playersAnte: playersAnte,
+          closestPinAmount: closestPinAmount,
+          mulliganAmount: mulliganAmount,
         ),
       ),
     );

@@ -6,11 +6,32 @@ import '../../services/device_detection_service.dart';
 import '../../services/responsive_typography.dart';
 import '../../models/league.dart';
 import 'wednesday_parent_screen.dart';
+import 'wednesday_results_screen.dart';
+import '../../services/screen_data_retention_service.dart';
 
 class WednesdayClosestPinScreen extends StatefulWidget {
   final List<Map<String, dynamic>> selectedPlayers;
+  final List<List<Map<String, dynamic>?>>? groups;
+  final double? groupPurseAmount;
+  final double? groupPayoutAmount;
+  final double? adjustedMulliganPurse;
+  final List<Map<String, dynamic>>? individualWinners;
+  final double? playersAnte;
+  final double? closestPinAmount;
+  final double? mulliganAmount;
 
-  const WednesdayClosestPinScreen({Key? key, required this.selectedPlayers}) : super(key: key);
+  const WednesdayClosestPinScreen({
+    Key? key,
+    required this.selectedPlayers,
+    this.groups,
+    this.groupPurseAmount,
+    this.groupPayoutAmount,
+    this.adjustedMulliganPurse,
+    this.individualWinners,
+    this.playersAnte,
+    this.closestPinAmount,
+    this.mulliganAmount,
+  }) : super(key: key);
 
   @override
   _WednesdayClosestPinScreenState createState() => _WednesdayClosestPinScreenState();
@@ -93,14 +114,47 @@ class _WednesdayClosestPinScreenState extends State<WednesdayClosestPinScreen> {
   }
 
   void _handleSaveAndReturn() {
-    // Navigate back to Wednesday Parent Screen
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const WednesdayParentScreen(),
-      ),
-      (route) => false, // Remove all previous routes
+    // Save closest pin data to retention service
+    final retentionService = ScreenDataRetentionService();
+    retentionService.captureClosestPinData(
+      playerClosestPinCounts: _playerClosestPinCounts,
+      playerClosestPinWinnings: _playerWinnings,
+      remainingClosestPinPurse: _remainingPurseAmount,
+      totalClosestPins: _totalClosestPins,
+      remainingClosestPins: _remainingClosestPins,
     );
+
+    // Check if we have groups data (came from enter scores screen)
+    if (widget.groups != null &&
+        widget.groupPurseAmount != null &&
+        widget.groupPayoutAmount != null &&
+        widget.adjustedMulliganPurse != null) {
+      // Navigate to Wednesday Results Screen with group data and individual winners
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => WednesdayResultsScreen(
+            groupPurseAmount: widget.groupPurseAmount!,
+            groupPayoutAmount: widget.groupPayoutAmount!,
+            adjustedMulliganPurse: widget.adjustedMulliganPurse!,
+            groups: widget.groups!,
+            individualWinners: widget.individualWinners ?? [],
+            playersAnte: widget.playersAnte ?? 0.0,
+            closestPinAmount: widget.closestPinAmount ?? 0.0,
+            mulliganAmount: widget.mulliganAmount ?? 0.0,
+          ),
+        ),
+      );
+    } else {
+      // No groups data - came from player selection screen, return to parent
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const WednesdayParentScreen(),
+        ),
+        (route) => false,
+      );
+    }
   }
 
   void _handlePlayerTap(String lastName) {
