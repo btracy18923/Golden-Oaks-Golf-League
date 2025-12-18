@@ -286,7 +286,7 @@ class ClosestPinUIService {
     final buttonText = league == 'Monday' ? 'PAYOUT ---➤' : 'Enter Gross ---➤';
 
     // Determine button color based on league
-    final buttonColor = league == 'Monday' ? Colors.orange[300]! : Colors.orange[300]!;
+    final buttonColor = league == 'Monday' ? Colors.blue[300]! : Colors.blue[300]!;
 
     return Container(
       color: Colors.grey[300],

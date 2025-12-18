@@ -887,11 +887,11 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
   /// Gets the color for the SWAP button based on selection state and SKATS data
   Color _getSwapButtonColor() {
     if (_hasAnySkatsData()) {
-      return Colors.grey[400]!; // Grey when disabled due to SKATS data
+      return Colors.grey[400]!; // Green when disabled due to SKATS data
     } else if (_swapService.selectionCount == 2) {
       return Colors.green[400]!; // Medium green when 2nd player is selected
     } else {
-      return Colors.grey[400]!; // Grey for default state and after swap is completed
+      return Colors.green[100]!; // Green for default state and after swap is completed
     }
   }
 
@@ -1290,7 +1290,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _buildCustomButton(context, 'Back', Colors.blue[200]!, _handleReturn),
+          _buildCustomButton(context, 'Back', Colors.blue[300]!, _handleReturn),
           _buildCustomButton(context, 'Shuffle', _getShuffleButtonColor(), _getShuffleButtonHandler()),
           _buildCustomButton(context, _swapService.getSwapButtonText(), _getSwapButtonColor(), _getSwapButtonHandler()),
           _buildCustomButton(context, _getSkatButtonText(), _getSkatButtonColor(), _getSkatButtonHandler()),
@@ -1404,7 +1404,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
       // Only show green if all SKATS data is complete
       return _areAllSkatsFieldsComplete() ? Colors.green[200]! : Colors.grey[400]!;
     } else {
-      return Colors.orange[200]!;
+      return Colors.blue[200]!;
     }
   }
 

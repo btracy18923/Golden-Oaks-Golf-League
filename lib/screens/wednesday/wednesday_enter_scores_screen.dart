@@ -98,6 +98,7 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
   String _closestPinPurseDisplayText = "\$0.00";
   String _mulliganPurseDisplayText = "\$0.00";
   double _adjustedMulliganPurse = 0.0;
+  double _totalPrizeMoney = 0.0;
 
   // Processing state
   double totalPurse = 0.0;
@@ -336,13 +337,37 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
       double closestPinPurse = closestPinAmount * playerCount;
       double mulliganPurse = mulliganAmount * playerCount;
 
+      // Get individual purse from CSV for initial display
+      double displayPurse = totalPurse;
+      double displayMulliganPurse = mulliganPurse;
+
+      if (!groupsProcessed && playerCount > 0) {
+        try {
+          final csvService = CsvPayoutService();
+          final payouts = await csvService.getPayoutAmounts(playerCount);
+          displayPurse = payouts['total_individual'] ?? totalPurse;
+          individualPurse = displayPurse; // Store for later use
+
+          // If individuals have been processed, show $0.00 and use adjusted Mulligan
+          if (individualsProcessingComplete) {
+            displayPurse = 0.0; // Individual purse is now $0.00 after adjustment
+            displayMulliganPurse = _adjustedMulliganPurse; // Use adjusted Mulligan purse
+          }
+        } catch (e) {
+          // Fallback to total purse if CSV lookup fails
+          displayPurse = totalPurse;
+        }
+      } else if (groupsProcessed) {
+        displayPurse = groupPurse;
+      }
+
       setState(() {
-        _playersPurseDisplayText = groupsProcessed
-            ? '\$${groupPurse.toStringAsFixed(2)}'
-            : '\$${totalPurse.toStringAsFixed(2)}';
+        _playersPurseDisplayText = '\$${displayPurse.toStringAsFixed(2)}';
         _closestPinPurseDisplayText = '\$${closestPinPurse.toStringAsFixed(2)}';
-        _mulliganPurseDisplayText = '\$${mulliganPurse.toStringAsFixed(2)}';
-        _adjustedMulliganPurse = mulliganPurse;
+        _mulliganPurseDisplayText = '\$${displayMulliganPurse.toStringAsFixed(2)}';
+        if (!individualsProcessingComplete) {
+          _adjustedMulliganPurse = mulliganPurse;
+        }
       });
     } catch (e) {
       // Handle error
@@ -975,6 +1000,56 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
         }
       }
     }
+
+    // Calculate total prize money paid out
+    _calculateTotalPrizeMoney();
+  }
+
+  /// Calculates the sum of all prize money amounts and adjusts Mulligan Purse
+  /// Sums the whole dollar amounts in the $$$ column and compares to Ind Purse
+  /// Any difference is transferred to/from Mulligan Purse to bring Ind Purse to $0.00
+  void _calculateTotalPrizeMoney() {
+    double totalDollarsPaidOut = 0.0;
+
+    // Sum up all the whole dollar amounts in the $$$ column
+    for (var group in groups) {
+      for (var player in group) {
+        if (player != null && player['prize_money'] != null) {
+          String prizeMoneyStr = player['prize_money'].toString();
+          // Remove $ and parse
+          prizeMoneyStr = prizeMoneyStr.replaceAll('\$', '').trim();
+          if (prizeMoneyStr.isNotEmpty) {
+            try {
+              totalDollarsPaidOut += double.parse(prizeMoneyStr);
+            } catch (e) {
+              // Skip invalid values
+            }
+          }
+        }
+      }
+    }
+
+    _totalPrizeMoney = totalDollarsPaidOut;
+
+    // Calculate the difference: Ind Purse - Total Dollars Paid Out
+    // This is the amount needed to bring Ind Purse to $0.00
+    double difference = individualPurse - totalDollarsPaidOut;
+
+    // Calculate base Mulligan Purse (mulliganAmount × playerCount)
+    int playerCount = 0;
+    for (var group in groups) {
+      for (var player in group) {
+        if (player != null) playerCount++;
+      }
+    }
+    double baseMulliganPurse = LeaguePurseService.mulliganAmount * playerCount;
+
+    // Adjust Mulligan Purse by the difference
+    // If difference > 0: we paid out less than Ind Purse, add surplus to Mulligan
+    // If difference < 0: we paid out more than Ind Purse, subtract deficit from Mulligan
+    double newMulliganPurse = baseMulliganPurse + difference;
+    LeaguePurseService.setMulliganPurse(newMulliganPurse);
+    _adjustedMulliganPurse = newMulliganPurse;
   }
 
   Future<void> _saveResultsToDatabase(List<Map<String, dynamic>> playerScores) async {

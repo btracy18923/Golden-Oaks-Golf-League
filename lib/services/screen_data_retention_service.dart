@@ -194,6 +194,17 @@ class ScreenDataRetentionService {
            _remainingClosestPinPurse != null;
   }
 
+  /// Clears Enter Scores data (useful when navigating from Player Selection)
+  void clearEnterScoresData() {
+    _playerGroups = null;
+    _hasMoneyCalculations = null;
+    _playersShuffled = null;
+
+    if (kDebugMode) {
+      print('Screen Data Retention: Enter Scores data cleared');
+    }
+  }
+
   /// Clears all retained data (useful for starting fresh session)
   void clearAllData() {
     _playersAnte = null;
@@ -210,7 +221,7 @@ class ScreenDataRetentionService {
     _remainingClosestPinPurse = null;
     _totalClosestPins = null;
     _remainingClosestPins = null;
-    
+
     if (kDebugMode) {
       print('Screen Data Retention: All data cleared');
     }

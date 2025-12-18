@@ -35,9 +35,20 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
     super.initState();
     loadPlayers();
     _setOrientation();
-    
+
     // Clear shuffle state when starting with no players selected
     _clearShuffleStateOnInit();
+
+    // Calculate Closest Pin Purse based on current number of selected players
+    _calculateClosestPinPurse();
+  }
+
+  /// Calculates and updates the Closest Pin Purse based on selected players count
+  void _calculateClosestPinPurse() {
+    if (selectedPlayerIds.isNotEmpty) {
+      double closestPinPurse = LeaguePurseService.closestPinAmount * selectedPlayerIds.length;
+      LeaguePurseService.setClosestPinPurse(closestPinPurse, isExplicit: false);
+    }
   }
 
   void _setOrientation() {
@@ -103,11 +114,14 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
         // Handle player addition after shuffle
         _handlePlayerAddition(playerId);
       }
-      
+
       // If all players are now unselected, clear the shuffle state
       if (selectedPlayerIds.isEmpty) {
         _clearShuffleState();
       }
+
+      // Recalculate Closest Pin Purse whenever selection changes
+      _calculateClosestPinPurse();
     });
   }
   
@@ -120,6 +134,9 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
       } else {
         selectedPlayerIds = players.map((p) => p['player_number'] as int).toSet();
       }
+
+      // Recalculate Closest Pin Purse whenever selection changes
+      _calculateClosestPinPurse();
     });
   }
 
@@ -638,6 +655,9 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
           .where((player) => selectedPlayerIds.contains(player['player_number'] as int))
           .toList();
 
+      // Clear any old Enter Scores data from previous sessions
+      ScreenDataRetentionService().clearEnterScoresData();
+
       // Capture data in the retention service before navigation
       ScreenDataRetentionService().capturePlayerSelectionData(
         selectedPlayerIds: selectedPlayerIds,
@@ -960,7 +980,7 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
             child: Container(
               margin: const EdgeInsets.symmetric(horizontal: 4),
               child: ElevatedButton(
-                onPressed: selectedPlayerIds.isEmpty ? null : _navigateToClosestPin,
+                onPressed: selectedPlayerIds.isEmpty ? null : _navigateToEnterScores,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.green[300],
                   foregroundColor: Colors.black,
@@ -973,7 +993,7 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
                   ),
                 ),
                 child: Text(
-                  "Closest Pin Winners ---➤",
+                  "Enter SKATS ---➤",
                   style: TextStyle(
                     fontSize: ResponsiveTypography.getButton(context),
                     fontWeight: FontWeight.bold,
@@ -1049,7 +1069,7 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8.0),
               child: ElevatedButton(
-                onPressed: selectedPlayerIds.isEmpty ? null : _navigateToClosestPin,
+                onPressed: selectedPlayerIds.isEmpty ? null : _navigateToEnterScores,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.green[300],
                   foregroundColor: Colors.black,
@@ -1062,7 +1082,7 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
                   ),
                 ),
                 child: Text(
-                  "Closest Pin Winners",
+                  "Enter Scores",
                   style: TextStyle(
                     fontSize: ResponsiveTypography.getButton(context),
                     fontWeight: FontWeight.bold,
@@ -1138,7 +1158,7 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8.0),
               child: ElevatedButton(
-                onPressed: selectedPlayerIds.isEmpty ? null : _navigateToClosestPin,
+                onPressed: selectedPlayerIds.isEmpty ? null : _navigateToEnterScores,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.green[300],
                   foregroundColor: Colors.black,
@@ -1151,7 +1171,7 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
                   ),
                 ),
                 child: Text(
-                  "Closest Pin Winners ---➤",
+                  "Enter Scores ---➤",
                   style: TextStyle(
                     fontSize: ResponsiveTypography.getButton(context),
                     fontWeight: FontWeight.bold,

@@ -673,7 +673,7 @@ class _WednesdayPlayerSelectionScreenState extends State<WednesdayPlayerSelectio
             child: Container(
               margin: const EdgeInsets.symmetric(horizontal: 4),
               child: ElevatedButton(
-                onPressed: selectedPlayerIds.isEmpty ? null : _navigateToClosestPin,
+                onPressed: selectedPlayerIds.isEmpty ? null : _navigateToEnterScores,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.orange[300],
                   foregroundColor: Colors.black,
@@ -686,7 +686,7 @@ class _WednesdayPlayerSelectionScreenState extends State<WednesdayPlayerSelectio
                   ),
                 ),
                 child: Text(
-                  "Close Pin Winner ---➤",
+                  "Enter Gross ---➤",
                   style: TextStyle(
                     fontSize: ResponsiveTypography.getButton(context),
                     fontWeight: FontWeight.bold,

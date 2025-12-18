@@ -41,7 +41,7 @@ class CustomKeypadService {
             _buildKeypadKey(
               context: context,
               text: index.toString(),
-              fontSize: fontSize,
+              fontSize: fontSize * 2,
               onPressed: () => onKeyPress(index.toString()),
               deviceType: deviceType,
               padding: padding,
@@ -51,7 +51,7 @@ class CustomKeypadService {
           _buildKeypadKey(
             context: context,
             text: 'X',
-            fontSize: fontSize,
+            fontSize: fontSize * 2,
             onPressed: () => onKeyPress('backspace'),
             deviceType: deviceType,
             padding: padding,
@@ -61,7 +61,7 @@ class CustomKeypadService {
           _buildKeypadKey(
             context: context,
             text: 'Enter',
-            fontSize: fontSize,
+            fontSize: fontSize * 2,
             onPressed: () => onKeyPress('enter'),
             deviceType: deviceType,
             padding: padding,

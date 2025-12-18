@@ -1184,7 +1184,7 @@ class EnterScoresUIService {
     final spacing = isPhone ? 10.0 : 30.0;
     const config = LeagueUIConfig.wednesday;
 
-    String purseLabel = groupsProcessed ? "Total Group Purse" : "Players' Purse";
+    String purseLabel = groupsProcessed ? "Total Group Purse" : "Ind Purse";
 
     return Container(
       width: double.infinity,

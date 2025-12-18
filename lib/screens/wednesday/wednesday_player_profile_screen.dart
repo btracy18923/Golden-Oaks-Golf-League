@@ -789,7 +789,7 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
                 backgroundColor: Colors.blue[300],
                 foregroundColor: Colors.black,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
-                padding: EdgeInsets.all(isPhone ? 8.0 : 12.0),
+                padding: EdgeInsets.all(isPhone ? 6.0 : 12.0),
                 alignment: Alignment.center,
               ),
               child: Text('◄---- Back     ', style: TextStyle(fontSize: ResponsiveTypography.getButton(context), fontWeight: FontWeight.bold)),
