@@ -565,8 +565,6 @@ class _WednesdayAutoProcessGroupsScreenState extends State<WednesdayAutoProcessG
           Expanded(child: _buildSectionContainer(0)),
           SizedBox(width: 10),
           Expanded(child: _buildSectionContainer(1)),
-          SizedBox(width: 10),
-          Expanded(child: _buildSectionContainer(2)),
         ],
       ),
     );
@@ -574,10 +572,10 @@ class _WednesdayAutoProcessGroupsScreenState extends State<WednesdayAutoProcessG
 
   Widget _buildSectionContainer(int sectionIndex) {
     List<Widget> sectionWidgets = [];
-    
-    // Each section contains 3 groups (groups 1-3, 4-6, 7-9)
-    for (int groupOffset = 0; groupOffset < 3; groupOffset++) {
-      int groupNum = sectionIndex * 3 + groupOffset + 1;
+
+    // Each section contains 5 groups (groups 1-5, 6-10)
+    for (int groupOffset = 0; groupOffset < 5; groupOffset++) {
+      int groupNum = sectionIndex * 5 + groupOffset + 1;
       
       // Group header - positioned for Auto Process Groups layout (with Group# column)
       double headerCenter = selectedLeague == 'wednesday' ? 150.0 : 120.0; // Center with Group# column added
@@ -742,8 +740,11 @@ class _WednesdayAutoProcessGroupsScreenState extends State<WednesdayAutoProcessG
     
     return Container(
       height: 40,
-      child: Row(
-        children: rowWidgets,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: rowWidgets,
+        ),
       ),
     );
   }

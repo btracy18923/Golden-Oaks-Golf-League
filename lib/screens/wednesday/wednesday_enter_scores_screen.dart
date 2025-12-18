@@ -4,7 +4,6 @@ import 'dart:async';
 import 'dart:math';
 import '../popup_utils.dart';
 import '../main_menu_screen.dart';
-import 'wednesday_auto_process_groups_screen.dart';
 import '../../services/database_helper.dart';
 import '../../services/shared/league_purse_service.dart';
 import '../../services/csv_payout_service.dart';
@@ -99,6 +98,7 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
   String _mulliganPurseDisplayText = "\$0.00";
   double _adjustedMulliganPurse = 0.0;
   double _totalPrizeMoney = 0.0;
+  double _totalPayoutSum = 0.0;
 
   // Processing state
   double totalPurse = 0.0;
@@ -322,9 +322,9 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
   /// Updates title purse information
   Future<void> updateTitleInformation() async {
     try {
-      double anteAmount = LeaguePurseService.playersAnte;
-      double closestPinAmount = LeaguePurseService.closestPinAmount;
-      double mulliganAmount = LeaguePurseService.mulliganAmount;
+      double anteAmount = LeaguePurseService.getPlayersAnte(league: League.wednesday);
+      double closestPinAmount = LeaguePurseService.getClosestPinAmount(league: League.wednesday);
+      double mulliganAmount = LeaguePurseService.getMulliganAmount(league: League.wednesday);
 
       int playerCount = 0;
       for (var group in groups) {
@@ -348,9 +348,9 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
           displayPurse = payouts['total_individual'] ?? totalPurse;
           individualPurse = displayPurse; // Store for later use
 
-          // If individuals have been processed, show $0.00 and use adjusted Mulligan
+          // If individuals have been processed, use adjusted Mulligan
           if (individualsProcessingComplete) {
-            displayPurse = 0.0; // Individual purse is now $0.00 after adjustment
+            // Keep displayPurse unchanged - Ind Purse never changes
             displayMulliganPurse = _adjustedMulliganPurse; // Use adjusted Mulligan purse
           }
         } catch (e) {
@@ -1030,6 +1030,7 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
     }
 
     _totalPrizeMoney = totalDollarsPaidOut;
+    _totalPayoutSum = totalDollarsPaidOut; // Store the total sum for display
 
     // Calculate the difference: Ind Purse - Total Dollars Paid Out
     // This is the amount needed to bring Ind Purse to $0.00
@@ -1042,7 +1043,7 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
         if (player != null) playerCount++;
       }
     }
-    double baseMulliganPurse = LeaguePurseService.mulliganAmount * playerCount;
+    double baseMulliganPurse = LeaguePurseService.getMulliganAmount(league: League.wednesday) * playerCount;
 
     // Adjust Mulligan Purse by the difference
     // If difference > 0: we paid out less than Ind Purse, add surplus to Mulligan
@@ -1079,21 +1080,158 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
 
   // ============== PROCESS GROUPS ==============
 
-  Future<void> _navigateToAutoProcessGroups() async {
+  Future<void> _autoProcessGroups() async {
     if (!individualsProcessingComplete) {
       await PopupUtils.showWarning(context, "Process Error", "Please process individuals first!");
       return;
     }
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => WednesdayAutoProcessGroupsScreen(
-          initialGroups: groups,
-          initialLeague: 'wednesday',
-        ),
-      ),
-    );
+    // Save current individual processing data to database
+    await _saveIndividualResultsToDatabase();
+
+    // Process groups in the current screen
+    await _processGroupsInPlace();
+  }
+
+  /// Saves individual processing results to database before group processing
+  Future<void> _saveIndividualResultsToDatabase() async {
+    // TODO: Implementation will save individual results for PAYOUT/Results screen
+    // This preserves the data before group processing transforms the UI
+  }
+
+  /// Processes groups in the current screen without navigation
+  Future<void> _processGroupsInPlace() async {
+    // Collect all players from all groups
+    List<Map<String, dynamic>> allPlayers = [];
+    for (var group in groups) {
+      for (var player in group) {
+        if (player != null) {
+          // Create a clean copy, keeping only Last Name and Net score
+          Map<String, dynamic> cleanedPlayer = {
+            'first': player['first'],
+            'last': player['last'],
+            'player_number': player['player_number'],
+            'net_score': player['net_score'],
+          };
+          allPlayers.add(cleanedPlayer);
+        }
+      }
+    }
+
+    // Randomly shuffle all players
+    allPlayers.shuffle();
+
+    // Redistribute players into new groups (4 players per group)
+    List<List<Map<String, dynamic>?>> newGroups = [];
+    int playerIndex = 0;
+    for (int groupIndex = 0; groupIndex < 10; groupIndex++) {
+      List<Map<String, dynamic>?> group = [];
+      for (int slotIndex = 0; slotIndex < 4; slotIndex++) {
+        if (playerIndex < allPlayers.length) {
+          // Assign group number to player
+          allPlayers[playerIndex]['manual_group'] = groupIndex + 1;
+          group.add(allPlayers[playerIndex]);
+          playerIndex++;
+        } else {
+          group.add(null);
+        }
+      }
+      newGroups.add(group);
+    }
+
+    // Calculate group averages and rankings
+    List<Map<String, dynamic>> groupRankings = [];
+
+    for (int groupIndex = 0; groupIndex < newGroups.length; groupIndex++) {
+      var group = newGroups[groupIndex];
+      List<int> netScores = [];
+      List<Map<String, dynamic>> playersInGroup = [];
+
+      for (var player in group) {
+        if (player != null && player['net_score'] != null) {
+          try {
+            int netScore = player['net_score'] is int
+                ? player['net_score']
+                : int.parse(player['net_score'].toString());
+            netScores.add(netScore);
+            playersInGroup.add(player);
+          } catch (e) {
+            // Skip players with invalid net scores
+          }
+        }
+      }
+
+      if (netScores.isNotEmpty) {
+        double averageNet = netScores.reduce((a, b) => a + b) / netScores.length;
+
+        // Assign average to all players in group
+        for (var player in playersInGroup) {
+          player['avg_net'] = averageNet.toStringAsFixed(1);
+        }
+
+        groupRankings.add({
+          'group_index': groupIndex,
+          'average_net': averageNet,
+          'players': playersInGroup,
+        });
+      }
+    }
+
+    // Sort groups by average net score
+    groupRankings.sort((a, b) => a['average_net'].compareTo(b['average_net']));
+
+    // Assign group places and prizes from CSV
+    await _assignGroupPlacesAndPrizes(groupRankings);
+
+    // Update state
+    setState(() {
+      groups = newGroups;
+      groupsProcessed = true;
+    });
+
+    await updateTitleInformation();
+  }
+
+  /// Assigns group places and prize money using CSV data
+  Future<void> _assignGroupPlacesAndPrizes(List<Map<String, dynamic>> groupRankings) async {
+    if (groupRankings.isEmpty) return;
+
+    try {
+      // Get total number of players
+      int totalPlayers = 0;
+      for (var groupData in groupRankings) {
+        List<Map<String, dynamic>> players = groupData['players'];
+        totalPlayers += players.length;
+      }
+
+      // Load prize amounts from CSV
+      Map<String, double> payouts = await GroupCsvPayoutService().getPayoutAmounts(totalPlayers);
+
+      // Individual team amounts for each place
+      Map<int, double> individualTeamAmounts = {
+        1: payouts['1st_team_ind'] ?? 0.0,
+        2: payouts['2nd_team_ind'] ?? 0.0,
+        3: payouts['3rd_team_ind'] ?? 0.0,
+        4: payouts['4th_team_ind'] ?? 0.0,
+      };
+
+      // Assign places and prizes
+      for (int rankIndex = 0; rankIndex < groupRankings.length; rankIndex++) {
+        int place = rankIndex + 1;
+        var groupData = groupRankings[rankIndex];
+        List<Map<String, dynamic>> players = groupData['players'];
+
+        double individualTeamAmount = individualTeamAmounts[place] ?? 0.0;
+        int roundedAmount = individualTeamAmount.round();
+
+        for (var player in players) {
+          player['pos'] = place.toString();
+          player['prize_money'] = '\$${roundedAmount}';
+        }
+      }
+    } catch (e) {
+      // Continue without prize assignment if CSV fails
+    }
   }
 
   // ============== NAVIGATION ==============
@@ -1107,9 +1245,20 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
 
   @override
   Widget build(BuildContext context) {
-    // Parse purse values from display strings
+    // Ind Purse always shows the initial calculated value (never changes)
     double playersPurse = double.tryParse(_playersPurseDisplayText.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0.0;
-    double closestPinPurse = double.tryParse(_closestPinPurseDisplayText.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0.0;
+
+    // For the second purse position (now "Payout"):
+    // - Initially and during score entry: show $0.00
+    // - After individuals processing: show total payout sum
+    // - After groups processing: show group purse (handled by groupsProcessed flag)
+    double payoutAmount = 0.0;
+    if (individualsProcessingComplete && !groupsProcessed) {
+      payoutAmount = _totalPayoutSum;
+    } else if (groupsProcessed) {
+      payoutAmount = double.tryParse(_closestPinPurseDisplayText.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0.0;
+    }
+
     double mulliganPurse = double.tryParse(_mulliganPurseDisplayText.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0.0;
 
     return Scaffold(
@@ -1122,9 +1271,10 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
               EnterScoresUIService.buildWednesdayPurseHeader(
                 context,
                 playersPurse: playersPurse,
-                closestPinPurse: closestPinPurse,
+                closestPinPurse: payoutAmount,
                 mulliganPurse: mulliganPurse,
                 groupsProcessed: groupsProcessed,
+                individualsProcessingComplete: individualsProcessingComplete,
                 onReturn: _returnToMainMenu,
                 onAutoFill: _handleAutoFill,
               ),
@@ -1199,6 +1349,6 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
 
   /// Wrapper for Auto Process Groups button
   void _handleAutoProcessGroups() {
-    _navigateToAutoProcessGroups();
+    _autoProcessGroups();
   }
 }

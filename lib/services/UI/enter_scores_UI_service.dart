@@ -1176,6 +1176,7 @@ class EnterScoresUIService {
     required double playersPurse,
     required double closestPinPurse, required double mulliganPurse,
     required bool groupsProcessed,
+    bool individualsProcessingComplete = false,
     VoidCallback? onReturn,
     VoidCallback? onAutoFill,
   }) {
@@ -1184,7 +1185,15 @@ class EnterScoresUIService {
     final spacing = isPhone ? 10.0 : 30.0;
     const config = LeagueUIConfig.wednesday;
 
-    String purseLabel = groupsProcessed ? "Total Group Purse" : "Ind Purse";
+    // Determine the labels based on processing state
+    String firstPurseLabel = "Ind Purse";
+    String secondPurseLabel;
+    if (groupsProcessed) {
+      secondPurseLabel = "Total Group Purse";
+    } else {
+      // Default to "Payout" for initial state and after individuals processing
+      secondPurseLabel = "Payout";
+    }
 
     return Container(
       width: double.infinity,
@@ -1218,7 +1227,7 @@ class EnterScoresUIService {
               child: Row(
                 children: [
                   Text(
-                    "$purseLabel = ",
+                    "$firstPurseLabel = ",
                     style: TextStyle(fontSize: headerFontSize, fontWeight: FontWeight.bold, color: Colors.black),
                   ),
                   Container(
@@ -1234,7 +1243,7 @@ class EnterScoresUIService {
                   ),
                   SizedBox(width: spacing),
                   Text(
-                    "Close Pin Purse = ",
+                    "$secondPurseLabel = ",
                     style: TextStyle(fontSize: headerFontSize, fontWeight: FontWeight.bold, color: Colors.black),
                   ),
                   Container(
@@ -1305,6 +1314,7 @@ class EnterScoresUIService {
 
   /// Builds the scrollable groups grid for Wednesday league
   /// Supports both pre-processed and post-processed column structures
+  /// Always uses 2-column layout for consistency
   static Widget buildWednesdayGroupsGrid(
     BuildContext context,
     List<List<Map<String, dynamic>?>> groups, {
@@ -1321,31 +1331,17 @@ class EnterScoresUIService {
     final padding = EdgeInsets.all(isPhone ? 4.0 : 8.0);
     final spacing = isPhone ? 4.0 : 8.0;
 
-    // Calculate how many groups have players
-    int activeGroups = groups.where((g) => g.any((p) => p != null)).length;
-
-    // Use appropriate layout based on number of groups
-    if (activeGroups <= 4) {
-      return _buildWednesdayTwoColumnLayout(context, groups, groupsProcessed, spacing, padding,
-        onPlayerTap: onPlayerTap,
-        onEmptySlotTap: onEmptySlotTap,
-        isPlayerSelected: isPlayerSelected,
-        isEmptySlotSelected: isEmptySlotSelected,
-        onGrossScoreChanged: onGrossScoreChanged,
-        grossFocusNodes: grossFocusNodes,
-        isPlayerFocused: isPlayerFocused,
-      );
-    } else {
-      return _buildWednesdayThreeColumnLayout(context, groups, groupsProcessed, spacing, padding,
-        onPlayerTap: onPlayerTap,
-        onEmptySlotTap: onEmptySlotTap,
-        isPlayerSelected: isPlayerSelected,
-        isEmptySlotSelected: isEmptySlotSelected,
-        onGrossScoreChanged: onGrossScoreChanged,
-        grossFocusNodes: grossFocusNodes,
-        isPlayerFocused: isPlayerFocused,
-      );
-    }
+    // Always use 2-column layout
+    return _buildWednesdayTwoColumnLayout(context, groups, groupsProcessed, spacing, padding,
+      onPlayerTap: onPlayerTap,
+      onEmptySlotTap: onEmptySlotTap,
+      isPlayerSelected: isPlayerSelected,
+      isEmptySlotSelected: isEmptySlotSelected,
+      onGrossScoreChanged: onGrossScoreChanged,
+      grossFocusNodes: grossFocusNodes,
+      isPlayerFocused: isPlayerFocused,
+      useThreeColumns: false,
+    );
   }
 
   static Widget _buildWednesdayTwoColumnLayout(
@@ -1361,6 +1357,7 @@ class EnterScoresUIService {
     Function(Map<String, dynamic>, String)? onGrossScoreChanged,
     List<List<FocusNode?>>? grossFocusNodes,
     bool Function(Map<String, dynamic>)? isPlayerFocused,
+    required bool useThreeColumns,
   }) {
     return Expanded(
       child: Padding(
@@ -1371,27 +1368,27 @@ class EnterScoresUIService {
               _buildWednesdayGroupRow(context, groups, 0, 1, 'Group 1', 'Group 2', groupsProcessed, spacing,
                 onPlayerTap: onPlayerTap, onEmptySlotTap: onEmptySlotTap, isPlayerSelected: isPlayerSelected,
                 isEmptySlotSelected: isEmptySlotSelected, onGrossScoreChanged: onGrossScoreChanged,
-                grossFocusNodes: grossFocusNodes, isPlayerFocused: isPlayerFocused),
+                grossFocusNodes: grossFocusNodes, isPlayerFocused: isPlayerFocused, useThreeColumns: useThreeColumns),
               SizedBox(height: spacing),
               _buildWednesdayGroupRow(context, groups, 2, 3, 'Group 3', 'Group 4', groupsProcessed, spacing,
                 onPlayerTap: onPlayerTap, onEmptySlotTap: onEmptySlotTap, isPlayerSelected: isPlayerSelected,
                 isEmptySlotSelected: isEmptySlotSelected, onGrossScoreChanged: onGrossScoreChanged,
-                grossFocusNodes: grossFocusNodes, isPlayerFocused: isPlayerFocused),
+                grossFocusNodes: grossFocusNodes, isPlayerFocused: isPlayerFocused, useThreeColumns: useThreeColumns),
               SizedBox(height: spacing),
               _buildWednesdayGroupRow(context, groups, 4, 5, 'Group 5', 'Group 6', groupsProcessed, spacing,
                 onPlayerTap: onPlayerTap, onEmptySlotTap: onEmptySlotTap, isPlayerSelected: isPlayerSelected,
                 isEmptySlotSelected: isEmptySlotSelected, onGrossScoreChanged: onGrossScoreChanged,
-                grossFocusNodes: grossFocusNodes, isPlayerFocused: isPlayerFocused),
+                grossFocusNodes: grossFocusNodes, isPlayerFocused: isPlayerFocused, useThreeColumns: useThreeColumns),
               SizedBox(height: spacing),
               _buildWednesdayGroupRow(context, groups, 6, 7, 'Group 7', 'Group 8', groupsProcessed, spacing,
                 onPlayerTap: onPlayerTap, onEmptySlotTap: onEmptySlotTap, isPlayerSelected: isPlayerSelected,
                 isEmptySlotSelected: isEmptySlotSelected, onGrossScoreChanged: onGrossScoreChanged,
-                grossFocusNodes: grossFocusNodes, isPlayerFocused: isPlayerFocused),
+                grossFocusNodes: grossFocusNodes, isPlayerFocused: isPlayerFocused, useThreeColumns: useThreeColumns),
               SizedBox(height: spacing),
               _buildWednesdayGroupRow(context, groups, 8, 9, 'Group 9', 'Group 10', groupsProcessed, spacing,
                 onPlayerTap: onPlayerTap, onEmptySlotTap: onEmptySlotTap, isPlayerSelected: isPlayerSelected,
                 isEmptySlotSelected: isEmptySlotSelected, onGrossScoreChanged: onGrossScoreChanged,
-                grossFocusNodes: grossFocusNodes, isPlayerFocused: isPlayerFocused),
+                grossFocusNodes: grossFocusNodes, isPlayerFocused: isPlayerFocused, useThreeColumns: useThreeColumns),
             ],
           ),
         ),
@@ -1412,6 +1409,7 @@ class EnterScoresUIService {
     Function(Map<String, dynamic>, String)? onGrossScoreChanged,
     List<List<FocusNode?>>? grossFocusNodes,
     bool Function(Map<String, dynamic>)? isPlayerFocused,
+    required bool useThreeColumns,
   }) {
     return Expanded(
       child: Padding(
@@ -1422,22 +1420,22 @@ class EnterScoresUIService {
               _buildWednesdayGroupRowThree(context, groups, 0, 1, 2, 'Group 1', 'Group 2', 'Group 3', groupsProcessed, spacing,
                 onPlayerTap: onPlayerTap, onEmptySlotTap: onEmptySlotTap, isPlayerSelected: isPlayerSelected,
                 isEmptySlotSelected: isEmptySlotSelected, onGrossScoreChanged: onGrossScoreChanged,
-                grossFocusNodes: grossFocusNodes, isPlayerFocused: isPlayerFocused),
+                grossFocusNodes: grossFocusNodes, isPlayerFocused: isPlayerFocused, useThreeColumns: useThreeColumns),
               SizedBox(height: spacing),
               _buildWednesdayGroupRowThree(context, groups, 3, 4, 5, 'Group 4', 'Group 5', 'Group 6', groupsProcessed, spacing,
                 onPlayerTap: onPlayerTap, onEmptySlotTap: onEmptySlotTap, isPlayerSelected: isPlayerSelected,
                 isEmptySlotSelected: isEmptySlotSelected, onGrossScoreChanged: onGrossScoreChanged,
-                grossFocusNodes: grossFocusNodes, isPlayerFocused: isPlayerFocused),
+                grossFocusNodes: grossFocusNodes, isPlayerFocused: isPlayerFocused, useThreeColumns: useThreeColumns),
               SizedBox(height: spacing),
               _buildWednesdayGroupRowThree(context, groups, 6, 7, 8, 'Group 7', 'Group 8', 'Group 9', groupsProcessed, spacing,
                 onPlayerTap: onPlayerTap, onEmptySlotTap: onEmptySlotTap, isPlayerSelected: isPlayerSelected,
                 isEmptySlotSelected: isEmptySlotSelected, onGrossScoreChanged: onGrossScoreChanged,
-                grossFocusNodes: grossFocusNodes, isPlayerFocused: isPlayerFocused),
+                grossFocusNodes: grossFocusNodes, isPlayerFocused: isPlayerFocused, useThreeColumns: useThreeColumns),
               SizedBox(height: spacing),
               _buildWednesdayGroupRow(context, groups, 9, -1, 'Group 10', '', groupsProcessed, spacing,
                 onPlayerTap: onPlayerTap, onEmptySlotTap: onEmptySlotTap, isPlayerSelected: isPlayerSelected,
                 isEmptySlotSelected: isEmptySlotSelected, onGrossScoreChanged: onGrossScoreChanged,
-                grossFocusNodes: grossFocusNodes, isPlayerFocused: isPlayerFocused),
+                grossFocusNodes: grossFocusNodes, isPlayerFocused: isPlayerFocused, useThreeColumns: useThreeColumns),
             ],
           ),
         ),
@@ -1461,6 +1459,7 @@ class EnterScoresUIService {
     Function(Map<String, dynamic>, String)? onGrossScoreChanged,
     List<List<FocusNode?>>? grossFocusNodes,
     bool Function(Map<String, dynamic>)? isPlayerFocused,
+    required bool useThreeColumns,
   }) {
     if (rightIndex == -1) {
       return Row(
@@ -1469,7 +1468,7 @@ class EnterScoresUIService {
             child: _buildWednesdayGroup(context, groups, leftIndex, leftTitle, groupsProcessed,
               onPlayerTap: onPlayerTap, onEmptySlotTap: onEmptySlotTap, isPlayerSelected: isPlayerSelected,
               isEmptySlotSelected: isEmptySlotSelected, onGrossScoreChanged: onGrossScoreChanged,
-              grossFocusNodes: grossFocusNodes, isPlayerFocused: isPlayerFocused),
+              grossFocusNodes: grossFocusNodes, isPlayerFocused: isPlayerFocused, useThreeColumns: useThreeColumns),
           ),
           SizedBox(width: spacing),
           Expanded(child: Container()),
@@ -1483,14 +1482,14 @@ class EnterScoresUIService {
           child: _buildWednesdayGroup(context, groups, leftIndex, leftTitle, groupsProcessed,
             onPlayerTap: onPlayerTap, onEmptySlotTap: onEmptySlotTap, isPlayerSelected: isPlayerSelected,
             isEmptySlotSelected: isEmptySlotSelected, onGrossScoreChanged: onGrossScoreChanged,
-            grossFocusNodes: grossFocusNodes, isPlayerFocused: isPlayerFocused),
+            grossFocusNodes: grossFocusNodes, isPlayerFocused: isPlayerFocused, useThreeColumns: useThreeColumns),
         ),
         SizedBox(width: spacing),
         Expanded(
           child: _buildWednesdayGroup(context, groups, rightIndex, rightTitle, groupsProcessed,
             onPlayerTap: onPlayerTap, onEmptySlotTap: onEmptySlotTap, isPlayerSelected: isPlayerSelected,
             isEmptySlotSelected: isEmptySlotSelected, onGrossScoreChanged: onGrossScoreChanged,
-            grossFocusNodes: grossFocusNodes, isPlayerFocused: isPlayerFocused),
+            grossFocusNodes: grossFocusNodes, isPlayerFocused: isPlayerFocused, useThreeColumns: useThreeColumns),
         ),
       ],
     );
@@ -1514,6 +1513,7 @@ class EnterScoresUIService {
     Function(Map<String, dynamic>, String)? onGrossScoreChanged,
     List<List<FocusNode?>>? grossFocusNodes,
     bool Function(Map<String, dynamic>)? isPlayerFocused,
+    required bool useThreeColumns,
   }) {
     return Row(
       children: [
@@ -1521,21 +1521,21 @@ class EnterScoresUIService {
           child: _buildWednesdayGroup(context, groups, firstIndex, firstTitle, groupsProcessed,
             onPlayerTap: onPlayerTap, onEmptySlotTap: onEmptySlotTap, isPlayerSelected: isPlayerSelected,
             isEmptySlotSelected: isEmptySlotSelected, onGrossScoreChanged: onGrossScoreChanged,
-            grossFocusNodes: grossFocusNodes, isPlayerFocused: isPlayerFocused),
+            grossFocusNodes: grossFocusNodes, isPlayerFocused: isPlayerFocused, useThreeColumns: useThreeColumns),
         ),
         SizedBox(width: spacing),
         Expanded(
           child: _buildWednesdayGroup(context, groups, secondIndex, secondTitle, groupsProcessed,
             onPlayerTap: onPlayerTap, onEmptySlotTap: onEmptySlotTap, isPlayerSelected: isPlayerSelected,
             isEmptySlotSelected: isEmptySlotSelected, onGrossScoreChanged: onGrossScoreChanged,
-            grossFocusNodes: grossFocusNodes, isPlayerFocused: isPlayerFocused),
+            grossFocusNodes: grossFocusNodes, isPlayerFocused: isPlayerFocused, useThreeColumns: useThreeColumns),
         ),
         SizedBox(width: spacing),
         Expanded(
           child: _buildWednesdayGroup(context, groups, thirdIndex, thirdTitle, groupsProcessed,
             onPlayerTap: onPlayerTap, onEmptySlotTap: onEmptySlotTap, isPlayerSelected: isPlayerSelected,
             isEmptySlotSelected: isEmptySlotSelected, onGrossScoreChanged: onGrossScoreChanged,
-            grossFocusNodes: grossFocusNodes, isPlayerFocused: isPlayerFocused),
+            grossFocusNodes: grossFocusNodes, isPlayerFocused: isPlayerFocused, useThreeColumns: useThreeColumns),
         ),
       ],
     );
@@ -1554,6 +1554,7 @@ class EnterScoresUIService {
     Function(Map<String, dynamic>, String)? onGrossScoreChanged,
     List<List<FocusNode?>>? grossFocusNodes,
     bool Function(Map<String, dynamic>)? isPlayerFocused,
+    required bool useThreeColumns,
   }) {
     final groupHeight = getWednesdayGroupHeight(context);
 
@@ -1576,18 +1577,28 @@ class EnterScoresUIService {
           ),
         ),
         // Column headers
-        _buildWednesdayGroupHeader(context, groupsProcessed),
+        _buildWednesdayGroupHeader(context, groupsProcessed, useThreeColumns),
         // Player rows
         _buildWednesdayGroupRows(context, groups, groupIndex, groupsProcessed,
           onPlayerTap: onPlayerTap, onEmptySlotTap: onEmptySlotTap, isPlayerSelected: isPlayerSelected,
           isEmptySlotSelected: isEmptySlotSelected, onGrossScoreChanged: onGrossScoreChanged,
-          grossFocusNodes: grossFocusNodes, isPlayerFocused: isPlayerFocused),
+          grossFocusNodes: grossFocusNodes, isPlayerFocused: isPlayerFocused, useThreeColumns: useThreeColumns),
       ],
     );
   }
 
-  static Widget _buildWednesdayGroupHeader(BuildContext context, bool groupsProcessed) {
+  static Widget _buildWednesdayGroupHeader(BuildContext context, bool groupsProcessed, bool useThreeColumns) {
     final rowHeight = getWednesdayRowHeight(context);
+
+    // Adjust flex values for three-column layout to prevent compression
+    int nameFlex = useThreeColumns ? 25 : 30;
+    int hcFlex = useThreeColumns ? 8 : 10;
+    int grossFlex = useThreeColumns ? 9 : 11;
+    int netFlex = useThreeColumns ? 8 : 10;
+    int grpFlex = useThreeColumns ? 8 : 10;
+    int avgFlex = useThreeColumns ? 8 : 10;
+    int posFlex = useThreeColumns ? 8 : 10;
+    int moneyFlex = useThreeColumns ? 15 : 20;
 
     return Container(
       height: rowHeight,
@@ -1599,14 +1610,14 @@ class EnterScoresUIService {
       ),
       child: Row(
         children: [
-          _buildWednesdayHeaderCell(context, 'Name', flex: 30, hasLeftBorder: true),
-          if (!groupsProcessed) _buildWednesdayHeaderCell(context, 'HC', flex: 10),
-          if (!groupsProcessed) _buildWednesdayHeaderCell(context, 'Gross', flex: 11, reducedPadding: true),
-          if (groupsProcessed) _buildWednesdayHeaderCell(context, 'Grp#', flex: 10),
-          _buildWednesdayHeaderCell(context, 'Net', flex: 10),
-          if (groupsProcessed) _buildWednesdayHeaderCell(context, 'AVG', flex: 10),
-          _buildWednesdayHeaderCell(context, 'Pos', flex: 10),
-          _buildWednesdayHeaderCell(context, '\$\$\$', flex: 20),
+          _buildWednesdayHeaderCell(context, 'Name', flex: nameFlex, hasLeftBorder: true),
+          if (!groupsProcessed) _buildWednesdayHeaderCell(context, 'HC', flex: hcFlex),
+          if (!groupsProcessed) _buildWednesdayHeaderCell(context, 'Gross', flex: grossFlex, reducedPadding: true),
+          if (groupsProcessed) _buildWednesdayHeaderCell(context, 'Grp#', flex: grpFlex),
+          _buildWednesdayHeaderCell(context, 'Net', flex: netFlex),
+          if (groupsProcessed) _buildWednesdayHeaderCell(context, 'AVG', flex: avgFlex),
+          _buildWednesdayHeaderCell(context, 'Pos', flex: posFlex),
+          _buildWednesdayHeaderCell(context, '\$\$\$', flex: moneyFlex),
         ],
       ),
     );
@@ -1657,6 +1668,7 @@ class EnterScoresUIService {
     Function(Map<String, dynamic>, String)? onGrossScoreChanged,
     List<List<FocusNode?>>? grossFocusNodes,
     bool Function(Map<String, dynamic>)? isPlayerFocused,
+    required bool useThreeColumns,
   }) {
     return Column(
       children: List.generate(4, (rowIndex) {
@@ -1672,12 +1684,14 @@ class EnterScoresUIService {
             onGrossScoreChanged: onGrossScoreChanged,
             grossFocusNode: grossFocusNodes?[groupIndex][rowIndex],
             showFocus: isPlayerFocused?.call(player) ?? false,
+            useThreeColumns: useThreeColumns,
           );
         } else {
           final isSelected = isEmptySlotSelected?.call(groupIndex, rowIndex) ?? false;
           return _buildWednesdayEmptyRow(context, groupsProcessed,
             onTap: onEmptySlotTap != null ? () => onEmptySlotTap(groupIndex, rowIndex) : null,
             isSelected: isSelected,
+            useThreeColumns: useThreeColumns,
           );
         }
       }),
@@ -1695,6 +1709,7 @@ class EnterScoresUIService {
     Function(Map<String, dynamic>, String)? onGrossScoreChanged,
     FocusNode? grossFocusNode,
     bool showFocus = false,
+    required bool useThreeColumns,
   }) {
     final rowHeight = getWednesdayRowHeight(context);
     const config = LeagueUIConfig.wednesday;
@@ -1707,7 +1722,18 @@ class EnterScoresUIService {
     String position = player['pos'] ?? '';
     String prizeMoney = player['prize_money'] ?? '';
     int? manualGroup = player['manual_group'] as int?;
+    String avgNet = player['avg_net'] ?? '';
     bool isWildCard = player['is_wild_card'] == true;
+
+    // Adjust flex values for three-column layout to match header
+    int nameFlex = useThreeColumns ? 25 : 30;
+    int hcFlex = useThreeColumns ? 8 : 10;
+    int grossFlex = useThreeColumns ? 9 : 11;
+    int netFlex = useThreeColumns ? 8 : 10;
+    int grpFlex = useThreeColumns ? 8 : 10;
+    int avgFlex = useThreeColumns ? 8 : 10;
+    int posFlex = useThreeColumns ? 8 : 10;
+    int moneyFlex = useThreeColumns ? 15 : 20;
 
     return Container(
       height: rowHeight,
@@ -1717,29 +1743,29 @@ class EnterScoresUIService {
       child: Row(
         children: [
           // Name cell (clickable)
-          _buildWednesdayClickableNameCell(context, name, isWildCard, flex: 30, onTap: onPlayerTap, isSelected: isSelected),
+          _buildWednesdayClickableNameCell(context, name, isWildCard, flex: nameFlex, onTap: onPlayerTap, isSelected: isSelected),
           // Handicap (only when not processed)
           if (!groupsProcessed)
-            _buildWednesdayDataCell(context, handicap.toStringAsFixed(1), flex: 10),
+            _buildWednesdayDataCell(context, handicap.toStringAsFixed(1), flex: hcFlex),
           // Gross score input (only when not processed)
           if (!groupsProcessed)
-            _buildWednesdayGrossInputCell(context, player, flex: 11,
+            _buildWednesdayGrossInputCell(context, player, flex: grossFlex,
               onChanged: onGrossScoreChanged,
               focusNode: grossFocusNode,
               showFocus: showFocus),
           // Group number (only when processed)
           if (groupsProcessed)
-            _buildWednesdayDataCell(context, manualGroup?.toString() ?? '', flex: 10,
+            _buildWednesdayDataCell(context, manualGroup?.toString() ?? '', flex: grpFlex,
               backgroundColor: config.inputCellColor),
           // Net score
-          _buildWednesdayDataCell(context, netScore?.toString() ?? '', flex: 10),
-          // AVG (only when processed) - calculated per group
+          _buildWednesdayDataCell(context, netScore?.toString() ?? '', flex: netFlex),
+          // AVG (only when processed) - shows average net score for the group
           if (groupsProcessed)
-            _buildWednesdayDataCell(context, '', flex: 10), // AVG calculated externally
+            _buildWednesdayDataCell(context, avgNet, flex: avgFlex),
           // Position
-          _buildWednesdayDataCell(context, position, flex: 10),
+          _buildWednesdayDataCell(context, position, flex: posFlex),
           // Prize money
-          _buildWednesdayDataCell(context, prizeMoney, flex: 20),
+          _buildWednesdayDataCell(context, prizeMoney, flex: moneyFlex),
         ],
       ),
     );
@@ -1750,9 +1776,20 @@ class EnterScoresUIService {
     bool groupsProcessed, {
     VoidCallback? onTap,
     bool isSelected = false,
+    required bool useThreeColumns,
   }) {
     final rowHeight = getWednesdayRowHeight(context);
     const config = LeagueUIConfig.wednesday;
+
+    // Adjust flex values for three-column layout to match header
+    int nameFlex = useThreeColumns ? 25 : 30;
+    int hcFlex = useThreeColumns ? 8 : 10;
+    int grossFlex = useThreeColumns ? 9 : 11;
+    int netFlex = useThreeColumns ? 8 : 10;
+    int grpFlex = useThreeColumns ? 8 : 10;
+    int avgFlex = useThreeColumns ? 8 : 10;
+    int posFlex = useThreeColumns ? 8 : 10;
+    int moneyFlex = useThreeColumns ? 15 : 20;
 
     return GestureDetector(
       onTap: onTap,
@@ -1764,14 +1801,14 @@ class EnterScoresUIService {
         ),
         child: Row(
           children: [
-            _buildWednesdayDataCell(context, '', flex: 30, hasLeftBorder: true),
-            if (!groupsProcessed) _buildWednesdayDataCell(context, '', flex: 10),
-            if (!groupsProcessed) _buildWednesdayDataCell(context, '', flex: 11),
-            if (groupsProcessed) _buildWednesdayDataCell(context, '', flex: 10),
-            _buildWednesdayDataCell(context, '', flex: 10),
-            if (groupsProcessed) _buildWednesdayDataCell(context, '', flex: 10),
-            _buildWednesdayDataCell(context, '', flex: 10),
-            _buildWednesdayDataCell(context, '', flex: 20),
+            _buildWednesdayDataCell(context, '', flex: nameFlex, hasLeftBorder: true),
+            if (!groupsProcessed) _buildWednesdayDataCell(context, '', flex: hcFlex),
+            if (!groupsProcessed) _buildWednesdayDataCell(context, '', flex: grossFlex),
+            if (groupsProcessed) _buildWednesdayDataCell(context, '', flex: grpFlex),
+            _buildWednesdayDataCell(context, '', flex: netFlex),
+            if (groupsProcessed) _buildWednesdayDataCell(context, '', flex: avgFlex),
+            _buildWednesdayDataCell(context, '', flex: posFlex),
+            _buildWednesdayDataCell(context, '', flex: moneyFlex),
           ],
         ),
       ),

@@ -362,11 +362,7 @@ class _WednesdayPlayerSelectionScreenState extends State<WednesdayPlayerSelectio
       List<Map<String, dynamic>> selectedPlayers = players
           .where((player) => selectedPlayerIds.contains(player['player_number'] as int))
           .toList();
-      
-      // Randomly shuffle the players before assigning to groups
-      final random = Random();
-      selectedPlayers.shuffle(random);
-      
+
       // Organize players into groups of 4
       List<List<Map<String, dynamic>?>> groups = [];
       
