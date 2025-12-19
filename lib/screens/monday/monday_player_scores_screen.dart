@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../services/database_helper.dart';
 import '../../models/league.dart';
-import '../../services/firebase_upload_service.dart';
 import '../../services/responsive_typography.dart';
 import '../../services/device_detection_service.dart';
+import '../../services/UI/button_bar_UI_service.dart';
 
 class MondayPlayerScoresScreen extends StatefulWidget {
   final League? league;
@@ -17,15 +17,13 @@ class MondayPlayerScoresScreen extends StatefulWidget {
 
 class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
   final DatabaseHelper _databaseHelper = DatabaseHelper();
-  final FirebaseUploadService _firebaseUploadService = FirebaseUploadService();
   League _selectedLeague = League.monday;
   String? _selectedPlayer;
   List<Map<String, dynamic>> _players = [];
   List<Map<String, dynamic>> _scores = [];
   int? _selectedScoreIndex;
-  bool _isEditing = false;
   bool _showAddScoreRow = false; // Track whether to show the add score row
-  Set<int> _unlockedScoreIds = {}; // Track which score rows are unlocked for editing
+  final Set<int> _unlockedScoreIds = {}; // Track which score rows are unlocked for editing
   
   // Controllers for adding new scores
   final TextEditingController _grossScoreController = TextEditingController();
@@ -85,11 +83,6 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
 
   @override
   void dispose() {
-    // Firebase upload disabled for this screen
-    // _uploadPlayerScoresDataToFirebase();
-
-    // Keep landscape mode locked for Monday screens
-
     _grossScoreController.dispose();
     _skatsController.dispose();
     _winningsController.dispose();
@@ -101,67 +94,6 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
     _handicapFocus.dispose();
     _closePinFocus.dispose();
     super.dispose();
-  }
-
-  /// Upload player scores data to Firebase when leaving the screen
-  void _uploadPlayerScoresDataToFirebase() async {
-    try {
-      final success = await _firebaseUploadService.uploadPlayerScoresTableWithQueue(_selectedLeague);
-      if (success) {
-      } else {
-      }
-    } catch (e) {
-    }
-  }
-
-  /// Manual Firebase upload for testing
-  Future<void> _manualFirebaseUpload() async {
-    try {
-      
-      // Test Firebase connection first
-      final isConnected = await _firebaseUploadService.isFirebaseConnected();
-      
-      if (!isConnected) {
-        _showErrorDialog('Cannot connect to Firebase. Check your internet connection.');
-        return;
-      }
-      
-      // Get current scores count
-      final scores = await _databaseHelper.getScoresByLeague(_selectedLeague);
-      
-      // Show loading dialog
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const AlertDialog(
-          content: Row(
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(width: 16),
-              Text('Uploading scores to Firebase...'),
-            ],
-          ),
-        ),
-      );
-      
-      // Attempt upload
-      final success = await _firebaseUploadService.uploadPlayerScoresTable(_selectedLeague);
-      
-      // Close loading dialog
-      Navigator.of(context).pop();
-      
-      if (success) {
-        _showSuccessDialog('Successfully uploaded ${scores.length} score records to Firebase!\\n\\nCheck Firebase collection:\\n• M_player_scores');
-      } else {
-        _showErrorDialog('Failed to upload scores to Firebase. Check console for details.');
-      }
-      
-      
-    } catch (e) {
-      // Close loading dialog if still open
-      Navigator.of(context).pop();
-      _showErrorDialog('Upload error: $e');
-    }
   }
 
   Future<void> _loadPlayers() async {
@@ -190,229 +122,7 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
     }
   }
 
-  Future<void> _addScore() async {
-    if (_selectedPlayer == null) {
-      _showErrorDialog('Please select a player first');
-      return;
-    }
-    
-    // If the add score row is not showing, show it and populate fields
-    if (!_showAddScoreRow) {
-      final player = _players.firstWhere((p) => p['last'] == _selectedPlayer);
-      final is6InchPhoneLandscape = DeviceDetectionService.is6Point5Phone(context);
-      
-      setState(() {
-        _showAddScoreRow = true;
-        // Pre-populate fields with player data
-        if (_selectedLeague == League.wednesday) {
-          _handicapController.text = (player['handicap'] ?? 0.0).toString();
-        }
-        _winningsController.text = is6InchPhoneLandscape ? '0.00' : '0'; // Prefill winnings field with appropriate format
-        _closePinController.text = is6InchPhoneLandscape ? '0.00' : '0'; // Prefill close pin field with appropriate format
-      });
-      return;
-    }
-    
-    // Check for required fields
-    List<String> missingFields = [];
-    
-    // Check gross score for Wednesday league only
-    if (_selectedLeague == League.wednesday && _grossScoreController.text.trim().isEmpty) {
-      missingFields.add('Gross Score');
-    }
-    
-    // Check SKATS field for Monday league only
-    if (_selectedLeague == League.monday && _skatsController.text.trim().isEmpty) {
-      missingFields.add('SKATS Score');
-    }
-    
-    // Check winnings field 
-    if (_winningsController.text.trim().isEmpty) {
-      missingFields.add('Winnings Amount');
-    }
-    
-    // Show error if any fields are missing
-    if (missingFields.isNotEmpty) {
-      String errorMessage = 'Please enter: ${missingFields.join(', ')}';
-      _showErrorDialog(errorMessage);
-      return;
-    }
-    
-    // IMPORTANT: DUPLICATE DATE CHECK - Prevent multiple entries for the same player on the same date
-    // This validation ensures only ONE score per player per day is allowed
-    final playerId = _players.firstWhere((p) => p['last'] == _selectedPlayer)['player_number'];
-    final currentDate = DateTime.now().toIso8601String().split('T')[0]; // Get YYYY-MM-DD format
 
-    try {
-      final existingScoreForDate = await _databaseHelper.getPlayerScoreByDate(playerId, currentDate, _selectedLeague);
-      if (existingScoreForDate != null) {
-        final formattedDate = _formatDateToMMDDYY(currentDate);
-        _showErrorDialog('A score for $_selectedPlayer on $formattedDate already exists.\n\nOnly one score per player per day is allowed.');
-        return;
-      }
-    } catch (e) {
-      _showErrorDialog('Error checking for duplicate date: $e');
-      return;
-    }
-    
-    // Validate gross score for Wednesday league
-    if (_selectedLeague == League.wednesday) {
-      final grossScore = int.tryParse(_grossScoreController.text.trim());
-      if (grossScore == null || grossScore < 10 || grossScore > 99) {
-        _showErrorDialog('Gross score must be between 10 and 99');
-        return;
-      }
-    }
-    
-    double winningsAmount = 0.0;
-    if (_winningsController.text.trim().isNotEmpty) {
-      winningsAmount = double.tryParse(_winningsController.text.trim()) ?? 0.0;
-    }
-    
-    // Get handicap from editable field (for Wednesday league)
-    double handicap = 0.0;
-    if (_selectedLeague == League.wednesday && _handicapController.text.trim().isNotEmpty) {
-      handicap = double.tryParse(_handicapController.text.trim()) ?? 0.0;
-    }
-    
-    // Get gross score (for Wednesday league)
-    int grossScore = 0;
-    if (_selectedLeague == League.wednesday && _grossScoreController.text.trim().isNotEmpty) {
-      grossScore = int.tryParse(_grossScoreController.text.trim()) ?? 0;
-    }
-    
-    // Get close pin winnings
-    double closePinWinnings = 0.0;
-    if (_closePinController.text.trim().isNotEmpty) {
-      closePinWinnings = double.tryParse(_closePinController.text.trim()) ?? 0.0;
-    }
-    
-    // SKAT number no longer used - removed from Monday league
-    
-    try {
-      final playerId = _players.firstWhere((p) => p['last'] == _selectedPlayer)['player_number'];
-      final player = _players.firstWhere((p) => p['last'] == _selectedPlayer);
-      final playerName = '${player['first']} ${player['last']}';
-
-      Map<String, dynamic> scoreData = {
-        'player_id': playerId,
-        'name': player['last'], // Use only Last Name
-        'date_played': DateTime.now().toIso8601String().split('T')[0],
-        'close_pin_winnings': closePinWinnings, // From Close Pin field
-      };
-      
-      // Add handicap and gross score for Wednesday league only
-      if (_selectedLeague == League.wednesday) {
-        scoreData['handicap'] = handicap;
-        scoreData['gross_score'] = grossScore;
-      }
-      
-      if (_selectedLeague == League.monday) {
-        // Monday League: Name, Date, Golf Course, SKATS, Close Pin, SKAT Winnings
-        scoreData['golf_course'] = _selectedGolfCourse; // Use selected golf course
-        scoreData['skats_score'] = int.tryParse(_skatsController.text.trim()) ?? 0; // From Enter Scores
-        scoreData['skat_winnings'] = winningsAmount; // From Enter Scores
-      } else {
-        // Wednesday League: Name, Date, Golf Course, HC, Gross, Close Pin, Single Winnings, Group Winnings
-        scoreData['golf_course'] = 'The Hideout'; // Always The Hideout
-        scoreData['single_winnings'] = winningsAmount; // From Enter Scores
-        scoreData['group_winnings'] = 0.0; // Always $0 for now
-      }
-      
-      int scoreId = await _databaseHelper.insertScoreLeague(scoreData, _selectedLeague);
-      
-      // Clear input fields and hide add score row
-      _grossScoreController.clear();
-      _skatsController.clear();
-      _winningsController.clear();
-      _handicapController.clear();
-      _closePinController.clear();
-      
-      // Lock the newly created row immediately and hide add score row
-      setState(() {
-        _unlockedScoreIds.remove(scoreId); // Ensure it's locked
-        _showAddScoreRow = false; // Hide the add score row
-      });
-      
-      _loadPlayerScores(_selectedPlayer!);
-
-      // Firebase upload disabled for this screen
-      _showSuccessDialog('Score added successfully!');
-    } catch (e) {
-      _showErrorDialog('Error adding score: $e');
-    }
-  }
-
-  Future<void> _deleteScore(Map<String, dynamic> score) async {
-    final scoreId = score['id'] as int;
-    
-    // Always unlock the row first for deletion
-    setState(() {
-      _unlockedScoreIds.add(scoreId);
-    });
-    
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirm Delete'),
-        content: Text('Are you sure you want to delete the score ${score['gross_score']} for ${_selectedPlayer} on ${score['date_played']}?'),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop(false);
-              // Re-lock the row if user cancels
-              setState(() {
-                _selectedScoreIndex = null;
-                _unlockedScoreIds.remove(scoreId);
-              });
-            },
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-    
-    if (confirmed == true) {
-      try {
-        // Determine which table to delete from based on league
-        String tableName = _selectedLeague == League.monday ? 'monday_scores' : 'wednesday_scores';
-        final db = await _databaseHelper.database;
-        
-        // Delete from the appropriate league table
-        await db.delete(
-          tableName,
-          where: 'id = ?',
-          whereArgs: [scoreId],
-        );
-        
-        setState(() {
-          _selectedScoreIndex = null;
-          // Remove from unlocked set since the row is now deleted
-          _unlockedScoreIds.remove(scoreId);
-        });
-        _loadPlayerScores(_selectedPlayer!);
-
-        // Firebase upload disabled for this screen
-        _showSuccessDialog('Score deleted successfully!');
-      } catch (e) {
-        // Re-lock the row if deletion failed
-        setState(() {
-          _unlockedScoreIds.remove(scoreId);
-        });
-        _showErrorDialog('Error deleting score: $e');
-      }
-    } else {
-      // If confirmation dialog was dismissed without choosing, re-lock the row
-      setState(() {
-        _unlockedScoreIds.remove(scoreId);
-      });
-    }
-  }
 
   void _selectPlayer(String playerLast) {
     setState(() {
@@ -424,169 +134,6 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
     _loadPlayerScores(playerLast);
   }
 
-  void _clearSelection() {
-    setState(() {
-      _selectedPlayer = null;
-      _selectedScoreIndex = null;
-      _scores = [];
-      _showAddScoreRow = false; // Hide add score row when clearing selection
-      _unlockedScoreIds.clear(); // Lock all rows when clearing selection
-      // Clear input fields
-      _grossScoreController.clear();
-      _skatsController.clear();
-      _winningsController.clear();
-      _handicapController.clear();
-      _closePinController.clear();
-    });
-  }
-
-  void _editScore() {
-    if (_selectedScoreIndex == null) {
-      _showErrorDialog('Please select a score to edit');
-      return;
-    }
-    
-    final selectedScore = _scores[_selectedScoreIndex!];
-    final scoreId = selectedScore['id'] as int;
-    
-    // Always unlock the selected row for editing
-    setState(() {
-      _unlockedScoreIds.add(scoreId);
-    });
-    
-    // Show edit dialog with appropriate fields based on league
-    showDialog(
-      context: context,
-      builder: (context) {
-        final grossController = TextEditingController(text: selectedScore['gross_score']?.toString() ?? '');
-        final skatsController = TextEditingController(text: selectedScore['skats_score']?.toString() ?? '');
-        final winningsController = TextEditingController(
-          text: _selectedLeague == League.monday 
-            ? selectedScore['skat_winnings']?.toString() ?? '0'
-            : selectedScore['single_winnings']?.toString() ?? '0'
-        );
-        
-        return AlertDialog(
-          title: const Text('Edit Score'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (_selectedLeague == League.wednesday)
-                TextField(
-                  controller: grossController,
-                  decoration: const InputDecoration(labelText: 'Gross Score'),
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [
-                    FilteringTextInputFormatter.digitsOnly,
-                    LengthLimitingTextInputFormatter(2),
-                  ],
-                ),
-              if (_selectedLeague == League.monday)
-                TextField(
-                  controller: skatsController,
-                  decoration: const InputDecoration(labelText: 'SKATS Score'),
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [
-                    FilteringTextInputFormatter.digitsOnly,
-                  ],
-                ),
-              TextField(
-                controller: winningsController,
-                decoration: InputDecoration(
-                  labelText: _selectedLeague == League.monday ? 'SKAT Winnings' : 'Single Winnings'
-                ),
-                keyboardType: TextInputType.number,
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                ],
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                // Re-lock the row if user cancels
-                setState(() {
-                  _unlockedScoreIds.remove(scoreId);
-                });
-                Navigator.of(context).pop();
-              },
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () async {
-                try {
-                  final winnings = double.tryParse(winningsController.text) ?? 0.0;
-                  
-                  // Validate gross score for Wednesday league
-                  if (_selectedLeague == League.wednesday) {
-                    final grossScore = int.tryParse(grossController.text);
-                    if (grossScore == null || grossScore < 10 || grossScore > 99) {
-                      // Close the edit dialog first, then show error
-                      Navigator.of(context).pop();
-                      // Re-lock the row since edit failed
-                      setState(() {
-                        _unlockedScoreIds.remove(scoreId);
-                      });
-                      _showErrorDialog('Gross score must be between 10 and 99');
-                      return;
-                    }
-                  }
-                  
-                  // Prepare update data based on league
-                  Map<String, dynamic> updateData = {};
-                  
-                  if (_selectedLeague == League.wednesday) {
-                    final grossScore = int.tryParse(grossController.text);
-                    updateData['gross_score'] = grossScore;
-                  }
-                  
-                  if (_selectedLeague == League.monday) {
-                    final skatsScore = skatsController.text.trim();
-                    updateData['skats_score'] = skatsScore.isEmpty ? null : int.tryParse(skatsScore);
-                    updateData['skat_winnings'] = winnings;
-                  } else {
-                    updateData['single_winnings'] = winnings;
-                  }
-                  
-                  // Update in the appropriate league table
-                  String tableName = _selectedLeague == League.monday ? 'monday_scores' : 'wednesday_scores';
-                  final db = await _databaseHelper.database;
-                  
-                  await db.update(
-                    tableName,
-                    updateData,
-                    where: 'id = ?',
-                    whereArgs: [scoreId],
-                  );
-                  
-                  Navigator.of(context).pop();
-                  setState(() {
-                    _selectedScoreIndex = null;
-                    // Re-lock the row after successful edit
-                    _unlockedScoreIds.remove(scoreId);
-                  });
-                  _loadPlayerScores(_selectedPlayer!);
-
-                  // Firebase upload disabled for this screen
-                  _showSuccessDialog('Score updated successfully!');
-                } catch (e) {
-                  // Close the edit dialog first, then show error
-                  Navigator.of(context).pop();
-                  // Re-lock the row since edit failed
-                  setState(() {
-                    _unlockedScoreIds.remove(scoreId);
-                  });
-                  _showErrorDialog('Error updating score: $e');
-                }
-              },
-              child: const Text('Save'),
-            ),
-          ],
-        );
-      },
-    );
-  }
 
   void _showErrorDialog(String message) {
     showDialog(
@@ -604,21 +151,6 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
     );
   }
 
-  void _showSuccessDialog(String message) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Success'),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
-  }
 
   String _getLeagueDisplayName() {
     return _selectedLeague == League.monday ? 'Monday' : 'Wednesday';
@@ -642,8 +174,7 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
   }
 
   Widget _buildPlayerList({bool isCompact = false, bool hideHeader = false}) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    
+
     double listWidth = isCompact ? double.infinity : 200;
     double itemPadding = isCompact ? 2 : 4;
     
@@ -692,7 +223,7 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
             padding: EdgeInsets.all(isCompact ? 4 : 8),
             decoration: BoxDecoration(
               color: Colors.grey[200],
-              border: Border(bottom: BorderSide(color: Colors.grey)),
+              border: const Border(bottom: BorderSide(color: Colors.grey)),
             ),
             child: Text(
               'Players',
@@ -711,7 +242,7 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
     // Define device categories using DeviceDetectionService
     final isPhone = DeviceDetectionService.is6Point5Phone(context);  // 6.5" phones
     final isSmallTablet = DeviceDetectionService.is8Tablet(context);  // 8" tablets
-    final isLargeTablet = DeviceDetectionService.is10Tablet(context);  // 10" tablets
+    DeviceDetectionService.is10Tablet(context);  // 10" tablets
     
     // Adjust table width based on screen size and orientation
     double tableWidth;
@@ -871,137 +402,6 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
     }
   }
 
-  Widget _buildGolfCourseCell({bool isCompact = false}) {
-    // Wednesday League always uses "The Hideout", Monday League has dropdown
-    if (_selectedLeague == League.wednesday) {
-      return _buildDataCell('The Hideout', isCompact ? 100 : 120, isCompact: isCompact);
-    } else {
-      return _buildGolfCourseDropdown(isCompact: isCompact);
-    }
-  }
-
-  Widget _buildGolfCourseDropdown({bool isCompact = false}) {
-    return Container(
-      width: isCompact ? 100 : 120,
-      height: isCompact ? 25 : 30,
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.black, width: 0.5),
-      ),
-      child: DropdownButtonFormField<String>(
-        value: _selectedGolfCourse,
-        isExpanded: true,
-        decoration: const InputDecoration(
-          border: InputBorder.none,
-          contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 0),
-          isDense: true,
-        ),
-        style: ResponsiveTypography.smallStyle(context).copyWith(color: Colors.black),
-        items: _golfCourses.map((course) {
-          return DropdownMenuItem(
-            value: course,
-            child: Container(
-              width: isCompact ? 80 : 100,
-              alignment: Alignment.center,
-              child: Text(
-                course, 
-                style: ResponsiveTypography.smallStyle(context),
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-              ),
-            ),
-          );
-        }).toList(),
-        onChanged: (value) {
-          setState(() {
-            _selectedGolfCourse = value!;
-          });
-        },
-      ),
-    );
-  }
-
-  Widget _buildEditableCell(TextEditingController controller, FocusNode focusNode, double width, TextInputType inputType) {
-    return SizedBox(
-      width: width,
-      height: 30,
-      child: TextFormField(
-        controller: controller,
-        focusNode: focusNode,
-        keyboardType: inputType,
-        inputFormatters: inputType == TextInputType.number ? [
-          FilteringTextInputFormatter.digitsOnly,
-          LengthLimitingTextInputFormatter(2),
-        ] : null,
-        decoration: const InputDecoration(
-          border: InputBorder.none,
-          contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-        ),
-        style: ResponsiveTypography.smallStyle(context),
-        textAlign: TextAlign.center,
-        onFieldSubmitted: (_) {
-          // Handle field submission focus changes if needed
-        },
-      ),
-    );
-  }
-
-  Widget _buildEditableCellWithBorder(TextEditingController controller, FocusNode focusNode, double width, TextInputType inputType, {bool isCompact = false}) {
-    List<TextInputFormatter>? formatters;
-    String? prefixText;
-    
-    if (inputType == TextInputType.number) {
-      if (controller == _grossScoreController || controller == _skatsController) {
-        formatters = [
-          FilteringTextInputFormatter.digitsOnly,
-          LengthLimitingTextInputFormatter(2),
-        ];
-      } else if (controller == _handicapController) {
-        formatters = [
-          FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
-          LengthLimitingTextInputFormatter(5), // Allow decimal handicaps like 12.5
-        ];
-      } else if (controller == _winningsController) {
-        // Currency formatting for winnings field
-        formatters = [
-          FilteringTextInputFormatter.digitsOnly,
-        ];
-        prefixText = '\$';
-      } else {
-        formatters = [
-          FilteringTextInputFormatter.digitsOnly,
-        ];
-      }
-    }
-    
-    return Container(
-      width: width,
-      height: isCompact ? 25 : 30,
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.black, width: 0.5),
-      ),
-      child: Center(
-        child: TextFormField(
-          controller: controller,
-          focusNode: focusNode,
-          keyboardType: inputType,
-          inputFormatters: formatters,
-          decoration: InputDecoration(
-            border: InputBorder.none,
-            contentPadding: EdgeInsets.zero,
-            isDense: true,
-            prefixText: prefixText,
-            prefixStyle: ResponsiveTypography.smallStyle(context),
-          ),
-          style: ResponsiveTypography.smallStyle(context),
-          textAlign: TextAlign.center,
-          textAlignVertical: TextAlignVertical.center,
-          onFieldSubmitted: (_) {
-            // Handle field submission focus changes if needed
-          },
-        ),
-      ),
-    );
-  }
 
   Widget _buildHeaders({bool isCompact = false, bool isMedium = false}) {
     final isPhone = DeviceDetectionService.is6Point5Phone(context);
@@ -1068,24 +468,6 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
     );
   }
 
-  Widget _buildHeaderCell(String text, double width, {bool isCompact = false}) {
-    return Container(
-      width: width,
-      height: isCompact ? 40 : 50, // Reduced height for compact mode
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.black, width: 0.5),
-      ),
-      child: Center(
-        child: Text(
-          text,
-          style: ResponsiveTypography.smallStyle(context, fontWeight: FontWeight.bold),
-          textAlign: TextAlign.center,
-          maxLines: 2, // Allow text to wrap to 2 lines
-          overflow: TextOverflow.visible,
-        ),
-      ),
-    );
-  }
 
   Widget _buildFlexDataCell(String text, int flex, {bool isCompact = false}) {
     return Expanded(
@@ -1129,24 +511,6 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
     );
   }
 
-  Widget _buildDataCell(String text, double width, {bool isCompact = false}) {
-    return Container(
-      width: width,
-      height: isCompact ? 25 : 30,
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.black, width: 0.5),
-      ),
-      child: Align(
-        alignment: Alignment.center,
-        child: Text(
-          text,
-          style: ResponsiveTypography.smallStyle(context),
-          textAlign: TextAlign.center,
-          overflow: TextOverflow.ellipsis,
-        ),
-      ),
-    );
-  }
 
   Widget _buildFlexDataCellWithIcon(String text, bool isUnlocked, int flex, {bool isCompact = false}) {
     return Expanded(
@@ -1158,7 +522,7 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
         ),
         child: Row(
           children: [
-            Container(
+            SizedBox(
               width: isCompact ? 15 : 20,
               child: Icon(
                 isUnlocked ? Icons.lock_open : Icons.lock,
@@ -1183,38 +547,6 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
     );
   }
 
-  Widget _buildDataCellWithIcon(String text, bool isUnlocked, double width, {bool isCompact = false}) {
-    return Container(
-      width: width,
-      height: isCompact ? 25 : 30,
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.black, width: 0.5),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: isCompact ? 15 : 20,
-            child: Icon(
-              isUnlocked ? Icons.lock_open : Icons.lock,
-              size: isCompact ? 10 : 12,
-              color: isUnlocked ? Colors.orange : Colors.grey[600],
-            ),
-          ),
-          Expanded(
-            child: Align(
-              alignment: Alignment.center,
-              child: Text(
-                text,
-                style: ResponsiveTypography.smallStyle(context),
-                textAlign: TextAlign.center,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildFlexGolfCourseCell({bool isCompact = false}) {
     // Wednesday League always uses "The Hideout", Monday League has dropdown
@@ -1234,7 +566,7 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
           border: Border.all(color: Colors.black, width: 0.5),
         ),
         child: DropdownButtonFormField<String>(
-          value: _selectedGolfCourse,
+          initialValue: _selectedGolfCourse,
           isExpanded: true,
           decoration: const InputDecoration(
             border: InputBorder.none,
@@ -1642,195 +974,23 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
     );
   }
 
-  Widget _buildMobileLayout() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        const titleHeight = 30.0;
-        final playerListHeight = constraints.maxHeight * 0.22; // Reduced from 0.25
-        const spacing = 16.0; // Total spacing (2 gaps of ~8px each)
-        final remainingHeight = constraints.maxHeight - titleHeight - playerListHeight - spacing;
-        
-        return Column(
-          children: [
-            // Compact title
-            const SizedBox(
-              height: titleHeight,
-              child: Center(
-                child: Text(
-                  'Player Scores',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold), // Reduced font size
-                ),
-              ),
-            ),
-            
-            const SizedBox(height: 8),
-            
-            // Player list - compact at top
-            SizedBox(
-              height: playerListHeight,
-              child: _buildPlayerList(isCompact: true),
-            ),
-            
-            const SizedBox(height: 8),
-            
-            // Scores table - main content (using Expanded to take remaining space)
-            Expanded(
-              child: _buildScoresTable(),
-            ),
-            
-            const SizedBox(height: 8),
-            
-          ],
-        );
-      },
-    );
-  }
-
-  void _clearAllScoreData() async {
-    // Show confirmation dialog
-    bool? confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Clear All Score Data'),
-        content: const Text('This will permanently delete ALL scores, games, and winnings data for ALL players. This cannot be undone. Are you sure?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('DELETE ALL'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true) {
-      try {
-        await _databaseHelper.clearAllScoreData();
-        setState(() {
-          _scores = [];
-          _selectedScoreIndex = null;
-          _selectedPlayer = null;
-        });
-        _showSuccessDialog('All score data has been cleared from the database');
-      } catch (e) {
-        _showErrorDialog('Error clearing data: $e');
-      }
-    }
-  }
 
   Widget _buildPhoneButtonBar() {
-    return Container(
-      width: double.infinity,
-      height: 60.0,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.3),
-            spreadRadius: 1,
-            blurRadius: 3,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.all(12.0),
-      child: Row(
-        children: [
-          Expanded(
-            flex: 1,
-            child: ElevatedButton(
-              onPressed: () => Navigator.of(context).pop(),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue[300],
-                foregroundColor: Colors.black,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
-                padding: const EdgeInsets.all(6.0),
-                alignment: Alignment.center,
-              ),
-              child: Text('◄---- Back     ', style: TextStyle(fontSize: ResponsiveTypography.getButton(context), fontWeight: FontWeight.bold)),
-            ),
-          ),
-          const Spacer(flex: 3),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFullScreenButtonBar() {
-    return Container(
-      width: double.infinity,
-      height: 39,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.3),
-            spreadRadius: 1,
-            blurRadius: 3,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
-      child: Row(
-        children: [
-          Expanded(
-            child: ElevatedButton(
-              onPressed: _addScore,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green[300],
-                foregroundColor: Colors.black,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
-                padding: EdgeInsets.zero,
-              ),
-              child: Text('Add Score', style: ResponsiveTypography.buttonStyle(context, fontWeight: FontWeight.bold)),
-            ),
-          ),
-          const SizedBox(width: 4),
-          Expanded(
-            child: ElevatedButton(
-              onPressed: _clearSelection,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.orange[300],
-                foregroundColor: Colors.black,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
-                padding: EdgeInsets.zero,
-              ),
-              child: Text('Clear', style: ResponsiveTypography.buttonStyle(context, fontWeight: FontWeight.bold)),
-            ),
-          ),
-          const SizedBox(width: 4),
-          Expanded(
-            child: ElevatedButton(
-              onPressed: _selectedScoreIndex != null ? () => _deleteScore(_scores[_selectedScoreIndex!]) : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _selectedScoreIndex != null ? Colors.red[300] : Colors.grey[400],
-                foregroundColor: Colors.black,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
-                padding: EdgeInsets.zero,
-              ),
-              child: Text('Delete', style: ResponsiveTypography.buttonStyle(context, fontWeight: FontWeight.bold)),
-            ),
-          ),
-          const SizedBox(width: 4),
-          Expanded(
-            child: ElevatedButton(
-              onPressed: () => Navigator.of(context).pop(),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue[300],
-                foregroundColor: Colors.black,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
-                padding: EdgeInsets.zero,
-              ),
-              child: Text('Back', style: ResponsiveTypography.buttonStyle(context, fontWeight: FontWeight.bold)),
-            ),
-          ),
-        ],
-      ),
+    return ButtonBarUIService.buildButtonBar(
+      context,
+      backgroundColor: Colors.white,
+      mainAxisAlignment: MainAxisAlignment.start,
+      children: [
+        ButtonBarUIService.buildActionButton(
+          context,
+          text: '◄---- Back',
+          color: Colors.blue[300]!,
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        ButtonBarUIService.buildSpacer(),
+        ButtonBarUIService.buildSpacer(),
+        ButtonBarUIService.buildSpacer(),
+      ],
     );
   }
 

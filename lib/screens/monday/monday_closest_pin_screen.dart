@@ -1,21 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../services/UI/closest_pin_UI_service.dart' as ClosestPinUI;
+import '../../services/UI/button_bar_UI_service.dart';
 import '../../services/shared/league_purse_service.dart';
 import '../../services/screen_data_retention_service.dart';
 import '../../services/device_detection_service.dart';
 import '../../services/responsive_typography.dart';
-import 'monday_enter_scores_screen.dart';
 import 'monday_results_screen.dart';
 
 class MondayClosestPinScreen extends StatefulWidget {
   final List<Map<String, dynamic>> selectedPlayers;
   final double? playersAnte;
 
-  const MondayClosestPinScreen({Key? key, required this.selectedPlayers, this.playersAnte}) : super(key: key);
+  const MondayClosestPinScreen({super.key, required this.selectedPlayers, this.playersAnte});
 
   @override
-  _MondayClosestPinScreenState createState() => _MondayClosestPinScreenState();
+  State<MondayClosestPinScreen> createState() => _MondayClosestPinScreenState();
 }
 
 class _MondayClosestPinScreenState extends State<MondayClosestPinScreen> {
@@ -24,8 +23,8 @@ class _MondayClosestPinScreenState extends State<MondayClosestPinScreen> {
   late double _closestPinValue;
   late double _remainingPurseAmount;
   late double _initialPurseAmount; // Store the original purse amount for Clear button
-  Map<String, int> _playerClosestPinCounts = {};
-  Map<String, double> _playerWinnings = {};
+  final Map<String, int> _playerClosestPinCounts = {};
+  final Map<String, double> _playerWinnings = {};
   @override
   void initState() {
     super.initState();
@@ -57,8 +56,8 @@ class _MondayClosestPinScreenState extends State<MondayClosestPinScreen> {
     // Lock screen to landscape mode only
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // Use DeviceDetectionService for consistent device detection
-      final deviceType = DeviceDetectionService.getDeviceType(context);
-      final deviceName = DeviceDetectionService.getDeviceName(context);
+      DeviceDetectionService.getDeviceType(context);
+      DeviceDetectionService.getDeviceName(context);
 
       // Debug info
       DeviceDetectionService.printDebugInfo(context);
@@ -153,7 +152,7 @@ class _MondayClosestPinScreenState extends State<MondayClosestPinScreen> {
   Widget _buildPlayerGridItem(Map<String, dynamic> player, int index) {
     final deviceType = DeviceDetectionService.getDeviceType(context);
     final fontSize = ResponsiveTypography.getBodyText(context);
-    final padding = _getResponsivePadding(context);
+    _getResponsivePadding(context);
     
     String lastName = player['last'] ?? 'Unknown';
     int closestPinCount = _playerClosestPinCounts[lastName] ?? 0;
@@ -167,8 +166,8 @@ class _MondayClosestPinScreenState extends State<MondayClosestPinScreen> {
       onTap: () => _handlePlayerTap(lastName),
       child: Container(
         height: containerHeight,
-        margin: EdgeInsets.all(2),
-        padding: EdgeInsets.fromLTRB(1, 1, 6, 1), // Extra padding on right side
+        margin: const EdgeInsets.all(2),
+        padding: const EdgeInsets.fromLTRB(1, 1, 6, 1), // Extra padding on right side
         decoration: BoxDecoration(
           color: Colors.transparent,
           borderRadius: BorderRadius.circular(8),
@@ -178,10 +177,10 @@ class _MondayClosestPinScreenState extends State<MondayClosestPinScreen> {
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.grey.withOpacity(0.2),
+              color: Colors.grey.withValues(alpha: 0.2),
               spreadRadius: 1,
               blurRadius: 3,
-              offset: Offset(0, 2),
+              offset: const Offset(0, 2),
             ),
           ],
         ),
@@ -194,7 +193,7 @@ class _MondayClosestPinScreenState extends State<MondayClosestPinScreen> {
               child: Text(
                 lastName,
                 style: TextStyle(
-                  fontSize: deviceType == DeviceType.phone6Point5 ? 18 : fontSize + 3,
+                  fontSize: deviceType == DeviceType.phone6Point5 ? 14 : fontSize + 3,
                   fontWeight: FontWeight.bold,
                   color: closestPinCount > 0 ? Colors.green[800] : Colors.black,
                 ),
@@ -206,7 +205,7 @@ class _MondayClosestPinScreenState extends State<MondayClosestPinScreen> {
             Container(
               width: countSize,
               height: countSize,
-              margin: EdgeInsets.only(right: 4),
+              margin: const EdgeInsets.only(right: 4),
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 color: closestPinCount > 0 ? Colors.green[200] : Colors.grey[100],
@@ -231,7 +230,7 @@ class _MondayClosestPinScreenState extends State<MondayClosestPinScreen> {
               child: Container(
                 height: countSize,
                 alignment: Alignment.center,
-                margin: EdgeInsets.only(right: 4),
+                margin: const EdgeInsets.only(right: 4),
                 decoration: BoxDecoration(
                   color: winnings > 0 ? Colors.blue[100] : Colors.grey[50],
                   border: Border.all(
@@ -268,11 +267,11 @@ class _MondayClosestPinScreenState extends State<MondayClosestPinScreen> {
     // For 8" tablets, increase padding by 150% (1.5x) to increase height
     double paddingMultiplier;
     if (deviceType == DeviceType.phone6Point5) {
-      paddingMultiplier = 2.0;
+      paddingMultiplier = 1.0;
     } else if (deviceType == DeviceType.tablet8Inch) {
       paddingMultiplier = 1.5;
     } else {
-      paddingMultiplier = 0.5;
+      paddingMultiplier = 2.0;
     }
     final increasedPadding = EdgeInsets.all(padding * paddingMultiplier);
     // For 6.5" phones and 8" tablets, double the font size (100% increase)
@@ -305,7 +304,7 @@ class _MondayClosestPinScreenState extends State<MondayClosestPinScreen> {
                 ),
               ),
               Container(
-                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(6),
@@ -323,7 +322,7 @@ class _MondayClosestPinScreenState extends State<MondayClosestPinScreen> {
             ],
           ),
           Container(
-            padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             decoration: BoxDecoration(
               color: _remainingClosestPins > 0 ? Colors.orange[200] : Colors.green[200],
               borderRadius: BorderRadius.circular(6),
@@ -345,7 +344,7 @@ class _MondayClosestPinScreenState extends State<MondayClosestPinScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final deviceType = DeviceDetectionService.getDeviceType(context);
+    DeviceDetectionService.getDeviceType(context);
     final padding = _getResponsivePadding(context);
     final reducedPadding = EdgeInsets.all(padding / 2);
     
@@ -362,8 +361,8 @@ class _MondayClosestPinScreenState extends State<MondayClosestPinScreen> {
                 child: Container(
                   color: Colors.transparent,
                   child: GridView.builder(
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 4,
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3,   //3 rows across
                   childAspectRatio: 5.3,
                   crossAxisSpacing: 4,
                   mainAxisSpacing: 4,
@@ -377,12 +376,24 @@ class _MondayClosestPinScreenState extends State<MondayClosestPinScreen> {
               ),
             ),
           ),
-          ClosestPinUI.ClosestPinUIService.buildBottomButtons(
+          ButtonBarUIService.buildButtonBar(
             context,
-            onClear: _handleClear,
-            onSaveAndReturn: _handleSaveAndReturn,
-            isEnterSkatsEnabled: _remainingPurseAmount == 0.0,
-            league: 'Monday',
+            backgroundColor: Colors.grey[300]!,
+            children: [
+              ButtonBarUIService.buildActionButton(
+                context,
+                text: 'Clear',
+                color: Colors.blue[200]!,
+                onPressed: _handleClear,
+              ),
+              ButtonBarUIService.buildSpacer(),
+              ButtonBarUIService.buildActionButton(
+                context,
+                text: 'PAYOUT ---➤',
+                color: Colors.blue[300]!,
+                onPressed: _remainingPurseAmount == 0.0 ? _handleSaveAndReturn : null,
+              ),
+            ],
           ),
         ],
       ),

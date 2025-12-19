@@ -62,7 +62,7 @@ class PlayerScoresUIService {
             padding: EdgeInsets.all(isCompact ? 4 : 8),
             decoration: BoxDecoration(
               color: Colors.grey[200],
-              border: Border(bottom: BorderSide(color: Colors.grey)),
+              border: const Border(bottom: BorderSide(color: Colors.grey)),
             ),
             child: Text(
               'Players',
@@ -395,7 +395,7 @@ class PlayerScoresUIService {
         ),
         child: Row(
           children: [
-            Container(
+            SizedBox(
               width: isCompact ? 15 : 20,
               child: Icon(
                 isUnlocked ? Icons.lock_open : Icons.lock,
@@ -845,7 +845,7 @@ class PlayerScoresUIService {
   }) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final footerHeight = 40.0;
+        const footerHeight = 40.0;
         final mainContentHeight = constraints.maxHeight - footerHeight - 5;
         
         return Column(
@@ -869,7 +869,7 @@ class PlayerScoresUIService {
                             padding: const EdgeInsets.all(4),
                             decoration: BoxDecoration(
                               color: Colors.grey[200],
-                              border: Border(bottom: BorderSide(color: Colors.grey)),
+                              border: const Border(bottom: BorderSide(color: Colors.grey)),
                             ),
                             child: const Text(
                               'Players',
@@ -939,7 +939,7 @@ class PlayerScoresUIService {
       return '\$0';
     }
     int amount = winnings is int ? winnings : (winnings as double).round();
-    return '\$${amount}';
+    return '\$$amount';
   }
 
   static String _formatWinningsWithCents(dynamic winnings) {

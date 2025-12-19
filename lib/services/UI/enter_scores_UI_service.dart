@@ -4,6 +4,7 @@ import '../../models/league.dart';
 import '../shared/league_purse_service.dart';
 import '../responsive_typography.dart';
 import '../device_detection_service.dart';
+import 'button_bar_UI_service.dart';
 
 /// Device type enumeration for responsive design
 enum DeviceType { phone6_5, tablet8, tablet10 }
@@ -90,14 +91,38 @@ class EnterScoresUIService {
   static double getResponsiveFontSize(DeviceType deviceType, {bool isHeader = false}) {
     switch (deviceType) {
       case DeviceType.phone6_5:
-        return isHeader ? 10.0 : 11.0;
+        return isHeader ? 8.0 : 11.0;
       case DeviceType.tablet8:
         return isHeader ? 12.0 : 13.0;
       case DeviceType.tablet10:
         return isHeader ? 14.0 : 15.0;
     }
   }
-  
+
+  /// Gets purse header label font size based on device type
+  /// Uses base label size from ResponsiveTypography with a multiplier for fine-tuning
+  static double getPurseHeaderFontSize(BuildContext context) {
+    return ResponsiveTypography.getLabel(context) * .85;
+  }
+
+  /// Gets table header font size based on device type (Name, SK #, SKATS, DIFF, $$$)
+  /// Uses base table header size from ResponsiveTypography with a multiplier for fine-tuning
+  static double getTableHeaderFontSize(BuildContext context) {
+    return ResponsiveTypography.getTableHeader(context) * .85;
+  }
+
+  /// Gets group header font size based on device type (-----Group 1-----)
+  /// Uses base heading size from ResponsiveTypography with a multiplier for fine-tuning
+  static double getGroupHeaderFontSize(BuildContext context) {
+    return ResponsiveTypography.getHeading(context) * .85;
+  }
+
+  /// Gets table data row font size based on device type (player names, SK numbers, SKATS, DIFF, money)
+  /// Uses base small text size from ResponsiveTypography with a multiplier for fine-tuning
+  static double getTableDataFontSize(BuildContext context) {
+    return ResponsiveTypography.getSmall(context) * .85;
+  }
+
   /// Gets responsive container height based on device type
   static double getResponsiveGroupHeight(DeviceType deviceType) {
     switch (deviceType) {
@@ -160,10 +185,11 @@ class EnterScoresUIService {
     //print("Using UI Service for ${league.name} league");
     final deviceType = getDeviceType(context);
     final fontSize = getResponsiveFontSize(deviceType, isHeader: true);
+    final headerFontSize = getPurseHeaderFontSize(context);
     final padding = getResponsivePadding(deviceType);
     
     // Get purse data from the league service
-    final purseData = LeaguePurseService.getPurseHeaderData(league);
+    LeaguePurseService.getPurseHeaderData(league);
     
     return Container(
       width: double.infinity,
@@ -174,27 +200,7 @@ class EnterScoresUIService {
       color: Colors.green[300],
       child: Row(
         children: [
-          // Left arrow return button (if callback provided)
-          /*if (onReturn != null)
-            GestureDetector(
-              onTap: onReturn,
-              child: Container(
-                width: fontSize * 3.0, // Wider touch target
-                height: fontSize * 2.0, // Taller touch target
-                margin: EdgeInsets.only(right: padding.left / 2),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.black, width: 1),
-                  borderRadius: BorderRadius.circular(4.0),
-                ),
-                child: Center(
-                  child: Icon(
-                    Icons.arrow_back,
-                    color: Colors.black,
-                    size: fontSize * 1.5,
-                  ),
-                ),
-              ),
-            ),*/
+
           // Purse information section
           Expanded(
             child: Row(
@@ -207,32 +213,32 @@ class EnterScoresUIService {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Text(
-                    '${LeaguePurseService.getPrimaryPurseLabel(league)} = ',
-                    style: TextStyle(
-                      fontSize: deviceType == DeviceType.phone6_5 ? 22.0 :
-                               deviceType == DeviceType.tablet8 ? 18.0 :
-                               deviceType == DeviceType.tablet10 ? 22.0 :
-                               ResponsiveTypography.getLabel(context),
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(4.0),
-                    ),
+                  Flexible(
                     child: Text(
-                      LeaguePurseService.formatPurseAmount(LeaguePurseService.getPrimaryPurse(league)),
+                      '${LeaguePurseService.getPrimaryPurseLabel(league)} = ',
                       style: TextStyle(
-                        fontSize: deviceType == DeviceType.phone6_5 ? 22.0 :
-                                 deviceType == DeviceType.tablet8 ? 18.0 :
-                                 deviceType == DeviceType.tablet10 ? 22.0 :
-                                 ResponsiveTypography.getDisplay(context),
+                        fontSize: headerFontSize,
                         fontWeight: FontWeight.bold,
                         color: Colors.black,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  Flexible(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(4.0),
+                      ),
+                      child: Text(
+                        LeaguePurseService.formatPurseAmount(LeaguePurseService.getPrimaryPurse(league)),
+                        style: TextStyle(
+                          fontSize: headerFontSize,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ),
@@ -241,83 +247,65 @@ class EnterScoresUIService {
             ),
           ),
           Expanded(
-            child: Center(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Text(
-                    'Close Pin Purse = ',
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Text(
+                  'ClosePin Purse = ',
+                  style: TextStyle(
+                    fontSize: headerFontSize,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(4.0),
+                  ),
+                  child: Text(
+                    LeaguePurseService.formatPurseAmount(LeaguePurseService.closestPinPurse),
                     style: TextStyle(
-                      fontSize: deviceType == DeviceType.phone6_5 ? 22.0 :
-                               deviceType == DeviceType.tablet8 ? 18.0 :
-                               deviceType == DeviceType.tablet10 ? 22.0 :
-                               ResponsiveTypography.getLabel(context),
+                      fontSize: headerFontSize,
                       fontWeight: FontWeight.bold,
                       color: Colors.black,
                     ),
                   ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(4.0),
-                    ),
-                    child: Text(
-                      LeaguePurseService.formatPurseAmount(LeaguePurseService.closestPinPurse),
-                      style: TextStyle(
-                        fontSize: deviceType == DeviceType.phone6_5 ? 22.0 :
-                                 deviceType == DeviceType.tablet8 ? 18.0 :
-                                 deviceType == DeviceType.tablet10 ? 22.0 :
-                                 ResponsiveTypography.getDisplay(context),
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
           Expanded(
-            child: Center(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Text(
-                    'Mulligan Purse = ',
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Text(
+                  '    Mulligan Purse = ',
+                  style: TextStyle(
+                    fontSize: headerFontSize,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(4.0),
+                  ),
+                  child: Text(
+                    LeaguePurseService.formatPurseAmount(LeaguePurseService.mulliganPurse),
                     style: TextStyle(
-                      fontSize: deviceType == DeviceType.phone6_5 ? 22.0 :
-                               deviceType == DeviceType.tablet8 ? 18.0 :
-                               deviceType == DeviceType.tablet10 ? 22.0 :
-                               ResponsiveTypography.getLabel(context),
+                      fontSize: headerFontSize,
                       fontWeight: FontWeight.bold,
                       color: Colors.black,
                     ),
                   ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(4.0),
-                    ),
-                    child: Text(
-                      LeaguePurseService.formatPurseAmount(LeaguePurseService.mulliganPurse),
-                      style: TextStyle(
-                        fontSize: deviceType == DeviceType.phone6_5 ? 22.0 :
-                                 deviceType == DeviceType.tablet8 ? 18.0 :
-                                 deviceType == DeviceType.tablet10 ? 22.0 :
-                                 ResponsiveTypography.getDisplay(context),
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
               ],
@@ -331,7 +319,7 @@ class EnterScoresUIService {
               width: fontSize * 3.0,
               height: fontSize * 2.0,
               margin: EdgeInsets.only(left: padding.left / 2),
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 //border: Border.all(color: Colors.black, width: 1),
                 //borderRadius: BorderRadius.circular(4.0),
               ),
@@ -719,9 +707,9 @@ class EnterScoresUIService {
   }) {
     final deviceType = getDeviceType(context);
     final groupHeight = getResponsiveGroupHeight(deviceType);
-    final fontSize = getResponsiveFontSize(deviceType, isHeader: true);
+    final groupHeaderFontSize = getGroupHeaderFontSize(context);
     final padding = getResponsivePadding(deviceType);
-    
+
     return SizedBox(
       height: groupHeight,
       child: Column(
@@ -729,13 +717,14 @@ class EnterScoresUIService {
           Container(
             width: double.infinity,
             padding: EdgeInsets.symmetric(
-              vertical: padding.top / 4, 
+              vertical: padding.top / 4,
               horizontal: padding.left
             ),
             child: Text(
               '-----$groupTitle-----',
               textAlign: TextAlign.center,
-              style: ResponsiveTypography.headingStyle(context,
+              style: TextStyle(
+                fontSize: groupHeaderFontSize,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -763,7 +752,7 @@ class EnterScoresUIService {
   /// Builds the header row for a group with column titles
   /// Responsive design adapts height and styling
   static Widget buildGroupHeader(BuildContext context) {
-    final deviceType = getDeviceType(context);
+    getDeviceType(context);
     
     return Container(
       decoration: const BoxDecoration(
@@ -789,7 +778,7 @@ class EnterScoresUIService {
   static Widget buildHeaderCell(BuildContext context, String text, {int flex = 1, bool hasLeftBorder = false}) {
     final deviceType = getDeviceType(context);
     final rowHeight = getResponsiveRowHeight(deviceType);
-    final fontSize = getResponsiveFontSize(deviceType);
+    final tableHeaderFontSize = getTableHeaderFontSize(context);
     final padding = getResponsivePadding(deviceType);
 
     return Expanded(
@@ -812,7 +801,8 @@ class EnterScoresUIService {
           child: Text(
             text,
             textAlign: TextAlign.center,
-            style: ResponsiveTypography.tableHeaderStyle(context,
+            style: TextStyle(
+              fontSize: tableHeaderFontSize,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -948,9 +938,9 @@ class EnterScoresUIService {
   /// Responsive design adapts padding and font size, with bold formatting for data fields
   static Widget buildPlayerCell(BuildContext context, String text, {int flex = 1, bool hasLeftBorder = false, bool isCurrency = false}) {
     final deviceType = getDeviceType(context);
-    final fontSize = getResponsiveFontSize(deviceType);
+    final tableDataFontSize = getTableDataFontSize(context);
     final padding = getResponsivePadding(deviceType);
-    
+
     // Format currency if this is a money field
     String displayText = text;
     if (isCurrency && text.isNotEmpty) {
@@ -961,7 +951,7 @@ class EnterScoresUIService {
         displayText = '\$${amount.round()}';
       }
     }
-    
+
     return Expanded(
       flex: flex,
       child: Container(
@@ -975,7 +965,8 @@ class EnterScoresUIService {
         child: Text(
           displayText,
           textAlign: flex == 2 ? TextAlign.left : TextAlign.center, // Left align for Name column (flex: 2), center for others
-          style: ResponsiveTypography.smallStyle(context,
+          style: TextStyle(
+            fontSize: tableDataFontSize,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -987,9 +978,9 @@ class EnterScoresUIService {
   /// Responsive design adapts padding and font size, with bold formatting for data fields
   static Widget buildClickablePlayerCell(BuildContext context, String text, {int flex = 1, bool hasLeftBorder = false, bool isCurrency = false, VoidCallback? onTap, bool isSelected = false}) {
     final deviceType = getDeviceType(context);
-    final fontSize = getResponsiveFontSize(deviceType);
+    final tableDataFontSize = getTableDataFontSize(context);
     final padding = getResponsivePadding(deviceType);
-    
+
     // Format currency if this is a money field
     String displayText = text;
     if (isCurrency && text.isNotEmpty) {
@@ -1000,10 +991,10 @@ class EnterScoresUIService {
         displayText = '\$${amount.round()}';
       }
     }
-    
+
     // Selection background color for the cell
     Color? backgroundColor = isSelected ? Colors.blue[100] : null;
-    
+
     return Expanded(
       flex: flex,
       child: GestureDetector(
@@ -1020,7 +1011,8 @@ class EnterScoresUIService {
           child: Text(
             displayText,
             textAlign: flex == 2 ? TextAlign.left : TextAlign.center, // Left align for Name column (flex: 2), center for others
-            style: ResponsiveTypography.smallStyle(context,
+            style: TextStyle(
+              fontSize: tableDataFontSize,
               fontWeight: FontWeight.bold,
               color: onTap != null ? Colors.blue[700] : Colors.black,
             ),
@@ -1056,16 +1048,14 @@ class EnterScoresUIService {
   /// Builds an input cell for editable data (skats, diff)
   /// Responsive design adapts padding and font size, with bold formatting for data fields
   static Widget buildInputCell(BuildContext context, String value, Color? backgroundColor, {
-    int flex = 1, 
+    int flex = 1,
     String? keyValue,
     Function(String)? onChanged,
     FocusNode? focusNode,
     bool showFocus = false,
   }) {
-    final deviceType = getDeviceType(context);
-    final fontSize = getResponsiveFontSize(deviceType);
-    final padding = getResponsivePadding(deviceType);
-    
+    final tableDataFontSize = getTableDataFontSize(context);
+
     return Expanded(
       flex: flex,
       child: Container(
@@ -1087,7 +1077,8 @@ class EnterScoresUIService {
             enableInteractiveSelection: false, // Disable text selection
             textAlign: TextAlign.center,
             textAlignVertical: TextAlignVertical.center,
-            style: ResponsiveTypography.smallStyle(context,
+            style: TextStyle(
+              fontSize: tableDataFontSize,
               fontWeight: FontWeight.bold,
             ),
             decoration: const InputDecoration(
@@ -1103,7 +1094,7 @@ class EnterScoresUIService {
   }
 
   /// Builds the bottom buttons row with navigation and action buttons
-  /// Responsive design adapts padding and button sizing
+  /// Now uses standardized ButtonBarUIService for consistent styling
   static Widget buildBottomButtons(BuildContext context, {
     VoidCallback? onReturn,
     VoidCallback? onClosestPin,
@@ -1111,59 +1102,44 @@ class EnterScoresUIService {
     VoidCallback? onSwapPlayers,
   }) {
     final deviceType = getDeviceType(context);
-    final padding = getResponsivePadding(deviceType);
-    
-    return Container(
-      color: Colors.grey[300],
-      padding: EdgeInsets.all(padding.left / 2),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          buildBottomButton(context, 'Return', Colors.blue[200]!, onReturn ?? () => Navigator.pop(context)),
-          buildBottomButton(context, 'Closest Pin', Colors.green[200]!, onClosestPin ?? () {}),
-          buildBottomButton(context, 'Auto Fill', Colors.orange[200]!, onAutoFill ?? () {}),
-          buildBottomButton(context, 'SWAP Players', Colors.grey[400]!, onSwapPlayers ?? () {}),
-        ],
-      ),
-    );
-  }
 
-  /// Builds an individual bottom button with specified styling
-  /// Responsive design adapts padding, font size, and button height
-  static Widget buildBottomButton(BuildContext context, String text, Color color, VoidCallback onPressed) {
-    final deviceType = getDeviceType(context);
-    final fontSize = getResponsiveFontSize(deviceType, isHeader: true);
-    final padding = getResponsivePadding(deviceType);
-    
     // Adjust button text for smaller screens
-    String displayText = text;
+    String closestPinText = 'Closest Pin';
+    String swapText = 'SWAP Players';
     if (deviceType == DeviceType.phone6_5) {
-      if (text == 'Closest Pin') displayText = 'ClosePin';
-      if (text == 'SWAP Players') displayText = 'SWAP';
+      closestPinText = 'ClosePin';
+      swapText = 'SWAP';
     }
-    
-    return Expanded(
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: padding.left / 2),
-        child: ElevatedButton(
-          onPressed: onPressed,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: color,
-            padding: EdgeInsets.symmetric(vertical: padding.top / 2),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8.0),
-              side: const BorderSide(color: Colors.black, width: 1),
-            ),
-          ),
-          child: Text(
-            displayText,
-            style: ResponsiveTypography.buttonStyle(context,
-              fontWeight: FontWeight.bold,
-              color: Colors.black,
-            ),
-          ),
+
+    return ButtonBarUIService.buildButtonBar(
+      context,
+      backgroundColor: Colors.grey[300]!,
+      children: [
+        ButtonBarUIService.buildActionButton(
+          context,
+          text: 'Return',
+          color: Colors.blue[200]!,
+          onPressed: onReturn ?? () => Navigator.pop(context),
         ),
-      ),
+        ButtonBarUIService.buildActionButton(
+          context,
+          text: closestPinText,
+          color: Colors.green[200]!,
+          onPressed: onClosestPin ?? () {},
+        ),
+        ButtonBarUIService.buildActionButton(
+          context,
+          text: 'Auto Fill',
+          color: Colors.orange[200]!,
+          onPressed: onAutoFill ?? () {},
+        ),
+        ButtonBarUIService.buildActionButton(
+          context,
+          text: swapText,
+          color: Colors.grey[400]!,
+          onPressed: onSwapPlayers ?? () {},
+        ),
+      ],
     );
   }
 
@@ -1719,7 +1695,6 @@ class EnterScoresUIService {
     // Extract player data
     String name = player['last'] ?? '';
     double handicap = (player['handicap'] ?? 0.0).toDouble();
-    int? grossScore = player['gross_score'] as int?;
     int? netScore = player['net_score'] as int?;
     String position = player['pos'] ?? '';
     String prizeMoney = player['prize_money'] ?? '';
@@ -1947,6 +1922,7 @@ class EnterScoresUIService {
   }
 
   /// Builds bottom action buttons for Wednesday league
+  /// Now uses standardized ButtonBarUIService for consistent styling
   static Widget buildWednesdayBottomButtons(
     BuildContext context, {
     required String swapButtonText,
@@ -1963,7 +1939,6 @@ class EnterScoresUIService {
     VoidCallback? onClosestPin,
     VoidCallback? onSwap,
   }) {
-    final isPhone = DeviceDetectionService.isPhone(context);
     const config = LeagueUIConfig.wednesday;
 
     // Determine button text and callback based on groups processing state
@@ -1979,90 +1954,59 @@ class EnterScoresUIService {
     VoidCallback? backButtonCallback = groupsProcessed ? null : onMainMenu;
     Color finalBackButtonColor = backButtonColor ?? Colors.lightBlue[100]!;
 
-    // Get screen width to calculate button width (1/4 of screen)
-    final screenWidth = MediaQuery.of(context).size.width;
-    final buttonWidth = screenWidth / 4;
+    // Build button list based on processing state
+    List<Widget> buttons = [];
 
-    return Container(
-      height: isPhone ? 55 : 70,
-      color: config.buttonBarColor,
-      padding: EdgeInsets.symmetric(horizontal: isPhone ? 2 : 5, vertical: 5),
-      child: Row(
-        mainAxisAlignment: groupsProcessed ? MainAxisAlignment.end : MainAxisAlignment.spaceEvenly,
-        children: [
-          // Show all buttons when not processed, only Close Pin Winner when processed
-          if (!groupsProcessed) ...[
-            if (onAutoFill != null) _buildWednesdayActionButton(context, 'Auto Fill', Colors.orange[200]!, onAutoFill),
-            _buildWednesdayActionButton(context, '◄---- Back     ', finalBackButtonColor, backButtonCallback),
-            _buildWednesdayActionButton(context, 'Shuffle', shuffleButtonColor ?? Colors.purple[200]!, onShuffle),
-            _buildWednesdayActionButton(context, swapButtonText, swapButtonColor, onSwap),
-            _buildWednesdayActionButton(
-              context,
-              processButtonText,
-              processButtonColor,
-              processButtonCallback,
-            ),
-          ] else ...[
-            // Only show the Close Pin Winner button when groups are processed
-            Container(
-              width: buttonWidth,
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: isPhone ? 3 : 10),
-                child: ElevatedButton(
-                  onPressed: processButtonCallback,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: processButtonColor,
-                    foregroundColor: processButtonCallback != null ? Colors.black : Colors.grey[600],
-                    padding: EdgeInsets.symmetric(vertical: isPhone ? 4 : 8),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(isPhone ? 6 : 10)),
-                  ),
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      processButtonText,
-                      style: TextStyle(fontSize: ResponsiveTypography.getButton(context), fontWeight: FontWeight.bold),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
+    if (!groupsProcessed) {
+      // Show all buttons when not processed
+      if (onAutoFill != null) {
+        buttons.add(ButtonBarUIService.buildActionButton(
+          context,
+          text: 'Auto Fill',
+          color: Colors.orange[200]!,
+          onPressed: onAutoFill,
+        ));
+      }
+      buttons.add(ButtonBarUIService.buildActionButton(
+        context,
+        text: '◄---- Back     ',
+        color: finalBackButtonColor,
+        onPressed: backButtonCallback,
+      ));
+      buttons.add(ButtonBarUIService.buildActionButton(
+        context,
+        text: 'Shuffle',
+        color: shuffleButtonColor ?? Colors.purple[200]!,
+        onPressed: onShuffle,
+      ));
+      buttons.add(ButtonBarUIService.buildActionButton(
+        context,
+        text: swapButtonText,
+        color: swapButtonColor,
+        onPressed: onSwap,
+      ));
+      buttons.add(ButtonBarUIService.buildActionButton(
+        context,
+        text: processButtonText,
+        color: processButtonColor,
+        onPressed: processButtonCallback,
+      ));
+    } else {
+      // Only show Close Pin Winner button when processed
+      buttons.add(ButtonBarUIService.buildActionButton(
+        context,
+        text: processButtonText,
+        color: processButtonColor,
+        onPressed: processButtonCallback,
+      ));
+    }
 
-  static Widget _buildWednesdayActionButton(
-    BuildContext context,
-    String text,
-    Color color,
-    VoidCallback? onPressed,
-  ) {
-    final isPhone = DeviceDetectionService.isPhone(context);
-    final buttonFontSize = ResponsiveTypography.getButton(context);
-
-    return Expanded(
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: isPhone ? 3 : 10),
-        child: ElevatedButton(
-          onPressed: onPressed,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: color,
-            foregroundColor: onPressed != null ? Colors.black : Colors.grey[600],
-            padding: EdgeInsets.symmetric(vertical: isPhone ? 4 : 8),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(isPhone ? 6 : 10)),
-          ),
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              text,
-              style: TextStyle(fontSize: buttonFontSize, fontWeight: FontWeight.bold),
-              textAlign: TextAlign.center,
-            ),
-          ),
-        ),
-      ),
+    return ButtonBarUIService.buildButtonBar(
+      context,
+      backgroundColor: config.buttonBarColor,
+      children: buttons,
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      useMinHeight: true, // Allow expansion for longer text
     );
   }
 }

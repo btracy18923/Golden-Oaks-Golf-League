@@ -550,7 +550,7 @@ class PlayerSelectionUIService {
                         backgroundColor: leagueColor,
                         foregroundColor: Colors.black,
                         disabledBackgroundColor: leagueColor,
-                        disabledForegroundColor: Colors.black.withOpacity(0.6),
+                        disabledForegroundColor: Colors.black.withValues(alpha: 0.6),
                         padding: EdgeInsets.symmetric(
                           horizontal: config.footerButtonPaddingHorizontal, 
                           vertical: config.footerButtonPaddingVertical
@@ -602,8 +602,8 @@ class PlayerSelectionUIService {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: leagueColor,
                     foregroundColor: Colors.black,
-                    disabledBackgroundColor: leagueColor.withOpacity(0.6),
-                    disabledForegroundColor: Colors.black.withOpacity(0.6),
+                    disabledBackgroundColor: leagueColor.withValues(alpha: 0.6),
+                    disabledForegroundColor: Colors.black.withValues(alpha: 0.6),
                     padding: EdgeInsets.symmetric(
                       horizontal: config.footerButtonPaddingHorizontal, 
                       vertical: config.footerButtonPaddingVertical

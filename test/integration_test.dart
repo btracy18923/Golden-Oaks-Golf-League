@@ -53,14 +53,13 @@ void main() {
       double difference = result.totalActualPayouts - result.expectedPurse;
       expect(difference, greaterThan(0)); // Should be positive (overage)
       expect(result.adjustedMulliganPurse, equals(currentMulliganPurse - difference));
-      
+
       print('Test Results:');
       print('  Total Actual Payouts: \$${result.totalActualPayouts}');
       print('  Expected Purse: \$${result.expectedPurse}');
       print('  Difference: \$${result.difference}');
       print('  Original Mulligan Purse: \$${currentMulliganPurse}');
       print('  Adjusted Mulligan Purse: \$${result.adjustedMulliganPurse}');
-      print('  Description: ${result.description}');
     });
 
     test('Verify basic Wednesday League functionality with known values', () async {

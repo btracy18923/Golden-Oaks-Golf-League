@@ -11,6 +11,7 @@ import '../../services/shared/league_purse_service.dart';
 import '../../services/screen_data_retention_service.dart';
 import '../../services/UI/parent_screen_service.dart';
 import '../../services/UI/custom_keypad_service.dart';
+import '../../services/UI/button_bar_UI_service.dart';
 import '../../services/responsive_typography.dart';
 import '../../services/device_detection_service.dart';
 import '../../widgets/responsive_wrapper.dart';
@@ -281,9 +282,10 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
+        toolbarHeight: 56,
         title: Text(
           'Monday League - Golden Oaks Golf - ${DeviceDetectionService.getDeviceName(context)}',
-          style: const TextStyle(fontWeight: FontWeight.bold),
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
         backgroundColor: Colors.green[700],
         foregroundColor: Colors.white,
@@ -338,15 +340,7 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
                 ),
               ),
               const SizedBox(height: 4),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(0),
-                ),
-                child: _buildPhoneFooterButtons(),
-              ),
+              _buildFooterButtons(),
             ],
           ),
           Positioned(
@@ -368,9 +362,10 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
+        toolbarHeight: 60,
         title: Text(
           'Monday League - Golden Oaks Golf - ${DeviceDetectionService.getDeviceName(context)}',
-          style: const TextStyle(fontWeight: FontWeight.bold),
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
         ),
         backgroundColor: Colors.green[700],
         foregroundColor: Colors.white,
@@ -425,15 +420,7 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
                 ),
               ),
               const SizedBox(height: 12),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 0),
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(0),
-                ),
-                child: _buildTablet8FooterButtons(),
-              ),
+              _buildFooterButtons(),
             ],
           ),
           Positioned(
@@ -455,9 +442,10 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
+        toolbarHeight: 64,
         title: Text(
           'Monday League - Golden Oaks Golf - ${DeviceDetectionService.getDeviceName(context)}',
-          style: ResponsiveTypography.headingStyle(context, fontWeight: FontWeight.bold),
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
         ),
         backgroundColor: Colors.green[700],
         foregroundColor: Colors.white,
@@ -512,15 +500,7 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
                 ),
               ),
               const SizedBox(height: 12),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(0),
-                ),
-                child: _buildTablet10FooterButtons(),
-              ),
+              _buildFooterButtons(),
             ],
           ),
           Positioned(
@@ -538,214 +518,46 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
     );
   }
 
-  Widget _buildPhoneFooterButtons() {
-    final buttons = [
-      _buildNavigationButton(
-        'Player Selection',
-        Icons.people,
-        selectedGolfCourse != null ? Colors.green[300]! : Colors.grey[400]!,
-        selectedGolfCourse != null ? () => _navigateToPlayerSelection() : null,
-        isCompact: true,
-        is8InchTablet: false,
-        is10InchTablet: false,
-      ),
-      _buildNavigationButton(
-        'Player Profiles',
-        Icons.person,
-        Colors.green[100]!,
-        () => navigateToScreen(const MondayPlayerProfileScreen()),
-        isCompact: true,
-        is8InchTablet: false,
-        is10InchTablet: false,
-      ),
-      _buildNavigationButton(
-        'Player Scores',
-        Icons.score,
-        Colors.green[100]!,
-        () => navigateToScreen(const MondayPlayerScoresScreen()),
-        isCompact: true,
-        is8InchTablet: false,
-        is10InchTablet: false,
-      ),
-      _buildNavigationButton(
-        'Golf Courses',
-        Icons.golf_course,
-        Colors.green[100]!,
-        () async {
-          await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const MondayGolfCourseScreen(league: League.monday)),
-          );
-          // Reload golf courses when returning from golf course screen
-          _loadGolfCourses();
-        },
-        isCompact: true,
-        is8InchTablet: false,
-        is10InchTablet: false,
-      ),
-    ];
-
-    return Row(
+  Widget _buildFooterButtons() {
+    return ButtonBarUIService.buildButtonBar(
+      context,
+      backgroundColor: Colors.grey[300]!,
       children: [
-        Expanded(flex: 2, child: buttons[0]),
-        Expanded(flex: 1, child: buttons[1]),
-        Expanded(flex: 1, child: buttons[2]),
-        Expanded(flex: 1, child: buttons[3]),
-      ],
-    );
-  }
-
-  Widget _buildTablet8FooterButtons() {
-    final buttons = [
-      _buildNavigationButton(
-        'Player Selection',
-        Icons.people,
-        selectedGolfCourse != null ? Colors.green[300]! : Colors.grey[400]!,
-        selectedGolfCourse != null ? () => _navigateToPlayerSelection() : null,
-        isCompact: false,
-        is8InchTablet: true,
-        is10InchTablet: false,
-      ),
-      _buildNavigationButton(
-        'Player Profiles',
-        Icons.person,
-        Colors.green[100]!,
-        () => navigateToScreen(const MondayPlayerProfileScreen()),
-        isCompact: false,
-        is8InchTablet: true,
-        is10InchTablet: false,
-      ),
-      _buildNavigationButton(
-        'Player Scores',
-        Icons.score,
-        Colors.green[100]!,
-        () => navigateToScreen(const MondayPlayerScoresScreen()),
-        isCompact: false,
-        is8InchTablet: true,
-        is10InchTablet: false,
-      ),
-      _buildNavigationButton(
-        'Golf Courses',
-        Icons.golf_course,
-        Colors.green[100]!,
-        () async {
-          await Navigator.push(
+        Expanded(
+          flex: 2,
+          child: ButtonBarUIService.buildActionButton(
             context,
-            MaterialPageRoute(builder: (context) => const MondayGolfCourseScreen(league: League.monday)),
-          );
-          // Reload golf courses when returning from golf course screen
-          _loadGolfCourses();
-        },
-        isCompact: false,
-        is8InchTablet: true,
-        is10InchTablet: false,
-      ),
-    ];
-
-    return Row(
-      children: [
-        Expanded(flex: 2, child: buttons[0]),
-        const SizedBox(width: 8),
-        Expanded(flex: 1, child: buttons[1]),
-        const SizedBox(width: 8),
-        Expanded(flex: 1, child: buttons[2]),
-        const SizedBox(width: 8),
-        Expanded(flex: 1, child: buttons[3]),
-      ],
-    );
-  }
-
-  Widget _buildTablet10FooterButtons() {
-    final buttons = [
-      _buildNavigationButton(
-        'Player Selection',
-        Icons.people,
-        selectedGolfCourse != null ? Colors.green[300]! : Colors.grey[400]!,
-        selectedGolfCourse != null ? () => _navigateToPlayerSelection() : null,
-        isCompact: false,
-        is8InchTablet: false,
-        is10InchTablet: true,
-      ),
-      _buildNavigationButton(
-        'Player Profiles',
-        Icons.person,
-        Colors.green[100]!,
-        () => navigateToScreen(const MondayPlayerProfileScreen()),
-        isCompact: false,
-        is8InchTablet: false,
-        is10InchTablet: true,
-      ),
-      _buildNavigationButton(
-        'Player Scores',
-        Icons.score,
-        Colors.green[100]!,
-        () => navigateToScreen(const MondayPlayerScoresScreen()),
-        isCompact: false,
-        is8InchTablet: false,
-        is10InchTablet: true,
-      ),
-      _buildNavigationButton(
-        'Golf Courses',
-        Icons.golf_course,
-        Colors.green[100]!,
-        () async {
-          await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const MondayGolfCourseScreen(league: League.monday)),
-          );
-          // Reload golf courses when returning from golf course screen
-          _loadGolfCourses();
-        },
-        isCompact: false,
-        is8InchTablet: false,
-        is10InchTablet: true,
-      ),
-    ];
-
-    return Row(
-      children: [
-        Expanded(flex: 2, child: buttons[0]), // Player Selection - double width
-        const SizedBox(width: 8),
-        Expanded(flex: 1, child: buttons[1]), // Player Profiles
-        const SizedBox(width: 8),
-        Expanded(flex: 1, child: buttons[2]), // Player Scores
-        const SizedBox(width: 8),
-        Expanded(flex: 1, child: buttons[3]), // Golf Courses
-      ],
-    );
-  }
-
-  Widget _buildNavigationButton(String title, IconData icon, Color bgColor, VoidCallback? onPressed, {bool isCompact = false, bool is8InchTablet = false, bool is10InchTablet = false}) {
-    final isDisabled = onPressed == null;
-    return ElevatedButton(
-      onPressed: onPressed,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: bgColor,
-        foregroundColor: isDisabled ? Colors.grey[600] : Colors.black,
-        padding: EdgeInsets.symmetric(
-          vertical: is10InchTablet ? 24 : (is8InchTablet ? 20 : (isCompact ? 3 : 6)), // Increased height for 10" tablets
-          horizontal: 2, // Force minimal padding for all layouts
-        ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-          side: BorderSide(
-            color: isDisabled ? Colors.grey[500]! : Colors.black, 
-            width: 1,
+            text: 'Player Selection',
+            color: selectedGolfCourse != null ? Colors.green[300]! : Colors.grey[400]!,
+            onPressed: selectedGolfCourse != null ? () => _navigateToPlayerSelection() : null,
           ),
         ),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            title,
-            style: ResponsiveTypography.buttonStyle(context, 
-                fontWeight: FontWeight.w600, 
-                color: isDisabled ? Colors.grey[600] : null),
-            textAlign: TextAlign.center,
-          ),
-        ],
+        ButtonBarUIService.buildActionButton(
+          context,
+          text: 'Player Profiles',
+          color: Colors.green[100]!,
+          onPressed: () => navigateToScreen(const MondayPlayerProfileScreen()),
         ),
+        ButtonBarUIService.buildActionButton(
+          context,
+          text: 'Player Scores',
+          color: Colors.green[100]!,
+          onPressed: () => navigateToScreen(const MondayPlayerScoresScreen()),
+        ),
+        ButtonBarUIService.buildActionButton(
+          context,
+          text: 'Golf Courses',
+          color: Colors.green[100]!,
+          onPressed: () async {
+            await Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const MondayGolfCourseScreen(league: League.monday)),
+            );
+            // Reload golf courses when returning from golf course screen
+            _loadGolfCourses();
+          },
+        ),
+      ],
     );
   }
 }

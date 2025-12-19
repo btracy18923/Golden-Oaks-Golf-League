@@ -200,7 +200,7 @@ class ParentScreenUI extends StatelessWidget {
                 ),
                 child: GestureDetector(
                   onTap: onSkatsAnteEdit,
-                  child: Container(
+                  child: SizedBox(
                     width: double.infinity,
                     height: double.infinity,
                     child: Align(
@@ -310,7 +310,7 @@ class ParentScreenUI extends StatelessWidget {
                 ),
                 child: GestureDetector(
                   onTap: onClosestPinEdit,
-                  child: Container(
+                  child: SizedBox(
                     width: double.infinity,
                     height: double.infinity,
                     child: Align(
@@ -420,7 +420,7 @@ class ParentScreenUI extends StatelessWidget {
                 ),
                 child: GestureDetector(
                   onTap: onMulligansEdit,
-                  child: Container(
+                  child: SizedBox(
                     width: double.infinity,
                     height: double.infinity,
                     child: Align(

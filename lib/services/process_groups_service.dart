@@ -70,15 +70,6 @@ class ProcessGroupsService {
     // If Group Payout == Group Purse: no change
     double adjustedMulliganPurse = mulliganPurseCarryover + difference;
 
-    // Debug output
-    print('=== MULLIGAN PURSE ADJUSTMENT ===');
-    print('Group Purse: \$${groupPurse.toStringAsFixed(2)}');
-    print('Group Payout: \$${groupPayout.toStringAsFixed(2)}');
-    print('Difference: \$${difference.toStringAsFixed(2)}');
-    print('Initial Mulligan: \$${mulliganPurseCarryover.toStringAsFixed(2)}');
-    print('Adjusted Mulligan: \$${adjustedMulliganPurse.toStringAsFixed(2)}');
-    print('=================================');
-
     return ProcessGroupsResult(
       newGroups: newGroups,
       groupPurseAmount: groupPurse,

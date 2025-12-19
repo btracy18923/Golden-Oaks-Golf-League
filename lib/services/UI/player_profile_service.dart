@@ -36,9 +36,9 @@ class PlayerProfileService {
     
     // Special two-row layout for Email field for all screen sizes
     if (label == 'Email') {
-      double labelFontSize = 18;  // Reduced from 20
-      double fieldHeight = 30;    // Reduced for phones
-      double inputFontSize = 16;   // Reduced from 9
+      double labelFontSize = 10;  // Reduced from 20
+      double fieldHeight = 36;    // Reduced for phones
+      double inputFontSize = 10;   // Reduced from 9
       
       if (is8Tablet) {
         labelFontSize = 18;  // Reduced from 22
@@ -100,7 +100,7 @@ class PlayerProfileService {
                 width: 60, // Fixed width for label
                 child: Text(
                   displayLabel == 'SKAT#' ? displayLabel : '$displayLabel:',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 10),
                 ),
               ),
               const SizedBox(width: 4),
@@ -118,7 +118,7 @@ class PlayerProfileService {
                       isDense: true,
                       contentPadding: EdgeInsets.only(left: 6, right: 6, top: 2, bottom: 10),
                     ),
-                    style: const TextStyle(fontSize: 18, height: 1.0),
+                    style: const TextStyle(fontSize: 12, height: 1.0),
                     onFieldSubmitted: (_) {
                       if (onUpdatePlayer != null) {
                         onUpdatePlayer();
@@ -691,15 +691,16 @@ class PlayerProfileService {
     // Use unified device detection service for consistent classification
     final isPhone = DeviceDetectionService.is6Point5Phone(context);
     final is8Tablet = DeviceDetectionService.is8Tablet(context);
-    final is10Tablet = DeviceDetectionService.is10Tablet(context);
+    DeviceDetectionService.is10Tablet(context);
     
-    // For 6.5" phones, use compact layout without scrolling
+    // For 6.5" phones, use compact layout with scrolling to prevent overflow
     if (isPhone) {
-      return Padding(
-        padding: const EdgeInsets.only(top: 0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: [
+      return SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.only(top: 0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
             buildCompactFormField('ID#', idController, idFocus, firstFocus, 
               keyboardType: TextInputType.number, 
               inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
@@ -718,6 +719,7 @@ class PlayerProfileService {
             buildCompactFormField('Email', emailController, emailFocus, null),
           ],
         ),
+      ),
       );
     }
     

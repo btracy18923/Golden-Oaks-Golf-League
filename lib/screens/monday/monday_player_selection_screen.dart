@@ -6,8 +6,8 @@ import '../../services/screen_data_retention_service.dart';
 import '../../services/shared/league_purse_service.dart';
 import '../../services/device_detection_service.dart';
 import '../../services/responsive_typography.dart';
+import '../../services/UI/button_bar_UI_service.dart';
 import 'monday_enter_scores_screen.dart';
-import 'monday_closest_pin_screen.dart';
 import '../../widgets/responsive_wrapper.dart';
 
 class MondayPlayerSelectionScreen extends StatefulWidget {
@@ -28,7 +28,6 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
   
   // Hard-coded Monday league colors and values
   static const Color _leagueColor = Color.fromRGBO(179, 255, 179, 1); // Light green
-  static const Color _appBarColor = Colors.green;
   
   @override
   void initState() {
@@ -53,10 +52,6 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
 
   void _setOrientation() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // Use DeviceDetectionService for consistent device detection
-      final deviceType = DeviceDetectionService.getDeviceType(context);
-      final deviceName = DeviceDetectionService.getDeviceName(context);
-
       // Debug info
       DeviceDetectionService.printDebugInfo(context);
 
@@ -94,12 +89,14 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
       setState(() {
         isLoading = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error loading Monday players: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading Monday players: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
   
@@ -145,7 +142,6 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
     try {
       await _dbHelper.setSetting('monday_players_shuffled', 'false', league: League.monday);
       await _dbHelper.setSetting('monday_player_order', '', league: League.monday);
-      //print("Shuffle state cleared - all players unselected");
     } catch (error) {
       //print("Error clearing shuffle state: $error");
     }
@@ -158,7 +154,6 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
       try {
         await _dbHelper.setSetting('monday_players_shuffled', 'false', league: League.monday);
         await _dbHelper.setSetting('monday_player_order', '', league: League.monday);
-        //print("Shuffle state cleared on init - starting with no players selected");
       } catch (error) {
         //print("Error clearing shuffle state on init: $error");
       }
@@ -191,12 +186,11 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
             
             // Save the updated order
             await _dbHelper.setSetting('monday_player_order', updatedOrder, league: League.monday);
-            //print("Removed player '$playerNameToRemove' from saved shuffle order");
           }
         }
       }
     } catch (error) {
-      //print("Error handling player removal: $error");
+      // Silently ignore errors when updating player order after removal
     }
   }
 
@@ -228,7 +222,6 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
             
             // Save the updated order
             await _dbHelper.setSetting('monday_player_order', updatedOrder, league: League.monday);
-            //print("Added player '$playerNameToAdd' to existing shuffle order");
           }
         }
       }
@@ -244,11 +237,10 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
       
       List<String> playerEntries = orderData.split(';;');
       List<String> filteredEntries = [];
-      
+
       // Filter out the player to remove and adjust group indices
       Map<int, int> groupIndexMap = {}; // old index -> new index
-      int newGroupIndex = 0;
-      
+
       // First pass: identify which groups will remain and create mapping
       Set<int> groupsWithPlayers = {};
       for (String entry in playerEntries) {
@@ -402,7 +394,10 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
     return Scaffold(
       backgroundColor: Colors.grey[300],
       appBar: AppBar(
-        title: Text("Select Players for Monday's Match - ${DeviceDetectionService.getDeviceName(context)}"),
+        title: Text(
+          'Select Players for Monday\'s Match - ${DeviceDetectionService.getDeviceName(context)}',
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+        ),
         backgroundColor: Colors.green[700],
         foregroundColor: Colors.white,
         centerTitle: true,
@@ -703,43 +698,6 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
     }
   }
 
-  void _navigateToClosestPin() {
-    try {
-      // Get selected players
-      List<Map<String, dynamic>> selectedPlayers = players
-          .where((player) => selectedPlayerIds.contains(player['player_number'] as int))
-          .toList();
-
-      // Capture data in the retention service before navigation
-      ScreenDataRetentionService().capturePlayerSelectionData(
-        selectedPlayerIds: selectedPlayerIds,
-        selectedPlayers: selectedPlayers,
-      );
-
-      // Reset purse flags so Closest Pin Purse can be calculated fresh
-      LeaguePurseService.resetAllPurseStates();
-
-      // Navigate to Monday Closest Pin Screen
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => MondayClosestPinScreen(
-            selectedPlayers: selectedPlayers,
-            playersAnte: widget.playersAnte,
-          ),
-        ),
-      );
-
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error navigating to Closest Pin screen: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-  
   Widget _buildPhonePlayerCheckbox(Map<String, dynamic> player) {
     final int playerId = player['player_number'] as int;
     final bool isSelected = selectedPlayerIds.contains(playerId);
@@ -918,324 +876,84 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
   }
 
   Widget _buildPhoneFooter() {
-    return Container(
-      padding: const EdgeInsets.all(8.0),
-      decoration: BoxDecoration(
-        color: Colors.grey[300],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          Expanded(
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              child: ElevatedButton(
-                onPressed: () => Navigator.of(context).pop(),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.lightBlue[300],
-                  foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    side: const BorderSide(color: Colors.black, width: 1),
-                  ),
-                ),
-                child: Text(
-                  '◄---- Back',
-                  style: TextStyle(
-                    fontSize: ResponsiveTypography.getButton(context),
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          Expanded(
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              child: ElevatedButton(
-                onPressed: selectAllPlayers,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.lightGreen[100],
-                  foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    side: const BorderSide(color: Colors.black, width: 1),
-                  ),
-                ),
-                child: Text(
-                  selectedPlayerIds.length == players.length
-                      ? 'Uncheck All'
-                      : 'Check All',
-                  style: TextStyle(
-                    fontSize: ResponsiveTypography.getButton(context),
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          Expanded(
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              child: ElevatedButton(
-                onPressed: selectedPlayerIds.isEmpty ? null : _navigateToEnterScores,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green[300],
-                  foregroundColor: Colors.black,
-                  disabledBackgroundColor: Colors.green[300],
-                  disabledForegroundColor: Colors.black.withOpacity(0.6),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    side: const BorderSide(color: Colors.black, width: 1),
-                  ),
-                ),
-                child: Text(
-                  "Enter SKATS ---➤",
-                  style: TextStyle(
-                    fontSize: ResponsiveTypography.getButton(context),
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
+    return ButtonBarUIService.buildButtonBar(
+      context,
+      backgroundColor: Colors.grey[300]!,
+      children: [
+        ButtonBarUIService.buildActionButton(
+          context,
+          text: '◄---- Back',
+          color: Colors.lightBlue[300]!,
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        ButtonBarUIService.buildActionButton(
+          context,
+          text: selectedPlayerIds.length == players.length ? 'Uncheck All' : 'Check All',
+          color: Colors.lightGreen[100]!,
+          onPressed: selectAllPlayers,
+        ),
+        ButtonBarUIService.buildActionButton(
+          context,
+          text: "Enter SKATS ---➤",
+          color: Colors.green[300]!,
+          onPressed: selectedPlayerIds.isEmpty ? null : _navigateToEnterScores,
+        ),
+      ],
     );
   }
 
   Widget _buildTablet8Footer() {
-    return Container(
-      padding: const EdgeInsets.all(16.0),
-      decoration: BoxDecoration(
-        color: Colors.grey[300],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0),
-              child: ElevatedButton(
-                onPressed: () => Navigator.of(context).pop(),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.lightBlue[300],
-                  foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    side: const BorderSide(color: Colors.black, width: 1),
-                  ),
-                ),
-                child: Text(
-                  'Back',
-                  style: TextStyle(
-                    fontSize: ResponsiveTypography.getButton(context),
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0),
-              child: ElevatedButton(
-                onPressed: selectAllPlayers,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.lightGreen[100],
-                  foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    side: const BorderSide(color: Colors.black, width: 1),
-                  ),
-                ),
-                child: Text(
-                  selectedPlayerIds.length == players.length
-                      ? 'Uncheck All'
-                      : 'Check All',
-                  style: TextStyle(
-                    fontSize: ResponsiveTypography.getButton(context),
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0),
-              child: ElevatedButton(
-                onPressed: selectedPlayerIds.isEmpty ? null : _navigateToEnterScores,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green[300],
-                  foregroundColor: Colors.black,
-                  disabledBackgroundColor: Colors.green[300],
-                  disabledForegroundColor: Colors.black.withOpacity(0.6),
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    side: const BorderSide(color: Colors.black, width: 1),
-                  ),
-                ),
-                child: Text(
-                  "Enter Scores",
-                  style: TextStyle(
-                    fontSize: ResponsiveTypography.getButton(context),
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
+    return ButtonBarUIService.buildButtonBar(
+      context,
+      backgroundColor: Colors.grey[300]!,
+      children: [
+        ButtonBarUIService.buildActionButton(
+          context,
+          text: 'Back',
+          color: Colors.lightBlue[300]!,
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        ButtonBarUIService.buildActionButton(
+          context,
+          text: selectedPlayerIds.length == players.length ? 'Uncheck All' : 'Check All',
+          color: Colors.lightGreen[100]!,
+          onPressed: selectAllPlayers,
+        ),
+        ButtonBarUIService.buildActionButton(
+          context,
+          text: "Enter Scores",
+          color: Colors.green[300]!,
+          onPressed: selectedPlayerIds.isEmpty ? null : _navigateToEnterScores,
+        ),
+      ],
     );
   }
 
   Widget _buildTablet10Footer() {
-    return Container(
-      padding: const EdgeInsets.all(16.0),
-      decoration: BoxDecoration(
-        color: Colors.grey[300],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0),
-              child: ElevatedButton(
-                onPressed: () => Navigator.of(context).pop(),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.lightBlue[300],
-                  foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    side: const BorderSide(color: Colors.black, width: 1),
-                  ),
-                ),
-                child: Text(
-                  'Back',
-                  style: TextStyle(
-                    fontSize: ResponsiveTypography.getButton(context),
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0),
-              child: ElevatedButton(
-                onPressed: selectAllPlayers,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.lightGreen[100],
-                  foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    side: const BorderSide(color: Colors.black, width: 1),
-                  ),
-                ),
-                child: Text(
-                  selectedPlayerIds.length == players.length
-                      ? 'Uncheck All'
-                      : 'Check All',
-                  style: TextStyle(
-                    fontSize: ResponsiveTypography.getButton(context),
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0),
-              child: ElevatedButton(
-                onPressed: selectedPlayerIds.isEmpty ? null : _navigateToEnterScores,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green[300],
-                  foregroundColor: Colors.black,
-                  disabledBackgroundColor: Colors.green[300],
-                  disabledForegroundColor: Colors.black.withOpacity(0.6),
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    side: const BorderSide(color: Colors.black, width: 1),
-                  ),
-                ),
-                child: Text(
-                  "Enter Scores ---➤",
-                  style: TextStyle(
-                    fontSize: ResponsiveTypography.getButton(context),
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
+    return ButtonBarUIService.buildButtonBar(
+      context,
+      backgroundColor: Colors.grey[300]!,
+      children: [
+        ButtonBarUIService.buildActionButton(
+          context,
+          text: 'Back',
+          color: Colors.lightBlue[300]!,
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        ButtonBarUIService.buildActionButton(
+          context,
+          text: selectedPlayerIds.length == players.length ? 'Uncheck All' : 'Check All',
+          color: Colors.lightGreen[100]!,
+          onPressed: selectAllPlayers,
+        ),
+        ButtonBarUIService.buildActionButton(
+          context,
+          text: "Enter Scores ---➤",
+          color: Colors.green[300]!,
+          onPressed: selectedPlayerIds.isEmpty ? null : _navigateToEnterScores,
+        ),
+      ],
     );
   }
 
-  Widget _buildTabletFooter() {
-    return Container(
-      padding: const EdgeInsets.all(16.0),
-      decoration: BoxDecoration(
-        color: Colors.grey[300],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green[600],
-              foregroundColor: Colors.black,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-                side: const BorderSide(color: Colors.black, width: 1),
-              ),
-            ),
-            child: Text(
-              'Back',
-              style: TextStyle(
-                fontSize: ResponsiveTypography.getButton(context),
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: selectedPlayerIds.isEmpty ? null : _navigateToClosestPin,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green[600],
-              foregroundColor: Colors.black,
-              disabledBackgroundColor: Colors.green[300]!.withOpacity(0.6),
-              disabledForegroundColor: Colors.black.withOpacity(0.6),
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-                side: const BorderSide(color: Colors.black, width: 1),
-              ),
-            ),
-            child: Text(
-              "Closest Pin Winners",
-              style: TextStyle(
-                fontSize: ResponsiveTypography.getButton(context),
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }

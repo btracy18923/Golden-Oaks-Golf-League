@@ -140,6 +140,6 @@ class ButtonBarUIService {
   /// Builds a spacer widget to maintain button positioning in button bars
   /// Use this when you want to show fewer buttons but maintain their positions
   static Widget buildSpacer() {
-    return Expanded(child: SizedBox());
+    return const Expanded(child: SizedBox());
   }
 }

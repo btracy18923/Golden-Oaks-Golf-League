@@ -120,7 +120,7 @@ class ClosestPinUIService {
             ),
             textAlign: TextAlign.center,
           ),
-          SizedBox(height: 8),
+          const SizedBox(height: 8),
           Text(
             'Selected Players: $playerCount',
             style: TextStyle(
@@ -142,7 +142,7 @@ class ClosestPinUIService {
     
     return Card(
       elevation: 3,
-      margin: EdgeInsets.all(4),
+      margin: const EdgeInsets.all(4),
       child: Container(
         padding: padding,
         decoration: BoxDecoration(
@@ -164,7 +164,7 @@ class ClosestPinUIService {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
@@ -210,7 +210,7 @@ class ClosestPinUIService {
                 ),
               ],
             ),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             Container(
               width: double.infinity,
               height: 40,
@@ -319,7 +319,7 @@ class ClosestPinUIService {
               ),
             ),
           ),
-          Spacer(),
+          const Spacer(),
           Padding(
             padding: EdgeInsets.symmetric(horizontal: padding.left / 2),
             child: SizedBox(

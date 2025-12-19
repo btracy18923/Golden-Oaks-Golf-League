@@ -21,7 +21,7 @@ class ResponsiveTypography {
   static double getBodyText(BuildContext context) {
     switch (_getDeviceType(context)) {
       case 'phone':
-        return 22;
+        return 12;  //Choose Course
       case 'tablet8':
         return 18;
       case 'tablet10':
@@ -35,7 +35,7 @@ class ResponsiveTypography {
   static double getLabel(BuildContext context) {
     switch (_getDeviceType(context)) {
       case 'phone':
-        return 21;
+        return 14;
       case 'tablet8':
         return 24;
       case 'tablet10':
@@ -49,7 +49,7 @@ class ResponsiveTypography {
   static double getHeading(BuildContext context) {
     switch (_getDeviceType(context)) {
       case 'phone':
-        return 22;
+        return 14;
       case 'tablet8':
         return 20;
       case 'tablet10':
@@ -63,7 +63,7 @@ class ResponsiveTypography {
   static double getDisplay(BuildContext context) {
     switch (_getDeviceType(context)) {
       case 'phone':
-        return 24;
+        return 14;
       case 'tablet8':
         return 24;
       case 'tablet10':
@@ -77,7 +77,7 @@ class ResponsiveTypography {
   static double getSmall(BuildContext context) {
     switch (_getDeviceType(context)) {
       case 'phone':
-        return 20;
+        return 14;  //Select Course
       case 'tablet8':
         return 22;
       case 'tablet10':
@@ -91,8 +91,7 @@ class ResponsiveTypography {
   static double getButton(BuildContext context) {
     switch (_getDeviceType(context)) {
       case 'phone':
-        return 18;
-        return 20;
+        return 14;  //Buttons
       case 'tablet10':
         return 30;
       default:
@@ -104,7 +103,7 @@ class ResponsiveTypography {
   static double getTableHeader(BuildContext context) {
     switch (_getDeviceType(context)) {
       case 'phone':
-        return 18;
+        return 14;
       case 'tablet8':
         return 16;
       case 'tablet10':
@@ -118,7 +117,7 @@ class ResponsiveTypography {
   static double getAppBarTitle(BuildContext context) {
     switch (_getDeviceType(context)) {
       case 'phone':
-        return 24;
+        return 18;
       case 'tablet8':
         return 24;
       case 'tablet10':

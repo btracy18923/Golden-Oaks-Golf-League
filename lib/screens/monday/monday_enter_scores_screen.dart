@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../services/UI/enter_scores_UI_service.dart';
 import '../../services/UI/custom_keypad_service.dart';
+import '../../services/UI/button_bar_UI_service.dart';
 import '../../services/factories/auto_fill_factory.dart';
 import '../../services/shared/swap_service.dart';
 import '../../services/shared/league_purse_service.dart';
@@ -10,8 +11,6 @@ import '../../services/payout_validation_service.dart';
 import '../../services/database_helper.dart';
 import '../../services/screen_data_retention_service.dart';
 import '../../services/skat_adjustment_service.dart';
-import '../../services/device_detection_service.dart' as DeviceDetection;
-import '../../services/responsive_typography.dart';
 import '../../models/league.dart';
 import 'monday_results_screen.dart';
 import 'monday_closest_pin_screen.dart';
@@ -20,10 +19,10 @@ class MondayEnterScoresScreen extends StatefulWidget {
   final List<Map<String, dynamic>>? selectedPlayers;
   final double? playersAnte;
   
-  const MondayEnterScoresScreen({Key? key, this.selectedPlayers, this.playersAnte}) : super(key: key);
+  const MondayEnterScoresScreen({super.key, this.selectedPlayers, this.playersAnte});
 
   @override
-  _MondayEnterScoresScreenState createState() => _MondayEnterScoresScreenState();
+  State<MondayEnterScoresScreen> createState() => _MondayEnterScoresScreenState();
 }
 
 class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
@@ -59,7 +58,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
   bool _hasBeenShuffled = false;
   
   // Focus nodes for SKATS input fields - organized by group and player index
-  List<List<FocusNode?>> _skatsFocusNodes = [
+  final List<List<FocusNode?>> _skatsFocusNodes = [
     [null, null, null, null], // Group 0 (Group 1)
     [null, null, null, null], // Group 1 (Group 2)
     [null, null, null, null], // Group 2 (Group 3)
@@ -94,11 +93,6 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     if (widget.selectedPlayers != null && widget.playersAnte != null) {
       double freshSkatPurse = widget.selectedPlayers!.length * widget.playersAnte!;
       LeaguePurseService.setSkatPurse(freshSkatPurse);
-
-      //print("Fresh Skat Purse calculation:");
-      //print("  Players: ${widget.selectedPlayers!.length}");
-      //print("  Player Ante: \$${widget.playersAnte!.toStringAsFixed(2)}");
-      //print("  Skat Purse: \$${freshSkatPurse.toStringAsFixed(2)}");
 
       // Only calculate Closest Pin Purse if NOT returning from Closest Pin screen
       // If returning from Closest Pin screen, the purse has already been updated with remaining amount
@@ -286,7 +280,6 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
       setState(() {
         _keypadController.show();
       });
-      //print("Showing keypad for ${_currentFocusedPlayer?.name}");
     }
   }
   
@@ -302,7 +295,6 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
         _currentFocusedPlayer = null;
       }
     });
-    //print("Hiding keypad${keepFocus ? ' (keeping focus)' : ''}");
   }
 
   /// Properly unfocuses the current SKATS field
@@ -316,7 +308,6 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
           final focusNode = _skatsFocusNodes[groupIndex][playerIndex];
           if (focusNode != null && focusNode.hasFocus) {
             focusNode.unfocus();
-            //print("Unfocused field for ${_currentFocusedPlayer!.name}");
           }
           return;
         }
@@ -337,7 +328,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
               int skatsNum = int.parse(newValue);
               int skNumber = int.parse(player.skNumber);
               int difference = skatsNum - skNumber;
-              
+
               if (difference > 0) {
                 diffValue = '+$difference';
               } else if (difference < 0) {
@@ -346,7 +337,8 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
                 diffValue = '0';
               }
             } catch (e) {
-              //print("Error parsing values: $e");
+              // If parsing fails, keep diffValue empty
+              diffValue = '';
             }
           }
           // For 1-digit numbers, keep existing DIFF value or empty if new entry
@@ -371,8 +363,6 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
           if (shouldRecalculateMoney) {
             _recalculateMoneyFields();
           }
-          
-          //print("Updated ${player.name}: SKATS=$newValue, DIFF=$diffValue");
           return;
         }
       }
@@ -383,8 +373,6 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
   void _handleKeypadInput(String key) {
     if (_currentFocusedPlayer == null) return;
 
-    //print("Keypad key pressed: $key");
-
     if (key == 'backspace') {
       // Handle normal backspace functionality
       String? newInput = _keypadController.handleKeyPress(key);
@@ -393,7 +381,6 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
           // Live update the display while typing
           _updateSkatsField(_currentFocusedPlayer!, _keypadController.currentInput);
         });
-        //print("Current keypad input: ${_keypadController.currentInput}");
       }
     } else if (key == 'enter') {
 
@@ -425,11 +412,9 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
           // Live update the display while typing
           _updateSkatsField(_currentFocusedPlayer!, _keypadController.currentInput);
         });
-        //print("Current keypad input: ${_keypadController.currentInput}");
 
         // Auto-advance when 2 digits are entered
         if (_keypadController.currentInput.length == 2) {
-          //print("Auto-advancing to next field after 2 digits");
 
           // Check if all SKATS are complete and calculate money if so
           if (_areAllSkatsFieldsComplete()) {
@@ -437,7 +422,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
           }
 
           // Find current player position and move to next after a short delay
-          Future.delayed(Duration(milliseconds: 300), () {
+          Future.delayed(const Duration(milliseconds: 300), () {
             for (int groupIndex = 0; groupIndex < groups.length; groupIndex++) {
               for (int playerIndex = 0; playerIndex < groups[groupIndex].length; playerIndex++) {
                 if (groups[groupIndex][playerIndex].name == _currentFocusedPlayer!.name) {
@@ -476,14 +461,10 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     
     // If we reach here, we're at the end - hide keypad
     _hideKeypad();
-    //print("Reached end of SKATS input fields");
   }
 
   /// Auto fills SKATS data with random values between 30-40 for all players
   void _handleAutoFill() async {
-    //print("Auto Fill button pressed!");
-    //print("Groups before auto fill: ${groups.map((g) => g.map((p) => "${p.name}: ${p.skats}").toList()).toList()}");
-
     setState(() {
       final autoFillService = AutoFillFactory.create(League.monday);
       groups = autoFillService.autoFillData(groups);
@@ -491,8 +472,6 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
 
     // Hide keypad after auto-fill is complete
     _hideKeypad();
-
-    //print("Groups after auto fill: ${groups.map((g) => g.map((p) => "${p.name}: ${p.skats}").toList()).toList()}");
 
     // Automatically calculate money after auto-fill completes all SKATS
     if (_areAllSkatsFieldsComplete()) {
@@ -502,7 +481,6 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
 
   /// Calculates Skat money payouts for players with positive DIFF values
   Future<void> _handleSkatMoney() async {
-    //print("Skat \$\$\$ button pressed!");
     
     // Check if all SKATS data is entered before proceeding
     if (!_areAllSkatsFieldsComplete()) {
@@ -518,8 +496,6 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     // Calculate payouts using the payout validation service
     final payoutService = PayoutValidationService();
     Map<String, double> payouts = payoutService.calculateSkatPayouts(groups);
-    
-    //print("Calculated Skat payouts: $payouts");
     
     // Update the money field for each player
     setState(() {
@@ -541,7 +517,6 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
           );
           
           if (payout > 0) {
-            //print("Updated ${player.name}: money = $moneyValue (diff: ${player.diff})");
           }
         }
       }
@@ -557,24 +532,17 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
       double newMulliganPurse = currentMulligan + remainingSkatPurse;
       LeaguePurseService.setMulliganPurse(newMulliganPurse);
       LeaguePurseService.setRemainingPurse(0.0);
-      
-      //print("Transferred remaining Skat Purse (\$${remainingSkatPurse.toStringAsFixed(2)}) to Mulligan Purse");
-      //print("New Mulligan Purse: \$${newMulliganPurse.toStringAsFixed(2)}");
-      //print("Skat Purse now: \$0");
+
     } else if (remainingSkatPurse < 0) {
       // Negative remaining: take deficit from Mulligan Purse
       double deficit = -remainingSkatPurse; // Make positive
       double newMulliganPurse = currentMulligan - deficit;
       LeaguePurseService.setMulliganPurse(newMulliganPurse);
       LeaguePurseService.setRemainingPurse(0.0);
-      
-      //print("Skat Purse was short by \$${deficit.toStringAsFixed(2)}, taken from Mulligan Purse");
-      //print("New Mulligan Purse: \$${newMulliganPurse.toStringAsFixed(2)}");
-      //print("Skat Purse now: \$0");
+
     } else {
       // Exactly 0 remaining
       LeaguePurseService.setRemainingPurse(0.0);
-      //print("Skat Purse exactly balanced at \$0");
     }
     
     // Set Skat Purse to 0.0 after winnings are distributed
@@ -582,59 +550,28 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     
     // Apply Skat # adjustments based on DIFF values
     final skatAdjustmentService = SkatAdjustmentService();
-    Map<String, int> adjustments = await skatAdjustmentService.applySkatAdjustments(groups);
+    await skatAdjustmentService.applySkatAdjustments(groups);
     
     // Skat # adjustments applied silently without popup message
-    
-    //print("Skat money calculation completed");
-    //print("Total distributed: \$${totalDistributed.toStringAsFixed(2)}");
+
   }
 
-  /// Shows a summary of Skat # adjustments to the user
-  void _showSkatAdjustmentSummary(Map<String, int> adjustments) {
-    String summary = "Skat # Adjustments Applied:\n\n";
-    
-    adjustments.forEach((playerName, adjustment) {
-      String adjustmentText = adjustment > 0 ? "+$adjustment" : "$adjustment";
-      summary += "• $playerName: $adjustmentText\n";
-    });
-    
-    summary += "\nSkat # values have been updated in player profiles.";
-    
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Skat # Adjustments'),
-        content: Text(summary),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
-  }
 
   /// Handles the swap players functionality
   void _handleSwapPlayers() {
-    //print("Swap Players button pressed!");
     final updatedGroups = _swapService.handleSwapButtonPress(context, groups);
     if (updatedGroups != null) {
       setState(() {
         groups = updatedGroups;
       });
-      //print("Players swapped successfully");
     }
   }
 
   /// Handles player tap for swap selection
   void _onPlayerTap(int groupIndex, int playerIndex, PlayerData player) {
-    //print("Player tapped: ${player.name}");
     
     // Prevent any swap functionality if SKATS data exists
     if (_hasAnySkatsData()) {
-      //print("Swap disabled due to SKATS data - ignoring player tap");
       return;
     }
     
@@ -646,11 +583,9 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
   /// Handles empty slot tap for swap selection
   void _onEmptySlotTap(int groupIndex, int playerIndex) {
     String slotKey = 'empty_${groupIndex + 1}_$playerIndex';
-    //print("Empty slot tapped: $slotKey");
     
     // Prevent any swap functionality if SKATS data exists
     if (_hasAnySkatsData()) {
-      //print("Swap disabled due to SKATS data - ignoring empty slot tap");
       return;
     }
     
@@ -702,20 +637,17 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
         // Check if player has a name (is not empty slot) and SKATS field is incomplete
         if (player.name.isNotEmpty) {
           if (player.skats.length != 2) {
-            //print("Player ${player.name} has incomplete SKATS: '${player.skats}'");
             return false;
           }
           // Additional validation: check if it's a valid 2-digit number
           try {
             int.parse(player.skats);
           } catch (e) {
-            //print("Player ${player.name} has invalid SKATS: '${player.skats}'");
             return false;
           }
         }
       }
     }
-    //print("All SKATS fields are complete");
     return true;
   }
 
@@ -751,8 +683,6 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
   void _recalculateMoneyFields() {
     final payoutService = PayoutValidationService();
     Map<String, double> payouts = payoutService.calculateSkatPayouts(groups);
-    
-    //print("Recalculating money fields with new DIFF values");
     
     // Update money fields for all players
     for (int groupIndex = 0; groupIndex < groups.length; groupIndex++) {
@@ -802,19 +732,18 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
   /// Handles SKATS input change and calculates DIFF automatically
   /// Also recalculates money fields if Skat $$$ button was previously used
   void _onSkatsChanged(PlayerData player, String skatValue) {
-    //print("SKATS changed for ${player.name}: $skatValue");
     
     // Only process if we have a 2-digit number
     if (skatValue.length == 2) {
       try {
         int skatsNum = int.parse(skatValue);
-        
+
         // Calculate DIFF (SKATS - SK #)
         String diffValue = '';
         if (player.skNumber.isNotEmpty) {
           int skNumber = int.parse(player.skNumber);
           int difference = skatsNum - skNumber;
-          
+
           // Format with appropriate sign
           if (difference > 0) {
             diffValue = '+$difference';
@@ -824,10 +753,10 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
             diffValue = '0';
           }
         }
-        
+
         // Check if money calculations are active before updating
         bool shouldRecalculateMoney = _hasMoneyCalculations();
-        
+
         // Find and update the player in groups, then move focus
         setState(() {
           for (int groupIndex = 0; groupIndex < groups.length; groupIndex++) {
@@ -840,16 +769,14 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
                   diff: diffValue,
                   money: player.money,
                 );
-                //print("Updated ${player.name}: SKATS=$skatValue, DIFF=$diffValue");
-                
+
                 // If money calculations were previously done, recalculate all money fields
                 if (shouldRecalculateMoney) {
-                  //print("Recalculating money fields due to SKATS change");
                   _recalculateMoneyFields();
                 }
-                
+
                 // Move focus to next SKATS field after a short delay
-                Future.delayed(Duration(milliseconds: 100), () {
+                Future.delayed(const Duration(milliseconds: 100), () {
                   _moveToNextSkatsField(groupIndex, playerIndex);
                 });
                 return; // Exit once found and updated
@@ -857,9 +784,8 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
             }
           }
         });
-        
       } catch (e) {
-        //print("Error parsing SKATS value: $skatValue");
+        // If parsing fails, silently ignore
       }
     }
     // For 1-digit input, update SKATS field but don't calculate DIFF yet
@@ -875,7 +801,6 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
                 diff: '', // Keep DIFF empty for 1-digit input
                 money: player.money,
               );
-              //print("Updated ${player.name}: SKATS=$skatValue, DIFF='' (waiting for 2nd digit)");
               return; // Exit once found and updated
             }
           }
@@ -920,8 +845,6 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
           // Restore shuffle state
           _hasBeenShuffled = ScreenDataRetentionService().playersShuffled ?? false;
 
-          //print("Restored player groups with SKAT data from retention service");
-
           // Money calculation is now handled before navigation to Closest Pin screen
           // No need to recalculate when returning
 
@@ -944,19 +867,15 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
 
         // Validate and sync with current selected players
         _validateAndSyncWithSelectedPlayers();
-
-        //print("Restored and synchronized shuffled player order from previous session");
       } else {
         // No saved order, populate normally
         _populateGroupsWithSelectedPlayers();
-        //print("Populated groups with fresh player selection");
       }
 
       setState(() {
         // Trigger UI update after loading/populating
       });
     } catch (e) {
-      //print("Error initializing player groups: $e");
       // Fallback to normal population
       _hasBeenShuffled = false;
       _populateGroupsWithSelectedPlayers();
@@ -972,8 +891,6 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
         // Save the current player order
         String playerOrder = _serializePlayerOrder();
         await DatabaseHelper().setSetting('monday_player_order', playerOrder, league: League.monday);
-        
-        //print("Shuffle state and player order saved");
       }
     } catch (e) {
       //print("Error saving shuffle state: $e");
@@ -1037,8 +954,6 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
           }
         }
       }
-      
-      //print("Player order restored from saved data");
     } catch (e) {
       //print("Error deserializing player order: $e");
     }
@@ -1063,9 +978,6 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
       selectedPlayerNames.add(playerName);
     }
     
-    //print("Players in restored groups: $playersInGroups");
-    //print("Currently selected players: $selectedPlayerNames");
-    
     // Find players that need to be added (in selection but not in groups)
     Set<String> playersToAdd = selectedPlayerNames.difference(playersInGroups);
     
@@ -1075,7 +987,6 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     // Remove players that are no longer selected
     for (String playerName in playersToRemove) {
       _removePlayerFromGroups(playerName);
-      //print("Removed deselected player: $playerName");
     }
     
     // Add newly selected players
@@ -1086,7 +997,6 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
       );
       if (playerData.isNotEmpty) {
         _addPlayerToGroups(playerName, playerData['skat_number']?.toString() ?? '');
-        //print("Added newly selected player: $playerName");
       }
     }
   }
@@ -1131,22 +1041,15 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     ));
   }
 
-  /// Clears the shuffle state (call this when starting a new game session)
-  static Future<void> clearShuffleState() async {
-    try {
-      await DatabaseHelper().setSetting('monday_players_shuffled', 'false', league: League.monday);
-      await DatabaseHelper().setSetting('monday_player_order', '', league: League.monday);
-      //print("Shuffle state cleared for new game session");
-    } catch (e) {
-      //print("Error clearing shuffle state: $e");
-    }
-  }
 
   /// Handles the Return button press with proper orientation management
   void _handleReturn() async {
     // Save shuffle state if shuffling occurred in this session
     await _saveShuffleState();
-    
+
+    // Check if widget is still mounted before using context
+    if (!mounted) return;
+
     // Set landscape orientation before popping to prevent brief portrait flash
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.landscapeLeft,
@@ -1157,7 +1060,6 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
 
   /// Handles the Shuffle button press to randomize player order
   void _handleShuffle() {
-    //print("Shuffle button pressed!");
     
     // Collect all players from all groups
     List<PlayerData> allPlayers = [];
@@ -1207,8 +1109,6 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
       // Mark that shuffling occurred in this session
       _shuffledInCurrentSession = true;
     });
-    
-    //print("Players shuffled successfully! Total players redistributed: ${allPlayers.length}");
   }
 
 
@@ -1228,15 +1128,6 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     return _handleShuffle;
   }
 
-  /// Handles when shuffle button is pressed but disabled
-  void _handleShuffleDisabled() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Players were already shuffled in a previous session'),
-        duration: Duration(seconds: 2),
-      ),
-    );
-  }
 
   /// Handles when shuffle button is pressed but disabled due to SKATS data
   void _handleShuffleDisabledDueToSkats() {
@@ -1266,88 +1157,45 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     );
   }
 
-  /// Converts DeviceDetectionService.DeviceType to EnterScoresUIService.DeviceType
-  DeviceType _convertToUIServiceDeviceType(DeviceDetection.DeviceType detectionServiceType) {
-    switch (detectionServiceType) {
-      case DeviceDetection.DeviceType.phone6Point5:
-        return DeviceType.phone6_5;
-      case DeviceDetection.DeviceType.tablet8Inch:
-        return DeviceType.tablet8;
-      case DeviceDetection.DeviceType.tablet10Inch:
-        return DeviceType.tablet10;
-    }
-  }
-
   /// Builds bottom buttons with dynamic SWAP button text
   Widget _buildBottomButtonsWithSwap() {
-    final detectedDeviceType = DeviceDetection.DeviceDetectionService.getDeviceType(context);
-    final deviceType = _convertToUIServiceDeviceType(detectedDeviceType);
-    final padding = EnterScoresUIService.getResponsivePadding(deviceType);
-
-    return Container(
-      color: Colors.grey[300],
-      padding: EdgeInsets.all(padding.left / 2),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          _buildCustomButton(context, 'Back', Colors.blue[300]!, _handleReturn),
-          _buildCustomButton(context, 'Shuffle', _getShuffleButtonColor(), _getShuffleButtonHandler()),
-          _buildCustomButton(context, _swapService.getSwapButtonText(), _getSwapButtonColor(), _getSwapButtonHandler()),
-          _buildCustomButton(context, _getSkatButtonText(), _getSkatButtonColor(), _getSkatButtonHandler()),
-        ],
-      ),
-    );
-  }
-
-  /// Builds a custom button with dynamic text support
-  Widget _buildCustomButton(BuildContext context, String text, Color color, VoidCallback onPressed) {
-    final detectedDeviceType = DeviceDetection.DeviceDetectionService.getDeviceType(context);
-    final deviceType = _convertToUIServiceDeviceType(detectedDeviceType);
-    final fontSize = EnterScoresUIService.getResponsiveFontSize(deviceType, isHeader: true);
-    final padding = EnterScoresUIService.getResponsivePadding(deviceType);
-
-    // Adjust button text for smaller screens
-    String displayText = text;
-    if (detectedDeviceType == DeviceDetection.DeviceType.phone6Point5) {
-      if (text == 'Back') displayText = '◄---- Back   ';
-      if (text == 'Closest Pin') displayText = 'ClosePin';
-      if (text.startsWith('SWAP') && text != 'SWAP Players') displayText = 'SWAP'; // Keep swap service text short on phones
-    }
-    
-    return Expanded(
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: padding.left / 2),
-        child: ElevatedButton(
-          onPressed: onPressed,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: color,
-            padding: EdgeInsets.symmetric(vertical: padding.top / 2),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8.0),
-              side: const BorderSide(color: Colors.black, width: 1),
-            ),
-          ),
-          child: Text(
-            displayText,
-            style: ResponsiveTypography.buttonStyle(context,
-              fontWeight: FontWeight.bold,
-              color: Colors.black,
-            ),
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
+    return ButtonBarUIService.buildButtonBar(
+      context,
+      backgroundColor: Colors.grey[300]!,
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: [
+        ButtonBarUIService.buildActionButton(
+          context,
+          text: 'Back',
+          color: Colors.blue[300]!,
+          onPressed: _handleReturn,
         ),
-      ),
+        ButtonBarUIService.buildActionButton(
+          context,
+          text: 'Shuffle',
+          color: _getShuffleButtonColor(),
+          onPressed: _getShuffleButtonHandler(),
+        ),
+        ButtonBarUIService.buildActionButton(
+          context,
+          text: _swapService.getSwapButtonText(),
+          color: _getSwapButtonColor(),
+          onPressed: _getSwapButtonHandler(),
+        ),
+        ButtonBarUIService.buildActionButton(
+          context,
+          text: _getSkatButtonText(),
+          color: _getSkatButtonColor(),
+          onPressed: _getSkatButtonHandler(),
+        ),
+      ],
     );
   }
+
 
 //************************************************************************************************
   @override
   Widget build(BuildContext context) {
-    final screenSize = MediaQuery.of(context).size;
-    final isTablet = screenSize.width > 600;
-    final isLandscape = screenSize.width > screenSize.height;
 
     return Scaffold(
       backgroundColor: Colors.grey[100],
@@ -1390,9 +1238,9 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
   /// Gets the text for the Skat/Results button based on purse amounts
   String _getSkatButtonText() {
     if (LeaguePurseService.skatPurse > 0) {
-      return 'Close Pin Winners';
+      return 'Close Pin ---➤';
     } else if (_hasMoneyCalculations()) {
-      return 'Close Pin Winners ---➤';
+      return 'Close Pin ---➤';
     } else {
       return 'PAYOUT ---➤';
     }
@@ -1421,7 +1269,6 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
 
   /// Handles the Close Pin Winners button press to navigate to Closest Pin screen
   void _handleClosePinWinners() {
-    //print("Close Pin Winners button pressed!");
 
     // Check if all SKATS data is entered before proceeding
     if (!_areAllSkatsFieldsComplete()) {
@@ -1458,7 +1305,6 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
 
   /// Handles the RESULTS button press to show game results
   void _handleResults() {
-    //print("RESULTS button pressed!");
     
     // Capture data in the retention service before transitioning to results
     ScreenDataRetentionService().captureEnterScoresData(

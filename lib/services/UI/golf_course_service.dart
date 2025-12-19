@@ -94,7 +94,7 @@ class GolfCourseUIService {
             height: 40,
             decoration: BoxDecoration(
               color: Colors.grey[200],
-              border: Border(bottom: BorderSide(color: Colors.grey)),
+              border: const Border(bottom: BorderSide(color: Colors.grey)),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,

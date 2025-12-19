@@ -857,7 +857,7 @@ class _MondayAdminScreenState extends State<MondayAdminScreen> {
 
   Widget _buildDownloadButton(String title, IconData icon, Color bgColor, VoidCallback onPressed) {
     final fontScale = DeviceDetectionService.getFontScale(context);
-    final baseFontSize = 28.0;
+    const baseFontSize = 14.0;
     final responsiveFontSize = baseFontSize * fontScale;
 
     return SizedBox(

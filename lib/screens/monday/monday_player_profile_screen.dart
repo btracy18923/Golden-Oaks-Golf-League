@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../../services/database_helper.dart';
 import '../../models/league.dart';
 import '../../services/UI/player_profile_service.dart';
+import '../../services/UI/button_bar_UI_service.dart';
 import '../../services/firebase_upload_service.dart';
 import '../../services/device_detection_service.dart';
 import '../../services/responsive_typography.dart';
@@ -108,56 +109,6 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
     }
   }
 
-  /// Manual Firebase upload for testing
-  Future<void> _manualFirebaseUpload() async {
-    try {
-      
-      // Test Firebase connection first
-      final isConnected = await _firebaseUploadService.isFirebaseConnected();
-      
-      if (!isConnected) {
-        _showErrorDialog('Cannot connect to Firebase. Check your internet connection.');
-        return;
-      }
-      
-      // Get current player count
-      final players = await _databaseHelper.getPlayersByLeague(_selectedLeague);
-      
-      // Show loading dialog
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const AlertDialog(
-          content: Row(
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(width: 16),
-              Text('Uploading to Firebase...'),
-            ],
-          ),
-        ),
-      );
-      
-      // Attempt upload
-      final success = await _firebaseUploadService.uploadPlayerTable(_selectedLeague);
-      
-      // Close loading dialog
-      Navigator.of(context).pop();
-      
-      if (success) {
-        _showSuccessDialog('Successfully uploaded ${players.length} players to Firebase!\\n\\nCheck Firebase collections:\\n• M_player_profile\\n• W_player_profile');
-      } else {
-        _showErrorDialog('Failed to upload players to Firebase. Check console for details.');
-      }
-      
-      
-    } catch (e) {
-      // Close loading dialog if still open
-      Navigator.of(context).pop();
-      _showErrorDialog('Upload error: $e');
-    }
-  }
-
   Future<void> _loadPlayerList() async {
     try {
       final players = await _databaseHelper.getPlayersByLeague(_selectedLeague);
@@ -172,69 +123,6 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
   /// Simple refresh without any dialog - just reload the player list
   Future<void> _refreshPlayerList() async {
     await _loadPlayerList();
-  }
-
-  /// Special function to replace all Skat numbers to 35 (testing feature)
-  Future<void> _replaceAllSkatNumbersTo35() async {
-    // Show confirmation dialog first
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirm Replace to 35'),
-        content: RichText(
-          text: const TextSpan(
-            style: TextStyle(color: Colors.black, fontSize: 16),
-            children: [
-              TextSpan(text: 'Are you sure you want to replace all Skat # values to 35?\n'),
-              TextSpan(text: 'This usually is done only for testing purposes.\n'),
-              TextSpan(text: 'Click '),
-              TextSpan(text: 'Cancel', style: TextStyle(fontWeight: FontWeight.bold)),
-              TextSpan(text: ' if you are not sure.\n'),
-              TextSpan(text: 'This cannot be undone.\n\n'),
-              TextSpan(text: 'This will affect all players in the current league.'),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Replace'),
-          ),
-        ],
-      ),
-    );
-    
-    if (confirmed != true) return;
-    
-    try {
-      // Update all players' Skat # to 35
-      final players = await _databaseHelper.getPlayersByLeague(_selectedLeague);
-      for (var player in players) {
-        await _databaseHelper.updatePlayer(player['player_number'], {
-          'player_number': player['player_number'],
-          'first': player['first'],
-          'last': player['last'],
-          'skat_number': 35,
-          'league': player['league'],
-          'cell': player['cell'],
-          'email': player['email'],
-        });
-      }
-      
-      // Reload the updated player list
-      await _refreshPlayerList();
-      
-      _showSuccessDialog('All Skat # values replaced to 35');
-    } catch (e) {
-      _showErrorDialog('Error updating players: $e');
-      // Ensure player list is reloaded even if update fails
-      await _loadPlayerList();
-    }
   }
 
   void _clearForm() {
@@ -531,19 +419,6 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
     );
   }
 
-  Widget _buildFormField(String label, TextEditingController controller, FocusNode focusNode, FocusNode? nextFocus, {TextInputType? keyboardType, List<TextInputFormatter>? inputFormatters}) {
-    return PlayerProfileService.buildFormField(
-      context,
-      label,
-      controller,
-      focusNode,
-      nextFocus,
-      _selectedPlayer != null ? _updatePlayer : null,
-      keyboardType: keyboardType,
-      inputFormatters: inputFormatters,
-    );
-  }
-
   Widget _buildPlayerTable() {
     return PlayerProfileService.buildPlayerTable(
       context,
@@ -660,26 +535,6 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
   }
   
   
-  Widget _buildFormSection() {
-    return PlayerProfileService.buildFormSection(
-      context,
-      _buildFormField,
-      _idController,
-      _firstController,
-      _lastController,
-      _skatController,
-      _cellController,
-      _emailController,
-      _idFocus,
-      _firstFocus,
-      _lastFocus,
-      _skatFocus,
-      _cellFocus,
-      _emailFocus,
-      _buildActionButtons(),
-    );
-  }
-  
   Widget _buildFormSectionWithoutButtons() {
     return PlayerProfileService.buildFormSectionWithoutButtons(
       context,
@@ -698,29 +553,7 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
       _emailFocus,
     );
   }
-  
-  
-  
-  Widget _buildButtonFooterLandscape() {
-    return PlayerProfileService.buildButtonFooterLandscape(
-      _addPlayer,
-      _deletePlayer,
-      _clearForm,
-      () => Navigator.of(context).pop(),
-    );
-  }
-  
-  Widget _buildActionButtons() {
-    return PlayerProfileService.buildActionButtons(
-      _addPlayer,
-      _updatePlayer,
-      _deletePlayer,
-      _clearForm,
-      () => Navigator.of(context).popUntil((route) => route.isFirst),
-    );
-  }
-  
-  
+
   Widget _buildPhoneLandscapeLayout() {
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -747,7 +580,7 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
             // Player table (65% width)
             Expanded(
               flex: 65,
-              child: Container(
+              child: SizedBox(
                 height: constraints.maxHeight,
                 child: _buildPlayerTable(),
               ),
@@ -761,13 +594,7 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
   
 
   Widget _buildFullScreenButtonBar() {
-    // Reduce height for 6.5" phones to prevent overflow
-    final isPhone = DeviceDetectionService.is6Point5Phone(context);
-    final buttonBarHeight = isPhone ? 60.0 : 90.0;
-    
     return Container(
-      width: double.infinity,
-      height: buttonBarHeight,
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
@@ -779,63 +606,33 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
           ),
         ],
       ),
-      padding: const EdgeInsets.all(12.0),
-      child: Row(
+      child: ButtonBarUIService.buildButtonBar(
+        context,
+        backgroundColor: Colors.white,
         children: [
-          Expanded(
-            child: ElevatedButton(
-              onPressed: () => Navigator.of(context).pop(),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue[300],
-                foregroundColor: Colors.black,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
-                padding: EdgeInsets.all(isPhone ? 6.0 : 12.0),
-                alignment: Alignment.center,
-              ),
-              child: Text('◄---- Back      ', style: TextStyle(fontSize: ResponsiveTypography.getButton(context), fontWeight: FontWeight.bold)),
-            ),
+          ButtonBarUIService.buildActionButton(
+            context,
+            text: '◄---- Back',
+            color: Colors.blue[300]!,
+            onPressed: () => Navigator.of(context).pop(),
           ),
-          const SizedBox(width: 4),
-          Expanded(
-            child: ElevatedButton(
-              onPressed: _clearForm,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.orange[300],
-                foregroundColor: Colors.black,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
-                padding: EdgeInsets.all(isPhone ? 8.0 : 12.0),
-                alignment: Alignment.center,
-              ),
-              child: Text('Clear', style: TextStyle(fontSize: ResponsiveTypography.getButton(context), fontWeight: FontWeight.bold)),
-            ),
+          ButtonBarUIService.buildActionButton(
+            context,
+            text: 'Clear',
+            color: Colors.orange[300]!,
+            onPressed: _clearForm,
           ),
-          const SizedBox(width: 4),
-          Expanded(
-            child: ElevatedButton(
-              onPressed: _selectedPlayer != null ? _deletePlayer : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _selectedPlayer != null ? Colors.red[300] : Colors.grey[400],
-                foregroundColor: Colors.black,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
-                padding: EdgeInsets.all(isPhone ? 8.0 : 12.0),
-                alignment: Alignment.center,
-              ),
-              child: Text('Delete', style: TextStyle(fontSize: ResponsiveTypography.getButton(context), fontWeight: FontWeight.bold)),
-            ),
+          ButtonBarUIService.buildActionButton(
+            context,
+            text: 'Delete',
+            color: _selectedPlayer != null ? Colors.red[300]! : Colors.grey[400]!,
+            onPressed: _selectedPlayer != null ? _deletePlayer : null,
           ),
-          const SizedBox(width: 4),
-          Expanded(
-            child: ElevatedButton(
-              onPressed: _addPlayer,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green[300],
-                foregroundColor: Colors.black,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
-                padding: EdgeInsets.all(isPhone ? 8.0 : 12.0),
-                alignment: Alignment.center,
-              ),
-              child: Text('Add Player', style: TextStyle(fontSize: ResponsiveTypography.getButton(context), fontWeight: FontWeight.bold)),
-            ),
+          ButtonBarUIService.buildActionButton(
+            context,
+            text: 'Add Player',
+            color: Colors.green[300]!,
+            onPressed: _addPlayer,
           ),
         ],
       ),

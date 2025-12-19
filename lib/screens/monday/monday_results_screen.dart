@@ -165,11 +165,10 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
                 recordId, 
                 'skat_winnings', 
                 skatWinnings,
-                League.monday
-              );
+                League.monday);
             }
           } catch (e) {
-            //print("Error parsing SKAT winnings for ${player.name}: $e");
+            // Error parsing SKAT winnings - skip this player
           }
         }
       }
@@ -197,8 +196,9 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
       
       // Upload scores to Firebase after successful database save
       await _uploadScoresToFirebase();
-      
+
       // Show success message
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Results saved successfully! ${allSelectedPlayers.length} player records created and updated.'),
@@ -208,6 +208,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
       );
     } catch (e) {
       // Show error message
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error saving results: $e'),
@@ -221,12 +222,9 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
   /// Upload player scores to Firebase after saving to database
   Future<void> _uploadScoresToFirebase() async {
     try {
-      final success = await _firebaseUploadService.uploadPlayerScoresTableWithQueue(League.monday);
-      if (success) {
-      } else {
-      }
+      await _firebaseUploadService.uploadPlayerScoresTableWithQueue(League.monday);
     } catch (e) {
-      //print('Error uploading/queuing player scores: $e');
+      // Error uploading/queuing player scores - will retry on next sync
     }
   }
 
@@ -291,8 +289,6 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
     const double basePadding = 8.0;
     const double contentPadding = 12.0;
     const double iconSize = 18;
-    const double buttonHeight = 4;
-    const double buttonFontSize = 22;
     
     return Scaffold(
       backgroundColor: Colors.grey[100],
@@ -331,8 +327,6 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
                         '',
                         _buildUnifiedData(),
                         Icons.summarize,
-                        true,
-                        false,
                         iconSize,
                       ),
                     ],
@@ -352,8 +346,6 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
     const double basePadding = 12.0;
     const double contentPadding = 16.0;
     const double iconSize = 20;
-    const double buttonHeight = 5;
-    const double buttonFontSize = 13;
     
     return Scaffold(
       backgroundColor: Colors.grey[100],
@@ -392,8 +384,6 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
                         '',
                         _buildUnifiedData(),
                         Icons.summarize,
-                        false,
-                        true,
                         iconSize,
                       ),
                     ],
@@ -413,8 +403,6 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
     const double basePadding = 16.0;
     const double contentPadding = 20.0;
     const double iconSize = 22;
-    const double buttonHeight = 6;
-    const double buttonFontSize = 24;
     
     return Scaffold(
       backgroundColor: Colors.grey[100],
@@ -453,8 +441,6 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
                         '',
                         _buildUnifiedData(),
                         Icons.summarize,
-                        false,
-                        false,
                         iconSize,
                       ),
                     ],
@@ -489,7 +475,11 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
   }
 
   /// Builds a data section with title, icon, and content
-  Widget _buildDataSection(String title, Widget content, IconData icon, bool is6InchPhone, bool is8InchTablet, double iconSize) {
+  Widget _buildDataSection(String title, Widget content, IconData icon, double iconSize) {
+    final screenSize = MediaQuery.of(context).size;
+    final is6InchPhone = screenSize.width <= 900;
+    final is8InchTablet = screenSize.width > 900 && screenSize.width <= 1200;
+
     final double sectionPadding = is6InchPhone ? 12 : (is8InchTablet ? 16 : 20);
     final double titleSize = is6InchPhone ? 16 : (is8InchTablet ? 18 : 20);
     final double spacingHeight = is6InchPhone ? 8 : (is8InchTablet ? 12 : 16);
@@ -534,15 +524,9 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // League Setup Data
-        if (_retentionService.hasParentScreenData()) 
+        if (_retentionService.hasParentScreenData())
           _buildParentScreenData(),
-        
-        // Player Selection and Game Results Data (combined row)
-        if (_retentionService.hasPlayerSelectionData() || _retentionService.hasEnterScoresData()) ...[
-          _buildPlayerAndGameResultsData(),
-          const SizedBox(height: 16),
-        ],
-        
+
         // Closest Pin Data
         if (_retentionService.hasClosestPinData()) ...[
           _buildClosestPinData(),
@@ -588,7 +572,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
             final double fontSize = is6InchPhone ? 22 : 24;
             
             return Container(
-              padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+              padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 8),
               decoration: BoxDecoration(
                 color: Colors.green[300],
                 borderRadius: BorderRadius.circular(4),
@@ -601,7 +585,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
                         color: Colors.black87,
-                        fontSize: fontSize,
+                        fontSize: fontSize -10,
                       ),
                     ),
                   ),
@@ -611,7 +595,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
                         color: Colors.black87,
-                        fontSize: fontSize,
+                        fontSize: fontSize - 10,
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -622,7 +606,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
                         color: Colors.black87,
-                        fontSize: fontSize,
+                        fontSize: fontSize - 10,
                       ),
                       textAlign: TextAlign.end,
                     ),
@@ -670,7 +654,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
                     color: Colors.black87,
-                    fontSize: fontSize,
+                    fontSize: fontSize - 10,
                   ),
                 ),
               ),
@@ -680,7 +664,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
                     color: Colors.black87,
-                    fontSize: fontSize,
+                    fontSize: fontSize - 10,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -691,7 +675,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
                     color: Colors.black87,
-                    fontSize: fontSize,
+                    fontSize: fontSize - 10,
                   ),
                   textAlign: TextAlign.end,
                   overflow: TextOverflow.ellipsis,
@@ -714,24 +698,18 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
           final screenSize = MediaQuery.of(context).size;
           final is6InchPhone = screenSize.width <= 900;
           final double fontSize = is6InchPhone ? 22 : 24;
-          
+
           return Text(
             'Golf Course: ${_retentionService.selectedGolfCourse ?? 'Not Selected'}',
             style: TextStyle(
               fontWeight: FontWeight.w600,
               color: Colors.black87,
-              fontSize: fontSize,
+              fontSize: fontSize - 10,
             ),
           );
         },
       ),
     );
-  }
-
-  /// Builds combined player selection and game results data in one row
-  Widget _buildPlayerAndGameResultsData() {
-    // This method is now empty since player count is shown in the Golf Course row
-    return const SizedBox.shrink();
   }
 
   /// Builds the closest pin data display
@@ -744,10 +722,8 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
     }
 
     final playerCounts = _retentionService.playerClosestPinCounts ?? {};
-    final playerWinnings = _retentionService.playerClosestPinWinnings ?? {};
-    
+
     final winnersCount = playerCounts.values.where((count) => count > 0).length;
-    playerWinnings.values.fold<double>(0.0, (sum, amount) => sum + amount);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -801,9 +777,9 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
             if (calculation == calculation.truncate()) {
               skatValue = calculation;
               break; // Use the first valid whole number calculation
-            } else if (fallbackValue == null) {
+            } else {
               // Store first calculation with remainder as fallback
-              fallbackValue = calculation;
+              fallbackValue ??= calculation;
             }
           }
         } catch (e) {
@@ -833,7 +809,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
                   child: Text(
                     'Skat Value: \$${skatValue.toStringAsFixed(2)}',
                     style: TextStyle(
-                      fontSize: fontSize + 9,
+                      fontSize: fontSize,
                       fontWeight: FontWeight.w600,
                       color: Colors.black87,
                     ),
@@ -843,7 +819,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
                   child: Text(
                     'SKAT Winners: $playersWithMoney',
                     style: TextStyle(
-                      fontSize: fontSize + 9,
+                      fontSize: fontSize,
                       fontWeight: FontWeight.w600,
                       color: Colors.black87,
                     ),
@@ -924,8 +900,8 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
     final is8InchTablet = screenSize.width > 900 && screenSize.width <= 1200;
     
     // Responsive font sizes for table cells
-    final double fontSize = is6InchPhone ? 22 : (is8InchTablet ? 11 : 22);
-    final double cellPadding = is6InchPhone ? 4 : (is8InchTablet ? 6 : 8);
+    final double fontSize = is6InchPhone ? 14 : (is8InchTablet ? 11 : 22);
+    final double cellPadding = is6InchPhone ? 2 : (is8InchTablet ? 6 : 8);
     
     return Padding(
       padding: EdgeInsets.all(cellPadding),
@@ -979,7 +955,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(2),
                 decoration: BoxDecoration(
                   color: Colors.green[300],
                   border: Border(bottom: BorderSide(color: Colors.grey[400]!)),
@@ -987,24 +963,24 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
                 child: Row(
                   children: [
                     Expanded(
-                      flex: is6InchPhone ? 3 : 2,
+                      flex: is6InchPhone ? 2 : 2,
                       child: Text(
                         'Closest Pin Winners',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: is6InchPhone ? 22 : 24,
+                          fontSize: is6InchPhone ? 14 : 24,
                         ),
                       ),
                     ),
                     Expanded(
                       flex: 1,
                       child: Text(
-                        'Pins Won',
+                        'Won',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: is6InchPhone ? 22 : 24,
+                          fontSize: is6InchPhone ? 14 : 24,
                         ),
-                        textAlign: TextAlign.center,
+                        textAlign: TextAlign.right,
                       ),
                     ),
                     Expanded(
@@ -1013,7 +989,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
                         '\$\$\$',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: is6InchPhone ? 22 : 24,
+                          fontSize: is6InchPhone ? 14 : 24,
                         ),
                         textAlign: TextAlign.center,
                       ),
@@ -1022,7 +998,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
                 ),
               ),
               ...winners.map((winner) => Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
                 decoration: BoxDecoration(
                   border: Border(bottom: BorderSide(color: Colors.grey[300]!, width: 0.5)),
                 ),
@@ -1032,7 +1008,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
                       flex: is6InchPhone ? 3 : 2,
                       child: Text(
                         winner['name'] as String,
-                        style: TextStyle(fontSize: is6InchPhone ? 22 : 24),
+                        style: TextStyle(fontSize: is6InchPhone ? 14 : 24),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -1041,7 +1017,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
                       child: Text(
                         '${winner['pins']}',
                         textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: is6InchPhone ? 22 : 24),
+                        style: TextStyle(fontSize: is6InchPhone ? 14 : 24),
                       ),
                     ),
                     Expanded(
@@ -1050,9 +1026,10 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
                         '\$${(winner['winnings'] as double).round()}',
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          color: Colors.green[700],
+                          color: Colors.black,
                           fontWeight: FontWeight.w600,
-                          fontSize: is6InchPhone ? 22 : 24,
+                          fontSize: is6InchPhone ? 14 : 24,
+                          backgroundColor: Colors.yellow[200]
                         ),
                       ),
                     ),

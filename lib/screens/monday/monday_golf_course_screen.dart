@@ -6,6 +6,7 @@ import '../../models/league.dart';
 import '../../services/firebase_upload_service.dart';
 import '../../services/responsive_typography.dart';
 import '../../services/device_detection_service.dart';
+import '../../services/UI/button_bar_UI_service.dart';
 
 class MondayGolfCourseScreen extends StatefulWidget {
   final League? league;
@@ -87,11 +88,10 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
   void _uploadGolfCourseDataToFirebase() async {
     try {
       final league = widget.league ?? League.monday;
-      final success = await _firebaseUploadService.uploadGolfCourseTableWithQueue(league);
-      if (success) {
-      } else {
-      }
+      await _firebaseUploadService.uploadGolfCourseTableWithQueue(league);
+      // Upload completed (success or failure handled silently)
     } catch (e) {
+      // Error during upload (handled silently)
     }
   }
 
@@ -180,22 +180,26 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
       
       // Convert to mutable map and update _selectedCourse
       _selectedCourse = Map<String, dynamic>.from(updatedCourse);
-      
-      ScaffoldMessenger.of(context).showSnackBar(
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('$fieldName saved successfully'),
           duration: const Duration(seconds: 1),
         ),
-      );
-      
+        );
+      }
+
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error saving $fieldName: $e'),
           backgroundColor: Colors.red,
           duration: const Duration(seconds: 2),
         ),
-      );
+        );
+      }
     }
   }
 
@@ -403,7 +407,7 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
               width: labelWidth,
               child: Text(
                 '$label:',
-                style: ResponsiveTypography.smallStyle(context, fontWeight: FontWeight.bold),
+                style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
               ),
             ),
             Expanded(
@@ -496,7 +500,7 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
         // Overlay when keyboard is visible to prevent touch-through
         if (_isKeyboardVisible)
           Container(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             child: const Center(
               child: Icon(
                 Icons.keyboard,
@@ -522,71 +526,6 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
     );
   }
 
-  Widget _buildTabletCourseRow(Map<String, dynamic> course, double nameWidth, double phoneWidth, double par3Width, double teesWidth, double travelWidth) {
-    return Row(
-      children: [
-        _buildDataCell(course['name'] ?? '', nameWidth, leftAlign: true),
-        _buildDataCell(_formatPhoneNumber(course['phone'] ?? ''), phoneWidth),
-        _buildDataCell(course['Par3s']?.toString() ?? '', par3Width),
-        _buildDataCell(course['tees'] ?? '', teesWidth),
-        _buildDataCell(course['travel_time'] ?? '', travelWidth),
-      ],
-    );
-  }
-  
-  Widget _buildPhoneCourseList() {
-    return ListView.builder(
-      itemCount: _courses.length,
-      itemBuilder: (context, index) {
-        final course = _courses[index];
-        final isSelected = _selectedCourse?['id'] == course['id'];
-        
-        return Card(
-          margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 0),
-          color: isSelected ? Colors.lightGreen[200] : Colors.white,
-          child: ListTile(
-            title: Text(
-              course['name'] ?? '',
-              style: ResponsiveTypography.bodyTextStyle(context, fontWeight: FontWeight.bold),
-            ),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if ((course['phone'] ?? '').isNotEmpty)
-                  Text('Phone: ${_formatPhoneNumber(course['phone'])}', style: ResponsiveTypography.smallStyle(context)),
-                Row(
-                  children: [
-                    if ((course['Par3s']?.toString() ?? '').isNotEmpty)
-                      Text('Par3s: ${course['Par3s']}', style: ResponsiveTypography.smallStyle(context)),
-                    const SizedBox(width: 16),
-                  ],
-                ),
-                Row(
-                  children: [
-                    if ((course['tees'] ?? '').isNotEmpty)
-                      Text('Tees: ${course['tees']}', style: ResponsiveTypography.smallStyle(context)),
-                    const SizedBox(width: 16),
-                    if ((course['travel_time'] ?? '').isNotEmpty)
-                      Text('Travel: ${course['travel_time']}', style: ResponsiveTypography.smallStyle(context)),
-                  ],
-                ),
-              ],
-            ),
-            trailing: IconButton(
-              onPressed: () => _selectCourse(course),
-              icon: Icon(
-                isSelected ? Icons.check_circle : Icons.radio_button_unchecked,
-                color: isSelected ? Colors.green : Colors.grey,
-              ),
-              tooltip: 'Select Course',
-            ),
-            onTap: () => _selectCourse(course),
-          ),
-        );
-      },
-    );
-  }
-  
   String _formatPhoneNumber(String phone) {
     if (phone.isEmpty) return '';
     
@@ -601,48 +540,24 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
     return phone;
   }
 
-  Widget _buildHeaderCell(String text, double width, {bool leftAlign = false}) {
-    
-    return Container(
-      width: width,
-      height: 40,
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: leftAlign 
-        ? Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              text,
-              style: ResponsiveTypography.smallStyle(context, fontWeight: FontWeight.bold),
-            ),
-          )
-        : Center(
-            child: Text(
-              text,
-              style: ResponsiveTypography.smallStyle(context, fontWeight: FontWeight.bold),
-              textAlign: TextAlign.center,
-            ),
-          ),
-    );
-  }
-
   Widget _buildHeaderCellExpanded(String text, {bool leftAlign = false}) {
-    
+
     return Container(
       height: 40,
       padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: leftAlign 
+      child: leftAlign
         ? Align(
             alignment: Alignment.centerLeft,
             child: Text(
               text,
-              style: ResponsiveTypography.smallStyle(context, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: ResponsiveTypography.getSmall(context) - 4, fontWeight: FontWeight.bold),
               overflow: TextOverflow.ellipsis,
             ),
           )
         : Center(
             child: Text(
               text,
-              style: ResponsiveTypography.smallStyle(context, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: ResponsiveTypography.getSmall(context) - 4, fontWeight: FontWeight.bold),
               textAlign: TextAlign.center,
               overflow: TextOverflow.ellipsis,
             ),
@@ -651,57 +566,29 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
   }
 
   Widget _buildDataCellExpanded(String text, {bool leftAlign = false}) {
-    
+
     return Container(
       height: 40,
       padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: leftAlign 
+      child: leftAlign
         ? Align(
             alignment: Alignment.centerLeft,
             child: Text(
               text,
-              style: ResponsiveTypography.smallStyle(context),
+              style: TextStyle(fontSize: ResponsiveTypography.getSmall(context) - 4),
               overflow: TextOverflow.ellipsis,
             ),
           )
         : Center(
             child: Text(
               text,
-              style: ResponsiveTypography.smallStyle(context),
+              style: TextStyle(fontSize: ResponsiveTypography.getSmall(context) - 4),
               textAlign: TextAlign.center,
               overflow: TextOverflow.ellipsis,
             ),
           ),
     );
   }
-
-  Widget _buildDataCell(String text, double width, {bool leftAlign = false}) {
-    
-    return Container(
-      width: width,
-      height: 40,
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: leftAlign 
-        ? Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              text,
-              style: ResponsiveTypography.smallStyle(context),
-              overflow: TextOverflow.ellipsis,
-            ),
-          )
-        : Center(
-            child: Text(
-              text,
-              style: ResponsiveTypography.smallStyle(context),
-              textAlign: TextAlign.center,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-    );
-  }
-
-
 
   @override
   Widget build(BuildContext context) {
@@ -886,83 +773,35 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
   }
 
   Widget _buildFullScreenButtonBar() {
-    final isPhone = DeviceDetectionService.is6Point5Phone(context);
-    const double phoneHeight = 60.0;
-    const double tabletHeight = 90.0;
-    final buttonBarHeight = isPhone ? phoneHeight : tabletHeight;
-
-    return SizedBox(
-      height: buttonBarHeight,
-      child: Container(
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withValues(alpha: 0.3),
-              spreadRadius: 1,
-              blurRadius: 3,
-              offset: const Offset(0, -2),
-            ),
-          ],
+    return ButtonBarUIService.buildButtonBar(
+      context,
+      backgroundColor: Colors.white,
+      children: [
+        ButtonBarUIService.buildActionButton(
+          context,
+          text: '◄---- Back',
+          color: Colors.blue[300]!,
+          onPressed: () => Navigator.of(context).pop(),
         ),
-        padding: const EdgeInsets.all(12.0),
-        child: Row(
-          children: [
-            Expanded(
-              child: ElevatedButton(
-                onPressed: () => Navigator.of(context).pop(),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue[300],
-                  foregroundColor: Colors.black,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
-                  padding: EdgeInsets.all(isPhone ? 6.0 : 12.0),
-                ),
-                child: Text('◄---- Back     ', style: ResponsiveTypography.buttonStyle(context, fontWeight: FontWeight.bold)),
-              ),
-            ),
-            const SizedBox(width: 4),
-            Expanded(
-              child: ElevatedButton(
-                onPressed: _clearForm,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange[300],
-                  foregroundColor: Colors.black,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
-                  padding: EdgeInsets.all(isPhone ? 6.0 : 12.0),
-                ),
-                child: Text('Clear', style: ResponsiveTypography.buttonStyle(context, fontWeight: FontWeight.bold)),
-              ),
-            ),
-            const SizedBox(width: 4),
-            Expanded(
-              child: ElevatedButton(
-                onPressed: _selectedCourse != null ? _deleteCourse : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _selectedCourse != null ? Colors.red[300] : Colors.grey[400],
-                  foregroundColor: Colors.black,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
-                  padding: EdgeInsets.all(isPhone ? 6.0 : 12.0),
-                ),
-                child: Text('Delete', style: ResponsiveTypography.buttonStyle(context, fontWeight: FontWeight.bold)),
-              ),
-            ),
-            const SizedBox(width: 4),
-            Expanded(
-              child: ElevatedButton(
-                onPressed: _addCourse,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green[300],
-                  foregroundColor: Colors.black,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
-                  padding: EdgeInsets.all(isPhone ? 6.0 : 12.0),
-                ),
-                child: Text('Add Course', style: ResponsiveTypography.buttonStyle(context, fontWeight: FontWeight.bold)),
-              ),
-            ),
-          ],
+        ButtonBarUIService.buildActionButton(
+          context,
+          text: 'Clear',
+          color: Colors.orange[300]!,
+          onPressed: _clearForm,
         ),
-      ),
+        ButtonBarUIService.buildActionButton(
+          context,
+          text: 'Delete',
+          color: Colors.red[300]!,
+          onPressed: _selectedCourse != null ? _deleteCourse : null,
+        ),
+        ButtonBarUIService.buildActionButton(
+          context,
+          text: 'Add Course',
+          color: Colors.green[300]!,
+          onPressed: _addCourse,
+        ),
+      ],
     );
   }
 }
