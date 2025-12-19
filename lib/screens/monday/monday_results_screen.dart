@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../services/screen_data_retention_service.dart';
 import '../../services/UI/enter_scores_UI_service.dart';
+import '../../services/UI/button_bar_UI_service.dart';
 import '../../services/shared/league_purse_service.dart';
 import '../../services/database_helper.dart';
 import '../../models/league.dart';
@@ -110,8 +111,6 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
         return; // STOP HERE - Do not save to database or Firebase
       }
 
-      //print("Step A1: Creating rows for ${allSelectedPlayers.length} selected players");
-
       // STEP A1: Create initial rows for all selected players
       Map<String, int> playerToRecordId = {}; // Track record IDs for updates
       for (var player in allSelectedPlayers) {
@@ -141,7 +140,6 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
       }
       
       // STEP A2: Update Closest Pin Winnings for winners
-      //print("Step A2: Updating Closest Pin Winnings");
       for (String playerName in playerClosestPinWinnings.keys) {
         double closePinWinnings = playerClosestPinWinnings[playerName] ?? 0.0;
         
@@ -157,7 +155,6 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
       }
       
       // STEP A3: Update SKAT Winnings for players with money earnings
-      //print("Step A3: Updating SKAT Winnings");
       for (var player in allSelectedPlayers) {
         if (player.money.isNotEmpty && player.money.contains('\$') && playerToRecordId.containsKey(player.name)) {
           try {
@@ -178,7 +175,6 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
       }
       
       // STEP A4: Update SKAT data field with SKAT # from player profiles
-      //print("Step A4: Updating SKAT data field with SKAT # from profiles");
       for (var player in allSelectedPlayers) {
         if (playerToRecordId.containsKey(player.name)) {
           // Find player's SKAT # from database
@@ -225,12 +221,9 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
   /// Upload player scores to Firebase after saving to database
   Future<void> _uploadScoresToFirebase() async {
     try {
-      //print('Uploading/queuing player scores for Monday league...');
       final success = await _firebaseUploadService.uploadPlayerScoresTableWithQueue(League.monday);
       if (success) {
-        //print('Player scores upload initiated or queued successfully');
       } else {
-        //print('Failed to upload or queue player scores');
       }
     } catch (e) {
       //print('Error uploading/queuing player scores: $e');
@@ -348,7 +341,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
               ),
             ),
             const SizedBox(height: 4),
-            _buildSaveButton(0.4, buttonHeight, buttonFontSize, iconSize),
+            _buildSaveButton(),
           ],
         ),
       ),
@@ -409,7 +402,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
               ),
             ),
             const SizedBox(height: 5),
-            _buildSaveButton(0.35, buttonHeight, buttonFontSize, iconSize),
+            _buildSaveButton(),
           ],
         ),
       ),
@@ -470,79 +463,28 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
               ),
             ),
             const SizedBox(height: 6),
-            _buildSaveButton(0.3, buttonHeight, buttonFontSize, iconSize),
+            _buildSaveButton(),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildSaveButton(double widthRatio, double buttonHeight, double buttonFontSize, double iconSize) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final buttonWidth = MediaQuery.of(context).size.width * widthRatio;
-
-        return Align(
-          alignment: Alignment.centerLeft,
-          child: SizedBox(
-            width: buttonWidth,
-            child: ElevatedButton(
-              onPressed: _isSaving ? null : _saveResultsAndReturnToMainMenu,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue[600],
-                foregroundColor: Colors.white,
-                padding: EdgeInsets.symmetric(vertical: buttonHeight),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  side: const BorderSide(color: Colors.black, width: 1),
-                ),
-              ),
-              child: _isSaving
-                  ? Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        SizedBox(
-                          width: iconSize,
-                          height: iconSize,
-                          child: const CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Flexible(
-                          child: Text(
-                            'Saving...',
-                            style: TextStyle(
-                              fontSize: buttonFontSize,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    )
-                  : Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.save, size: iconSize),
-                        const SizedBox(width: 8),
-                        Flexible(
-                          child: Text(
-                            'Save Results',
-                            style: TextStyle(
-                              fontSize: buttonFontSize,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-            ),
-          ),
-        );
-      },
+  Widget _buildSaveButton() {
+    return ButtonBarUIService.buildButtonBar(
+      context,
+      backgroundColor: Colors.grey[100]!,
+      mainAxisAlignment: MainAxisAlignment.start,
+      children: [
+        ButtonBarUIService.buildActionButton(
+          context,
+          text: _isSaving ? 'Saving...' : 'Save Results',
+          color: Colors.blue[600]!,
+          onPressed: _isSaving ? null : _saveResultsAndReturnToMainMenu,
+        ),
+        ButtonBarUIService.buildSpacer(),
+        ButtonBarUIService.buildSpacer(),
+      ],
     );
   }
 
