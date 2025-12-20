@@ -597,55 +597,9 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
 
     if (DeviceDetectionService.is6Point5Phone(context)) {
       return _buildPhoneLayout();
-    } else if (DeviceDetectionService.is8Tablet(context)) {
-      return _buildTablet8Layout();
     } else {
       return _buildTablet10Layout();
     }
-  }
-  
-  Widget _buildTablet8Layout() {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Golf Course Info - Monday League- ${DeviceDetectionService.getDeviceName(context)}',
-          style: ResponsiveTypography.appBarTitleStyle(context),
-        ),
-        centerTitle: true,
-        backgroundColor: widget.league == League.monday ? Colors.green[700] : 
-                        widget.league == League.wednesday ? Colors.orange[700] : 
-                        Colors.cyan[700],
-        foregroundColor: Colors.white,
-      ),
-      resizeToAvoidBottomInset: true,
-      body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: Container(
-                color: Colors.grey[100],
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      flex: 35,
-                      child: _buildFormSection(),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      flex: 65,
-                      child: _buildCourseTable(),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            _buildFullScreenButtonBar(),
-          ],
-        ),
-      ),
-    );
   }
 
   Widget _buildTablet10Layout() {

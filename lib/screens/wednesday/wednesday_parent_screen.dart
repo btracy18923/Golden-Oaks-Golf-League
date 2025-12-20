@@ -56,19 +56,11 @@ class _WednesdayParentScreenState extends State<WednesdayParentScreen> {
 
   void _setOrientation() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // Use unified device detection service
-      final is8InchTablet = DeviceDetectionService.is8Tablet(context);
-
       // Lock to landscape mode for Wednesday League (matching Monday pattern)
       SystemChrome.setPreferredOrientations([
         DeviceOrientation.landscapeLeft,
         DeviceOrientation.landscapeRight,
       ]);
-
-      // Hide status bar for 8" tablets
-      if (is8InchTablet) {
-        SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersive);
-      }
 
       // Print debug info
       DeviceDetectionService.printDebugInfo(context);
@@ -202,7 +194,6 @@ class _WednesdayParentScreenState extends State<WednesdayParentScreen> {
   Widget build(BuildContext context) {
     return ResponsiveWrapper(
       phone: _buildPhoneLayout(),
-      tablet8: _buildTablet8Layout(),
       tablet10: _buildTablet10Layout(),
     );
   }
@@ -252,67 +243,6 @@ class _WednesdayParentScreenState extends State<WednesdayParentScreen> {
                   color: Colors.grey[300],
                 ),
                 child: _buildPhoneFooterButtons(),
-              ),
-            ],
-          ),
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: CustomKeypadService.buildCustomKeypad(
-              context: context,
-              onKeyPress: _handleAmountKeypadInput,
-              isVisible: _keypadController.isVisible,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTablet8Layout() {
-    return Scaffold(
-      backgroundColor: Colors.grey[100],
-      appBar: AppBar(
-        title: Text(
-          'Wednesday League - Golden Oaks Golf - ${DeviceDetectionService.getDeviceName(context)}',
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        backgroundColor: Colors.orange[700],
-        foregroundColor: Colors.white,
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.storage),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const WednesdayAdminScreen(currentLeague: League.wednesday),
-              ),
-            ),
-            tooltip: 'Administration',
-          ),
-        ],
-      ),
-      body: Stack(
-        children: [
-          Column(
-            children: [
-              Expanded(
-                flex: 2,
-                child: Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: _buildTabletContent(),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 0),
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                ),
-                child: _buildTablet8FooterButtons(),
               ),
             ],
           ),
@@ -1013,7 +943,6 @@ class _WednesdayParentScreenState extends State<WednesdayParentScreen> {
         Colors.orange[300]!,
         () => _navigateToPlayerSelection(),
         isCompact: true,
-        is8InchTablet: false,
         is10InchTablet: false,
       ),
       _buildNavigationButton(
@@ -1022,7 +951,6 @@ class _WednesdayParentScreenState extends State<WednesdayParentScreen> {
         Colors.orange[100]!,
         () => navigateToScreen(const WednesdayPlayerProfileScreen()),
         isCompact: true,
-        is8InchTablet: false,
         is10InchTablet: false,
       ),
       _buildNavigationButton(
@@ -1031,7 +959,6 @@ class _WednesdayParentScreenState extends State<WednesdayParentScreen> {
         Colors.orange[100]!,
         () => navigateToScreen(const WednesdayPlayerScoresScreen()),
         isCompact: true,
-        is8InchTablet: false,
         is10InchTablet: false,
       ),
     ];
@@ -1040,48 +967,6 @@ class _WednesdayParentScreenState extends State<WednesdayParentScreen> {
       children: [
         Expanded(flex: 2, child: buttons[0]),
         Expanded(flex: 1, child: buttons[1]),
-        Expanded(flex: 1, child: buttons[2]),
-      ],
-    );
-  }
-
-  Widget _buildTablet8FooterButtons() {
-    final buttons = [
-      _buildNavigationButton(
-        'Player Selection',
-        Icons.people,
-        Colors.orange[300]!,
-        () => _navigateToPlayerSelection(),
-        isCompact: false,
-        is8InchTablet: true,
-        is10InchTablet: false,
-      ),
-      _buildNavigationButton(
-        'Player Profiles',
-        Icons.person,
-        Colors.orange[100]!,
-        () => navigateToScreen(const WednesdayPlayerProfileScreen()),
-        isCompact: false,
-        is8InchTablet: true,
-        is10InchTablet: false,
-      ),
-      _buildNavigationButton(
-        'Player Scores',
-        Icons.score,
-        Colors.orange[100]!,
-        () => navigateToScreen(const WednesdayPlayerScoresScreen()),
-        isCompact: false,
-        is8InchTablet: true,
-        is10InchTablet: false,
-      ),
-    ];
-
-    return Row(
-      children: [
-        Expanded(flex: 2, child: buttons[0]),
-        const SizedBox(width: 8),
-        Expanded(flex: 1, child: buttons[1]),
-        const SizedBox(width: 8),
         Expanded(flex: 1, child: buttons[2]),
       ],
     );
@@ -1095,7 +980,6 @@ class _WednesdayParentScreenState extends State<WednesdayParentScreen> {
         Colors.orange[300]!,
         () => _navigateToPlayerSelection(),
         isCompact: false,
-        is8InchTablet: false,
         is10InchTablet: true,
       ),
       _buildNavigationButton(
@@ -1104,7 +988,6 @@ class _WednesdayParentScreenState extends State<WednesdayParentScreen> {
         Colors.orange[100]!,
         () => navigateToScreen(const WednesdayPlayerProfileScreen()),
         isCompact: false,
-        is8InchTablet: false,
         is10InchTablet: true,
       ),
       _buildNavigationButton(
@@ -1113,7 +996,6 @@ class _WednesdayParentScreenState extends State<WednesdayParentScreen> {
         Colors.orange[100]!,
         () => navigateToScreen(const WednesdayPlayerScoresScreen()),
         isCompact: false,
-        is8InchTablet: false,
         is10InchTablet: true,
       ),
     ];
@@ -1129,7 +1011,7 @@ class _WednesdayParentScreenState extends State<WednesdayParentScreen> {
     );
   }
 
-  Widget _buildNavigationButton(String title, IconData icon, Color bgColor, VoidCallback? onPressed, {bool isCompact = false, bool is8InchTablet = false, bool is10InchTablet = false}) {
+  Widget _buildNavigationButton(String title, IconData icon, Color bgColor, VoidCallback? onPressed, {bool isCompact = false, bool is10InchTablet = false}) {
     final isDisabled = onPressed == null;
     return ElevatedButton(
       onPressed: onPressed,
@@ -1137,7 +1019,7 @@ class _WednesdayParentScreenState extends State<WednesdayParentScreen> {
         backgroundColor: bgColor,
         foregroundColor: isDisabled ? Colors.grey[600] : Colors.black,
         padding: EdgeInsets.symmetric(
-          vertical: is10InchTablet ? 24 : (is8InchTablet ? 20 : (isCompact ? 3 : 6)),
+          vertical: is10InchTablet ? 24 : (isCompact ? 3 : 6),
           horizontal: 2,
         ),
         shape: RoundedRectangleBorder(

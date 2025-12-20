@@ -385,7 +385,6 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
   Widget build(BuildContext context) {
     return ResponsiveWrapper(
       phone: _buildPhoneLayout(),
-      tablet8: _buildTablet8Layout(),
       tablet10: _buildTablet10Layout(),
     );
   }
@@ -448,72 +447,6 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
                   ),
                 ),
                 _buildPhoneFooter(),
-              ],
-            ),
-    );
-  }
-
-  Widget _buildTablet8Layout() {
-    return Scaffold(
-      backgroundColor: Colors.grey[300],
-      appBar: AppBar(
-        title: Text("Select Players for Monday's Match - ${DeviceDetectionService.getDeviceName(context)}"),
-        backgroundColor: Colors.green[700],
-        foregroundColor: Colors.white,
-        centerTitle: true,
-      ),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                Expanded(
-                  child: Container(
-                    margin: const EdgeInsets.all(12),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Column(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          child: Text(
-                            'Selected Players: ${selectedPlayerIds.length}/${players.length}',
-                            style: TextStyle(
-                              fontSize: ResponsiveTypography.getBodyText(context),
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Expanded(
-                          child: players.isEmpty
-                              ? Center(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.people_outline,
-                                        size: 80,
-                                        color: Colors.grey[400],
-                                      ),
-                                      const SizedBox(height: 16),
-                                      Text(
-                                        'No Monday players found\nTry importing players first',
-                                        style: TextStyle(fontSize: ResponsiveTypography.getBodyText(context)),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ],
-                                  ),
-                                )
-                              : _buildTabletPlayerGrid(),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                _buildTablet8Footer(),
               ],
             ),
     );
@@ -895,33 +828,6 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
         ButtonBarUIService.buildActionButton(
           context,
           text: "Enter SKATS ---➤",
-          color: Colors.green[300]!,
-          onPressed: selectedPlayerIds.isEmpty ? null : _navigateToEnterScores,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTablet8Footer() {
-    return ButtonBarUIService.buildButtonBar(
-      context,
-      backgroundColor: Colors.grey[300]!,
-      children: [
-        ButtonBarUIService.buildActionButton(
-          context,
-          text: 'Back',
-          color: Colors.lightBlue[300]!,
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        ButtonBarUIService.buildActionButton(
-          context,
-          text: selectedPlayerIds.length == players.length ? 'Uncheck All' : 'Check All',
-          color: Colors.lightGreen[100]!,
-          onPressed: selectAllPlayers,
-        ),
-        ButtonBarUIService.buildActionButton(
-          context,
-          text: "Enter Scores",
           color: Colors.green[300]!,
           onPressed: selectedPlayerIds.isEmpty ? null : _navigateToEnterScores,
         ),

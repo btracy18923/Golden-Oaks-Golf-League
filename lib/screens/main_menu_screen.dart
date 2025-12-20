@@ -62,7 +62,6 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
   Widget build(BuildContext context) {
     return ResponsiveWrapper(
       phone: _buildPhoneLayout(),
-      tablet8: _buildTablet8Layout(),
       tablet10: _buildTablet10Layout(),
     );
   }
@@ -99,42 +98,6 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
             Expanded(
               flex: 1,
               child: _buildLogoImage(borderRadius: 8),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTablet8Layout() {
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-
-    return Scaffold(
-      backgroundColor: Colors.grey[100],
-      appBar: AppBar(
-        title: Text(
-          'Golden Oaks Golf League - ${DeviceDetectionService.getDeviceName(context)}',
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 20,
-          ),
-        ),
-        backgroundColor: Colors.green[700],
-        foregroundColor: Colors.white,
-        centerTitle: true,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: Row(
-          children: [
-            Expanded(
-              flex: 4,
-              child: _buildLeagueButtons(isPhone: false),
-            ),
-            const SizedBox(width: 20),
-            Expanded(
-              flex: 6,
-              child: _buildLogoImage(borderRadius: 12),
             ),
           ],
         ),

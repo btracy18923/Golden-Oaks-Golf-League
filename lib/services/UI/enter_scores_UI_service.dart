@@ -7,7 +7,7 @@ import '../device_detection_service.dart';
 import 'button_bar_UI_service.dart';
 
 /// Device type enumeration for responsive design
-enum DeviceType { phone6_5, tablet8, tablet10 }
+enum DeviceType { phone6_5, tablet10 }
 
 /// League-specific UI configuration for Enter Scores screens
 class LeagueUIConfig {
@@ -63,11 +63,9 @@ class EnterScoresUIService {
   static DeviceType getDeviceType(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
-    
-    if (isLandscape && screenWidth >= 750 && screenWidth < 900) {
+
+    if (isLandscape && screenWidth >= 750 && screenWidth < 1200) {
       return DeviceType.phone6_5; // 6.5" phone in landscape
-    } else if (screenWidth >= 900 && screenWidth < 1200) {
-      return DeviceType.tablet8; // 8" tablet
     } else if (screenWidth >= 1200) {
       return DeviceType.tablet10; // 10" tablet
     } else {
@@ -80,20 +78,16 @@ class EnterScoresUIService {
     switch (deviceType) {
       case DeviceType.phone6_5:
         return const EdgeInsets.all(4.0);
-      case DeviceType.tablet8:
-        return const EdgeInsets.all(8.0);
       case DeviceType.tablet10:
         return const EdgeInsets.all(12.0);
     }
   }
-  
+
   /// Gets responsive font size based on device type
   static double getResponsiveFontSize(DeviceType deviceType, {bool isHeader = false}) {
     switch (deviceType) {
       case DeviceType.phone6_5:
         return isHeader ? 8.0 : 11.0;
-      case DeviceType.tablet8:
-        return isHeader ? 12.0 : 13.0;
       case DeviceType.tablet10:
         return isHeader ? 14.0 : 15.0;
     }
@@ -128,20 +122,16 @@ class EnterScoresUIService {
     switch (deviceType) {
       case DeviceType.phone6_5:
         return 200.0; // Smaller for phone
-      case DeviceType.tablet8:
-        return 250.0; // Medium for 8" tablet
       case DeviceType.tablet10:
         return 300.0; // Larger for 10" tablet
     }
   }
-  
+
   /// Gets responsive row height based on device type
   static double getResponsiveRowHeight(DeviceType deviceType) {
     switch (deviceType) {
       case DeviceType.phone6_5:
         return 32.0; // Compact for phone
-      case DeviceType.tablet8:
-        return 40.0; // Standard for 8" tablet
       case DeviceType.tablet10:
         return 48.0; // Larger for 10" tablet
     }
@@ -150,19 +140,11 @@ class EnterScoresUIService {
   /// Sets orientation preferences based on device type
   /// Locks all devices to landscape mode for optimal golf scoring experience
   static void setOrientationForDevice(BuildContext context) {
-    final deviceType = getDeviceType(context);
-    
-    switch (deviceType) {
-      case DeviceType.phone6_5:
-      case DeviceType.tablet8:
-      case DeviceType.tablet10:
-        // Lock all devices to landscape mode only for consistent golf scoring experience
-        SystemChrome.setPreferredOrientations([
-          DeviceOrientation.landscapeLeft,
-          DeviceOrientation.landscapeRight,
-        ]);
-        break;
-    }
+    // Lock all devices to landscape mode only for consistent golf scoring experience
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
   }
   
   /// Resets orientation to allow all orientations

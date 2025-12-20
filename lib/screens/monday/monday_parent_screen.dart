@@ -63,19 +63,11 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
 
   void _setOrientation() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // Use unified device detection service
-      final is8InchTablet = DeviceDetectionService.is8Tablet(context);
-      
       // Lock to landscape mode for Monday League
       SystemChrome.setPreferredOrientations([
         DeviceOrientation.landscapeLeft,
         DeviceOrientation.landscapeRight,
       ]);
-      
-      // Hide status bar for 8" tablets
-      if (is8InchTablet) {
-        SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersive);
-      }
     });
   }
   
@@ -271,7 +263,6 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
   Widget build(BuildContext context) {
     return ResponsiveWrapper(
       phone: _buildPhoneLayout(),
-      tablet8: _buildTablet8Layout(),
       tablet10: _buildTablet10Layout(),
     );
   }
@@ -340,86 +331,6 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
                 ),
               ),
               const SizedBox(height: 4),
-              _buildFooterButtons(),
-            ],
-          ),
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: CustomKeypadService.buildCustomKeypad(
-              context: context,
-              onKeyPress: _handleAmountKeypadInput,
-              isVisible: _keypadController.isVisible,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTablet8Layout() {
-    return Scaffold(
-      backgroundColor: Colors.grey[100],
-      appBar: AppBar(
-        toolbarHeight: 60,
-        title: Text(
-          'Monday League - Golden Oaks Golf - ${DeviceDetectionService.getDeviceName(context)}',
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
-        ),
-        backgroundColor: Colors.green[700],
-        foregroundColor: Colors.white,
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.storage),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const MondayAdminScreen(currentLeague: League.monday),
-              ),
-            ),
-            tooltip: 'Administration',
-          ),
-        ],
-      ),
-      body: Stack(
-        children: [
-          Column(
-            children: [
-              Expanded(
-                flex: 2,
-                child: Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: ParentScreenUI(
-                    selectedGolfCourse: selectedGolfCourse,
-                    golfCourses: golfCourses,
-                    isLoadingCourses: isLoadingCourses,
-                    skatsAnte: skatsAnte,
-                    closestPin: closestPin,
-                    mulligans: mulligans,
-                    leagueTitle: '',
-                    anteLabel: 'Players Ante      ',
-                    onSkatsAnteEdit: () => _showKeypadForAmount('ante'),
-                    onClosestPinEdit: () => _showKeypadForAmount('closestPin'),
-                    onMulligansEdit: () => _showKeypadForAmount('mulligans'),
-                    onGolfCourseChanged: (String? newValue) async {
-                      setState(() {
-                        selectedGolfCourse = newValue;
-                      });
-                      if (newValue != null) {
-                        await _updateClosestPinFromGolfCourse(newValue);
-                      }
-                    },
-                    skatsAnteDisplayValue: _getAmountDisplayValue('ante', skatsAnte),
-                    closestPinDisplayValue: _getAmountDisplayValue('closestPin', closestPin),
-                    mulligansDisplayValue: _getAmountDisplayValue('mulligans', mulligans),
-                    isEditingAmount: _keypadController.isVisible,
-                    currentEditField: _currentEditField,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
               _buildFooterButtons(),
             ],
           ),

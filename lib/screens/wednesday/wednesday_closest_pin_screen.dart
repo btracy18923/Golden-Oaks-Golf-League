@@ -184,8 +184,6 @@ class _WednesdayClosestPinScreenState extends State<WednesdayClosestPinScreen> {
     switch (deviceType) {
       case DeviceType.phone6Point5:
         return 5.0;
-      case DeviceType.tablet8Inch:
-        return 12.0;
       case DeviceType.tablet10Inch:
         return 16.0;
     }
@@ -306,18 +304,15 @@ class _WednesdayClosestPinScreenState extends State<WednesdayClosestPinScreen> {
     final headerFontSize = ResponsiveTypography.getHeading(context);
     final padding = _getResponsivePadding(context);
     // For 6.5" phones, increase padding by 200% (2x) to increase height by 100%
-    // For 8" tablets, increase padding by 150% (1.5x) to increase height
     double paddingMultiplier;
     if (deviceType == DeviceType.phone6Point5) {
       paddingMultiplier = 2.0;
-    } else if (deviceType == DeviceType.tablet8Inch) {
-      paddingMultiplier = 1.5;
     } else {
       paddingMultiplier = 0.5;
     }
     final increasedPadding = EdgeInsets.all(padding * paddingMultiplier);
-    // For 6.5" phones and 8" tablets, double the font size (100% increase)
-    final fontMultiplier = (deviceType == DeviceType.phone6Point5 || deviceType == DeviceType.tablet8Inch) ? 2.0 : 1.0;
+    // For 6.5" phones, double the font size (100% increase)
+    final fontMultiplier = (deviceType == DeviceType.phone6Point5) ? 2.0 : 1.0;
 
     return Container(
       width: double.infinity,

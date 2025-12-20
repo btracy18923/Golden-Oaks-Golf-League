@@ -39,7 +39,6 @@ class _WednesdayGolfCourseInfoScreenState extends State<WednesdayGolfCourseInfoS
   Widget build(BuildContext context) {
     return ResponsiveWrapper(
       phone: _buildPhoneLayout(),
-      tablet8: _buildTablet8Layout(),
       tablet10: _buildTablet10Layout(),
     );
   }
@@ -71,39 +70,6 @@ class _WednesdayGolfCourseInfoScreenState extends State<WednesdayGolfCourseInfoS
             ),
             const SizedBox(height: 8),
             _buildFooterSection(12),
-          ],
-        ),
-      ),
-    );
-  }
-  
-  Widget _buildTablet8Layout() {
-    return Scaffold(
-      backgroundColor: Colors.grey[300],
-      appBar: AppBar(
-        title: const Text(_leagueTitle),
-        backgroundColor: _leagueColor[700],
-        foregroundColor: Colors.white,
-        centerTitle: true,
-        toolbarHeight: 56,
-      ),
-      body: Container(
-        margin: const EdgeInsets.all(12),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHeaderSection(20, 32, 12),
-            const SizedBox(height: 20),
-            Expanded(
-              child: _buildCourseList(18, 16, 14),
-            ),
-            const SizedBox(height: 12),
-            _buildFooterSection(14),
           ],
         ),
       ),

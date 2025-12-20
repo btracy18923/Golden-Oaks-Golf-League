@@ -99,7 +99,6 @@ class _WednesdayPlayerSelectionScreenState extends State<WednesdayPlayerSelectio
   Widget build(BuildContext context) {
     return ResponsiveWrapper(
       phone: _buildPhoneLayout(),
-      tablet8: _buildTablet8Layout(),
       tablet10: _buildTablet10Layout(),
     );
   }
@@ -165,73 +164,6 @@ class _WednesdayPlayerSelectionScreenState extends State<WednesdayPlayerSelectio
     );
   }
   
-  Widget _buildTablet8Layout() {
-    return Scaffold(
-      backgroundColor: Colors.grey[300],
-      appBar: AppBar(
-        title: Text("Select Players for Wednesday's Match - ${DeviceDetectionService.getDeviceName(context)}"),
-        backgroundColor: Colors.orange[700],
-        foregroundColor: Colors.white,
-        centerTitle: true,
-        toolbarHeight: 56,
-      ),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                Expanded(
-                  child: Container(
-                    margin: const EdgeInsets.all(12),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Column(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          child: Text(
-                            'Selected Players: ${selectedPlayerIds.length}/${players.length}',
-                            style: TextStyle(
-                              fontSize: ResponsiveTypography.getBodyText(context),
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Expanded(
-                          child: players.isEmpty
-                              ? Center(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.people_outline,
-                                        size: 80,
-                                        color: Colors.grey[400],
-                                      ),
-                                      const SizedBox(height: 16),
-                                      Text(
-                                        'No Wednesday players found\nTry importing players first',
-                                        style: TextStyle(fontSize: ResponsiveTypography.getBodyText(context)),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ],
-                                  ),
-                                )
-                              : _buildTabletPlayerGrid(),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                _buildTablet8Footer(),
-              ],
-            ),
-    );
-  }
-
   Widget _buildTablet10Layout() {
     return Scaffold(
       backgroundColor: Colors.grey[300],
@@ -765,95 +697,6 @@ class _WednesdayPlayerSelectionScreenState extends State<WednesdayPlayerSelectio
     );
   }
   
-  Widget _buildTablet8Footer() {
-    return Container(
-      padding: const EdgeInsets.all(16.0),
-      decoration: BoxDecoration(
-        color: Colors.grey[300],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0),
-              child: ElevatedButton(
-                onPressed: () => Navigator.of(context).pop(),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange[300],
-                  foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    side: const BorderSide(color: Colors.black, width: 1),
-                  ),
-                ),
-                child: Text(
-                  '◄---- Back     ',
-                  style: TextStyle(
-                    fontSize: ResponsiveTypography.getButton(context),
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0),
-              child: ElevatedButton(
-                onPressed: selectAllPlayers,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.yellow[100],
-                  foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    side: const BorderSide(color: Colors.black, width: 1),
-                  ),
-                ),
-                child: Text(
-                  selectedPlayerIds.length == players.length
-                      ? 'Uncheck All'
-                      : 'Check All',
-                  style: TextStyle(
-                    fontSize: ResponsiveTypography.getButton(context),
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0),
-              child: ElevatedButton(
-                onPressed: selectedPlayerIds.isEmpty ? null : _navigateToEnterScores,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _leagueColor,
-                  foregroundColor: Colors.black,
-                  disabledBackgroundColor: _leagueColor.withValues (alpha: 0.6),
-                  disabledForegroundColor: Colors.black.withValues(alpha: 0.6),
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    side: const BorderSide(color: Colors.black, width: 1),
-                  ),
-                ),
-                child: Text(
-                  "Enter Player's Scores",
-                  style: TextStyle(
-                    fontSize: ResponsiveTypography.getButton(context),
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildTablet10Footer() {
     return Container(
       padding: const EdgeInsets.all(16.0),

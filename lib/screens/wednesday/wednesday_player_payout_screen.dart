@@ -24,7 +24,6 @@ class _WednesdayPlayerPayoutScreenState extends State<WednesdayPlayerPayoutScree
   Widget build(BuildContext context) {
     return ResponsiveWrapper(
       phone: _buildPhoneLayout(),
-      tablet8: _buildTablet8Layout(),
       tablet10: _buildTablet10Layout(),
     );
   }
@@ -37,19 +36,6 @@ class _WednesdayPlayerPayoutScreenState extends State<WednesdayPlayerPayoutScree
           _buildHeader(16),
           Expanded(child: _buildPayoutContent()),
           _buildPhoneFooter(),
-        ],
-      ),
-    );
-  }
-  
-  Widget _buildTablet8Layout() {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: Column(
-        children: [
-          _buildHeader(18),
-          Expanded(child: _buildPayoutContent()),
-          _buildTabletFooter(),
         ],
       ),
     );

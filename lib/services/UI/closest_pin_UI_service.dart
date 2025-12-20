@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 
 enum DeviceType {
   phone6_5,
-  tablet8,
   tablet10,
 }
 
@@ -16,12 +15,9 @@ class ClosestPinUIService {
 
     // Device breakpoints using shortest side
     // 6.5" phone: shortestSide < 450
-    // 8" tablet: 450 <= shortestSide < 650
-    // 10" tablet: shortestSide >= 650
+    // 10" tablet: shortestSide >= 450
     if (shortestSide < 450) {
       return DeviceType.phone6_5;
-    } else if (shortestSide < 650) {
-      return DeviceType.tablet8;
     } else {
       return DeviceType.tablet10;
     }
@@ -54,8 +50,6 @@ class ClosestPinUIService {
     switch (deviceType) {
       case DeviceType.phone6_5:
         return const EdgeInsets.all(8.0);
-      case DeviceType.tablet8:
-        return const EdgeInsets.all(12.0);
       case DeviceType.tablet10:
         return const EdgeInsets.all(16.0);
     }
@@ -67,8 +61,6 @@ class ClosestPinUIService {
       switch (deviceType) {
         case DeviceType.phone6_5:
           return 18.0;
-        case DeviceType.tablet8:
-          return 22.0;
         case DeviceType.tablet10:
           return 26.0;
       }
@@ -76,8 +68,6 @@ class ClosestPinUIService {
       switch (deviceType) {
         case DeviceType.phone6_5:
           return 14.0;
-        case DeviceType.tablet8:
-          return 16.0;
         case DeviceType.tablet10:
           return 18.0;
       }
@@ -87,12 +77,10 @@ class ClosestPinUIService {
   /// Gets cross axis count for grid based on device type and orientation
   static int getCrossAxisCount(DeviceType deviceType, Size screenSize) {
     final isLandscape = screenSize.width > screenSize.height;
-    
+
     switch (deviceType) {
       case DeviceType.phone6_5:
         return isLandscape ? 2 : 1;
-      case DeviceType.tablet8:
-        return isLandscape ? 3 : 2;
       case DeviceType.tablet10:
         return isLandscape ? 4 : 2;
     }

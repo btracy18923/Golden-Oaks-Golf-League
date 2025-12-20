@@ -590,7 +590,6 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
       body: SafeArea(
         child: ResponsiveWrapper(
           phone: _buildPhoneLayout(),
-          tablet8: _buildTablet8Layout(),
           tablet10: _buildTablet10Layout(),
         ),
       ),
@@ -607,22 +606,6 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
             color: Colors.grey[100],
             padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 12.0),
             child: _buildPhoneLandscapeLayout(),
-          ),
-        ),
-        _buildFullScreenButtonBar(),
-      ],
-    );
-  }
-
-  // 8" tablet layout
-  Widget _buildTablet8Layout() {
-    return Column(
-      children: [
-        Expanded(
-          child: Container(
-            color: Colors.grey[100],
-            padding: const EdgeInsets.all(16.0),
-            child: _buildTabletLayoutContent(),
           ),
         ),
         _buildFullScreenButtonBar(),
@@ -907,8 +890,7 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
   ) {
     // Use unified device detection service for consistent classification
     final isPhone = DeviceDetectionService.is6Point5Phone(context);
-    final is8Tablet = DeviceDetectionService.is8Tablet(context);
-    final is10Tablet = DeviceDetectionService.is10Tablet(context);
+    final isTablet = DeviceDetectionService.is10Tablet(context);
 
     // For 6.5" phones, use compact layout with SingleChildScrollView to prevent overflow
     if (isPhone) {
@@ -932,35 +914,6 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
               buildCompactFormField('Cell Phone', cellController, cellFocus, emailFocus,
                 keyboardType: const TextInputType.numberWithOptions(decimal: false)),
               const SizedBox(height: 0),
-              buildCompactFormField('Email', emailController, emailFocus, null),
-            ],
-          ),
-        ),
-      );
-    }
-
-    // For 8" tablets, don't use scroll wrapper but reduce spacing
-    if (is8Tablet) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.only(top: 10),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.start,
-            children: [
-              buildCompactFormField('ID#', idController, idFocus, firstFocus,
-                keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
-              const SizedBox(height: 4),
-              buildCompactFormField('First Name', firstController, firstFocus, lastFocus),
-              const SizedBox(height: 4),
-              buildCompactFormField('Last Name', lastController, lastFocus, handicapFocus),
-              const SizedBox(height: 4),
-              buildCompactFormField('HC', handicapController, handicapFocus, cellFocus,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true)),
-              const SizedBox(height: 4),
-              buildCompactFormField('Cell Phone', cellController, cellFocus, emailFocus,
-                keyboardType: const TextInputType.numberWithOptions(decimal: false)),
-              const SizedBox(height: 4),
               buildCompactFormField('Email', emailController, emailFocus, null),
             ],
           ),

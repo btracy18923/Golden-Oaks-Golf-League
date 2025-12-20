@@ -465,7 +465,6 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
       body: SafeArea(
         child: ResponsiveWrapper(
           phone: _buildPhoneLayout(),
-          tablet8: _buildTablet8Layout(),
           tablet10: _buildTablet10Layout(),
         ),
       ),
@@ -482,22 +481,6 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
             color: Colors.grey[100],
             padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 12.0),
             child: _buildPhoneLandscapeLayout(),
-          ),
-        ),
-        _buildFullScreenButtonBar(),
-      ],
-    );
-  }
-
-  // 8" tablet layout
-  Widget _buildTablet8Layout() {
-    return Column(
-      children: [
-        Expanded(
-          child: Container(
-            color: Colors.grey[100],
-            padding: const EdgeInsets.all(16.0),
-            child: _buildTabletLayoutContent(),
           ),
         ),
         _buildFullScreenButtonBar(),

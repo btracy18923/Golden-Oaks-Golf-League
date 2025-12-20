@@ -6,18 +6,17 @@ import '../responsive_typography.dart';
 class PlayerProfileService {
   static Widget buildCompactFormField(
     BuildContext context,
-    String label, 
-    TextEditingController controller, 
-    FocusNode focusNode, 
+    String label,
+    TextEditingController controller,
+    FocusNode focusNode,
     FocusNode? nextFocus,
     VoidCallback? onUpdatePlayer, {
-    TextInputType? keyboardType, 
+    TextInputType? keyboardType,
     List<TextInputFormatter>? inputFormatters,
     bool enabled = true
   }) {
     // Use unified device detection service for consistent classification
     final isPhone = DeviceDetectionService.is6Point5Phone(context);
-    final is8Tablet = DeviceDetectionService.is8Tablet(context);
     final is10Tablet = DeviceDetectionService.is10Tablet(context);
     final isTablet = DeviceDetectionService.isTablet(context);
     
@@ -39,12 +38,8 @@ class PlayerProfileService {
       double labelFontSize = 10;  // Reduced from 20
       double fieldHeight = 36;    // Reduced for phones
       double inputFontSize = 10;   // Reduced from 9
-      
-      if (is8Tablet) {
-        labelFontSize = 18;  // Reduced from 22
-        fieldHeight = 55;    // Reduced from 77  
-        inputFontSize = 16;  // Reduced from 20
-      } else if (is10Tablet) {
+
+      if (is10Tablet) {
         labelFontSize = 22;
         fieldHeight = 77;
         inputFontSize = 20;
@@ -142,15 +137,11 @@ class PlayerProfileService {
       double labelWidth = 80;
       double fontSize = 9;   // Reduced from 11 for phones
       double fieldHeight = 40; // Reduced from 48 for phones
-      
+
       if (is10Tablet) {
         labelWidth = 100;
         fontSize = 24;
         fieldHeight = 54;
-      } else if (is8Tablet) {
-        labelWidth = 90;
-        fontSize = 22;
-        fieldHeight = 48;
       }
       
       return Padding(
@@ -690,9 +681,7 @@ class PlayerProfileService {
   ) {
     // Use unified device detection service for consistent classification
     final isPhone = DeviceDetectionService.is6Point5Phone(context);
-    final is8Tablet = DeviceDetectionService.is8Tablet(context);
-    DeviceDetectionService.is10Tablet(context);
-    
+
     // For 6.5" phones, use compact layout with scrolling to prevent overflow
     if (isPhone) {
       return SingleChildScrollView(
@@ -701,19 +690,19 @@ class PlayerProfileService {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.start,
             children: [
-            buildCompactFormField('ID#', idController, idFocus, firstFocus, 
-              keyboardType: TextInputType.number, 
+            buildCompactFormField('ID#', idController, idFocus, firstFocus,
+              keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
             const SizedBox(height: 0),
             buildCompactFormField('First Name', firstController, firstFocus, lastFocus),
             const SizedBox(height: 0),
             buildCompactFormField('Last Name', lastController, lastFocus, skatFocus),
             const SizedBox(height: 0),
-            buildCompactFormField('SKAT#', skatController, skatFocus, cellFocus, 
-              keyboardType: TextInputType.number, 
+            buildCompactFormField('SKAT#', skatController, skatFocus, cellFocus,
+              keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
             const SizedBox(height: 0),
-            buildCompactFormField('Cell Phone', cellController, cellFocus, emailFocus, 
+            buildCompactFormField('Cell Phone', cellController, cellFocus, emailFocus,
               keyboardType: const TextInputType.numberWithOptions(decimal: false)),
             const SizedBox(height: 0),
             buildCompactFormField('Email', emailController, emailFocus, null),
@@ -722,37 +711,7 @@ class PlayerProfileService {
       ),
       );
     }
-    
-    // For 8" tablets, don't use scroll wrapper but reduce spacing
-    if (is8Tablet) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.only(top: 10),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.start,
-            children: [
-              buildCompactFormField('ID#', idController, idFocus, firstFocus, 
-                keyboardType: TextInputType.number, 
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
-              const SizedBox(height: 4),
-              buildCompactFormField('First Name', firstController, firstFocus, lastFocus),
-              const SizedBox(height: 4),
-              buildCompactFormField('Last Name', lastController, lastFocus, skatFocus),
-              const SizedBox(height: 4),
-              buildCompactFormField('SKAT#', skatController, skatFocus, cellFocus, 
-                keyboardType: TextInputType.number, 
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
-              const SizedBox(height: 4),
-              buildCompactFormField('Cell Phone', cellController, cellFocus, emailFocus, 
-                keyboardType: const TextInputType.numberWithOptions(decimal: false)),
-              const SizedBox(height: 4),
-              buildCompactFormField('Email', emailController, emailFocus, null),
-            ],
-          ),
-        ),
-      );
-    }
-    
+
     // For 10" tablets and other screen sizes, keep the scroll wrapper
     return Center(
       child: SingleChildScrollView(

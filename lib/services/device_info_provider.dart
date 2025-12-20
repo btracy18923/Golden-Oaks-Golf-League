@@ -5,7 +5,6 @@ import 'device_detection_service.dart';
 class DeviceInfo {
   final DeviceType deviceType;
   final bool isPhone;
-  final bool is8Tablet;
   final bool is10Tablet;
   final bool isTablet;
   final double shortestSide;
@@ -15,7 +14,6 @@ class DeviceInfo {
   const DeviceInfo({
     required this.deviceType,
     required this.isPhone,
-    required this.is8Tablet,
     required this.is10Tablet,
     required this.isTablet,
     required this.shortestSide,
@@ -28,11 +26,10 @@ class DeviceInfo {
     final size = MediaQuery.of(context).size;
     final shortestSide = size.shortestSide;
     final deviceType = DeviceDetectionService.getDeviceType(context);
-    
+
     return DeviceInfo(
       deviceType: deviceType,
       isPhone: DeviceDetectionService.is6Point5Phone(context),
-      is8Tablet: DeviceDetectionService.is8Tablet(context),
       is10Tablet: DeviceDetectionService.is10Tablet(context),
       isTablet: DeviceDetectionService.isTablet(context),
       shortestSide: shortestSide,
@@ -83,11 +80,6 @@ class DeviceFlags {
   /// Check if current device is a 6.5" phone
   static bool isPhone(BuildContext context) {
     return DeviceInfoProvider.of(context).isPhone;
-  }
-
-  /// Check if current device is an 8" tablet
-  static bool is8Tablet(BuildContext context) {
-    return DeviceInfoProvider.of(context).is8Tablet;
   }
 
   /// Check if current device is a 10" tablet

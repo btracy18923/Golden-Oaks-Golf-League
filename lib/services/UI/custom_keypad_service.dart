@@ -122,8 +122,6 @@ class CustomKeypadService {
     switch (deviceType) {
       case DeviceType.phone6_5:
         return 40.0; // Compact for phone
-      case DeviceType.tablet8:
-        return 48.0; // Standard for 8" tablet
       case DeviceType.tablet10:
         return 56.0; // Larger for 10" tablet
     }

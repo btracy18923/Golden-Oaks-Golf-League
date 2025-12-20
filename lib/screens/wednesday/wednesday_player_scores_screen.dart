@@ -525,20 +525,17 @@ class _WednesdayPlayerScoresScreenState extends State<WednesdayPlayerScoresScree
 
   Widget _buildScoresTable() {
     final isPhone = DeviceDetectionService.is6Point5Phone(context);
-    final isSmallTablet = DeviceDetectionService.is8Tablet(context);
-    final isLargeTablet = DeviceDetectionService.is10Tablet(context);
+    final isTablet = DeviceDetectionService.is10Tablet(context);
 
     double tableWidth;
     if (isPhone) {
       tableWidth = 550;
-    } else if (isSmallTablet) {
-      tableWidth = 700;
     } else {
       tableWidth = 870;
     }
 
     final isCompact = isPhone;
-    final isMedium = isSmallTablet;
+    final isMedium = false;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -841,8 +838,6 @@ class _WednesdayPlayerScoresScreenState extends State<WednesdayPlayerScoresScree
   Widget build(BuildContext context) {
     if (DeviceDetectionService.is6Point5Phone(context)) {
       return _buildPhoneLayout();
-    } else if (DeviceDetectionService.is8Tablet(context)) {
-      return _buildTablet8Layout();
     } else {
       return _buildTablet10Layout();
     }
@@ -871,26 +866,6 @@ class _WednesdayPlayerScoresScreenState extends State<WednesdayPlayerScoresScree
           ),
           _buildPhoneButtonBar(),
         ],
-      ),
-    );
-  }
-
-  Widget _buildTablet8Layout() {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Player Scores - ${_getLeagueDisplayName()} League- ${DeviceDetectionService.getDeviceName(context)}',
-          style: ResponsiveTypography.appBarTitleStyle(context, color: Colors.white)),
-        centerTitle: true,
-        backgroundColor: Colors.orange[700],
-        foregroundColor: Colors.white,
-      ),
-      resizeToAvoidBottomInset: false,
-      body: Container(
-        color: Colors.grey[100],
-        padding: const EdgeInsets.all(15),
-        child: SafeArea(
-          child: _buildTabletStyleLayoutMedium(),
-        ),
       ),
     );
   }
@@ -972,69 +947,6 @@ class _WednesdayPlayerScoresScreenState extends State<WednesdayPlayerScoresScree
                       decoration: BoxDecoration(
                         border: Border.all(color: Colors.grey, width: 1),
                         borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: _buildScoresTable(),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildTabletStyleLayoutMedium() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final mainContentHeight = constraints.maxHeight;
-
-        return Column(
-          children: [
-            SizedBox(
-              height: mainContentHeight,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    flex: 18,
-                    child: Container(
-                      height: mainContentHeight,
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey, width: 1),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Column(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: BoxDecoration(
-                              color: Colors.grey[200],
-                              border: const Border(bottom: BorderSide(color: Colors.grey)),
-                            ),
-                            child: Text(
-                              'Players',
-                              style: ResponsiveTypography.labelStyle(context, fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                          Expanded(
-                            child: _buildPlayerList(isCompact: false, hideHeader: true),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(width: 12),
-
-                  Expanded(
-                    flex: 82,
-                    child: Container(
-                      height: mainContentHeight,
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey, width: 1),
-                        borderRadius: BorderRadius.circular(6),
                       ),
                       child: _buildScoresTable(),
                     ),

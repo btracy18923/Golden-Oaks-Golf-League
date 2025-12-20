@@ -241,24 +241,20 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
   Widget _buildScoresTable() {
     // Define device categories using DeviceDetectionService
     final isPhone = DeviceDetectionService.is6Point5Phone(context);  // 6.5" phones
-    final isSmallTablet = DeviceDetectionService.is8Tablet(context);  // 8" tablets
-    DeviceDetectionService.is10Tablet(context);  // 10" tablets
-    
+    final isTablet = DeviceDetectionService.is10Tablet(context);  // 10" tablets
+
     // Adjust table width based on screen size and orientation
     double tableWidth;
     if (isPhone) {
       // Phone: Compact layout
       tableWidth = _selectedLeague == League.monday ? 510 : 550;
-    } else if (isSmallTablet) {
-      // 8" tablet: Medium layout
-      tableWidth = _selectedLeague == League.monday ? 650 : 700;
     } else {
       // 10" tablet: Full layout
       tableWidth = _selectedLeague == League.monday ? 810 : 870;
     }
-    
+
     final isCompact = isPhone;
-    final isMedium = isSmallTablet;
+    final isMedium = false;
     
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -722,8 +718,6 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
   Widget build(BuildContext context) {
     if (DeviceDetectionService.is6Point5Phone(context)) {
       return _buildPhoneLayout();
-    } else if (DeviceDetectionService.is8Tablet(context)) {
-      return _buildTablet8Layout();
     } else {
       return _buildTablet10Layout();
     }
@@ -752,26 +746,6 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
           ),
           _buildPhoneButtonBar(),
         ],
-      ),
-    );
-  }
-
-  Widget _buildTablet8Layout() {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Player Scores - ${_getLeagueDisplayName()} League- ${DeviceDetectionService.getDeviceName(context)}',
-          style: ResponsiveTypography.appBarTitleStyle(context, color: Colors.white)),
-        centerTitle: true,
-        backgroundColor: _selectedLeague == League.monday ? Colors.green[700] : Colors.orange[700],
-        foregroundColor: Colors.white,
-      ),
-      resizeToAvoidBottomInset: false,
-      body: Container(
-        color: Colors.grey[100],
-        padding: const EdgeInsets.all(15),
-        child: SafeArea(
-          child: _buildTabletStyleLayoutMedium(),
-        ),
       ),
     );
   }
@@ -870,75 +844,6 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
       },
     );
   }
-
-  Widget _buildTabletStyleLayoutMedium() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final mainContentHeight = constraints.maxHeight; // Use full height since we have no footer
-        
-        return Column(
-          children: [
-            // Main content area - 2 columns
-            SizedBox(
-              height: mainContentHeight,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Left column - Player list (18% of width for better balance)
-                  Expanded(
-                    flex: 18,
-                    child: Container(
-                      height: mainContentHeight,
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey, width: 1),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Column(
-                        children: [
-                          // Player list header
-                          Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: BoxDecoration(
-                              color: Colors.grey[200],
-                              border: const Border(bottom: BorderSide(color: Colors.grey)),
-                            ),
-                            child: Text(
-                              'Players',
-                              style: ResponsiveTypography.labelStyle(context, fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                          // Player list content
-                          Expanded(
-                            child: _buildPlayerList(isCompact: false, hideHeader: true),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  
-                  const SizedBox(width: 12),
-                  
-                  // Right column - Scores Table (82% of width)
-                  Expanded(
-                    flex: 82,
-                    child: Container(
-                      height: mainContentHeight,
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey, width: 1),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: _buildScoresTable(),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
 
   Widget _buildDesktopLayout() {
     return Column(

@@ -280,7 +280,6 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
   Widget build(BuildContext context) {
     return ResponsiveWrapper(
       phone: _buildPhoneLayout(),
-      tablet8: _buildTablet8Layout(),
       tablet10: _buildTablet10Layout(),
     );
   }
@@ -335,63 +334,6 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
               ),
             ),
             const SizedBox(height: 4),
-            _buildSaveButton(),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTablet8Layout() {
-    const double basePadding = 12.0;
-    const double contentPadding = 16.0;
-    const double iconSize = 20;
-    
-    return Scaffold(
-      backgroundColor: Colors.grey[100],
-      appBar: AppBar(
-        title: const Text(
-          'Monday League Results',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 22,
-          ),
-        ),
-        backgroundColor: Colors.green[700],
-        foregroundColor: Colors.white,
-        centerTitle: true,
-        automaticallyImplyLeading: false,
-        toolbarHeight: 56,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(basePadding),
-        child: Column(
-          children: [
-            Expanded(
-              child: Container(
-                padding: const EdgeInsets.all(contentPadding),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8.0),
-                  border: Border.all(color: Colors.grey[300]!),
-                ),
-                child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: basePadding),
-                      _buildDataSection(
-                        '',
-                        _buildUnifiedData(),
-                        Icons.summarize,
-                        iconSize,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 5),
             _buildSaveButton(),
           ],
         ),
@@ -478,11 +420,10 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
   Widget _buildDataSection(String title, Widget content, IconData icon, double iconSize) {
     final screenSize = MediaQuery.of(context).size;
     final is6InchPhone = screenSize.width <= 900;
-    final is8InchTablet = screenSize.width > 900 && screenSize.width <= 1200;
 
-    final double sectionPadding = is6InchPhone ? 12 : (is8InchTablet ? 16 : 20);
-    final double titleSize = is6InchPhone ? 16 : (is8InchTablet ? 18 : 20);
-    final double spacingHeight = is6InchPhone ? 8 : (is8InchTablet ? 12 : 16);
+    final double sectionPadding = is6InchPhone ? 12 : 20;
+    final double titleSize = is6InchPhone ? 16 : 20;
+    final double spacingHeight = is6InchPhone ? 8 : 16;
     
     return Container(
       width: double.infinity,
@@ -897,11 +838,10 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
   Widget _buildTableCell(String text, {bool isHeader = false, bool isCompact = false, bool isMoneyColumn = false}) {
     final screenSize = MediaQuery.of(context).size;
     final is6InchPhone = screenSize.width <= 900;
-    final is8InchTablet = screenSize.width > 900 && screenSize.width <= 1200;
-    
+
     // Responsive font sizes for table cells
-    final double fontSize = is6InchPhone ? 14 : (is8InchTablet ? 11 : 22);
-    final double cellPadding = is6InchPhone ? 2 : (is8InchTablet ? 6 : 8);
+    final double fontSize = is6InchPhone ? 14 : 22;
+    final double cellPadding = is6InchPhone ? 2 : 8;
     
     return Padding(
       padding: EdgeInsets.all(cellPadding),

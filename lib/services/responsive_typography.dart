@@ -7,11 +7,9 @@ class ResponsiveTypography {
   /// Get device type based on shortest side (matches ResponsiveWrapper logic)
   static String _getDeviceType(BuildContext context) {
     final shortestSide = MediaQuery.of(context).size.shortestSide;
-    
+
     if (shortestSide < 450) {
       return 'phone';       // 6.5" phone
-    } else if (shortestSide < 650) {
-      return 'tablet8';     // 8" tablet  
     } else {
       return 'tablet10';    // 10" tablet
     }
@@ -22,8 +20,6 @@ class ResponsiveTypography {
     switch (_getDeviceType(context)) {
       case 'phone':
         return 12;  //Choose Course
-      case 'tablet8':
-        return 18;
       case 'tablet10':
         return 20;
       default:
@@ -36,8 +32,6 @@ class ResponsiveTypography {
     switch (_getDeviceType(context)) {
       case 'phone':
         return 14;
-      case 'tablet8':
-        return 24;
       case 'tablet10':
         return 30;
       default:
@@ -50,8 +44,6 @@ class ResponsiveTypography {
     switch (_getDeviceType(context)) {
       case 'phone':
         return 14;
-      case 'tablet8':
-        return 20;
       case 'tablet10':
         return 30;
       default:
@@ -64,8 +56,6 @@ class ResponsiveTypography {
     switch (_getDeviceType(context)) {
       case 'phone':
         return 14;
-      case 'tablet8':
-        return 24;
       case 'tablet10':
         return 30;
       default:
@@ -78,8 +68,6 @@ class ResponsiveTypography {
     switch (_getDeviceType(context)) {
       case 'phone':
         return 14;  //Select Course
-      case 'tablet8':
-        return 22;
       case 'tablet10':
         return 26;
       default:
@@ -104,8 +92,6 @@ class ResponsiveTypography {
     switch (_getDeviceType(context)) {
       case 'phone':
         return 14;
-      case 'tablet8':
-        return 16;
       case 'tablet10':
         return 22;
       default:
@@ -118,8 +104,6 @@ class ResponsiveTypography {
     switch (_getDeviceType(context)) {
       case 'phone':
         return 18;
-      case 'tablet8':
-        return 24;
       case 'tablet10':
         return 28;
       default:
