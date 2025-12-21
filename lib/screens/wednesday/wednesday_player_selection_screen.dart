@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../services/database_helper.dart';
 import '../../services/device_detection_service.dart';
 import '../../services/responsive_typography.dart';
+import '../../services/UI/button_bar_UI_service.dart';
 import '../../models/league.dart';
 import 'wednesday_enter_scores_screen.dart';
 import 'wednesday_closest_pin_screen.dart';
@@ -608,181 +609,56 @@ class _WednesdayPlayerSelectionScreenState extends State<WednesdayPlayerSelectio
   }
   
   Widget _buildPhoneFooter() {
-    return Container(
-      padding: const EdgeInsets.all(8.0),
-      decoration: BoxDecoration(
-        color: Colors.grey[300],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          Expanded(
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              child: ElevatedButton(
-                onPressed: () => Navigator.of(context).pop(),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue[300],
-                  foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    side: const BorderSide(color: Colors.black, width: 1),
-                  ),
-                ),
-                child: Text(
-                  '◄---- Back      ',
-                  style: TextStyle(
-                    fontSize: ResponsiveTypography.getButton(context),
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          Expanded(
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              child: ElevatedButton(
-                onPressed: selectAllPlayers,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.yellow[100],
-                  foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    side: const BorderSide(color: Colors.black, width: 1),
-                  ),
-                ),
-                child: Text(
-                  selectedPlayerIds.length == players.length
-                      ? 'Uncheck All'
-                      : 'Check All',
-                  style: TextStyle(
-                    fontSize: ResponsiveTypography.getButton(context),
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          Expanded(
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              child: ElevatedButton(
-                onPressed: selectedPlayerIds.isEmpty ? null : _navigateToEnterScores,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange[300],
-                  foregroundColor: Colors.black,
-                  disabledBackgroundColor: Colors.orange[300]!.withValues(alpha: 0.6),
-                  disabledForegroundColor: Colors.black.withValues(alpha: 0.6),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    side: const BorderSide(color: Colors.black, width: 1),
-                  ),
-                ),
-                child: Text(
-                  "Enter Gross ---➤",
-                  style: TextStyle(
-                    fontSize: ResponsiveTypography.getButton(context),
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
+    return ButtonBarUIService.buildButtonBar(
+      context,
+      backgroundColor: Colors.grey[300]!,
+      children: [
+        ButtonBarUIService.buildActionButton(
+          context,
+          text: '◄---- Back',
+          color: Colors.blue[300]!,
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        ButtonBarUIService.buildActionButton(
+          context,
+          text: selectedPlayerIds.length == players.length ? 'Uncheck All' : 'Check All',
+          color: Colors.yellow[100]!,
+          onPressed: selectAllPlayers,
+        ),
+        ButtonBarUIService.buildActionButton(
+          context,
+          text: "Enter Gross ---➤",
+          color: Colors.orange[300]!,
+          onPressed: selectedPlayerIds.isEmpty ? null : _navigateToEnterScores,
+        ),
+      ],
     );
   }
   
   Widget _buildTablet10Footer() {
-    return Container(
-      padding: const EdgeInsets.all(16.0),
-      decoration: BoxDecoration(
-        color: Colors.grey[300],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0),
-              child: ElevatedButton(
-                onPressed: () => Navigator.of(context).pop(),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange[300],
-                  foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    side: const BorderSide(color: Colors.black, width: 1),
-                  ),
-                ),
-                child: Text(
-                  '◄---- Back      ',
-                  style: TextStyle(
-                    fontSize: ResponsiveTypography.getButton(context),
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0),
-              child: ElevatedButton(
-                onPressed: selectAllPlayers,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.yellow[100],
-                  foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    side: const BorderSide(color: Colors.black, width: 1),
-                  ),
-                ),
-                child: Text(
-                  selectedPlayerIds.length == players.length
-                      ? 'Uncheck All'
-                      : 'Check All',
-                  style: TextStyle(
-                    fontSize: ResponsiveTypography.getButton(context),
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0),
-              child: ElevatedButton(
-                onPressed: selectedPlayerIds.isEmpty ? null : _navigateToEnterScores,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _leagueColor,
-                  foregroundColor: Colors.black,
-                  disabledBackgroundColor: _leagueColor.withValues(alpha: 0.6),
-                  disabledForegroundColor: Colors.black.withValues(alpha: 0.6),
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    side: const BorderSide(color: Colors.black, width: 1),
-                  ),
-                ),
-                child: Text(
-                  "Enter Player's Scores ---➤",
-                  style: TextStyle(
-                    fontSize: ResponsiveTypography.getButton(context),
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
+    return ButtonBarUIService.buildButtonBar(
+      context,
+      backgroundColor: Colors.grey[300]!,
+      children: [
+        ButtonBarUIService.buildActionButton(
+          context,
+          text: '◄---- Back',
+          color: Colors.orange[300]!,
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        ButtonBarUIService.buildActionButton(
+          context,
+          text: selectedPlayerIds.length == players.length ? 'Uncheck All' : 'Check All',
+          color: Colors.yellow[100]!,
+          onPressed: selectAllPlayers,
+        ),
+        ButtonBarUIService.buildActionButton(
+          context,
+          text: "Enter Player's Scores ---➤",
+          color: _leagueColor,
+          onPressed: selectedPlayerIds.isEmpty ? null : _navigateToEnterScores,
+        ),
+      ],
     );
   }
 }

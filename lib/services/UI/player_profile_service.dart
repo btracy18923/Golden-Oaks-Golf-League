@@ -36,8 +36,8 @@ class PlayerProfileService {
     // Special two-row layout for Email field for all screen sizes
     if (label == 'Email') {
       double labelFontSize = 10;  // Reduced from 20
-      double fieldHeight = 36;    // Reduced for phones
-      double inputFontSize = 10;   // Reduced from 9
+      double fieldHeight = 35;    // Reduced for phones
+      double inputFontSize = 10;
 
       if (is10Tablet) {
         labelFontSize = 22;
@@ -66,7 +66,7 @@ class PlayerProfileService {
                 decoration: const InputDecoration(
                   border: OutlineInputBorder(),
                   isDense: true,
-                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                 ),
                 textAlignVertical: TextAlignVertical.center,
                 style: TextStyle(fontSize: inputFontSize, height: 1.0),
@@ -88,7 +88,7 @@ class PlayerProfileService {
     if (is6InchPhoneLandscape) {
         // Horizontal layout for other fields in landscape mode
         return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 0),
+          padding: const EdgeInsets.symmetric(vertical: 2),
           child: Row(
             children: [
               SizedBox(
@@ -268,9 +268,9 @@ class PlayerProfileService {
     // Adaptive table width calculation
     double tableWidth;
     double rowHeight;
-    // Use ResponsiveTypography for consistent font sizing
-    double fontSize = ResponsiveTypography.getSmall(context);
-    
+    // Font Size for Table Data Rows
+    double fontSize = ResponsiveTypography.getSmall(context) - 2;
+
     if (isLargeTablet) {
       tableWidth = isLandscape ? (screenWidth * 0.7) - 40 : screenWidth - 60;
       rowHeight = 48;
@@ -282,7 +282,7 @@ class PlayerProfileService {
       rowHeight = 40;
     } else if (is6InchPhoneLandscape) {
       tableWidth = (screenWidth * 0.65) - 20;
-      rowHeight = 36;
+      rowHeight = 35;
     } else {
       // Phone portrait
       tableWidth = screenWidth - 32;

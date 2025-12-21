@@ -7,6 +7,7 @@ import 'wednesday_admin_screen.dart';
 import '../../models/league.dart';
 import '../../services/shared/league_purse_service.dart';
 import '../../services/UI/custom_keypad_service.dart';
+import '../../services/UI/button_bar_UI_service.dart';
 import '../../services/responsive_typography.dart';
 import '../../services/device_detection_service.dart';
 import '../../widgets/responsive_wrapper.dart';
@@ -43,6 +44,7 @@ class _WednesdayParentScreenState extends State<WednesdayParentScreen> {
     super.initState();
     _setOrientation();
     _keypadController = CustomKeypadService.createController();
+    _loadPersistedAmounts();
 
     // Load values from LeaguePurseService for Wednesday league - these persist during the app session
     playersAnte = LeaguePurseService.getPlayersAnte(league: League.wednesday);
@@ -52,6 +54,22 @@ class _WednesdayParentScreenState extends State<WednesdayParentScreen> {
     _playersAnteController.text = playersAnte.toStringAsFixed(2);
     _closestPinController.text = closestPin.toStringAsFixed(2);
     _mulligansController.text = mulligans.toStringAsFixed(2);
+  }
+
+  /// Loads persisted amounts from storage and updates UI
+  Future<void> _loadPersistedAmounts() async {
+    await LeaguePurseService.loadPersistedAmounts(League.wednesday);
+
+    // Update local variables and controllers with loaded values
+    setState(() {
+      playersAnte = LeaguePurseService.getPlayersAnte(league: League.wednesday);
+      closestPin = LeaguePurseService.getClosestPinAmount(league: League.wednesday);
+      mulligans = LeaguePurseService.getMulliganAmount(league: League.wednesday);
+
+      _playersAnteController.text = playersAnte.toStringAsFixed(2);
+      _closestPinController.text = closestPin.toStringAsFixed(2);
+      _mulligansController.text = mulligans.toStringAsFixed(2);
+    });
   }
 
   void _setOrientation() {
@@ -236,14 +254,7 @@ class _WednesdayParentScreenState extends State<WednesdayParentScreen> {
                 ),
               ),
               const SizedBox(height: 4),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                ),
-                child: _buildPhoneFooterButtons(),
-              ),
+              _buildFooterButtons(),
             ],
           ),
           Positioned(
@@ -297,14 +308,7 @@ class _WednesdayParentScreenState extends State<WednesdayParentScreen> {
                 ),
               ),
               const SizedBox(height: 12),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                ),
-                child: _buildTablet10FooterButtons(),
-              ),
+              _buildFooterButtons(),
             ],
           ),
           Positioned(
@@ -935,113 +939,33 @@ class _WednesdayParentScreenState extends State<WednesdayParentScreen> {
     );
   }
 
-  Widget _buildPhoneFooterButtons() {
-    final buttons = [
-      _buildNavigationButton(
-        'Player Selection',
-        Icons.people,
-        Colors.orange[300]!,
-        () => _navigateToPlayerSelection(),
-        isCompact: true,
-        is10InchTablet: false,
-      ),
-      _buildNavigationButton(
-        'Player Profiles',
-        Icons.person,
-        Colors.orange[100]!,
-        () => navigateToScreen(const WednesdayPlayerProfileScreen()),
-        isCompact: true,
-        is10InchTablet: false,
-      ),
-      _buildNavigationButton(
-        'Player Scores',
-        Icons.score,
-        Colors.orange[100]!,
-        () => navigateToScreen(const WednesdayPlayerScoresScreen()),
-        isCompact: true,
-        is10InchTablet: false,
-      ),
-    ];
-
-    return Row(
+  Widget _buildFooterButtons() {
+    return ButtonBarUIService.buildButtonBar(
+      context,
+      backgroundColor: Colors.grey[300]!,
       children: [
-        Expanded(flex: 2, child: buttons[0]),
-        Expanded(flex: 1, child: buttons[1]),
-        Expanded(flex: 1, child: buttons[2]),
-      ],
-    );
-  }
-
-  Widget _buildTablet10FooterButtons() {
-    final buttons = [
-      _buildNavigationButton(
-        'Player Selection',
-        Icons.people,
-        Colors.orange[300]!,
-        () => _navigateToPlayerSelection(),
-        isCompact: false,
-        is10InchTablet: true,
-      ),
-      _buildNavigationButton(
-        'Player Profiles',
-        Icons.person,
-        Colors.orange[100]!,
-        () => navigateToScreen(const WednesdayPlayerProfileScreen()),
-        isCompact: false,
-        is10InchTablet: true,
-      ),
-      _buildNavigationButton(
-        'Player Scores',
-        Icons.score,
-        Colors.orange[100]!,
-        () => navigateToScreen(const WednesdayPlayerScoresScreen()),
-        isCompact: false,
-        is10InchTablet: true,
-      ),
-    ];
-
-    return Row(
-      children: [
-        Expanded(flex: 2, child: buttons[0]),
-        const SizedBox(width: 8),
-        Expanded(flex: 1, child: buttons[1]),
-        const SizedBox(width: 8),
-        Expanded(flex: 1, child: buttons[2]),
-      ],
-    );
-  }
-
-  Widget _buildNavigationButton(String title, IconData icon, Color bgColor, VoidCallback? onPressed, {bool isCompact = false, bool is10InchTablet = false}) {
-    final isDisabled = onPressed == null;
-    return ElevatedButton(
-      onPressed: onPressed,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: bgColor,
-        foregroundColor: isDisabled ? Colors.grey[600] : Colors.black,
-        padding: EdgeInsets.symmetric(
-          vertical: is10InchTablet ? 24 : (isCompact ? 3 : 6),
-          horizontal: 2,
-        ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-          side: BorderSide(
-            color: isDisabled ? Colors.grey[500]! : Colors.black,
-            width: 1,
+        SizedBox(
+          width: 345,
+          child: ButtonBarUIService.buildActionButton(
+            context,
+            text: 'Player Selection',
+            color: Colors.orange[300]!,
+            onPressed: () => _navigateToPlayerSelection(),
           ),
         ),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            title,
-            style: ResponsiveTypography.buttonStyle(context,
-                fontWeight: FontWeight.w600,
-                color: isDisabled ? Colors.grey[600] : null),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
+        ButtonBarUIService.buildActionButton(
+          context,
+          text: 'Player Profiles',
+          color: Colors.orange[100]!,
+          onPressed: () => navigateToScreen(const WednesdayPlayerProfileScreen()),
+        ),
+        ButtonBarUIService.buildActionButton(
+          context,
+          text: 'Player Scores',
+          color: Colors.orange[100]!,
+          onPressed: () => navigateToScreen(const WednesdayPlayerScoresScreen()),
+        ),
+      ],
     );
   }
 }

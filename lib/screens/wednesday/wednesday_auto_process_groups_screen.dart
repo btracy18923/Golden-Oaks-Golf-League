@@ -13,6 +13,7 @@ import '../../services/mulligan_manager.dart';
 import '../../services/csv_payout_service.dart';
 import '../../services/group_csv_payout_service.dart';
 import '../../services/payout_validation_service.dart';
+import '../../services/UI/button_bar_UI_service.dart';
 import '../../models/league.dart';
 
 // Helper class to track positions in the groups grid
@@ -1441,119 +1442,54 @@ class _WednesdayAutoProcessGroupsScreenState extends State<WednesdayAutoProcessG
   }
 
   Widget _buildFooter() {
-    return Container(
-      height: 70,
-      decoration: BoxDecoration(color: Colors.grey[200]),
-      padding: EdgeInsets.symmetric(horizontal: 5, vertical: 5),
-      child: Center(
-        child: Row(
-          children: [
-            _buildFooterButton("Return to Main Menu", Colors.lightBlue[100]!, _returnToMainMenu),
-            _buildFooterButton("Process Individuals", selectedLeague == 'wednesday' 
-                ? Color(0xFFFFD700) // Light gold
-                : Color(0xFFB3FFB3), _processIndividuals),
-            _buildConditionalProcessGroupsButton(),
-            _buildSwapButton(),
-          ],
-        ),
-      ),
-    );
-  }
+    bool autoProcessEnabled = individualsProcessingComplete;
+    Color autoProcessColor = autoProcessEnabled ? Colors.green[300]! : Colors.grey[400]!;
 
-  Widget _buildConditionalProcessGroupsButton() {
-    bool isEnabled = individualsProcessingComplete;
-    Color buttonColor = isEnabled ? Colors.green[300]! : Colors.grey[400]!;
-    
-    return Expanded(
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 2),
-        child: ElevatedButton(
-          onPressed: isEnabled ? () async => await _autoCompleteGroupsAndNavigateToPayout() : null,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: buttonColor,
-            foregroundColor: isEnabled ? Colors.black : Colors.grey[600],
-            padding: EdgeInsets.symmetric(vertical: 8),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          ),
-          child: Text(
-            "Auto Process Groups", 
-            style: TextStyle(
-              fontSize: 16, 
-              fontWeight: FontWeight.bold,
-            ), 
-            textAlign: TextAlign.center
-          ),
-        ),
-      ),
-    );
-  }
+    String manualProcessText = 'Manual Process Groups';
+    Color manualProcessColor = Colors.grey[400]!;
 
-  Widget _buildFooterButton(String text, Color color, VoidCallback onPressed) {
-    return Expanded(
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 2),
-        child: ElevatedButton(
-          onPressed: onPressed,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: color,
-            foregroundColor: Colors.black,
-            padding: EdgeInsets.symmetric(vertical: 8),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          ),
-          child: Text(text, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFooterButtonCustom(String text, Color color, VoidCallback onPressed, double fontSize) {
-    return Expanded(
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 10),
-        child: ElevatedButton(
-          onPressed: onPressed,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: color,
-            foregroundColor: Colors.black,
-            padding: EdgeInsets.symmetric(vertical: 8),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          ),
-          child: Text(text, style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSwapButton() {
-    String buttonText = 'Manual Process Groups';
-    bool isEnabled = false;
-    Color buttonColor = Colors.grey[400]!;
-    
     if (selectedForSwap.length == 1) {
       String displayName = _getDisplayName(selectedForSwap[0]);
-      buttonText = 'Selected: $displayName\nClick another item';
+      manualProcessText = 'Selected: $displayName\nClick another item';
     } else if (selectedForSwap.length == 2) {
       String displayName1 = _getDisplayName(selectedForSwap[0]);
       String displayName2 = _getDisplayName(selectedForSwap[1]);
-      buttonText = 'SWAP:\n$displayName1 <-> $displayName2';
-      isEnabled = true;
-      buttonColor = _getLeagueColor();
+      manualProcessText = 'SWAP:\n$displayName1 <-> $displayName2';
+      manualProcessColor = _getLeagueColor();
     }
-    
-    return Expanded(
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 2),
-        child: ElevatedButton(
-          onPressed: _manualProcessGroups,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: buttonColor,
-            foregroundColor: Colors.black,
-            padding: EdgeInsets.symmetric(vertical: 8),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          ),
-          child: Text(buttonText, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+
+    return ButtonBarUIService.buildButtonBar(
+      context,
+      backgroundColor: Colors.grey[200]!,
+      children: [
+        ButtonBarUIService.buildActionButton(
+          context,
+          text: "Return to Main Menu",
+          color: Colors.lightBlue[100]!,
+          onPressed: _returnToMainMenu,
         ),
-      ),
+        ButtonBarUIService.buildActionButton(
+          context,
+          text: "Process Individuals",
+          color: selectedLeague == 'wednesday'
+              ? const Color(0xFFFFD700) // Light gold
+              : const Color(0xFFB3FFB3),
+          onPressed: _processIndividuals,
+        ),
+        ButtonBarUIService.buildActionButton(
+          context,
+          text: "Auto Process Groups",
+          color: autoProcessColor,
+          onPressed: autoProcessEnabled ? () async => await _autoCompleteGroupsAndNavigateToPayout() : null,
+        ),
+        ButtonBarUIService.buildActionButton(
+          context,
+          text: manualProcessText,
+          color: manualProcessColor,
+          onPressed: _manualProcessGroups,
+          maxLines: 2,
+        ),
+      ],
     );
   }
 

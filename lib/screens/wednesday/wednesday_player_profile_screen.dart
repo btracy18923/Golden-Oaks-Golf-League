@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../../services/database_helper.dart';
 import '../../models/league.dart';
 import '../../services/UI/player_profile_service.dart';
+import '../../services/UI/button_bar_UI_service.dart';
 import '../../services/firebase_upload_service.dart';
 import '../../services/device_detection_service.dart';
 import '../../services/responsive_typography.dart';
@@ -744,13 +745,7 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
 
 
   Widget _buildFullScreenButtonBar() {
-    // Reduce height for 6.5" phones to prevent overflow
-    final isPhone = DeviceDetectionService.is6Point5Phone(context);
-    final buttonBarHeight = isPhone ? 60.0 : 90.0;
-
     return Container(
-      width: double.infinity,
-      height: buttonBarHeight,
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
@@ -762,63 +757,33 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
           ),
         ],
       ),
-      padding: const EdgeInsets.all(12.0),
-      child: Row(
+      child: ButtonBarUIService.buildButtonBar(
+        context,
+        backgroundColor: Colors.white,
         children: [
-          Expanded(
-            child: ElevatedButton(
-              onPressed: () => Navigator.of(context).pop(),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue[300],
-                foregroundColor: Colors.black,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
-                padding: EdgeInsets.all(isPhone ? 6.0 : 12.0),
-                alignment: Alignment.center,
-              ),
-              child: Text('◄---- Back     ', style: TextStyle(fontSize: ResponsiveTypography.getButton(context), fontWeight: FontWeight.bold)),
-            ),
+          ButtonBarUIService.buildActionButton(
+            context,
+            text: '◄---- Back',
+            color: Colors.blue[300]!,
+            onPressed: () => Navigator.of(context).pop(),
           ),
-          const SizedBox(width: 4),
-          Expanded(
-            child: ElevatedButton(
-              onPressed: _clearForm,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.orange[300],
-                foregroundColor: Colors.black,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
-                padding: EdgeInsets.all(isPhone ? 8.0 : 12.0),
-                alignment: Alignment.center,
-              ),
-              child: Text('Clear', style: TextStyle(fontSize: ResponsiveTypography.getButton(context), fontWeight: FontWeight.bold)),
-            ),
+          ButtonBarUIService.buildActionButton(
+            context,
+            text: 'Clear',
+            color: Colors.orange[300]!,
+            onPressed: _clearForm,
           ),
-          const SizedBox(width: 4),
-          Expanded(
-            child: ElevatedButton(
-              onPressed: _selectedPlayer != null ? _deletePlayer : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _selectedPlayer != null ? Colors.red[300] : Colors.grey[400],
-                foregroundColor: Colors.black,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
-                padding: EdgeInsets.all(isPhone ? 8.0 : 12.0),
-                alignment: Alignment.center,
-              ),
-              child: Text('Delete', style: TextStyle(fontSize: ResponsiveTypography.getButton(context), fontWeight: FontWeight.bold)),
-            ),
+          ButtonBarUIService.buildActionButton(
+            context,
+            text: 'Delete',
+            color: _selectedPlayer != null ? Colors.red[300]! : Colors.grey[400]!,
+            onPressed: _selectedPlayer != null ? _deletePlayer : null,
           ),
-          const SizedBox(width: 4),
-          Expanded(
-            child: ElevatedButton(
-              onPressed: _addPlayer,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green[300],
-                foregroundColor: Colors.black,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
-                padding: EdgeInsets.all(isPhone ? 8.0 : 12.0),
-                alignment: Alignment.center,
-              ),
-              child: Text('Add Player', style: TextStyle(fontSize: ResponsiveTypography.getButton(context), fontWeight: FontWeight.bold)),
-            ),
+          ButtonBarUIService.buildActionButton(
+            context,
+            text: 'Add Player',
+            color: Colors.green[300]!,
+            onPressed: _addPlayer,
           ),
         ],
       ),

@@ -5,7 +5,7 @@ import 'enter_scores_UI_service.dart';
 typedef KeyPressCallback = void Function(String key);
 
 /// Service for creating a custom numeric keypad overlay
-/// Features 0-9 digits, backspace (X), and enter (checkmark) keys
+/// Features 1-9, 0 digits, backspace (X), and enter keys
 /// Designed to overlay the bottom button bar exactly
 class CustomKeypadService {
   
@@ -36,13 +36,13 @@ class CustomKeypadService {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          // Digits 0-9
-          ...List.generate(10, (index) => 
+          // Digits 1-9, then 0
+          ...[1, 2, 3, 4, 5, 6, 7, 8, 9, 0].map((digit) =>
             _buildKeypadKey(
               context: context,
-              text: index.toString(),
+              text: digit.toString(),
               fontSize: fontSize * 2,
-              onPressed: () => onKeyPress(index.toString()),
+              onPressed: () => onKeyPress(digit.toString()),
               deviceType: deviceType,
               padding: padding,
             )

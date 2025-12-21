@@ -5,6 +5,7 @@ import '../../models/league.dart';
 import '../../services/firebase_upload_service.dart';
 import '../../services/responsive_typography.dart';
 import '../../services/device_detection_service.dart';
+import '../../services/UI/button_bar_UI_service.dart';
 
 class WednesdayPlayerScoresScreen extends StatefulWidget {
   final League? league;
@@ -990,40 +991,21 @@ class _WednesdayPlayerScoresScreenState extends State<WednesdayPlayerScoresScree
   }
 
   Widget _buildPhoneButtonBar() {
-    return Container(
-      width: double.infinity,
-      height: 60.0,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.3),
-            spreadRadius: 1,
-            blurRadius: 3,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.all(12.0),
-      child: Row(
-        children: [
-          Expanded(
-            flex: 1,
-            child: ElevatedButton(
-              onPressed: () => Navigator.of(context).pop(),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue[300],
-                foregroundColor: Colors.black,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
-                padding: const EdgeInsets.all(6.0),
-                alignment: Alignment.center,
-              ),
-              child: Text('◄---- Back     ', style: TextStyle(fontSize: ResponsiveTypography.getButton(context), fontWeight: FontWeight.bold)),
-            ),
-          ),
-          const Spacer(flex: 3),
-        ],
-      ),
+    return ButtonBarUIService.buildButtonBar(
+      context,
+      backgroundColor: Colors.white,
+      mainAxisAlignment: MainAxisAlignment.start,
+      children: [
+        ButtonBarUIService.buildActionButton(
+          context,
+          text: '◄---- Back',
+          color: Colors.blue[300]!,
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        ButtonBarUIService.buildSpacer(),
+        ButtonBarUIService.buildSpacer(),
+        ButtonBarUIService.buildSpacer(),
+      ],
     );
   }
 }

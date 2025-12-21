@@ -4,6 +4,7 @@ import '../../services/screen_data_retention_service.dart';
 import '../../services/database_helper.dart';
 import '../../services/device_detection_service.dart';
 import '../../services/responsive_typography.dart';
+import '../../services/UI/button_bar_UI_service.dart';
 import '../../models/league.dart';
 import '../main_menu_screen.dart';
 import '../../services/firebase_upload_service.dart';
@@ -322,70 +323,20 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
   }
 
   Widget _buildSaveButton() {
-    final isPhone = DeviceDetectionService.isPhone(context);
-    final buttonFontSize = ResponsiveTypography.getButton(context);
-    final iconSize = isPhone ? 18.0 : 22.0;
-    final buttonWidth = MediaQuery.of(context).size.width * (isPhone ? 0.4 : 0.3);
-
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: SizedBox(
-        width: buttonWidth,
-        child: ElevatedButton(
+    return ButtonBarUIService.buildButtonBar(
+      context,
+      backgroundColor: Colors.grey[100]!,
+      mainAxisAlignment: MainAxisAlignment.start,
+      children: [
+        ButtonBarUIService.buildActionButton(
+          context,
+          text: _isSaving ? 'Saving...' : 'Save Results',
+          color: Colors.orange[600]!,
           onPressed: _isSaving ? null : _saveResultsAndReturnToMainMenu,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.orange[600],
-            foregroundColor: Colors.white,
-            padding: EdgeInsets.symmetric(vertical: isPhone ? 4 : 6),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-              side: const BorderSide(color: Colors.black, width: 1),
-            ),
-          ),
-          child: _isSaving
-              ? Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    SizedBox(
-                      width: iconSize,
-                      height: iconSize,
-                      child: const CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Flexible(
-                      child: Text(
-                        'Saving...',
-                        style: TextStyle(
-                          fontSize: buttonFontSize,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                )
-              : Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.save, size: iconSize),
-                    const SizedBox(width: 8),
-                    Flexible(
-                      child: Text(
-                        'Save Results',
-                        style: TextStyle(
-                          fontSize: buttonFontSize,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
         ),
-      ),
+        ButtonBarUIService.buildSpacer(),
+        ButtonBarUIService.buildSpacer(),
+      ],
     );
   }
 

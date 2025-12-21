@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'button_bar_UI_service.dart';
 
 enum DeviceType {
   phone6_5,
@@ -261,81 +262,28 @@ class ClosestPinUIService {
     bool isEnterSkatsEnabled = true,
     String league = 'Monday', // Add league parameter with default value
   }) {
-    final screenSize = MediaQuery.of(context).size;
-    final deviceType = getDeviceType(screenSize);
-    final fontSize = getResponsiveFontSize(deviceType, isHeader: true);
-    final padding = getResponsivePadding(deviceType);
-
-    // Increase button bar and button height by 50% for 10" tablets
-    final containerPaddingMultiplier = deviceType == DeviceType.tablet10 ? 0.6 : 0.4;
-    final buttonPaddingMultiplier = deviceType == DeviceType.tablet10 ? 0.6 : 0.4;
-
     // Determine button text based on league
     final buttonText = league == 'Monday' ? 'PAYOUT ---➤' : 'Payout ---➤';
 
-    // Determine button color based on league
-    final buttonColor = league == 'Monday' ? Colors.blue[300]! : Colors.blue[300]!;
-
-    return Container(
-      color: Colors.grey[300],
-      padding: EdgeInsets.all(padding.left * containerPaddingMultiplier),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: padding.left / 2),
-            child: SizedBox(
-              width: screenSize.width * 0.25, // Same width as Enter button
-              child: ElevatedButton(
-                onPressed: onClear,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue[200]!,
-                  padding: EdgeInsets.symmetric(vertical: padding.top * buttonPaddingMultiplier),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8.0),
-                    side: const BorderSide(color: Colors.black, width: 1),
-                  ),
-                ),
-                child: Text(
-                  'Clear',
-                  style: TextStyle(
-                    fontSize: fontSize * 1.2,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const Spacer(),
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: padding.left / 2),
-            child: SizedBox(
-              width: screenSize.width * 0.25, // 50% smaller than half width
-              child: ElevatedButton(
-                onPressed: isEnterSkatsEnabled ? onSaveAndReturn : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: isEnterSkatsEnabled ? buttonColor : Colors.grey[300]!,
-                  padding: EdgeInsets.symmetric(vertical: padding.top * buttonPaddingMultiplier),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8.0),
-                    side: const BorderSide(color: Colors.black, width: 1),
-                  ),
-                ),
-                child: Text(
-                  buttonText,
-                  style: TextStyle(
-                    fontSize: fontSize * 1.2,
-                    fontWeight: FontWeight.bold,
-                    color: isEnterSkatsEnabled ? Colors.black : Colors.grey[600],
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
+    return ButtonBarUIService.buildButtonBar(
+      context,
+      backgroundColor: Colors.grey[300]!,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        ButtonBarUIService.buildActionButton(
+          context,
+          text: 'Clear',
+          color: Colors.blue[200]!,
+          onPressed: onClear,
+        ),
+        ButtonBarUIService.buildSpacer(),
+        ButtonBarUIService.buildActionButton(
+          context,
+          text: buttonText,
+          color: isEnterSkatsEnabled ? Colors.blue[300]! : Colors.grey[300]!,
+          onPressed: isEnterSkatsEnabled ? onSaveAndReturn : null,
+        ),
+      ],
     );
   }
 

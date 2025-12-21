@@ -299,17 +299,17 @@ class EnterScoresUIService {
               onTap: onAutoFill,
             child: Container(
               width: fontSize * 3.0,
-              height: fontSize * 2.0,
+              height: fontSize * 3.5,
               margin: EdgeInsets.only(left: padding.left / 2),
-              decoration: const BoxDecoration(
-                //border: Border.all(color: Colors.black, width: 1),
-                //borderRadius: BorderRadius.circular(4.0),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.black, width: 1),
+                borderRadius: BorderRadius.circular(4.0),
               ),
               child: Center(
                 child: Icon(
                   Icons.arrow_downward,
                   color: Colors.black,
-                  size: fontSize * 1.5,
+                  size: fontSize * 2.0,
                 ),
               ),
             ),
@@ -1251,7 +1251,7 @@ class EnterScoresUIService {
                   color: Colors.orange[200],
                 ),
                 child: Center(
-                  child: Icon(Icons.arrow_downward, color: Colors.black, size: isPhone ? 18 : 24),
+                  child: Icon(Icons.arrow_downward, color: Colors.black, size: isPhone ? 22 : 24),
                 ),
               ),
             ),
