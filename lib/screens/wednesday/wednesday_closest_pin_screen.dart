@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../services/UI/closest_pin_UI_service.dart' as ClosestPinUI;
+import '../../services/UI/closest_pin_UI_service.dart' as closest_pin_ui;
 import '../../services/shared/league_purse_service.dart';
 import '../../services/device_detection_service.dart';
 import '../../services/responsive_typography.dart';
@@ -21,7 +21,7 @@ class WednesdayClosestPinScreen extends StatefulWidget {
   final double? mulliganAmount;
 
   const WednesdayClosestPinScreen({
-    Key? key,
+    super.key,
     required this.selectedPlayers,
     this.groups,
     this.groupPurseAmount,
@@ -31,7 +31,7 @@ class WednesdayClosestPinScreen extends StatefulWidget {
     this.playersAnte,
     this.closestPinAmount,
     this.mulliganAmount,
-  }) : super(key: key);
+  });
 
   @override
   _WednesdayClosestPinScreenState createState() => _WednesdayClosestPinScreenState();
@@ -43,8 +43,8 @@ class _WednesdayClosestPinScreenState extends State<WednesdayClosestPinScreen> {
   late double _closestPinValue;
   late double _remainingPurseAmount;
   late double _initialPurseAmount; // Store the original purse amount for Clear button
-  Map<String, int> _playerClosestPinCounts = {};
-  Map<String, double> _playerWinnings = {};
+  final Map<String, int> _playerClosestPinCounts = {};
+  final Map<String, double> _playerWinnings = {};
   @override
   void initState() {
     super.initState();
@@ -80,10 +80,6 @@ class _WednesdayClosestPinScreenState extends State<WednesdayClosestPinScreen> {
 
     // Lock screen to landscape mode only
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // Use DeviceDetectionService for consistent device detection
-      final deviceType = DeviceDetectionService.getDeviceType(context);
-      final deviceName = DeviceDetectionService.getDeviceName(context);
-
       // Debug info
       DeviceDetectionService.printDebugInfo(context);
 
@@ -192,7 +188,6 @@ class _WednesdayClosestPinScreenState extends State<WednesdayClosestPinScreen> {
   Widget _buildPlayerGridItem(Map<String, dynamic> player, int index) {
     final deviceType = DeviceDetectionService.getDeviceType(context);
     final fontSize = ResponsiveTypography.getBodyText(context);
-    final padding = _getResponsivePadding(context);
 
     String lastName = player['last'] ?? 'Unknown';
     int closestPinCount = _playerClosestPinCounts[lastName] ?? 0;
@@ -206,8 +201,8 @@ class _WednesdayClosestPinScreenState extends State<WednesdayClosestPinScreen> {
       onTap: () => _handlePlayerTap(lastName),
       child: Container(
         height: containerHeight,
-        margin: EdgeInsets.all(2),
-        padding: EdgeInsets.fromLTRB(1, 1, 6, 1), // Extra padding on right side
+        margin: const EdgeInsets.all(2),
+        padding: const EdgeInsets.fromLTRB(1, 1, 6, 1), // Extra padding on right side
         decoration: BoxDecoration(
           color: Colors.transparent,
           borderRadius: BorderRadius.circular(8),
@@ -217,10 +212,10 @@ class _WednesdayClosestPinScreenState extends State<WednesdayClosestPinScreen> {
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.grey.withOpacity(0.2),
+              color: Colors.grey.withValues(alpha: 0.2),
               spreadRadius: 1,
               blurRadius: 3,
-              offset: Offset(0, 2),
+              offset: const Offset(0, 2),
             ),
           ],
         ),
@@ -233,7 +228,7 @@ class _WednesdayClosestPinScreenState extends State<WednesdayClosestPinScreen> {
               child: Text(
                 lastName,
                 style: TextStyle(
-                  fontSize: deviceType == DeviceType.phone6Point5 ? 18 : fontSize + 3,
+                  fontSize: deviceType == DeviceType.phone6Point5 ? 14 : fontSize - 3,
                   fontWeight: FontWeight.bold,
                   color: closestPinCount > 0 ? Colors.blue[300] : Colors.black,
                 ),
@@ -245,7 +240,7 @@ class _WednesdayClosestPinScreenState extends State<WednesdayClosestPinScreen> {
             Container(
               width: countSize,
               height: countSize,
-              margin: EdgeInsets.only(right: 4),
+              margin: const EdgeInsets.only(right: 4),
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 color: closestPinCount > 0 ? Colors.orange[300] : Colors.grey[100],
@@ -270,7 +265,7 @@ class _WednesdayClosestPinScreenState extends State<WednesdayClosestPinScreen> {
               child: Container(
                 height: countSize,
                 alignment: Alignment.center,
-                margin: EdgeInsets.only(right: 4),
+                margin: const EdgeInsets.only(right: 4),
                 decoration: BoxDecoration(
                   color: winnings > 0 ? Colors.blue[100] : Colors.grey[50],
                   border: Border.all(
@@ -303,12 +298,13 @@ class _WednesdayClosestPinScreenState extends State<WednesdayClosestPinScreen> {
     final deviceType = DeviceDetectionService.getDeviceType(context);
     final headerFontSize = ResponsiveTypography.getHeading(context);
     final padding = _getResponsivePadding(context);
-    // For 6.5" phones, increase padding by 200% (2x) to increase height by 100%
+
+    // For 6.5" phones, increase padding by 100% (1x)
     double paddingMultiplier;
     if (deviceType == DeviceType.phone6Point5) {
-      paddingMultiplier = 2.0;
+      paddingMultiplier = 1.0;
     } else {
-      paddingMultiplier = 0.5;
+      paddingMultiplier = 2.0;
     }
     final increasedPadding = EdgeInsets.all(padding * paddingMultiplier);
     // For 6.5" phones, double the font size (100% increase)
@@ -341,7 +337,7 @@ class _WednesdayClosestPinScreenState extends State<WednesdayClosestPinScreen> {
                 ),
               ),
               Container(
-                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(6),
@@ -359,7 +355,7 @@ class _WednesdayClosestPinScreenState extends State<WednesdayClosestPinScreen> {
             ],
           ),
           Container(
-            padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             decoration: BoxDecoration(
               color: _remainingClosestPins > 0 ? Colors.orange[200] : Colors.orange[200],
               borderRadius: BorderRadius.circular(6),
@@ -381,7 +377,6 @@ class _WednesdayClosestPinScreenState extends State<WednesdayClosestPinScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final deviceType = DeviceDetectionService.getDeviceType(context);
     final padding = _getResponsivePadding(context);
     final reducedPadding = EdgeInsets.all(padding / 2);
 
@@ -398,8 +393,8 @@ class _WednesdayClosestPinScreenState extends State<WednesdayClosestPinScreen> {
                 child: Container(
                   color: Colors.transparent,
                   child: GridView.builder(
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 4,
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3,
                   childAspectRatio: 5.3,
                   crossAxisSpacing: 4,
                   mainAxisSpacing: 4,
@@ -413,7 +408,7 @@ class _WednesdayClosestPinScreenState extends State<WednesdayClosestPinScreen> {
               ),
             ),
           ),
-          ClosestPinUI.ClosestPinUIService.buildBottomButtons(
+          closest_pin_ui.ClosestPinUIService.buildBottomButtons(
             context,
             onClear: _handleClear,
             onSaveAndReturn: _handleSaveAndReturn,

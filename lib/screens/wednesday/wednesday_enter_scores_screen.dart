@@ -1,15 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'dart:async';
 import 'dart:math';
 import '../popup_utils.dart';
-import '../main_menu_screen.dart';
-import '../../services/database_helper.dart';
 import '../../services/shared/league_purse_service.dart';
 import '../../services/csv_payout_service.dart';
 import '../../services/group_csv_payout_service.dart';
-import '../../services/device_detection_service.dart';
-import '../../services/responsive_typography.dart';
 import '../../services/UI/enter_scores_UI_service.dart';
 import '../../services/UI/custom_keypad_service.dart';
 import '../../services/wednesday_winnings_service.dart';
@@ -32,11 +26,11 @@ class WednesdayEnterScoresScreen extends StatefulWidget {
   final String? initialLeague;
 
   const WednesdayEnterScoresScreen({
-    Key? key,
+    super.key,
     this.initialPlayers,
     this.initialGroups,
     this.initialLeague,
-  }) : super(key: key);
+  });
 
   @override
   _WednesdayEnterScoresScreenState createState() => _WednesdayEnterScoresScreenState();
@@ -49,11 +43,11 @@ class EnterScoresScreenWithData extends StatelessWidget {
   final String leagueType;
 
   const EnterScoresScreenWithData({
-    Key? key,
+    super.key,
     required this.selectedPlayers,
     required this.groups,
     required this.leagueType,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -67,7 +61,6 @@ class EnterScoresScreenWithData extends StatelessWidget {
 
 class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen> {
   // Constants
-  static const String selectedLeague = 'wednesday';
 
   // Services
   final WednesdayWinningsService _winningsService = WednesdayWinningsService();
@@ -79,10 +72,6 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
   // Swap selection tracking (inline, since SwapService uses PlayerData)
   List<String> selectedForSwap = [];
 
-  // Shuffle tracking
-  bool _shuffledInCurrentSession = false;
-  bool _hasBeenShuffled = false;
-
   // State
   List<List<Map<String, dynamic>?>> groups = [];
   List<Map<String, dynamic>> selectedPlayers = [];
@@ -92,32 +81,24 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
   Map<String, FocusNode> grossFocusNodes = {};
 
   // Focus management
-  List<List<FocusNode?>> _focusNodeMatrix = List.generate(10, (_) => List.filled(4, null));
+  final _focusNodeMatrix = List.generate(10, (_) => List<FocusNode?>.filled(4, null));
   WednesdayPlayerData? _currentFocusedPlayer;
 
   // Purse display values
   String _playersPurseDisplayText = "\$0.00";
-  String _closestPinPurseDisplayText = "\$0.00";
   String _mulliganPurseDisplayText = "\$0.00";
   double _adjustedMulliganPurse = 0.0;
-  double _totalPrizeMoney = 0.0;
   double _totalPayoutSum = 0.0;
   double _groupPurseAmount = 0.0;
   double _groupPayoutAmount = 0.0;
 
   // Processing state
   double totalPurse = 0.0;
-  int individualPercent = 40;
-  int groupPercent = 60;
   double individualPurse = 0.0;
   double groupPurse = 0.0;
   bool winnersCalculated = false;
   bool groupsProcessed = false;
   bool individualsProcessingComplete = false;
-
-  // Closest Pin
-  String? closestPinWinnerName;
-  double closestPinWinnings = 0.0;
 
   @override
   void initState() {
@@ -292,7 +273,7 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
 
         // Auto-advance when 2 digits are entered
         if (_keypadController!.currentInput.length == 2) {
-          Future.delayed(Duration(milliseconds: 300), () {
+          Future.delayed(const Duration(milliseconds: 300), () {
             for (int groupIndex = 0; groupIndex < groups.length; groupIndex++) {
               for (int playerIndex = 0; playerIndex < groups[groupIndex].length; playerIndex++) {
                 var player = groups[groupIndex][playerIndex];
@@ -328,7 +309,7 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
   Future<void> updateTitleInformation() async {
     try {
       double anteAmount = LeaguePurseService.getPlayersAnte(league: League.wednesday);
-      double closestPinAmount = LeaguePurseService.getClosestPinAmount(league: League.wednesday);
+      LeaguePurseService.getClosestPinAmount(league: League.wednesday);
       double mulliganAmount = LeaguePurseService.getMulliganAmount(league: League.wednesday);
 
       int playerCount = 0;
@@ -339,7 +320,6 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
       }
 
       totalPurse = anteAmount * playerCount;
-      double closestPinPurse = closestPinAmount * playerCount;
       double mulliganPurse = mulliganAmount * playerCount;
 
       // Get individual purse from CSV for initial display
@@ -369,7 +349,6 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
 
       setState(() {
         _playersPurseDisplayText = '\$${displayPurse.toStringAsFixed(2)}';
-        _closestPinPurseDisplayText = '\$${closestPinPurse.toStringAsFixed(2)}';
         _mulliganPurseDisplayText = '\$${displayMulliganPurse.toStringAsFixed(2)}';
         if (!individualsProcessingComplete) {
           _adjustedMulliganPurse = mulliganPurse;
@@ -420,8 +399,6 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
         for (int i = 0; i < allPlayers.length; i++) {
           groups[0][i] = allPlayers[i];
         }
-        _shuffledInCurrentSession = true;
-        _hasBeenShuffled = true;
       });
       _createControllersForPlayers();
       return;
@@ -448,8 +425,6 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
           groups[1][i - 3] = allPlayers[i];
         }
 
-        _shuffledInCurrentSession = true;
-        _hasBeenShuffled = true;
       });
       _createControllersForPlayers();
       return;
@@ -515,8 +490,6 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
       }
 
       // Mark that shuffling occurred in this session
-      _shuffledInCurrentSession = true;
-      _hasBeenShuffled = true;
     });
 
     _createControllersForPlayers();
@@ -820,7 +793,9 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
         individualsProcessingComplete = true;
       });
 
-      await _saveResultsToDatabase(playerScores);
+      // NOTE: Do NOT save to database here - the comprehensive save happens in wednesday_results_screen
+      // when "Save Results" button is pressed (which includes both individual AND group winnings)
+      // await _saveResultsToDatabase(playerScores);
       await updateTitleInformation();
     } catch (e) {
       // Handle error silently for auto-processing
@@ -869,38 +844,7 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
     Future.microtask(() => _checkAndAutoCalculate());
   }
 
-  // ============== PROCESS INDIVIDUALS ==============
-
-  Future<void> _processIndividuals() async {
-    try {
-      FocusScope.of(context).unfocus();
-
-      List<Map<String, dynamic>> playerScores = _collectPlayerScores();
-      if (playerScores.isEmpty) {
-        await PopupUtils.showWarning(context, "Process Error", "No player scores available to process!");
-        return;
-      }
-
-      // Process closest pin first
-      bool closestPinCompleted = await _processClosestPin(playerScores);
-      if (!closestPinCompleted) return;
-
-      // Calculate winnings
-      await _calculateWednesdayWinnings(playerScores);
-
-      // Update groups with calculated values
-      _updateGroupsWithWinnings(playerScores);
-
-      setState(() {
-        individualsProcessingComplete = true;
-      });
-
-      await _saveResultsToDatabase(playerScores);
-      await updateTitleInformation();
-    } catch (e) {
-      // Handle error
-    }
-  }
+  // ============== COLLECT PLAYER SCORES ==============
 
   List<Map<String, dynamic>> _collectPlayerScores() {
     List<Map<String, dynamic>> scores = [];
@@ -918,143 +862,6 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
       }
     }
     return scores;
-  }
-
-  Future<bool> _processClosestPin(List<Map<String, dynamic>> players) async {
-    // Show closest pin selection dialog
-    Map<String, int> playerValues = {};
-    for (var player in players) {
-      playerValues[player['last'] ?? 'Unknown'] = 0;
-    }
-
-    double closestPinAmount = LeaguePurseService.closestPinAmount;
-    int targetTotal = closestPinAmount.round() * players.length;
-
-    bool? result = await _showClosestPinDialog(players, playerValues, targetTotal);
-
-    if (result == true) {
-      // Calculate winnings from closest pin
-      double prizePerPoint = players.length.toDouble();
-      playerValues.forEach((name, value) {
-        if (value > 0) {
-          double winnings = value * prizePerPoint;
-          // Find player and update
-          for (var player in players) {
-            if (player['last'] == name) {
-              player['close_pin_winnings'] = winnings;
-              break;
-            }
-          }
-        }
-      });
-      return true;
-    }
-    return false;
-  }
-
-  Future<bool?> _showClosestPinDialog(
-    List<Map<String, dynamic>> players,
-    Map<String, int> playerValues,
-    int targetTotal,
-  ) async {
-    final isPhone = DeviceDetectionService.isPhone(context);
-    int runningTotal = 0;
-
-    return showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            runningTotal = playerValues.values.fold(0, (sum, v) => sum + v);
-
-            return AlertDialog(
-              title: Column(
-                children: [
-                  Text(
-                    'Closest Pin - Wednesday League',
-                    style: TextStyle(fontSize: isPhone ? 14 : 18, fontWeight: FontWeight.bold),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    'Target: \$$targetTotal | Current: $runningTotal',
-                    style: TextStyle(
-                      fontSize: isPhone ? 11 : 14,
-                      color: runningTotal == targetTotal ? Colors.green : Colors.blue,
-                    ),
-                  ),
-                ],
-              ),
-              content: Container(
-                width: double.maxFinite,
-                child: SingleChildScrollView(
-                  child: Wrap(
-                    spacing: 8,
-                    runSpacing: 4,
-                    children: players.map((player) {
-                      String name = player['last'] ?? 'Unknown';
-                      int value = playerValues[name] ?? 0;
-
-                      return GestureDetector(
-                        onTap: () {
-                          if (value < 5 && runningTotal < targetTotal) {
-                            setState(() {
-                              playerValues[name] = value + 1;
-                            });
-                          }
-                        },
-                        child: Container(
-                          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: value > 0 ? Colors.green[100] : Colors.grey[200],
-                            borderRadius: BorderRadius.circular(4),
-                            border: Border.all(color: Colors.grey),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(name, style: TextStyle(fontSize: isPhone ? 12 : 14)),
-                              if (value > 0) ...[
-                                SizedBox(width: 4),
-                                Container(
-                                  padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: Colors.green,
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Text(
-                                    value.toString(),
-                                    style: TextStyle(color: Colors.white, fontSize: isPhone ? 10 : 12),
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    setState(() {
-                      playerValues.updateAll((key, value) => 0);
-                    });
-                  },
-                  child: Text('Clear'),
-                ),
-                ElevatedButton(
-                  onPressed: () => Navigator.pop(context, true),
-                  child: Text('Continue'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
   }
 
   Future<void> _calculateWednesdayWinnings(List<Map<String, dynamic>> playerScores) async {
@@ -1136,7 +943,6 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
       }
     }
 
-    _totalPrizeMoney = totalDollarsPaidOut;
     _totalPayoutSum = totalDollarsPaidOut; // Store the total sum for display
 
     // Calculate the difference: Ind Purse - Total Dollars Paid Out
@@ -1160,31 +966,6 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
     _adjustedMulliganPurse = newMulliganPurse;
   }
 
-  Future<void> _saveResultsToDatabase(List<Map<String, dynamic>> playerScores) async {
-    try {
-      final dbHelper = DatabaseHelper();
-      String today = DateTime.now().toIso8601String().substring(0, 10);
-
-      for (var player in playerScores) {
-        Map<String, dynamic> scoreData = {
-          'player_number': player['player_number'],
-          'name': player['last'],
-          'date_played': today,
-          'golf_course': 'TBD',
-          'handicap': player['handicap'],
-          'gross_score': player['gross_score'],
-          'net_score': player['net_score'],
-          'position': player['pos'] ?? '',
-          'individual_winnings': player['winnings'] ?? 0.0,
-          'close_pin_winnings': player['close_pin_winnings'] ?? 0.0,
-        };
-        await dbHelper.insertScoreLeague(scoreData, League.wednesday);
-      }
-    } catch (e) {
-      // Handle error
-    }
-  }
-
   // ============== PROCESS GROUPS ==============
 
   Future<void> _autoProcessGroups() async {
@@ -1202,7 +983,7 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
 
   /// Saves individual processing results before group processing
   /// Preserves the data to pass to results screen
-  List<Map<String, dynamic>> _individualWinners = [];
+  final List<Map<String, dynamic>> _individualWinners = [];
 
   Future<void> _saveIndividualResultsToDatabase() async {
     // Collect players with individual winnings (before groups processing)
@@ -1346,7 +1127,6 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
                 onShuffle: _getShuffleButtonHandler(),
                 shuffleButtonColor: _getShuffleButtonColor(),
                 backButtonColor: _getBackButtonColor(),
-                onIndividuals: _handleIndividuals,
                 onProcessGroups: _handleAutoProcessGroups,
                 onClosestPin: _navigateToClosestPin,
                 onSwap: selectedForSwap.length == 2 ? _handleSwap : null,
@@ -1389,11 +1169,6 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
     if (_currentFocusedPlayer == null) return false;
     String playerName = player['last'] ?? '';
     return _currentFocusedPlayer!.name == playerName;
-  }
-
-  /// Wrapper for Individuals button
-  void _handleIndividuals() {
-    _processIndividuals();
   }
 
   /// Wrapper for Auto Process Groups button
