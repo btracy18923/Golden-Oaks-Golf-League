@@ -158,9 +158,13 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
       groups = groupsData.map((g) => g.map((p) {
         if (p != null) {
           Map<String, dynamic> playerCopy = Map<String, dynamic>.from(p);
-          // Map HC field to handicap if it exists
-          if (playerCopy.containsKey('HC') && !playerCopy.containsKey('handicap')) {
+          // Map HC field to handicap if it exists, ensuring we use the database HC value
+          // HC is the handicap field for Wednesday league players
+          if (playerCopy.containsKey('HC')) {
             playerCopy['handicap'] = playerCopy['HC'];
+          } else if (!playerCopy.containsKey('handicap')) {
+            // If no HC or handicap field exists, default to 0.0
+            playerCopy['handicap'] = 0.0;
           }
           return playerCopy;
         }
@@ -816,10 +820,22 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
         if (player != null) {
           // Create a new player map with updated scores
           Map<String, dynamic> newPlayer = Map<String, dynamic>.from(player);
-          int grossScore = 30 + random.nextInt(16); // 30-45
-          newPlayer['gross_score'] = grossScore;
+
+          // Get OHC (Original Handicap) value for score calculation
+          double ohc = (newPlayer['OHC'] ?? 0.0).toDouble();
+          int ohcValue = ohc.round();
+
+          // Calculate gross score: OHC + 35 ± random(-2 to +3)
+          int baseScore = ohcValue + 35;
+          int randomAdjustment = random.nextInt(6) - 2; // -2 to +3
+          int grossScore = baseScore + randomAdjustment;
+
+          // For net score calculation, use the regular handicap (HC)
           double handicap = (newPlayer['handicap'] ?? 0.0).toDouble();
-          newPlayer['net_score'] = grossScore - handicap.round();
+          int hcValue = handicap.round();
+
+          newPlayer['gross_score'] = grossScore;
+          newPlayer['net_score'] = grossScore - hcValue;
           newGroup.add(newPlayer);
 
           String key = '${player['last']}_gross';
