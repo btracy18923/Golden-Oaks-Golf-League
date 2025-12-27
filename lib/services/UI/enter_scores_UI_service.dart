@@ -163,7 +163,8 @@ class EnterScoresUIService {
   /// Uses LeaguePurseService for dynamic purse management
   /// [onReturn] - Optional callback for left arrow return functionality
   /// [onAutoFill] - Optional callback for storage icon auto-fill functionality
-  static Widget buildPurseHeader(BuildContext context, League league, {VoidCallback? onReturn, VoidCallback? onAutoFill}) {
+  /// [payoutAmount] - Optional payout amount to display instead of closest pin purse
+  static Widget buildPurseHeader(BuildContext context, League league, {VoidCallback? onReturn, VoidCallback? onAutoFill, double? payoutAmount}) {
     //print("Using UI Service for ${league.name} league");
     final deviceType = getDeviceType(context);
     final fontSize = getResponsiveFontSize(deviceType, isHeader: true);
@@ -234,7 +235,7 @@ class EnterScoresUIService {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Text(
-                  'ClosePin Purse = ',
+                  '          Payout = ',
                   style: TextStyle(
                     fontSize: headerFontSize,
                     fontWeight: FontWeight.bold,
@@ -248,7 +249,7 @@ class EnterScoresUIService {
                     borderRadius: BorderRadius.circular(4.0),
                   ),
                   child: Text(
-                    LeaguePurseService.formatPurseAmount(LeaguePurseService.closestPinPurse),
+                    LeaguePurseService.formatPurseAmount(payoutAmount ?? 0.0),
                     style: TextStyle(
                       fontSize: headerFontSize,
                       fontWeight: FontWeight.bold,
@@ -1139,7 +1140,7 @@ class EnterScoresUIService {
     VoidCallback? onAutoFill,
   }) {
     final isPhone = DeviceDetectionService.isPhone(context);
-    final headerFontSize = ResponsiveTypography.getLabel(context);
+    final headerFontSize = getPurseHeaderFontSize(context);
     final spacing = isPhone ? 10.0 : 30.0;
     const config = LeagueUIConfig.wednesday;
 
@@ -1356,52 +1357,6 @@ class EnterScoresUIService {
     );
   }
 
-  static Widget _buildWednesdayThreeColumnLayout(
-    BuildContext context,
-    List<List<Map<String, dynamic>?>> groups,
-    bool groupsProcessed,
-    double spacing,
-    EdgeInsets padding, {
-    Function(int, int, Map<String, dynamic>)? onPlayerTap,
-    Function(int, int)? onEmptySlotTap,
-    bool Function(String)? isPlayerSelected,
-    bool Function(int, int)? isEmptySlotSelected,
-    Function(Map<String, dynamic>, String)? onGrossScoreChanged,
-    List<List<FocusNode?>>? grossFocusNodes,
-    bool Function(Map<String, dynamic>)? isPlayerFocused,
-    required bool useThreeColumns,
-  }) {
-    return Expanded(
-      child: Padding(
-        padding: padding,
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              _buildWednesdayGroupRowThree(context, groups, 0, 1, 2, 'Group 1', 'Group 2', 'Group 3', groupsProcessed, spacing,
-                onPlayerTap: onPlayerTap, onEmptySlotTap: onEmptySlotTap, isPlayerSelected: isPlayerSelected,
-                isEmptySlotSelected: isEmptySlotSelected, onGrossScoreChanged: onGrossScoreChanged,
-                grossFocusNodes: grossFocusNodes, isPlayerFocused: isPlayerFocused, useThreeColumns: useThreeColumns),
-              SizedBox(height: spacing),
-              _buildWednesdayGroupRowThree(context, groups, 3, 4, 5, 'Group 4', 'Group 5', 'Group 6', groupsProcessed, spacing,
-                onPlayerTap: onPlayerTap, onEmptySlotTap: onEmptySlotTap, isPlayerSelected: isPlayerSelected,
-                isEmptySlotSelected: isEmptySlotSelected, onGrossScoreChanged: onGrossScoreChanged,
-                grossFocusNodes: grossFocusNodes, isPlayerFocused: isPlayerFocused, useThreeColumns: useThreeColumns),
-              SizedBox(height: spacing),
-              _buildWednesdayGroupRowThree(context, groups, 6, 7, 8, 'Group 7', 'Group 8', 'Group 9', groupsProcessed, spacing,
-                onPlayerTap: onPlayerTap, onEmptySlotTap: onEmptySlotTap, isPlayerSelected: isPlayerSelected,
-                isEmptySlotSelected: isEmptySlotSelected, onGrossScoreChanged: onGrossScoreChanged,
-                grossFocusNodes: grossFocusNodes, isPlayerFocused: isPlayerFocused, useThreeColumns: useThreeColumns),
-              SizedBox(height: spacing),
-              _buildWednesdayGroupRow(context, groups, 9, -1, 'Group 10', '', groupsProcessed, spacing,
-                onPlayerTap: onPlayerTap, onEmptySlotTap: onEmptySlotTap, isPlayerSelected: isPlayerSelected,
-                isEmptySlotSelected: isEmptySlotSelected, onGrossScoreChanged: onGrossScoreChanged,
-                grossFocusNodes: grossFocusNodes, isPlayerFocused: isPlayerFocused, useThreeColumns: useThreeColumns),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 
   static Widget _buildWednesdayGroupRow(
     BuildContext context,
@@ -1455,51 +1410,6 @@ class EnterScoresUIService {
     );
   }
 
-  static Widget _buildWednesdayGroupRowThree(
-    BuildContext context,
-    List<List<Map<String, dynamic>?>> groups,
-    int firstIndex,
-    int secondIndex,
-    int thirdIndex,
-    String firstTitle,
-    String secondTitle,
-    String thirdTitle,
-    bool groupsProcessed,
-    double spacing, {
-    Function(int, int, Map<String, dynamic>)? onPlayerTap,
-    Function(int, int)? onEmptySlotTap,
-    bool Function(String)? isPlayerSelected,
-    bool Function(int, int)? isEmptySlotSelected,
-    Function(Map<String, dynamic>, String)? onGrossScoreChanged,
-    List<List<FocusNode?>>? grossFocusNodes,
-    bool Function(Map<String, dynamic>)? isPlayerFocused,
-    required bool useThreeColumns,
-  }) {
-    return Row(
-      children: [
-        Expanded(
-          child: _buildWednesdayGroup(context, groups, firstIndex, firstTitle, groupsProcessed,
-            onPlayerTap: onPlayerTap, onEmptySlotTap: onEmptySlotTap, isPlayerSelected: isPlayerSelected,
-            isEmptySlotSelected: isEmptySlotSelected, onGrossScoreChanged: onGrossScoreChanged,
-            grossFocusNodes: grossFocusNodes, isPlayerFocused: isPlayerFocused, useThreeColumns: useThreeColumns),
-        ),
-        SizedBox(width: spacing),
-        Expanded(
-          child: _buildWednesdayGroup(context, groups, secondIndex, secondTitle, groupsProcessed,
-            onPlayerTap: onPlayerTap, onEmptySlotTap: onEmptySlotTap, isPlayerSelected: isPlayerSelected,
-            isEmptySlotSelected: isEmptySlotSelected, onGrossScoreChanged: onGrossScoreChanged,
-            grossFocusNodes: grossFocusNodes, isPlayerFocused: isPlayerFocused, useThreeColumns: useThreeColumns),
-        ),
-        SizedBox(width: spacing),
-        Expanded(
-          child: _buildWednesdayGroup(context, groups, thirdIndex, thirdTitle, groupsProcessed,
-            onPlayerTap: onPlayerTap, onEmptySlotTap: onEmptySlotTap, isPlayerSelected: isPlayerSelected,
-            isEmptySlotSelected: isEmptySlotSelected, onGrossScoreChanged: onGrossScoreChanged,
-            grossFocusNodes: grossFocusNodes, isPlayerFocused: isPlayerFocused, useThreeColumns: useThreeColumns),
-        ),
-      ],
-    );
-  }
 
   static Widget _buildWednesdayGroup(
     BuildContext context,
@@ -1533,7 +1443,10 @@ class EnterScoresUIService {
           child: Text(
             '-----$groupTitle-----',
             textAlign: TextAlign.center,
-            style: ResponsiveTypography.headingStyle(context, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              fontSize: getGroupHeaderFontSize(context),
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
         // Column headers
@@ -1548,20 +1461,17 @@ class EnterScoresUIService {
   }
 
   static Widget _buildWednesdayGroupHeader(BuildContext context, bool groupsProcessed, bool useThreeColumns) {
-    final rowHeight = getWednesdayRowHeight(context);
-
-    // Adjust flex values for three-column layout to prevent compression
-    int nameFlex = useThreeColumns ? 25 : 30;
-    int hcFlex = useThreeColumns ? 8 : 10;
-    int grossFlex = useThreeColumns ? 9 : 11;
-    int netFlex = useThreeColumns ? 8 : 10;
+    // Adjust flex values for three-column layout : 2-grid is second number
+    int nameFlex = useThreeColumns ? 25 : 29;
+    int hcFlex = useThreeColumns ? 8 : 13;
+    int grossFlex = useThreeColumns ? 9 : 14;    //Change all three: 1557, 1695, 1751
+    int netFlex = useThreeColumns ? 8 : 13;
     int grpFlex = useThreeColumns ? 8 : 10;
-    int avgFlex = useThreeColumns ? 8 : 10;
+    int avgFlex = useThreeColumns ? 8 : 12;
     int posFlex = useThreeColumns ? 8 : 10;
-    int moneyFlex = useThreeColumns ? 15 : 20;
+    int moneyFlex = useThreeColumns ? 15 : 13;
 
     return Container(
-      height: rowHeight,
       decoration: const BoxDecoration(
         border: Border(
           top: BorderSide(color: Colors.black, width: 1),
@@ -1585,6 +1495,7 @@ class EnterScoresUIService {
 
   static Widget _buildWednesdayHeaderCell(BuildContext context, String text, {int flex = 1, bool reducedPadding = false, bool hasLeftBorder = false}) {
     final isPhone = DeviceDetectionService.isPhone(context);
+    final rowHeight = getWednesdayRowHeight(context);
     final padding = isPhone ? 4.0 : 8.0;
 
     // Use reduced padding for columns that need to fit more text
@@ -1593,6 +1504,7 @@ class EnterScoresUIService {
     return Expanded(
       flex: flex,
       child: Container(
+        height: rowHeight,
         padding: EdgeInsets.only(
           left: leftRightPadding,
           right: leftRightPadding,
@@ -1609,7 +1521,10 @@ class EnterScoresUIService {
           child: Text(
             text,
             textAlign: TextAlign.center,
-            style: ResponsiveTypography.tableHeaderStyle(context, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              fontSize: getTableHeaderFontSize(context),
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
       ),
@@ -1677,7 +1592,15 @@ class EnterScoresUIService {
     // Extract player data
     String name = player['last'] ?? '';
     double handicap = (player['handicap'] ?? 0.0).toDouble();
-    int? netScore = player['net_score'] as int?;
+    dynamic netScoreValue = player['net_score'];
+    String netScoreDisplay = '';
+    if (netScoreValue != null) {
+      if (netScoreValue is int) {
+        netScoreDisplay = netScoreValue.toString();
+      } else if (netScoreValue is double) {
+        netScoreDisplay = netScoreValue.toStringAsFixed(1);
+      }
+    }
     String position = player['pos'] ?? '';
     String prizeMoney = player['prize_money'] ?? '';
     int? manualGroup = player['manual_group'] as int?;
@@ -1685,14 +1608,14 @@ class EnterScoresUIService {
     bool isWildCard = player['is_wild_card'] == true;
 
     // Adjust flex values for three-column layout to match header
-    int nameFlex = useThreeColumns ? 25 : 30;
-    int hcFlex = useThreeColumns ? 8 : 10;
-    int grossFlex = useThreeColumns ? 9 : 11;
-    int netFlex = useThreeColumns ? 8 : 10;
+    int nameFlex = useThreeColumns ? 25 : 29;
+    int hcFlex = useThreeColumns ? 8 : 13;
+    int grossFlex = useThreeColumns ? 9 : 14;  //Change: 1558, 1695, 1751
+    int netFlex = useThreeColumns ? 8 : 13;
     int grpFlex = useThreeColumns ? 8 : 10;
-    int avgFlex = useThreeColumns ? 8 : 10;
+    int avgFlex = useThreeColumns ? 8 : 12;
     int posFlex = useThreeColumns ? 8 : 10;
-    int moneyFlex = useThreeColumns ? 15 : 20;
+    int moneyFlex = useThreeColumns ? 15 : 13;
 
     return Container(
       height: rowHeight,
@@ -1717,7 +1640,7 @@ class EnterScoresUIService {
             _buildWednesdayDataCell(context, manualGroup?.toString() ?? '', flex: grpFlex,
               backgroundColor: config.inputCellColor),
           // Net score
-          _buildWednesdayDataCell(context, netScore?.toString() ?? '', flex: netFlex),
+          _buildWednesdayDataCell(context, netScoreDisplay, flex: netFlex),
           // AVG (only when processed) - shows average net score for the group
           if (groupsProcessed)
             _buildWednesdayDataCell(context, avgNet, flex: avgFlex),
@@ -1741,14 +1664,14 @@ class EnterScoresUIService {
     const config = LeagueUIConfig.wednesday;
 
     // Adjust flex values for three-column layout to match header
-    int nameFlex = useThreeColumns ? 25 : 30;
-    int hcFlex = useThreeColumns ? 8 : 10;
-    int grossFlex = useThreeColumns ? 9 : 11;
-    int netFlex = useThreeColumns ? 8 : 10;
+    int nameFlex = useThreeColumns ? 25 : 29;
+    int hcFlex = useThreeColumns ? 8 : 13;
+    int grossFlex = useThreeColumns ? 9 : 14; //Change: 1558, 1695, 1752
+    int netFlex = useThreeColumns ? 8 : 13;
     int grpFlex = useThreeColumns ? 8 : 10;
-    int avgFlex = useThreeColumns ? 8 : 10;
+    int avgFlex = useThreeColumns ? 8 : 12;
     int posFlex = useThreeColumns ? 8 : 10;
-    int moneyFlex = useThreeColumns ? 15 : 20;
+    int moneyFlex = useThreeColumns ? 15 : 13;
 
     return GestureDetector(
       onTap: onTap,
@@ -1818,7 +1741,11 @@ class EnterScoresUIService {
               Expanded(
                 child: Text(
                   name,
-                  style: ResponsiveTypography.smallStyle(context, fontWeight: FontWeight.bold, color: Colors.blue[700]),
+                  style: TextStyle(
+                    fontSize: getTableDataFontSize(context),
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blue[700],
+                  ),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
@@ -1850,7 +1777,10 @@ class EnterScoresUIService {
           child: Text(
             text,
             textAlign: TextAlign.center,
-            style: ResponsiveTypography.smallStyle(context, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              fontSize: getTableDataFontSize(context),
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
       ),
@@ -1890,7 +1820,10 @@ class EnterScoresUIService {
             enableInteractiveSelection: false,
             textAlign: TextAlign.center,
             textAlignVertical: TextAlignVertical.center,
-            style: ResponsiveTypography.smallStyle(context, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              fontSize: getTableDataFontSize(context),
+              fontWeight: FontWeight.bold,
+            ),
             decoration:  const InputDecoration(
               border: InputBorder.none,
               contentPadding: EdgeInsets.zero,
@@ -1916,7 +1849,6 @@ class EnterScoresUIService {
     VoidCallback? onShuffle,
     Color? shuffleButtonColor,
     Color? backButtonColor,
-    VoidCallback? onIndividuals,
     VoidCallback? onProcessGroups,
     VoidCallback? onClosestPin,
     VoidCallback? onSwap,
@@ -1974,13 +1906,55 @@ class EnterScoresUIService {
         onPressed: processButtonCallback,
       ));
     } else {
-      // Only show Close Pin Winner button when processed
-      buttons.add(ButtonBarUIService.buildActionButton(
-        context,
-        text: processButtonText,
-        color: processButtonColor,
-        onPressed: processButtonCallback,
-      ));
+      // Only show Close Pin Winner button when processed - make it 1/5 of screen width
+      // Don't use Expanded, use fixed width instead
+    }
+
+    // Custom button bar for processed state to control button size
+    if (groupsProcessed) {
+      final screenWidth = MediaQuery.of(context).size.width;
+      final buttonWidth = (screenWidth / 5) * 1.5; // 1/5 of screen width increased by 50%
+      final buttonFontSize = ResponsiveTypography.getButton(context);
+      final buttonRadius = ButtonBarUIService.getButtonRadius(context);
+      final buttonInternalPadding = ButtonBarUIService.getButtonInternalPadding(context);
+
+      return Container(
+        constraints: BoxConstraints(minHeight: ButtonBarUIService.getContainerHeight(context)),
+        color: config.buttonBarColor,
+        padding: ButtonBarUIService.getContainerPadding(context),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            SizedBox(
+              width: buttonWidth,
+              child: ElevatedButton(
+                onPressed: processButtonCallback,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: processButtonColor,
+                  foregroundColor: processButtonCallback != null ? Colors.black : Colors.grey[600],
+                  padding: buttonInternalPadding,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(buttonRadius),
+                    side: const BorderSide(color: Colors.black, width: 2),
+                  ),
+                ),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    processButtonText,
+                    style: TextStyle(
+                      fontSize: buttonFontSize,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
     }
 
     return ButtonBarUIService.buildButtonBar(
