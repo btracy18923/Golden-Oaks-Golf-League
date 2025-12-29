@@ -222,6 +222,11 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
 
   /// Shows the keypad for a specific player's Gross score input
   void _showKeypadForPlayer(int groupIndex, int playerIndex) {
+    // Prevent keypad from showing when Adjust Players overlay is visible
+    if (_showAdjustPlayersOverlay) {
+      return;
+    }
+
     if (_keypadController == null) return;
     if (groupIndex < groups.length && playerIndex < groups[groupIndex].length) {
       var player = groups[groupIndex][playerIndex];
@@ -815,6 +820,17 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
   // ============== AUTO FILL ==============
 
   void _handleAutoFill() {
+    // Prevent Auto Fill when Adjust Players overlay is visible
+    if (_showAdjustPlayersOverlay) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cannot use Auto Fill while adjusting players'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
     final random = Random();
 
     // Create a new groups list to force rebuild
@@ -1254,7 +1270,7 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
     // Back button
     buttons.add(ButtonBarUIService.buildActionButton(
       context,
-      text: '◄---- Done',
+      text: '◄- Enter Gross',
       color: Colors.lightBlue[100]!,
       onPressed: _handleCloseAdjustPlayersOverlay,
     ));
