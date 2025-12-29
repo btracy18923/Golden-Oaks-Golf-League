@@ -690,10 +690,33 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
     return Colors.grey[400]!;
   }
 
-  /// Gets the color for the back button based on group processing state
+  /// Gets the color for the back button based on score data or group processing state
   Color _getBackButtonColor() {
-    if (groupsProcessed) return Colors.grey[400]!;
+    if (_hasAnyScoreData() || groupsProcessed) {
+      return Colors.grey[400]!;
+    }
     return Colors.lightBlue[100]!;
+  }
+
+  /// Gets the handler for the back button based on score data or group processing state
+  VoidCallback? _getBackButtonHandler() {
+    if (_hasAnyScoreData()) {
+      return _handleBackDisabledDueToScores;
+    }
+    if (groupsProcessed) {
+      return null;
+    }
+    return _returnToMainMenu;
+  }
+
+  /// Handles when back button is pressed but disabled due to score data
+  void _handleBackDisabledDueToScores() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Cannot return to Player Selection after Gross scores have been entered'),
+        duration: Duration(seconds: 2),
+      ),
+    );
   }
 
   // ============== SCORE INPUT ==============
@@ -1118,9 +1141,9 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
       // Show all buttons when not processed
       buttons.add(ButtonBarUIService.buildActionButton(
         context,
-        text: '◄---- Back     ',
+        text: '◄- Player Selection',
         color: _getBackButtonColor(),
-        onPressed: groupsProcessed ? null : _returnToMainMenu,
+        onPressed: _getBackButtonHandler(),
       ));
       buttons.add(ButtonBarUIService.buildActionButton(
         context,
