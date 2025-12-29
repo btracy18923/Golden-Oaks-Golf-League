@@ -6,8 +6,11 @@ import '../../services/csv_payout_service.dart';
 import '../../services/group_csv_payout_service.dart';
 import '../../services/UI/enter_scores_UI_service.dart';
 import '../../services/UI/custom_keypad_service.dart';
+import '../../services/UI/button_bar_UI_service.dart';
+import '../../services/responsive_typography.dart';
 import '../../services/wednesday_winnings_service.dart';
 import '../../services/process_groups_service.dart';
+import '../../services/backend_email_service.dart';
 import '../../models/league.dart';
 import '../../models/wednesday_player_data.dart';
 import 'wednesday_closest_pin_screen.dart';
@@ -71,6 +74,9 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
 
   // Swap selection tracking (inline, since SwapService uses PlayerData)
   List<String> selectedForSwap = [];
+
+  // Adjust Players overlay state
+  bool _showAdjustPlayersOverlay = false;
 
   // State
   List<List<Map<String, dynamic>?>> groups = [];
@@ -699,7 +705,7 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
           int grossScore = int.parse(value);
           player['gross_score'] = grossScore;
           double handicap = (player['handicap'] ?? 0.0).toDouble();
-          player['net_score'] = grossScore - handicap.round();
+          player['net_score'] = (grossScore - handicap).toDouble();
 
           // Clear calculated values when score changes
           winnersCalculated = false;
@@ -832,10 +838,9 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
 
           // For net score calculation, use the regular handicap (HC)
           double handicap = (newPlayer['handicap'] ?? 0.0).toDouble();
-          int hcValue = handicap.round();
 
           newPlayer['gross_score'] = grossScore;
-          newPlayer['net_score'] = grossScore - hcValue;
+          newPlayer['net_score'] = (grossScore - handicap).toDouble();
           newGroup.add(newPlayer);
 
           String key = '${player['last']}_gross';
@@ -883,8 +888,8 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
   Future<void> _calculateWednesdayWinnings(List<Map<String, dynamic>> playerScores) async {
     // Sort by net score
     playerScores.sort((a, b) {
-      int netA = a['net_score'] ?? 999;
-      int netB = b['net_score'] ?? 999;
+      double netA = (a['net_score'] ?? 999).toDouble();
+      double netB = (b['net_score'] ?? 999).toDouble();
       return netA.compareTo(netB);
     });
 
@@ -1079,6 +1084,86 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
 
   // ============== BUILD ==============
 
+  /// Builds bottom buttons with Adjust Players button
+  Widget _buildBottomButtons(bool individualsComplete, bool groupsProcessed) {
+    // Determine button text and callback based on groups processing state
+    String processButtonText = groupsProcessed ? 'Close Pin Winner ---➤' : 'Process Groups ---➤';
+    VoidCallback? processButtonCallback = groupsProcessed
+        ? _navigateToClosestPin
+        : (individualsComplete ? _handleAutoProcessGroups : null);
+    Color processButtonColor = groupsProcessed
+        ? Colors.green[300]!
+        : (individualsComplete ? Colors.green[300]! : Colors.grey[400]!);
+
+    // Build button list based on processing state
+    List<Widget> buttons = [];
+
+    if (!groupsProcessed) {
+      // Show all buttons when not processed
+      buttons.add(ButtonBarUIService.buildActionButton(
+        context,
+        text: '◄---- Back     ',
+        color: _getBackButtonColor(),
+        onPressed: groupsProcessed ? null : _returnToMainMenu,
+      ));
+      buttons.add(ButtonBarUIService.buildActionButton(
+        context,
+        text: 'Adjust Players',
+        color: _getAdjustPlayersButtonColor(),
+        onPressed: _getAdjustPlayersButtonHandler(),
+      ));
+      buttons.add(ButtonBarUIService.buildActionButton(
+        context,
+        text: processButtonText,
+        color: processButtonColor,
+        onPressed: processButtonCallback,
+      ));
+    } else {
+      // Only show Close Pin Winner button when processed
+      final screenWidth = MediaQuery.of(context).size.width;
+      final buttonWidth = (screenWidth / 5) * 1.5;
+      final buttonFontSize = ResponsiveTypography.getButton(context);
+      final buttonRadius = ButtonBarUIService.getButtonRadius(context);
+      final buttonInternalPadding = ButtonBarUIService.getButtonInternalPadding(context);
+
+      return ButtonBarUIService.buildButtonBar(
+        context,
+        backgroundColor: Colors.grey[300]!,
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: buttonWidth,
+            child: ElevatedButton(
+              onPressed: processButtonCallback,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: processButtonColor,
+                foregroundColor: Colors.black,
+                padding: buttonInternalPadding,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(buttonRadius),
+                ),
+              ),
+              child: Text(
+                processButtonText,
+                style: TextStyle(
+                  fontSize: buttonFontSize,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    return ButtonBarUIService.buildButtonBar(
+      context,
+      backgroundColor: Colors.grey[300]!,
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: buttons,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // First purse position:
@@ -1133,20 +1218,7 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
                 grossFocusNodes: _focusNodeMatrix,
                 isPlayerFocused: _isPlayerFocusedWrapper,
               ),
-              EnterScoresUIService.buildWednesdayBottomButtons(
-                context,
-                swapButtonText: _getSwapButtonText(),
-                swapButtonColor: _getSwapButtonColor(),
-                individualsComplete: individualsProcessingComplete,
-                groupsProcessed: groupsProcessed,
-                onMainMenu: _returnToMainMenu,
-                onShuffle: _getShuffleButtonHandler(),
-                shuffleButtonColor: _getShuffleButtonColor(),
-                backButtonColor: _getBackButtonColor(),
-                onProcessGroups: _handleAutoProcessGroups,
-                onClosestPin: _navigateToClosestPin,
-                onSwap: selectedForSwap.length == 2 ? _handleSwap : null,
-              ),
+              _buildBottomButtons(individualsProcessingComplete, groupsProcessed),
             ],
           ),
           // Custom keypad overlay
@@ -1160,8 +1232,63 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
               isVisible: _keypadController?.isVisible ?? false,
             ),
           ),
+          // Adjust Players overlay button bar
+          if (_showAdjustPlayersOverlay)
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: _buildAdjustPlayersOverlay(),
+            ),
         ],
       ),
+    );
+  }
+
+  // ============== ADJUST PLAYERS OVERLAY ==============
+
+  /// Builds the Adjust Players overlay button bar
+  Widget _buildAdjustPlayersOverlay() {
+    List<Widget> buttons = [];
+
+    // Back button
+    buttons.add(ButtonBarUIService.buildActionButton(
+      context,
+      text: '◄---- Done',
+      color: Colors.lightBlue[100]!,
+      onPressed: _handleCloseAdjustPlayersOverlay,
+    ));
+
+    // Shuffle button
+    buttons.add(ButtonBarUIService.buildActionButton(
+      context,
+      text: 'Shuffle',
+      color: _getShuffleButtonColor(),
+      onPressed: _getShuffleButtonHandler(),
+    ));
+
+    // Swap button
+    buttons.add(ButtonBarUIService.buildActionButton(
+      context,
+      text: _getSwapButtonText(),
+      color: _getSwapButtonColor(),
+      onPressed: selectedForSwap.length == 2 ? _handleSwap : null,
+    ));
+
+    // Email ProShop button
+    buttons.add(ButtonBarUIService.buildActionButton(
+      context,
+      text: 'Email ProShop',
+      color: Colors.orange[200]!,
+      onPressed: _handleEmailProShop,
+    ));
+
+    return ButtonBarUIService.buildButtonBar(
+      context,
+      backgroundColor: Colors.orange[100]!,
+      children: buttons,
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      useMinHeight: true,
     );
   }
 
@@ -1190,5 +1317,116 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
   /// Wrapper for Auto Process Groups button
   void _handleAutoProcessGroups() {
     _autoProcessGroups();
+  }
+
+  /// Handler for Adjust Players button - shows overlay
+  void _handleAdjustPlayers() {
+    setState(() {
+      _showAdjustPlayersOverlay = true;
+    });
+  }
+
+  /// Handler for closing the Adjust Players overlay
+  void _handleCloseAdjustPlayersOverlay() {
+    setState(() {
+      _showAdjustPlayersOverlay = false;
+      selectedForSwap.clear(); // Clear any swap selections when closing
+    });
+  }
+
+  /// Handler for Email ProShop button - sends via backend service
+  Future<void> _handleEmailProShop() async {
+    // Dismiss any open keyboard before sending email
+    FocusScope.of(context).unfocus();
+
+    final backendEmailService = BackendEmailService();
+
+    // Build email subject
+    final currentDate = DateTime.now().toString().split(' ')[0];
+    final subject = 'Golden Oaks Wed. Players - $currentDate';
+
+    // Build email body with groups
+    final body = _buildProShopEmailBody();
+
+    // Send email via backend service
+    final success = await backendEmailService.sendProShopEmail(
+      subject: subject,
+      body: body,
+    );
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            success
+                ? 'Player list emailed successfully to ProShop!'
+                : 'Failed to send email to ProShop',
+          ),
+          backgroundColor: success ? Colors.green : Colors.red,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  /// Builds the email body for ProShop player list
+  String _buildProShopEmailBody() {
+    final buffer = StringBuffer();
+
+    // Filter out empty groups and empty players
+    final validGroups = <List<Map<String, dynamic>>>[];
+    for (var group in groups) {
+      final validPlayers = group.where((player) {
+        if (player == null) return false;
+        final name = player['last']?.toString() ?? '';
+        return name.isNotEmpty;
+      }).cast<Map<String, dynamic>>().toList();
+
+      if (validPlayers.isNotEmpty) {
+        validGroups.add(validPlayers);
+      }
+    }
+
+    int totalPlayers = 0;
+    for (int groupIndex = 0; groupIndex < validGroups.length; groupIndex++) {
+      final group = validGroups[groupIndex];
+      buffer.writeln('Group ${groupIndex + 1}:');
+
+      for (int playerIndex = 0; playerIndex < group.length; playerIndex++) {
+        final player = group[playerIndex];
+        final playerNumberRaw = player['player_number']?.toString() ?? '';
+        final playerNumber = playerNumberRaw.isEmpty ? 'N/A' : playerNumberRaw.padLeft(4, '0');
+        final firstName = player['first']?.toString() ?? '';
+        final lastName = player['last']?.toString() ?? '';
+        final fullName = '$firstName $lastName'.trim();
+
+        buffer.writeln('  $playerNumber - $fullName');
+        totalPlayers++;
+      }
+
+      buffer.writeln(); // Empty line between groups
+    }
+
+    buffer.writeln('Total Players: $totalPlayers');
+    buffer.writeln();
+    buffer.writeln('Generated on: ${DateTime.now()}');
+
+    return buffer.toString();
+  }
+
+  /// Gets the color for the Adjust Players button
+  Color _getAdjustPlayersButtonColor() {
+    if (_hasAnyScoreData() || groupsProcessed) {
+      return Colors.grey[400]!;
+    }
+    return Colors.blue[200]!;
+  }
+
+  /// Gets the handler for the Adjust Players button
+  VoidCallback? _getAdjustPlayersButtonHandler() {
+    if (_hasAnyScoreData() || groupsProcessed) {
+      return null;
+    }
+    return _handleAdjustPlayers;
   }
 }
