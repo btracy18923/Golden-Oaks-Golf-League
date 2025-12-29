@@ -56,7 +56,13 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
   
   // Track if players were previously shuffled (from navigation/storage)
   bool _hasBeenShuffled = false;
-  
+
+  // Track payout amount for display in app bar
+  double _payoutAmount = 0.0;
+
+  // Adjust Players overlay state
+  bool _showAdjustPlayersOverlay = false;
+
   // Focus nodes for SKATS input fields - organized by group and player index
   final List<List<FocusNode?>> _skatsFocusNodes = [
     [null, null, null, null], // Group 0 (Group 1)
@@ -274,6 +280,11 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
 
   /// Shows the keypad for a specific player's SKATS input
   void _showKeypadForPlayer(int groupIndex, int playerIndex) {
+    // Prevent keypad from showing when Adjust Players overlay is visible
+    if (_showAdjustPlayersOverlay) {
+      return;
+    }
+
     if (groupIndex < groups.length && playerIndex < groups[groupIndex].length) {
       _currentFocusedPlayer = groups[groupIndex][playerIndex];
       _keypadController.setInput(_currentFocusedPlayer?.skats ?? '');
@@ -465,6 +476,17 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
 
   /// Auto fills SKATS data with random values between 30-40 for all players
   void _handleAutoFill() async {
+    // Prevent Auto Fill when Adjust Players overlay is visible
+    if (_showAdjustPlayersOverlay) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cannot use Auto Fill while adjusting players'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
     setState(() {
       final autoFillService = AutoFillFactory.create(League.monday);
       groups = autoFillService.autoFillData(groups);
@@ -1157,6 +1179,32 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     );
   }
 
+  /// Gets the color for the Player Selection button
+  Color _getPlayerSelectionButtonColor() {
+    if (_hasAnySkatsData()) {
+      return Colors.grey[400]!;
+    }
+    return Colors.blue[300]!;
+  }
+
+  /// Gets the handler for the Player Selection button
+  VoidCallback? _getPlayerSelectionButtonHandler() {
+    if (_hasAnySkatsData()) {
+      return _handlePlayerSelectionDisabled;
+    }
+    return _handleReturn;
+  }
+
+  /// Handles when Player Selection button is pressed but disabled due to SKATS data
+  void _handlePlayerSelectionDisabled() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Cannot return to Player Selection after SKATS data has been entered'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
   /// Builds bottom buttons with dynamic SWAP button text
   Widget _buildBottomButtonsWithSwap() {
     return ButtonBarUIService.buildButtonBar(
@@ -1166,21 +1214,15 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
       children: [
         ButtonBarUIService.buildActionButton(
           context,
-          text: 'Back',
-          color: Colors.blue[300]!,
-          onPressed: _handleReturn,
+          text: '◄- Player Selection',
+          color: _getPlayerSelectionButtonColor(),
+          onPressed: _getPlayerSelectionButtonHandler(),
         ),
         ButtonBarUIService.buildActionButton(
           context,
-          text: 'Shuffle',
-          color: _getShuffleButtonColor(),
-          onPressed: _getShuffleButtonHandler(),
-        ),
-        ButtonBarUIService.buildActionButton(
-          context,
-          text: _swapService.getSwapButtonText(),
-          color: _getSwapButtonColor(),
-          onPressed: _getSwapButtonHandler(),
+          text: 'Adjust Players',
+          color: _getAdjustPlayersButtonColor(),
+          onPressed: _getAdjustPlayersButtonHandler(),
         ),
         ButtonBarUIService.buildActionButton(
           context,
@@ -1230,6 +1272,14 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
               isVisible: _keypadController.isVisible,
             ),
           ),
+          // Adjust Players overlay button bar
+          if (_showAdjustPlayersOverlay)
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: _buildAdjustPlayersOverlay(),
+            ),
         ],
       ),
     );
@@ -1323,6 +1373,142 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
         builder: (context) => const MondayResultsScreen(),
       ),
     );
+  }
+
+  // ============== ADJUST PLAYERS OVERLAY ==============
+
+  /// Builds the Adjust Players overlay button bar
+  Widget _buildAdjustPlayersOverlay() {
+    List<Widget> buttons = [];
+
+    // Done button
+    buttons.add(ButtonBarUIService.buildActionButton(
+      context,
+      text: '◄- Enter Skats',
+      color: Colors.lightBlue[100]!,
+      onPressed: _handleCloseAdjustPlayersOverlay,
+    ));
+
+    // Shuffle button
+    buttons.add(ButtonBarUIService.buildActionButton(
+      context,
+      text: 'Shuffle',
+      color: _getShuffleButtonColor(),
+      onPressed: _getShuffleButtonHandler(),
+    ));
+
+    // Swap button
+    buttons.add(ButtonBarUIService.buildActionButton(
+      context,
+      text: _swapService.getSwapButtonText(),
+      color: _getSwapButtonColor(),
+      onPressed: _getSwapButtonHandler(),
+    ));
+
+    // Email Players button
+    buttons.add(ButtonBarUIService.buildActionButton(
+      context,
+      text: 'Email Players',
+      color: Colors.orange[200]!,
+      onPressed: _handleEmailPlayers,
+    ));
+
+    return ButtonBarUIService.buildButtonBar(
+      context,
+      backgroundColor: Colors.orange[100]!,
+      children: buttons,
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      useMinHeight: true,
+    );
+  }
+
+  /// Handler for Adjust Players button - shows overlay
+  void _handleAdjustPlayers() {
+    setState(() {
+      _showAdjustPlayersOverlay = true;
+    });
+  }
+
+  /// Handler for closing the Adjust Players overlay
+  void _handleCloseAdjustPlayersOverlay() {
+    setState(() {
+      _showAdjustPlayersOverlay = false;
+      _swapService.clearSelection(); // Clear any swap selections when closing
+    });
+  }
+
+  /// Gets the color for the Adjust Players button
+  Color _getAdjustPlayersButtonColor() {
+    if (_hasAnySkatsData()) {
+      return Colors.grey[400]!;
+    }
+    return Colors.blue[200]!;
+  }
+
+  /// Gets the handler for the Adjust Players button
+  VoidCallback? _getAdjustPlayersButtonHandler() {
+    if (_hasAnySkatsData()) {
+      return null;
+    }
+    return _handleAdjustPlayers;
+  }
+
+  /// Handler for Email Players button - sends player list via email
+  Future<void> _handleEmailPlayers() async {
+    // Dismiss any open keyboard before sending email
+    FocusScope.of(context).unfocus();
+
+    // TODO: Implement email sending using appropriate email service
+    // Build email subject: 'Golden Oaks Monday Players - $currentDate'
+    // Build email body: _buildPlayersEmailBody()
+
+    // For now, show a placeholder message
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Email functionality will be implemented'),
+          backgroundColor: Colors.blue,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  /// Builds the email body for player list
+  // ignore: unused_element
+  String _buildPlayersEmailBody() {
+    final buffer = StringBuffer();
+
+    // Filter out empty groups
+    final validGroups = <List<PlayerData>>[];
+    for (var group in groups) {
+      if (group.isNotEmpty) {
+        validGroups.add(group);
+      }
+    }
+
+    int totalPlayers = 0;
+    for (int groupIndex = 0; groupIndex < validGroups.length; groupIndex++) {
+      final group = validGroups[groupIndex];
+      buffer.writeln('Group ${groupIndex + 1}:');
+
+      for (int playerIndex = 0; playerIndex < group.length; playerIndex++) {
+        final player = group[playerIndex];
+        final skNumber = player.skNumber.isEmpty ? 'N/A' : player.skNumber.padLeft(4, '0');
+        final playerName = player.name;
+
+        buffer.writeln('  $skNumber - $playerName');
+        totalPlayers++;
+      }
+
+      buffer.writeln(); // Empty line between groups
+    }
+
+    buffer.writeln('Total Players: $totalPlayers');
+    buffer.writeln();
+    buffer.writeln('Generated on: ${DateTime.now()}');
+
+    return buffer.toString();
   }
 
 }
