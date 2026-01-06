@@ -28,7 +28,7 @@ class ScreenDataRetentionService {
   bool? _playersShuffled;
   
   // Monday Closest Pin Screen data
-  Map<String, int>? _playerClosestPinCounts;
+  Map<String, double>? _playerClosestPinCounts;
   Map<String, double>? _playerClosestPinWinnings;
   double? _remainingClosestPinPurse;
   int? _totalClosestPins;
@@ -90,7 +90,7 @@ class ScreenDataRetentionService {
 
   /// Captures data from Monday Closest Pin Screen when "Save Results" button is clicked
   void captureClosestPinData({
-    required Map<String, int> playerClosestPinCounts,
+    required Map<String, double> playerClosestPinCounts,
     required Map<String, double> playerClosestPinWinnings,
     required double remainingClosestPinPurse,
     required int totalClosestPins,
@@ -153,7 +153,7 @@ class ScreenDataRetentionService {
   bool? get playersShuffled => _playersShuffled;
   
   /// Gets the player closest pin counts from Monday Closest Pin Screen
-  Map<String, int>? get playerClosestPinCounts => _playerClosestPinCounts;
+  Map<String, double>? get playerClosestPinCounts => _playerClosestPinCounts;
   
   /// Gets the player closest pin winnings from Monday Closest Pin Screen
   Map<String, double>? get playerClosestPinWinnings => _playerClosestPinWinnings;

@@ -3,8 +3,6 @@
 ## Email Field Labels & Inputs
 - 39: labelFontSize = 10 (phone)
 - 41: inputFontSize = 10 (phone)
-- 44: labelFontSize = 18 (8" tablet)
-- 46: inputFontSize = 16 (8" tablet)
 - 48: labelFontSize = 22 (10" tablet)
 - 50: inputFontSize = 20 (10" tablet)
 - 60: fontSize: labelFontSize
@@ -17,12 +15,11 @@
 ## Standard Form Fields
 - 143: fontSize = 9 (phone)
 - 148: fontSize = 24 (10" tablet)
-- 152: fontSize = 22 (8" tablet)
 - 164: fontSize: fontSize (label)
 - 182: fontSize: fontSize (input)
 
 ## Player Table
-- 281: fontSize = ResponsiveTypography.getSmall(context)
+- 272: fontSize = ResponsiveTypography.getSmall(context)
 - 323-329: fontSize passed to header cells
 - 379-380: fontSize passed to row builders
 - 420-434: fontSize used in data cells

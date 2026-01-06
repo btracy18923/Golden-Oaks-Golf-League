@@ -180,7 +180,9 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
   void _loadPlayerData(Map<String, dynamic> player) {
     setState(() {
       _selectedPlayer = Map<String, dynamic>.from(player);
-      _idController.text = player['player_number']?.toString() ?? '';
+      // Format player_number with leading zeros to ensure 4 digits
+      final playerNumber = player['player_number']?.toString() ?? '';
+      _idController.text = playerNumber.isEmpty ? '' : playerNumber.padLeft(4, '0');
       _firstController.text = player['first'] ?? '';
       _lastController.text = player['last'] ?? '';
       _skatController.text = player['skat_number']?.toString() ?? '';

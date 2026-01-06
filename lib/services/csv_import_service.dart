@@ -1,6 +1,4 @@
 import 'dart:io';
-import 'dart:convert';
-import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'database_helper.dart';
@@ -38,7 +36,6 @@ class CsvImportService {
           
           if (fields.length >= 12) {
             // Parse CSV fields
-            final id = int.tryParse(fields[0]) ?? 0;
             final firstName = fields[1].trim();
             final lastName = fields[2].trim();
             final handicap = double.tryParse(fields[3]) ?? 0.0;
@@ -72,7 +69,6 @@ class CsvImportService {
                 'updated_at': DateTime.now().toIso8601String(),
               });
               importedCount++;
-              print('Imported player: $firstName $lastName ($league)');
             } else {
               // Update existing player
               await db.update(
@@ -90,20 +86,16 @@ class CsvImportService {
                 whereArgs: [firstName, lastName, league],
               );
               skippedCount++;
-              print('Updated existing player: $firstName $lastName ($league)');
             }
           }
         } catch (e) {
-          print('Error processing line: $line - $e');
           skippedCount++;
         }
       }
 
       await dbHelper.close();
-      print('Players import completed: $importedCount imported, $skippedCount updated/skipped');
 
     } catch (e) {
-      print('Error importing players CSV: $e');
       rethrow;
     }
   }
@@ -140,7 +132,6 @@ class CsvImportService {
           
           if (fields.length >= 14) {
             // Parse CSV fields
-            final id = int.tryParse(fields[0]) ?? 0;
             final name = fields[1].trim();
             final phone = fields[2].trim();
             final holes = int.tryParse(fields[3]) ?? 18;
@@ -178,7 +169,6 @@ class CsvImportService {
                 'updated_at': DateTime.now().toIso8601String(),
               });
               importedCount++;
-              print('Imported golf course: $name');
             } else {
               // Update existing golf course
               await db.update(
@@ -200,37 +190,30 @@ class CsvImportService {
                 whereArgs: [name],
               );
               skippedCount++;
-              print('Updated existing golf course: $name');
             }
           }
         } catch (e) {
-          print('Error processing line: $line - $e');
           skippedCount++;
         }
       }
 
       await dbHelper.close();
-      print('Golf courses import completed: $importedCount imported, $skippedCount updated/skipped');
 
     } catch (e) {
-      print('Error importing golf courses CSV: $e');
       rethrow;
     }
   }
 
   static Future<void> importAllCsvData() async {
     try {
-      print('Starting CSV import...');
-      
+
       // Import players
       await importPlayersFromCsv('players.csv');
       
       // Import golf courses
       await importGolfCoursesFromCsv('golf_courses.csv');
       
-      print('All CSV imports completed successfully!');
     } catch (e) {
-      print('Error during CSV import: $e');
       rethrow;
     }
   }

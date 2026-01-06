@@ -24,7 +24,10 @@
       "Bash(copy:*)",
       "Bash(python:*)",
       "Bash(sed:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(dart:*)",
+      "Bash(del \"C:\\Users\\Acer\\AndroidStudioProjects\\golf_app_v4\\handicap_comparison.dart\")"
     ],
     "deny": []
   }

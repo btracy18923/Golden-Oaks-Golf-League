@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../models/league.dart';
 import '../services/ante_manager.dart';
 import '../services/closest_pin_manager.dart';
 import '../services/mulligan_manager.dart';

@@ -203,16 +203,14 @@ class ProcessGroupsService {
 
     for (int groupIndex = 0; groupIndex < groups.length; groupIndex++) {
       var group = groups[groupIndex];
-      List<int> netScores = [];
+      List<double> netScores = [];
       List<Map<String, dynamic>> playersInGroup = [];
 
       // Collect net scores from all players in the group
       for (var player in group) {
         if (player != null && player['net_score'] != null) {
           try {
-            int netScore = player['net_score'] is int
-                ? player['net_score']
-                : int.parse(player['net_score'].toString());
+            double netScore = (player['net_score']).toDouble();
             netScores.add(netScore);
             playersInGroup.add(player);
           } catch (e) {

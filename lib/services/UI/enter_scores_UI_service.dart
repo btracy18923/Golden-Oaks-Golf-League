@@ -872,13 +872,13 @@ class EnterScoresUIService {
             showFocus: showSkatsFocus,
           ),
           buildInputCell(
-            context, 
-            player.diff, 
-            getDiffBackgroundColor(player.diff), 
-            flex: 1, 
+            context,
+            player.diff,
+            getDiffBackgroundColor(player.diff),
+            flex: 1,
             keyValue: '${player.name}_diff'
           ),
-          buildPlayerCell(context, player.money, flex: 1, isCurrency: true), // Format money as currency
+          buildPlayerCell(context, player.money, flex: 1, isCurrency: true, backgroundColor: getMoneyBackgroundColor(player.money, player.diff)), // Format money as currency
         ],
       ),
     );
@@ -919,7 +919,7 @@ class EnterScoresUIService {
 
   /// Builds a cell for displaying player data (name, SK number, money)
   /// Responsive design adapts padding and font size, with bold formatting for data fields
-  static Widget buildPlayerCell(BuildContext context, String text, {int flex = 1, bool hasLeftBorder = false, bool isCurrency = false}) {
+  static Widget buildPlayerCell(BuildContext context, String text, {int flex = 1, bool hasLeftBorder = false, bool isCurrency = false, Color? backgroundColor}) {
     final deviceType = getDeviceType(context);
     final tableDataFontSize = getTableDataFontSize(context);
     final padding = getResponsivePadding(deviceType);
@@ -944,6 +944,7 @@ class EnterScoresUIService {
             left: hasLeftBorder ? const BorderSide(color: Colors.black, width: 1) : BorderSide.none,
             right: const BorderSide(color: Colors.black, width: 1),
           ),
+          color: backgroundColor,
         ),
         child: Text(
           displayText,
@@ -1011,13 +1012,13 @@ class EnterScoresUIService {
     if (diffValue.isEmpty) {
       return Colors.white; // Default white for empty
     }
-    
+
     // Remove the sign and parse the number
     String cleanValue = diffValue.replaceAll('+', '').replaceAll('-', '');
     if (cleanValue == '0') {
       return Colors.red[200]!; // Light red for zero
     }
-    
+
     // Check if it's positive or negative
     if (diffValue.startsWith('+')) {
       return Colors.lightGreen[200]!; // Light green for positive
@@ -1026,6 +1027,29 @@ class EnterScoresUIService {
     } else {
       return Colors.white; // Default white
     }
+  }
+
+  /// Gets the background color for money field based on the money value
+  /// Returns same color as DIFF field when money > $0.00, white otherwise
+  static Color getMoneyBackgroundColor(String moneyValue, String diffValue) {
+    if (moneyValue.isEmpty) {
+      return Colors.white; // Default white for empty
+    }
+
+    // Remove any currency symbols and parse as number
+    final cleanMoney = moneyValue.replaceAll(RegExp(r'[^\d.-]'), '');
+    if (cleanMoney.isEmpty) {
+      return Colors.white;
+    }
+
+    final amount = double.tryParse(cleanMoney) ?? 0.0;
+
+    // If money > $0.00, use the same color as DIFF field
+    if (amount > 0.0) {
+      return getDiffBackgroundColor(diffValue);
+    }
+
+    return Colors.white; // Default white for $0.00 or negative
   }
 
   /// Builds an input cell for editable data (skats, diff)
@@ -1607,6 +1631,18 @@ class EnterScoresUIService {
     String avgNet = player['avg_net'] ?? '';
     bool isWildCard = player['is_wild_card'] == true;
 
+    // Determine if prize money > $0.00 for highlighting Pos and $$$ fields
+    bool hasPrizeMoney = false;
+    if (prizeMoney.isNotEmpty) {
+      final cleanMoney = prizeMoney.replaceAll(RegExp(r'[^\d.-]'), '');
+      if (cleanMoney.isNotEmpty) {
+        final amount = double.tryParse(cleanMoney) ?? 0.0;
+        hasPrizeMoney = amount > 0.0;
+      }
+    }
+    Color? posBackgroundColor = hasPrizeMoney ? Colors.yellow[300] : null;
+    Color? moneyBackgroundColor = hasPrizeMoney ? Colors.yellow[300] : null;
+
     // Adjust flex values for three-column layout to match header
     int nameFlex = useThreeColumns ? 25 : 29;
     int hcFlex = useThreeColumns ? 8 : 13;
@@ -1638,16 +1674,16 @@ class EnterScoresUIService {
           // Group number (only when processed)
           if (groupsProcessed)
             _buildWednesdayDataCell(context, manualGroup?.toString() ?? '', flex: grpFlex,
-              backgroundColor: config.inputCellColor),
+              backgroundColor: Colors.yellow[300]),
           // Net score
           _buildWednesdayDataCell(context, netScoreDisplay, flex: netFlex),
           // AVG (only when processed) - shows average net score for the group
           if (groupsProcessed)
             _buildWednesdayDataCell(context, avgNet, flex: avgFlex),
           // Position
-          _buildWednesdayDataCell(context, position, flex: posFlex),
+          _buildWednesdayDataCell(context, position, flex: posFlex, backgroundColor: posBackgroundColor),
           // Prize money
-          _buildWednesdayDataCell(context, prizeMoney, flex: moneyFlex),
+          _buildWednesdayDataCell(context, prizeMoney, flex: moneyFlex, backgroundColor: moneyBackgroundColor),
         ],
       ),
     );
@@ -1809,7 +1845,7 @@ class EnterScoresUIService {
             bottom: showFocus ? const BorderSide(color: Colors.blue, width: 3) : BorderSide.none,
             left: showFocus ? const BorderSide(color: Colors.blue, width: 3) : BorderSide.none,
           ),
-          color: config.inputCellColor,
+          color: Colors.yellow[300],
         ),
         child: Center(
           child: TextFormField(

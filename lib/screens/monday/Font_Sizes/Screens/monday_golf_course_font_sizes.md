@@ -33,6 +33,5 @@
 - **585**: `TextStyle(fontSize: ResponsiveTypography.getSmall() - 4)` - Data cell (center aligned)
 
 ## AppBar
-- **612**: `ResponsiveTypography.appBarTitleStyle()` - Tablet 8 layout
 - **656**: `ResponsiveTypography.appBarTitleStyle()` - Tablet 10 layout
 - **700**: `ResponsiveTypography.appBarTitleStyle()` - Phone layout

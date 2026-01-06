@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../services/database_helper.dart';
 import '../../models/league.dart';
-import '../../services/firebase_upload_service.dart';
 import '../../services/responsive_typography.dart';
 import '../../services/device_detection_service.dart';
 import '../../services/UI/button_bar_UI_service.dart';
@@ -18,15 +17,13 @@ class WednesdayPlayerScoresScreen extends StatefulWidget {
 
 class _WednesdayPlayerScoresScreenState extends State<WednesdayPlayerScoresScreen> {
   final DatabaseHelper _databaseHelper = DatabaseHelper();
-  final FirebaseUploadService _firebaseUploadService = FirebaseUploadService();
   League _selectedLeague = League.wednesday;
   String? _selectedPlayer;
   List<Map<String, dynamic>> _players = [];
   List<Map<String, dynamic>> _scores = [];
   int? _selectedScoreIndex;
-  bool _isEditing = false;
   bool _showAddScoreRow = false;
-  Set<int> _unlockedScoreIds = {};
+  final Set<int> _unlockedScoreIds = {};
 
   // Controllers for adding new scores
   final TextEditingController _grossScoreController = TextEditingController();
@@ -109,182 +106,7 @@ class _WednesdayPlayerScoresScreenState extends State<WednesdayPlayerScoresScree
     }
   }
 
-  Future<void> _addScore() async {
-    if (_selectedPlayer == null) {
-      _showErrorDialog('Please select a player first');
-      return;
-    }
 
-    if (!_showAddScoreRow) {
-      final player = _players.firstWhere((p) => p['last'] == _selectedPlayer);
-      final is6InchPhoneLandscape = DeviceDetectionService.is6Point5Phone(context);
-
-      setState(() {
-        _showAddScoreRow = true;
-        _handicapController.text = (player['handicap'] ?? 0.0).toString();
-        _indWinningsController.text = is6InchPhoneLandscape ? '0.00' : '0';
-        _groupWinningsController.text = is6InchPhoneLandscape ? '0.00' : '0';
-        _closePinController.text = is6InchPhoneLandscape ? '0.00' : '0';
-      });
-      return;
-    }
-
-    // Validate required fields
-    List<String> missingFields = [];
-
-    if (_grossScoreController.text.trim().isEmpty) {
-      missingFields.add('Gross Score');
-    }
-
-    if (_indWinningsController.text.trim().isEmpty) {
-      missingFields.add('IND Winnings');
-    }
-
-    if (missingFields.isNotEmpty) {
-      String errorMessage = 'Please enter: ${missingFields.join(', ')}';
-      _showErrorDialog(errorMessage);
-      return;
-    }
-
-    // Check for duplicate date
-    final playerId = _players.firstWhere((p) => p['last'] == _selectedPlayer)['player_number'];
-    final currentDate = DateTime.now().toIso8601String().split('T')[0];
-
-    try {
-      final existingScoreForDate = await _databaseHelper.getPlayerScoreByDate(playerId, currentDate, _selectedLeague);
-      if (existingScoreForDate != null) {
-        final formattedDate = _formatDateToMMDDYY(currentDate);
-        _showErrorDialog('A score for $_selectedPlayer on $formattedDate already exists.\\n\\nOnly one score per player per day is allowed.');
-        return;
-      }
-    } catch (e) {
-      _showErrorDialog('Error checking for duplicate date: $e');
-      return;
-    }
-
-    // Validate gross score
-    final grossScore = int.tryParse(_grossScoreController.text.trim());
-    if (grossScore == null || grossScore < 10 || grossScore > 99) {
-      _showErrorDialog('Gross score must be between 10 and 99');
-      return;
-    }
-
-    double indWinningsAmount = 0.0;
-    if (_indWinningsController.text.trim().isNotEmpty) {
-      indWinningsAmount = double.tryParse(_indWinningsController.text.trim()) ?? 0.0;
-    }
-
-    double groupWinningsAmount = 0.0;
-    if (_groupWinningsController.text.trim().isNotEmpty) {
-      groupWinningsAmount = double.tryParse(_groupWinningsController.text.trim()) ?? 0.0;
-    }
-
-    double handicap = 0.0;
-    if (_handicapController.text.trim().isNotEmpty) {
-      handicap = double.tryParse(_handicapController.text.trim()) ?? 0.0;
-    }
-
-    double closePinWinnings = 0.0;
-    if (_closePinController.text.trim().isNotEmpty) {
-      closePinWinnings = double.tryParse(_closePinController.text.trim()) ?? 0.0;
-    }
-
-    try {
-      final player = _players.firstWhere((p) => p['last'] == _selectedPlayer);
-      final playerName = '${player['first']} ${player['last']}';
-
-      Map<String, dynamic> scoreData = {
-        'player_id': playerId,
-        'name': player['last'],
-        'date_played': DateTime.now().toIso8601String().split('T')[0],
-        'golf_course': 'The Hideout',
-        'handicap': handicap,
-        'gross_score': grossScore,
-        'close_pin_winnings': closePinWinnings,
-        'single_winnings': indWinningsAmount,
-        'group_winnings': groupWinningsAmount,
-      };
-
-      int scoreId = await _databaseHelper.insertScoreLeague(scoreData, _selectedLeague);
-
-      // Clear input fields and hide add score row
-      _grossScoreController.clear();
-      _handicapController.clear();
-      _indWinningsController.clear();
-      _groupWinningsController.clear();
-      _closePinController.clear();
-
-      setState(() {
-        _unlockedScoreIds.remove(scoreId);
-        _showAddScoreRow = false;
-      });
-
-      _loadPlayerScores(_selectedPlayer!);
-      _showSuccessDialog('Score added successfully!');
-    } catch (e) {
-      _showErrorDialog('Error adding score: $e');
-    }
-  }
-
-  Future<void> _deleteScore(Map<String, dynamic> score) async {
-    final scoreId = score['id'] as int;
-
-    setState(() {
-      _unlockedScoreIds.add(scoreId);
-    });
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirm Delete'),
-        content: Text('Are you sure you want to delete the score ${score['gross_score']} for $_selectedPlayer on ${score['date_played']}?'),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop(false);
-              setState(() {
-                _selectedScoreIndex = null;
-                _unlockedScoreIds.remove(scoreId);
-              });
-            },
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true) {
-      try {
-        final db = await _databaseHelper.database;
-        await db.delete(
-          'wednesday_scores',
-          where: 'id = ?',
-          whereArgs: [scoreId],
-        );
-
-        setState(() {
-          _selectedScoreIndex = null;
-          _unlockedScoreIds.remove(scoreId);
-        });
-        _loadPlayerScores(_selectedPlayer!);
-        _showSuccessDialog('Score deleted successfully!');
-      } catch (e) {
-        setState(() {
-          _unlockedScoreIds.remove(scoreId);
-        });
-        _showErrorDialog('Error deleting score: $e');
-      }
-    } else {
-      setState(() {
-        _unlockedScoreIds.remove(scoreId);
-      });
-    }
-  }
 
   void _selectPlayer(String playerLast) {
     setState(() {
@@ -296,157 +118,13 @@ class _WednesdayPlayerScoresScreenState extends State<WednesdayPlayerScoresScree
     _loadPlayerScores(playerLast);
   }
 
-  void _clearSelection() {
-    setState(() {
-      _selectedPlayer = null;
-      _selectedScoreIndex = null;
-      _scores = [];
-      _showAddScoreRow = false;
-      _unlockedScoreIds.clear();
-      _grossScoreController.clear();
-      _handicapController.clear();
-      _indWinningsController.clear();
-      _groupWinningsController.clear();
-      _closePinController.clear();
-    });
-  }
 
-  void _editScore() {
-    if (_selectedScoreIndex == null) {
-      _showErrorDialog('Please select a score to edit');
-      return;
-    }
-
-    final selectedScore = _scores[_selectedScoreIndex!];
-    final scoreId = selectedScore['id'] as int;
-
-    setState(() {
-      _unlockedScoreIds.add(scoreId);
-    });
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        final grossController = TextEditingController(text: selectedScore['gross_score']?.toString() ?? '');
-        final indWinningsController = TextEditingController(text: selectedScore['single_winnings']?.toString() ?? '0');
-        final groupWinningsController = TextEditingController(text: selectedScore['group_winnings']?.toString() ?? '0');
-
-        return AlertDialog(
-          title: const Text('Edit Score'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: grossController,
-                decoration: const InputDecoration(labelText: 'Gross Score'),
-                keyboardType: TextInputType.number,
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                  LengthLimitingTextInputFormatter(2),
-                ],
-              ),
-              TextField(
-                controller: indWinningsController,
-                decoration: const InputDecoration(labelText: 'IND Winnings'),
-                keyboardType: TextInputType.number,
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                ],
-              ),
-              TextField(
-                controller: groupWinningsController,
-                decoration: const InputDecoration(labelText: 'Group Winnings'),
-                keyboardType: TextInputType.number,
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                ],
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                setState(() {
-                  _unlockedScoreIds.remove(scoreId);
-                });
-                Navigator.of(context).pop();
-              },
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () async {
-                try {
-                  final grossScore = int.tryParse(grossController.text);
-                  if (grossScore == null || grossScore < 10 || grossScore > 99) {
-                    Navigator.of(context).pop();
-                    setState(() {
-                      _unlockedScoreIds.remove(scoreId);
-                    });
-                    _showErrorDialog('Gross score must be between 10 and 99');
-                    return;
-                  }
-
-                  final indWinnings = double.tryParse(indWinningsController.text) ?? 0.0;
-                  final groupWinnings = double.tryParse(groupWinningsController.text) ?? 0.0;
-
-                  Map<String, dynamic> updateData = {
-                    'gross_score': grossScore,
-                    'single_winnings': indWinnings,
-                    'group_winnings': groupWinnings,
-                  };
-
-                  final db = await _databaseHelper.database;
-                  await db.update(
-                    'wednesday_scores',
-                    updateData,
-                    where: 'id = ?',
-                    whereArgs: [scoreId],
-                  );
-
-                  Navigator.of(context).pop();
-                  setState(() {
-                    _selectedScoreIndex = null;
-                    _unlockedScoreIds.remove(scoreId);
-                  });
-                  _loadPlayerScores(_selectedPlayer!);
-                  _showSuccessDialog('Score updated successfully!');
-                } catch (e) {
-                  Navigator.of(context).pop();
-                  setState(() {
-                    _unlockedScoreIds.remove(scoreId);
-                  });
-                  _showErrorDialog('Error updating score: $e');
-                }
-              },
-              child: const Text('Save'),
-            ),
-          ],
-        );
-      },
-    );
-  }
 
   void _showErrorDialog(String message) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Error'),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showSuccessDialog(String message) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Success'),
         content: Text(message),
         actions: [
           TextButton(
@@ -509,7 +187,7 @@ class _WednesdayPlayerScoresScreenState extends State<WednesdayPlayerScoresScree
             padding: EdgeInsets.all(isCompact ? 4 : 8),
             decoration: BoxDecoration(
               color: Colors.grey[200],
-              border: Border(bottom: BorderSide(color: Colors.grey)),
+              border: const Border(bottom: BorderSide(color: Colors.grey)),
             ),
             child: Text(
               'Players',
@@ -526,7 +204,6 @@ class _WednesdayPlayerScoresScreenState extends State<WednesdayPlayerScoresScree
 
   Widget _buildScoresTable() {
     final isPhone = DeviceDetectionService.is6Point5Phone(context);
-    final isTablet = DeviceDetectionService.is10Tablet(context);
 
     double tableWidth;
     if (isPhone) {
@@ -536,7 +213,7 @@ class _WednesdayPlayerScoresScreenState extends State<WednesdayPlayerScoresScree
     }
 
     final isCompact = isPhone;
-    final isMedium = false;
+    const isMedium = false;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -602,8 +279,6 @@ class _WednesdayPlayerScoresScreenState extends State<WednesdayPlayerScoresScree
   }
 
   Widget _buildScoreRow(Map<String, dynamic> score, bool isUnlocked, {bool isCompact = false, bool isMedium = false}) {
-    final isPhone = DeviceDetectionService.is6Point5Phone(context);
-
     return Row(
       children: [
         _buildFlexDataCellWithIcon(score['name'] ?? '', isUnlocked, isCompact ? 12 : 12, isCompact: isCompact),
@@ -628,8 +303,6 @@ class _WednesdayPlayerScoresScreenState extends State<WednesdayPlayerScoresScree
   }
 
   Widget _buildAddScoreRowContent({bool isCompact = false, bool isMedium = false}) {
-    final isPhone = DeviceDetectionService.is6Point5Phone(context);
-
     return Row(
       children: [
         _buildFlexDataCell(_selectedPlayer ?? '', isCompact ? 12 : isMedium ? 12 : 12, isCompact: isCompact),
@@ -674,9 +347,7 @@ class _WednesdayPlayerScoresScreenState extends State<WednesdayPlayerScoresScree
         child: Center(
           child: Text(
             text,
-            style: ResponsiveTypography.smallStyle(context,
-              fontWeight: FontWeight.bold,
-            ).copyWith(height: 1.0),
+            style: TextStyle(fontSize: ResponsiveTypography.getSmall(context) - 4, fontWeight: FontWeight.bold, height: 1.0),
             textAlign: TextAlign.center,
             maxLines: 2,
             overflow: TextOverflow.visible,
@@ -690,7 +361,7 @@ class _WednesdayPlayerScoresScreenState extends State<WednesdayPlayerScoresScree
     return Expanded(
       flex: flex,
       child: Container(
-        height: isCompact ? 25 : 30,
+        height: isCompact ? 35 : 30,
         decoration: BoxDecoration(
           border: Border.all(color: Colors.black, width: 0.5),
         ),
@@ -698,7 +369,7 @@ class _WednesdayPlayerScoresScreenState extends State<WednesdayPlayerScoresScree
           alignment: Alignment.center,
           child: Text(
             text,
-            style: ResponsiveTypography.smallStyle(context),
+            style: TextStyle(fontSize: ResponsiveTypography.getSmall(context) - 3),
             textAlign: TextAlign.center,
             overflow: TextOverflow.ellipsis,
           ),
@@ -711,13 +382,13 @@ class _WednesdayPlayerScoresScreenState extends State<WednesdayPlayerScoresScree
     return Expanded(
       flex: flex,
       child: Container(
-        height: isCompact ? 25 : 30,
+        height: isCompact ? 35 : 30,
         decoration: BoxDecoration(
           border: Border.all(color: Colors.black, width: 0.5),
         ),
         child: Row(
           children: [
-            Container(
+            SizedBox(
               width: isCompact ? 15 : 20,
               child: Icon(
                 isUnlocked ? Icons.lock_open : Icons.lock,
@@ -730,7 +401,7 @@ class _WednesdayPlayerScoresScreenState extends State<WednesdayPlayerScoresScree
                 alignment: Alignment.center,
                 child: Text(
                   text,
-                  style: ResponsiveTypography.smallStyle(context),
+                  style: TextStyle(fontSize: ResponsiveTypography.getSmall(context) - 3),
                   textAlign: TextAlign.center,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -998,7 +669,7 @@ class _WednesdayPlayerScoresScreenState extends State<WednesdayPlayerScoresScree
       children: [
         ButtonBarUIService.buildActionButton(
           context,
-          text: '◄---- Back',
+          text: '◄---- MainMenu/',
           color: Colors.blue[300]!,
           onPressed: () => Navigator.of(context).pop(),
         ),

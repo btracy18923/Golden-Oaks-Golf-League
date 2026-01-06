@@ -537,24 +537,6 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
     );
   }
 
-  Widget _buildTabletPlayerGrid() {
-    List<List<Map<String, dynamic>>> columns = _cachedColumns ?? [[], [], [], []];
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        for (int colIndex = 0; colIndex < 4; colIndex++)
-          Expanded(
-            child: Column(
-              children: [
-                for (var player in columns[colIndex])
-                  _buildTabletPlayerCheckbox(player),
-              ],
-            ),
-          ),
-      ],
-    );
-  }
 
   Widget _buildTablet10PlayerGrid() {
     List<List<Map<String, dynamic>>> columns = _cachedColumns ?? [[], [], [], []];
@@ -690,64 +672,6 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
     );
   }
 
-  Widget _buildTabletPlayerCheckbox(Map<String, dynamic> player) {
-    final int playerId = player['player_number'] as int;
-    final bool isSelected = selectedPlayerIds.contains(playerId);
-    final String playerName = '${player['last']}, ${player['first']}';
-    
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 1, horizontal: 2),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () => togglePlayerSelection(playerId),
-          borderRadius: BorderRadius.circular(4),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
-            child: Row(
-              children: [
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: isSelected ? _leagueColor : Colors.grey[300],
-                    border: Border.all(color: Colors.black, width: 1),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: isSelected
-                      ? const Center(
-                          child: Text(
-                            'X',
-                            style: TextStyle(
-                              color: Colors.black,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 18,
-                              height: 1.0,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        )
-                      : null,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    playerName,
-                    style: TextStyle(
-                      fontSize: ResponsiveTypography.getSmall(context),
-                      fontWeight: FontWeight.w500,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 
   Widget _buildTablet10PlayerCheckbox(Map<String, dynamic> player) {
     final int playerId = player['player_number'] as int;

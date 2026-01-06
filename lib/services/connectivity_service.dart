@@ -18,14 +18,12 @@ class ConnectivityService {
   
   /// Start monitoring connectivity changes
   void startMonitoring() {
-    print('ConnectivityService: Starting connectivity monitoring');
-    
+
     _connectivitySubscription = _connectivity.onConnectivityChanged.listen(
       (List<ConnectivityResult> results) {
         _handleConnectivityChange(results);
       },
       onError: (error) {
-        print('ConnectivityService: Error monitoring connectivity - $error');
       },
     );
     
@@ -35,7 +33,6 @@ class ConnectivityService {
   
   /// Stop monitoring connectivity changes
   void stopMonitoring() {
-    print('ConnectivityService: Stopping connectivity monitoring');
     _connectivitySubscription?.cancel();
     _connectivitySubscription = null;
   }
@@ -46,7 +43,6 @@ class ConnectivityService {
       final results = await _connectivity.checkConnectivity();
       _handleConnectivityChange(results);
     } catch (e) {
-      print('ConnectivityService: Error checking initial connectivity - $e');
     }
   }
   
@@ -54,15 +50,11 @@ class ConnectivityService {
   void _handleConnectivityChange(List<ConnectivityResult> results) {
     final bool isConnected = _isConnectedToWiFi(results);
     
-    print('ConnectivityService: Connectivity changed - WiFi: $isConnected');
-    print('ConnectivityService: Connection types: ${results.map((r) => r.name).join(', ')}');
-    
+
     // Only process uploads when transitioning from offline to online
     if (isConnected && !_lastConnectedState) {
-      print('ConnectivityService: WiFi connection established, processing pending uploads');
       _processPendingUploads();
     } else if (!isConnected && _lastConnectedState) {
-      print('ConnectivityService: WiFi connection lost');
     }
     
     _lastConnectedState = isConnected;
@@ -79,7 +71,6 @@ class ConnectivityService {
       final results = await _connectivity.checkConnectivity();
       return _isConnectedToWiFi(results);
     } catch (e) {
-      print('ConnectivityService: Error checking WiFi status - $e');
       return false;
     }
   }
@@ -87,7 +78,6 @@ class ConnectivityService {
   /// Process all pending uploads when connectivity is restored
   Future<void> _processPendingUploads() async {
     if (_isProcessingUploads) {
-      print('ConnectivityService: Upload processing already in progress, skipping');
       return;
     }
     
@@ -101,28 +91,24 @@ class ConnectivityService {
       final allUploads = [...pendingUploads, ...retryableUploads];
       
       if (allUploads.isEmpty) {
-        print('ConnectivityService: No pending uploads to process');
         return;
       }
       
-      print('ConnectivityService: Processing ${allUploads.length} uploads');
-      
+
       // Process each upload
       for (final upload in allUploads) {
         await _processUpload(upload);
         
         // Add small delay between uploads to avoid overwhelming the system
-        await Future.delayed(Duration(milliseconds: 500));
+        await Future.delayed(const Duration(milliseconds: 500));
       }
       
       // Cleanup old completed uploads
       await _uploadQueueService.cleanupOldUploads();
       
-      final stats = await _uploadQueueService.getUploadStats();
-      print('ConnectivityService: Upload processing complete. Stats: $stats');
-      
+      await _uploadQueueService.getUploadStats();
+
     } catch (e) {
-      print('ConnectivityService: Error processing pending uploads - $e');
     } finally {
       _isProcessingUploads = false;
     }
@@ -131,8 +117,7 @@ class ConnectivityService {
   /// Process a single upload
   Future<void> _processUpload(PendingUpload upload) async {
     try {
-      print('ConnectivityService: Processing upload ${upload.id} - ${upload.uploadType.name} for ${upload.league.name}');
-      
+
       // Mark as uploading
       await _uploadQueueService.markAsUploading(upload.id);
       
@@ -158,7 +143,6 @@ class ConnectivityService {
       }
       
     } catch (e) {
-      print('ConnectivityService: Upload ${upload.id} failed - $e');
       await _uploadQueueService.markAsFailed(upload.id, e.toString());
     }
   }
@@ -166,10 +150,8 @@ class ConnectivityService {
   /// Manually trigger upload processing (useful for testing or manual retry)
   Future<void> processUploadsManually() async {
     if (await isWiFiConnected()) {
-      print('ConnectivityService: Manual upload processing triggered');
       await _processPendingUploads();
     } else {
-      print('ConnectivityService: Manual upload processing skipped - no WiFi connection');
     }
   }
   

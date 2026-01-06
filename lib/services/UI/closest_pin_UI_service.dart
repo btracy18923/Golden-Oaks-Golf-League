@@ -261,29 +261,55 @@ class ClosestPinUIService {
     required VoidCallback onSaveAndReturn,
     bool isEnterSkatsEnabled = true,
     String league = 'Monday', // Add league parameter with default value
+    VoidCallback? onTied, // Optional tied button callback
+    bool isTiedMode = false, // Track if tied mode is active
   }) {
     // Determine button text based on league
-    final buttonText = league == 'Monday' ? 'PAYOUT ---➤' : 'Payout ---➤';
+    final buttonText = league == 'Monday' ? 'Results ---➤' : 'Results ---➤';
+
+    // Build children list conditionally
+    List<Widget> children = [
+      ButtonBarUIService.buildActionButton(
+        context,
+        text: 'Clear',
+        color: Colors.blue[200]!,
+        onPressed: onClear,
+        flex: 5, // 25% larger than default (4 * 1.25 = 5)
+      ),
+    ];
+
+    // Add TIED button if callback is provided (Wednesday league)
+    if (onTied != null) {
+      children.add(ButtonBarUIService.buildSpacer());
+      children.add(
+        ButtonBarUIService.buildActionButton(
+          context,
+          text: 'TIED',
+          color: isTiedMode ? Colors.orange[400]! : Colors.blue[200]!,
+          onPressed: onTied,
+          flex: 5, // 25% larger than default (4 * 1.25 = 5)
+        ),
+      );
+    }
+
+    children.add(ButtonBarUIService.buildSpacer());
+    children.add(
+      ButtonBarUIService.buildActionButton(
+        context,
+        text: buttonText,
+        color: isEnterSkatsEnabled
+            ? (league == 'Wednesday' ? Colors.orange[300]! : Colors.green[300]!)
+            : Colors.grey[300]!,
+        onPressed: isEnterSkatsEnabled ? onSaveAndReturn : null,
+        flex: 5, // 25% larger than default (4 * 1.25 = 5)
+      ),
+    );
 
     return ButtonBarUIService.buildButtonBar(
       context,
       backgroundColor: Colors.grey[300]!,
       mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        ButtonBarUIService.buildActionButton(
-          context,
-          text: 'Clear',
-          color: Colors.blue[200]!,
-          onPressed: onClear,
-        ),
-        ButtonBarUIService.buildSpacer(),
-        ButtonBarUIService.buildActionButton(
-          context,
-          text: buttonText,
-          color: isEnterSkatsEnabled ? Colors.blue[300]! : Colors.grey[300]!,
-          onPressed: isEnterSkatsEnabled ? onSaveAndReturn : null,
-        ),
-      ],
+      children: children,
     );
   }
 

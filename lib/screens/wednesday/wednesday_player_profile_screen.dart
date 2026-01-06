@@ -32,6 +32,7 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
   final TextEditingController _idController = TextEditingController();
   final TextEditingController _firstController = TextEditingController();
   final TextEditingController _lastController = TextEditingController();
+  final TextEditingController _ohcController = TextEditingController();
   final TextEditingController _handicapController = TextEditingController();
   final TextEditingController _cellController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
@@ -40,6 +41,7 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
   final FocusNode _idFocus = FocusNode();
   final FocusNode _firstFocus = FocusNode();
   final FocusNode _lastFocus = FocusNode();
+  final FocusNode _ohcFocus = FocusNode();
   final FocusNode _handicapFocus = FocusNode();
   final FocusNode _cellFocus = FocusNode();
   final FocusNode _emailFocus = FocusNode();
@@ -60,6 +62,7 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
     _idController.dispose();
     _firstController.dispose();
     _lastController.dispose();
+    _ohcController.dispose();
     _handicapController.dispose();
     _cellController.dispose();
     _emailController.dispose();
@@ -67,6 +70,7 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
     _idFocus.dispose();
     _firstFocus.dispose();
     _lastFocus.dispose();
+    _ohcFocus.dispose();
     _handicapFocus.dispose();
     _cellFocus.dispose();
     _emailFocus.dispose();
@@ -77,11 +81,11 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
   /// Upload player table data to Firebase when leaving the screen
   void _uploadPlayerDataToFirebase() async {
     try {
-      final success = await _firebaseUploadService.uploadPlayerTableWithQueue(_selectedLeague);
-      if (success) {
-      } else {
-      }
+      await _firebaseUploadService.uploadPlayerTableWithQueue(_selectedLeague);
+      // Upload happens in background - no UI feedback needed on dispose
     } catch (e) {
+      // Silently fail on dispose - don't block navigation
+      debugPrint('Failed to upload player data on dispose: $e');
     }
   }
 
@@ -89,6 +93,7 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
     _idFocus.addListener(_onFocusChange);
     _firstFocus.addListener(_onFocusChange);
     _lastFocus.addListener(_onFocusChange);
+    _ohcFocus.addListener(_onFocusChange);
     _handicapFocus.addListener(_onFocusChange);
     _cellFocus.addListener(_onFocusChange);
     _emailFocus.addListener(_onFocusChange);
@@ -98,6 +103,7 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
     final anyFocused = _idFocus.hasFocus ||
                       _firstFocus.hasFocus ||
                       _lastFocus.hasFocus ||
+                      _ohcFocus.hasFocus ||
                       _handicapFocus.hasFocus ||
                       _cellFocus.hasFocus ||
                       _emailFocus.hasFocus;
@@ -109,55 +115,6 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
     }
   }
 
-  /// Manual Firebase upload for testing
-  Future<void> _manualFirebaseUpload() async {
-    try {
-
-      // Test Firebase connection first
-      final isConnected = await _firebaseUploadService.isFirebaseConnected();
-
-      if (!isConnected) {
-        _showErrorDialog('Cannot connect to Firebase. Check your internet connection.');
-        return;
-      }
-
-      // Get current player count
-      final players = await _databaseHelper.getPlayersByLeague(_selectedLeague);
-
-      // Show loading dialog
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const AlertDialog(
-          content: Row(
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(width: 16),
-              Text('Uploading to Firebase...'),
-            ],
-          ),
-        ),
-      );
-
-      // Attempt upload
-      final success = await _firebaseUploadService.uploadPlayerTable(_selectedLeague);
-
-      // Close loading dialog
-      Navigator.of(context).pop();
-
-      if (success) {
-        _showSuccessDialog('Successfully uploaded ${players.length} players to Firebase!\\n\\nCheck Firebase collections:\\n• M_player_profile\\n• W_player_profile');
-      } else {
-        _showErrorDialog('Failed to upload players to Firebase. Check console for details.');
-      }
-
-
-    } catch (e) {
-      // Close loading dialog if still open
-      Navigator.of(context).pop();
-      _showErrorDialog('Upload error: $e');
-    }
-  }
 
   Future<void> _loadPlayerList() async {
     try {
@@ -175,73 +132,12 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
     await _loadPlayerList();
   }
 
-  /// Special function to replace all Handicap numbers to 0 (testing feature)
-  Future<void> _replaceAllHandicapsTo0() async {
-    // Show confirmation dialog first
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirm Replace to 0'),
-        content: RichText(
-          text: const TextSpan(
-            style: TextStyle(color: Colors.black, fontSize: 16),
-            children: [
-              TextSpan(text: 'Are you sure you want to replace all Handicap values to 0?\n'),
-              TextSpan(text: 'This usually is done only for testing purposes.\n'),
-              TextSpan(text: 'Click '),
-              TextSpan(text: 'Cancel', style: TextStyle(fontWeight: FontWeight.bold)),
-              TextSpan(text: ' if you are not sure.\n'),
-              TextSpan(text: 'This cannot be undone.\n\n'),
-              TextSpan(text: 'This will affect all players in the current league.'),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Replace'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true) return;
-
-    try {
-      // Update all players' Handicap to 0
-      final players = await _databaseHelper.getPlayersByLeague(_selectedLeague);
-      for (var player in players) {
-        await _databaseHelper.updatePlayer(player['player_number'], {
-          'player_number': player['player_number'],
-          'first': player['first'],
-          'last': player['last'],
-          'HC': 0.0,
-          'league': player['league'],
-          'cell': player['cell'],
-          'email': player['email'],
-        });
-      }
-
-      // Reload the updated player list
-      await _refreshPlayerList();
-
-      _showSuccessDialog('All Handicap values replaced to 0');
-    } catch (e) {
-      _showErrorDialog('Error updating players: $e');
-      // Ensure player list is reloaded even if update fails
-      await _loadPlayerList();
-    }
-  }
 
   void _clearForm() {
     _idController.clear();
     _firstController.clear();
     _lastController.clear();
+    _ohcController.clear();
     _handicapController.clear();
     _cellController.clear();
     _emailController.clear();
@@ -259,6 +155,7 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
     bool hasFormData = _idController.text.trim().isNotEmpty ||
                       _firstController.text.trim().isNotEmpty ||
                       _lastController.text.trim().isNotEmpty ||
+                      _ohcController.text.trim().isNotEmpty ||
                       _handicapController.text.trim().isNotEmpty ||
                       _cellController.text.trim().isNotEmpty ||
                       _emailController.text.trim().isNotEmpty;
@@ -293,9 +190,12 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
   void _loadPlayerData(Map<String, dynamic> player) {
     setState(() {
       _selectedPlayer = Map<String, dynamic>.from(player);
-      _idController.text = player['player_number']?.toString() ?? '';
+      // Format player_number with leading zeros to ensure 4 digits
+      final playerNumber = player['player_number']?.toString() ?? '';
+      _idController.text = playerNumber.isEmpty ? '' : playerNumber.padLeft(4, '0');
       _firstController.text = player['first'] ?? '';
       _lastController.text = player['last'] ?? '';
+      _ohcController.text = player['OHC']?.toString() ?? '';
       _handicapController.text = player['HC']?.toString() ?? '';
       _cellController.text = player['cell'] ?? '';
       _emailController.text = player['email'] ?? '';
@@ -375,6 +275,7 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
         'player_number': int.tryParse(_idController.text) ?? 0,
         'first': _firstController.text.trim(),
         'last': _lastController.text.trim(),
+        'OHC': double.tryParse(_ohcController.text) ?? 0.0,
         'HC': double.tryParse(_handicapController.text) ?? 0.0,
         'league': leagueStr,
         'cell': _cellController.text.trim(),
@@ -411,6 +312,7 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
         'player_number': int.tryParse(_idController.text) ?? 0,
         'first': _firstController.text.trim(),
         'last': _lastController.text.trim(),
+        'OHC': double.tryParse(_ohcController.text) ?? 0.0,
         'HC': double.tryParse(_handicapController.text) ?? 0.0,
         'league': leagueStr,
         'cell': _cellController.text.trim(),
@@ -462,26 +364,45 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
     if (confirmed == true) {
       try {
         // Clear focus first
-        FocusScope.of(context).unfocus();
+        if (mounted) {
+          FocusScope.of(context).unfocus();
+        }
 
+        // Get the last name before deleting from local database
+        final lastName = _selectedPlayer!['last']?.toString() ?? '';
+
+        // Delete from local database
         await _databaseHelper.deletePlayer(_selectedPlayer!['player_number']);
         _clearForm();
         _refreshPlayerList();
 
-        // Ensure absolutely no field has focus after deletion
-        FocusScope.of(context).unfocus();
+        // Delete from Firebase
+        final firebaseDeleteSuccess = await _firebaseUploadService.deletePlayerFromFirebaseWithQueue(_selectedLeague, lastName);
 
-        // Also clear focus from all individual focus nodes
-        _idFocus.unfocus();
-        _firstFocus.unfocus();
-        _lastFocus.unfocus();
-        _handicapFocus.unfocus();
-        _cellFocus.unfocus();
-        _emailFocus.unfocus();
+        if (mounted) {
+          // Ensure absolutely no field has focus after deletion
+          FocusScope.of(context).unfocus();
 
-        _showSuccessDialog('Player deleted successfully!');
+          // Also clear focus from all individual focus nodes
+          _idFocus.unfocus();
+          _firstFocus.unfocus();
+          _lastFocus.unfocus();
+          _ohcFocus.unfocus();
+          _handicapFocus.unfocus();
+          _cellFocus.unfocus();
+          _emailFocus.unfocus();
+
+          // Show appropriate success message based on Firebase deletion result
+          if (firebaseDeleteSuccess) {
+            _showSuccessDialog('Player deleted from local database and Firebase!');
+          } else {
+            _showSuccessDialog('Player deleted from local database! Firebase deletion will occur when WiFi is available.');
+          }
+        }
       } catch (e) {
-        _showErrorDialog('Error deleting player: $e');
+        if (mounted) {
+          _showErrorDialog('Error deleting player: $e');
+        }
       }
     }
   }
@@ -532,18 +453,6 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
     );
   }
 
-  Widget _buildFormField(String label, TextEditingController controller, FocusNode focusNode, FocusNode? nextFocus, {TextInputType? keyboardType, List<TextInputFormatter>? inputFormatters}) {
-    return PlayerProfileService.buildFormField(
-      context,
-      label,
-      controller,
-      focusNode,
-      nextFocus,
-      _selectedPlayer != null ? _updatePlayer : null,
-      keyboardType: keyboardType,
-      inputFormatters: inputFormatters,
-    );
-  }
 
   Widget _buildPlayerTable() {
     return _buildWednesdayPlayerTable(
@@ -644,25 +553,6 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
   }
 
 
-  Widget _buildFormSection() {
-    return _buildWednesdayFormSection(
-      context,
-      _buildFormField,
-      _idController,
-      _firstController,
-      _lastController,
-      _handicapController,
-      _cellController,
-      _emailController,
-      _idFocus,
-      _firstFocus,
-      _lastFocus,
-      _handicapFocus,
-      _cellFocus,
-      _emailFocus,
-      _buildActionButtons(),
-    );
-  }
 
   Widget _buildFormSectionWithoutButtons() {
     return _buildWednesdayFormSectionWithoutButtons(
@@ -671,38 +561,20 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
       _idController,
       _firstController,
       _lastController,
+      _ohcController,
       _handicapController,
       _cellController,
       _emailController,
       _idFocus,
       _firstFocus,
       _lastFocus,
+      _ohcFocus,
       _handicapFocus,
       _cellFocus,
       _emailFocus,
     );
   }
 
-
-
-  Widget _buildButtonFooterLandscape() {
-    return PlayerProfileService.buildButtonFooterLandscape(
-      _addPlayer,
-      _deletePlayer,
-      _clearForm,
-      () => Navigator.of(context).pop(),
-    );
-  }
-
-  Widget _buildActionButtons() {
-    return PlayerProfileService.buildActionButtons(
-      _addPlayer,
-      _updatePlayer,
-      _deletePlayer,
-      _clearForm,
-      () => Navigator.of(context).popUntil((route) => route.isFirst),
-    );
-  }
 
 
   Widget _buildPhoneLandscapeLayout() {
@@ -731,7 +603,7 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
             // Player table (65% width)
             Expanded(
               flex: 65,
-              child: Container(
+              child: SizedBox(
                 height: constraints.maxHeight,
                 child: _buildPlayerTable(),
               ),
@@ -750,7 +622,7 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.3),
+            color: Colors.grey.withValues(alpha: 0.3),
             spreadRadius: 1,
             blurRadius: 3,
             offset: const Offset(0, -2),
@@ -763,7 +635,7 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
         children: [
           ButtonBarUIService.buildActionButton(
             context,
-            text: '◄---- Back',
+            text: '◄---- MainMenu',
             color: Colors.blue[300]!,
             onPressed: () => Navigator.of(context).pop(),
           ),
@@ -791,51 +663,6 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
   }
 
   // Wednesday-specific form section with HC instead of SKAT#
-  Widget _buildWednesdayFormSection(
-    BuildContext context,
-    Widget Function(String, TextEditingController, FocusNode, FocusNode?, {TextInputType? keyboardType, List<TextInputFormatter>? inputFormatters}) buildFormField,
-    TextEditingController idController,
-    TextEditingController firstController,
-    TextEditingController lastController,
-    TextEditingController handicapController,
-    TextEditingController cellController,
-    TextEditingController emailController,
-    FocusNode idFocus,
-    FocusNode firstFocus,
-    FocusNode lastFocus,
-    FocusNode handicapFocus,
-    FocusNode cellFocus,
-    FocusNode emailFocus,
-    Widget actionButtons,
-  ) {
-    return Column(
-      children: [
-        // Form fields - scrollable area that takes up available space
-        Expanded(
-          child: SingleChildScrollView(
-            child: Column(
-              children: [
-                buildFormField('ID#', idController, idFocus, firstFocus,
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
-                buildFormField('First Name', firstController, firstFocus, lastFocus),
-                buildFormField('Last Name', lastController, lastFocus, handicapFocus),
-                buildFormField('HC', handicapController, handicapFocus, cellFocus,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true)),
-                buildFormField('Cell Phone', cellController, cellFocus, emailFocus,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: false)),
-                buildFormField('Email', emailController, emailFocus, null),
-                const SizedBox(height: 10),
-              ],
-            ),
-          ),
-        ),
-
-        // Action buttons - fixed at bottom
-        actionButtons,
-      ],
-    );
-  }
 
   Widget _buildWednesdayFormSectionWithoutButtons(
     BuildContext context,
@@ -843,19 +670,20 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
     TextEditingController idController,
     TextEditingController firstController,
     TextEditingController lastController,
+    TextEditingController ohcController,
     TextEditingController handicapController,
     TextEditingController cellController,
     TextEditingController emailController,
     FocusNode idFocus,
     FocusNode firstFocus,
     FocusNode lastFocus,
+    FocusNode ohcFocus,
     FocusNode handicapFocus,
     FocusNode cellFocus,
     FocusNode emailFocus,
   ) {
     // Use unified device detection service for consistent classification
     final isPhone = DeviceDetectionService.is6Point5Phone(context);
-    final isTablet = DeviceDetectionService.is10Tablet(context);
 
     // For 6.5" phones, use compact layout with SingleChildScrollView to prevent overflow
     if (isPhone) {
@@ -871,10 +699,21 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
               const SizedBox(height: 0),
               buildCompactFormField('First Name', firstController, firstFocus, lastFocus),
               const SizedBox(height: 0),
-              buildCompactFormField('Last Name', lastController, lastFocus, handicapFocus),
+              buildCompactFormField('Last Name', lastController, lastFocus, ohcFocus),
               const SizedBox(height: 0),
-              buildCompactFormField('HC', handicapController, handicapFocus, cellFocus,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true)),
+              Row(
+                children: [
+                  Expanded(
+                    child: buildCompactFormField('OHC', ohcController, ohcFocus, handicapFocus,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true)),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: buildCompactFormField('HC', handicapController, handicapFocus, cellFocus,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true)),
+                  ),
+                ],
+              ),
               const SizedBox(height: 0),
               buildCompactFormField('Cell Phone', cellController, cellFocus, emailFocus,
                 keyboardType: const TextInputType.numberWithOptions(decimal: false)),
@@ -900,10 +739,21 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
               const SizedBox(height: 8),
               buildCompactFormField('First Name', firstController, firstFocus, lastFocus),
               const SizedBox(height: 8),
-              buildCompactFormField('Last Name', lastController, lastFocus, handicapFocus),
+              buildCompactFormField('Last Name', lastController, lastFocus, ohcFocus),
               const SizedBox(height: 8),
-              buildCompactFormField('HC', handicapController, handicapFocus, cellFocus,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true)),
+              Row(
+                children: [
+                  Expanded(
+                    child: buildCompactFormField('OHC', ohcController, ohcFocus, handicapFocus,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true)),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: buildCompactFormField('HC', handicapController, handicapFocus, cellFocus,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true)),
+                  ),
+                ],
+              ),
               const SizedBox(height: 8),
               buildCompactFormField('Cell Phone', cellController, cellFocus, emailFocus,
                 keyboardType: const TextInputType.numberWithOptions(decimal: false)),
@@ -943,7 +793,7 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
     double tableWidth;
     double rowHeight;
     // Use ResponsiveTypography for consistent font sizing
-    double fontSize = ResponsiveTypography.getSmall(context);
+    double fontSize = ResponsiveTypography.getSmall(context) - 2;
 
     if (isLargeTablet) {
       tableWidth = isLandscape ? (screenWidth * 0.7) - 40 : screenWidth - 60;
@@ -985,13 +835,15 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: is6InchPhoneLandscape ? [
-                    _buildHeaderCellLeftAlign('Name', tableWidth * 0.40, fontSize),
-                    _buildHeaderCellLeftAlign('HC', tableWidth * 0.15, fontSize),
-                    _buildHeaderCellLeftAlign('Phone', tableWidth * 0.45, fontSize),
+                    _buildHeaderCellLeftAlign('Name', tableWidth * 0.35, fontSize),
+                    _buildHeaderCell('OHC', tableWidth * 0.12, fontSize),
+                    _buildHeaderCell('HC', tableWidth * 0.12, fontSize),
+                    _buildHeaderCell('Phone', tableWidth * 0.41, fontSize),
                   ] : [
-                    _buildHeaderCellLeftAlign('Name', tableWidth * 0.45, fontSize),
-                    _buildHeaderCell('HC', tableWidth * 0.20, fontSize),
-                    _buildHeaderCell('Phone', tableWidth * 0.35, fontSize),
+                    _buildHeaderCellLeftAlign('Name', tableWidth * 0.38, fontSize),
+                    _buildHeaderCell('OHC', tableWidth * 0.12, fontSize),
+                    _buildHeaderCell('HC', tableWidth * 0.12, fontSize),
+                    _buildHeaderCell('Phone', tableWidth * 0.38, fontSize),
                   ],
                 ),
               ),
@@ -1063,7 +915,7 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
         // Overlay when keyboard is visible or fields have focus
         if (isKeyboardVisible || anyFieldHasFocus)
           Container(
-            color: Colors.black,       //.withOpacity(0.1),
+            color: Colors.black,
             child: const Center(
               child: Icon(
                 Icons.keyboard,
@@ -1080,11 +932,13 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
     return Row(
       children: [
         _buildDataCell('${player['first'] ?? ''} ${player['last'] ?? ''}',
-                      tableWidth * 0.40, fontSize, alignLeft: true),
+                      tableWidth * 0.35, fontSize, alignLeft: true),
+        _buildDataCell(player['OHC']?.toString() ?? '',
+                      tableWidth * 0.12, fontSize),
         _buildDataCell(player['HC']?.toString() ?? '',
-                      tableWidth * 0.15, fontSize),
+                      tableWidth * 0.12, fontSize),
         _buildDataCell(formatPhoneNumber(player['cell']),
-                      tableWidth * 0.45, fontSize),
+                      tableWidth * 0.41, fontSize),
       ],
     );
   }
@@ -1092,9 +946,10 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
   Widget _buildWednesdayTabletPlayerRow(Map<String, dynamic> player, double tableWidth, String Function(String?) formatPhoneNumber, double fontSize) {
     return Row(
       children: [
-        _buildDataCell('${player['first'] ?? ''} ${player['last'] ?? ''}', tableWidth * 0.45, fontSize, alignLeft: true),
-        _buildDataCell(player['HC']?.toString() ?? '', tableWidth * 0.20, fontSize),
-        _buildDataCell(formatPhoneNumber(player['cell']), tableWidth * 0.35, fontSize),
+        _buildDataCell('${player['first'] ?? ''} ${player['last'] ?? ''}', tableWidth * 0.38, fontSize, alignLeft: true),
+        _buildDataCell(player['OHC']?.toString() ?? '', tableWidth * 0.12, fontSize),
+        _buildDataCell(player['HC']?.toString() ?? '', tableWidth * 0.12, fontSize),
+        _buildDataCell(formatPhoneNumber(player['cell']), tableWidth * 0.38, fontSize),
       ],
     );
   }

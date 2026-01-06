@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/league.dart';
-import '../firebase_options.dart';
 import 'database_helper.dart';
 
 class FirebaseService {
@@ -34,21 +33,14 @@ class FirebaseService {
   /// Sign in anonymously for tablet access
   Future<User?> signInAnonymously() async {
     try {
-      print('Checking authentication status...');
-      print('Firebase Auth instance: ${_auth.toString()}');
-      
+
       // Check if user is already authenticated
       User? currentUser = _auth.currentUser;
       if (currentUser != null) {
-        print('User already authenticated: ${currentUser.uid}');
-        print('User anonymous: ${currentUser.isAnonymous}');
-        print('User created: ${currentUser.metadata.creationTime}');
-        print('Authentication status: ALREADY SIGNED IN');
         return currentUser;
       }
       
-      print('No current user, attempting anonymous authentication...');
-      
+
       // Configure Firebase Auth to avoid Dynamic Links issues
       await _auth.setSettings(
         appVerificationDisabledForTesting: false,
@@ -56,42 +48,25 @@ class FirebaseService {
       );
       
       UserCredential result = await _auth.signInAnonymously();
-      print('Anonymous authentication successful: ${result.user?.uid}');
-      print('User created: ${result.user?.metadata.creationTime}');
-      print('User anonymous: ${result.user?.isAnonymous}');
-      
+
       return result.user;
     } catch (e) {
-      print('Error signing in anonymously: $e');
-      print('Error type: ${e.runtimeType}');
-      print('Stack trace: ${StackTrace.current}');
-      
+
       // Detailed error handling
       if (e.toString().contains('auth/operation-not-allowed')) {
-        print('SOLUTION: Enable Anonymous Authentication in Firebase Console');
-        print('Go to: Authentication → Sign-in method → Anonymous → Enable');
       } else if (e.toString().contains('auth/network-request-failed')) {
-        print('SOLUTION: Check internet connection');
       } else if (e.toString().contains('auth/invalid-api-key')) {
-        print('SOLUTION: Check Firebase API key configuration');
-        print('Current API Key: ${DefaultFirebaseOptions.currentPlatform.apiKey.substring(0, 10)}...');
       } else if (e.toString().contains('auth/app-not-authorized')) {
-        print('SOLUTION: Check Firebase project configuration and app registration');
-        print('Project ID: ${DefaultFirebaseOptions.currentPlatform.projectId}');
       } else if (e.toString().contains('dynamic-links') || e.toString().contains('Dynamic Links')) {
-        print('SOLUTION: Dynamic Links deprecation - using alternative auth flow');
         return await _tryAlternativeAuth();
       } else if (e.toString().contains('PigeonUserDetails') || e.toString().contains('type cast')) {
-        print('SOLUTION: Type casting issue - checking current user instead');
         // Return current user if it exists (workaround for type casting issue)
         User? fallbackUser = _auth.currentUser;
         if (fallbackUser != null) {
-          print('Fallback successful: Using existing authenticated user ${fallbackUser.uid}');
           return fallbackUser;
         }
         return null;
       } else {
-        print('UNKNOWN ERROR: Please check Firebase Console and project configuration');
       }
       
       return null;
@@ -101,18 +76,15 @@ class FirebaseService {
   /// Alternative authentication method without Dynamic Links
   Future<User?> _tryAlternativeAuth() async {
     try {
-      print('Trying alternative anonymous authentication...');
-      
+
       // Sign out any existing user first
       await _auth.signOut();
       
       // Try again with a fresh auth instance
       UserCredential result = await _auth.signInAnonymously();
-      print('Alternative auth successful: ${result.user?.uid}');
-      
+
       return result.user;
     } catch (e) {
-      print('Alternative auth also failed: $e');
       return null;
     }
   }
@@ -126,20 +98,15 @@ class FirebaseService {
   Future<bool> syncToFirebase() async {
     try {
       if (!await isSyncEnabled()) {
-        print('Firebase sync is disabled');
         return false;
       }
 
       // Use the bypass method that we know works
       return await uploadWithoutAuth();
     } catch (e) {
-      print('DETAILED ERROR syncing to Firebase: $e');
-      print('Error type: ${e.runtimeType}');
       if (e.toString().contains('permission')) {
-        print('PERMISSION ERROR: Check Firebase security rules');
       }
       if (e.toString().contains('auth')) {
-        print('AUTH ERROR: Check Firebase authentication settings');
       }
       return false;
     }
@@ -150,15 +117,11 @@ class FirebaseService {
     try {
       // Try to read from a test collection
       await _firestore.collection('test').limit(1).get();
-      print('Firebase connection test successful');
       return true;
     } catch (e) {
-      print('Firebase connection test failed: $e');
       if (e.toString().contains('PERMISSION_DENIED')) {
-        print('Permission denied - check Firebase security rules');
       }
       if (e.toString().contains('network')) {
-        print('Network issue - check internet connection');
       }
       return false;
     }
@@ -167,26 +130,21 @@ class FirebaseService {
   /// Upload data without authentication (bypasses auth requirement)
   Future<bool> uploadWithoutAuth() async {
     try {
-      print('Starting upload without authentication...');
-      
+
       // Force enable sync
       await setSyncEnabled(true);
       
       // Try to get local data counts (but don't fail if this fails)
       try {
-        Map<String, int> dataCounts = await _dbHelper.getDataCounts();
-        print('Local data: ${dataCounts['players']} players, ${dataCounts['games']} games, ${dataCounts['scores']} scores');
+        await _dbHelper.getDataCounts();
       } catch (e) {
-        print('Could not get data counts (database may be read-only): $e');
       }
       
       // Try direct database access to upload
       await _uploadDirectFromDatabase();
       
-      print('SUCCESS: Upload completed without authentication');
       return true;
     } catch (e) {
-      print('Upload without auth failed: $e');
       return false;
     }
   }
@@ -194,13 +152,11 @@ class FirebaseService {
   /// Upload directly from database without using helper methods
   Future<void> _uploadDirectFromDatabase() async {
     try {
-      print('Attempting direct database access...');
-      
+
       // Get direct database access
       final db = await _dbHelper.database;
       
       // Upload players directly from database
-      print('Reading players directly from database...');
       List<Map<String, dynamic>> allPlayers = await db.query('players', where: 'active = 1');
       
       int playerCount = 0;
@@ -218,14 +174,11 @@ class FirebaseService {
             'upload_timestamp': FieldValue.serverTimestamp()
           });
           playerCount++;
-          print('Uploaded player $playerCount: ${player['first']} ${player['last']}');
         } catch (e) {
-          print('Error uploading player ${player['id']}: $e');
         }
       }
       
       // Upload scores directly from database
-      print('Reading scores directly from database...');
       List<Map<String, dynamic>> mondayScores = await db.query('monday_scores', orderBy: 'id DESC', limit: 100);
       List<Map<String, dynamic>> wednesdayScores = await db.query('wednesday_scores', orderBy: 'id DESC', limit: 100);
       List<Map<String, dynamic>> legacyScores = await db.query('scores', orderBy: 'id DESC', limit: 50);
@@ -266,15 +219,12 @@ class FirebaseService {
           });
           scoreCount++;
           if (scoreCount % 10 == 0) {
-            print('Uploaded $scoreCount scores...');
           }
         } catch (e) {
-          print('Error uploading score: $e');
         }
       }
       
       // Upload golf course info directly from database
-      print('Reading golf course info directly from database...');
       List<Map<String, dynamic>> courseInfo = await db.query('course_info');
       List<Map<String, dynamic>> golfCourses = await db.query('golf_courses');
       
@@ -293,9 +243,7 @@ class FirebaseService {
             'upload_timestamp': FieldValue.serverTimestamp()
           });
           courseCount++;
-          print('Uploaded course info $courseCount: ${course['name']}');
         } catch (e) {
-          print('Error uploading course info ${course['id']}: $e');
         }
       }
       
@@ -314,14 +262,11 @@ class FirebaseService {
             'upload_timestamp': FieldValue.serverTimestamp()
           });
           golfCourseCount++;
-          print('Uploaded golf course $golfCourseCount: ${course['name']}');
         } catch (e) {
-          print('Error uploading golf course ${course['id']}: $e');
         }
       }
 
       // Upload settings and other tables
-      print('Reading settings directly from database...');
       List<Map<String, dynamic>> settings = await db.query('settings');
       List<Map<String, dynamic>> mulligans = await db.query('mulligans');
       
@@ -339,9 +284,7 @@ class FirebaseService {
             'upload_timestamp': FieldValue.serverTimestamp()
           });
           settingsCount++;
-          print('Uploaded setting $settingsCount: ${setting['key_name']}');
         } catch (e) {
-          print('Error uploading setting ${setting['id']}: $e');
         }
       }
       
@@ -359,94 +302,20 @@ class FirebaseService {
             'upload_timestamp': FieldValue.serverTimestamp()
           });
           mulliganCount++;
-          print('Uploaded mulligan $mulliganCount for ${mulligan['league']} league');
         } catch (e) {
-          print('Error uploading mulligan ${mulligan['id']}: $e');
         }
       }
       
-      print('SUCCESS: Complete database upload - $playerCount players, $scoreCount scores, $courseCount course info, $golfCourseCount golf courses, $settingsCount settings, $mulliganCount mulligans');
     } catch (e) {
-      print('CRITICAL ERROR in direct database upload: $e');
       throw e;
     }
   }
 
-  /// Direct upload to Firestore (no auth required if rules allow)
-  Future<void> _uploadDirectToFirestore() async {
-    try {
-      // Upload players
-      print('Uploading players directly...');
-      List<Map<String, dynamic>> mondayPlayers = await _dbHelper.getPlayersByLeague(League.monday);
-      List<Map<String, dynamic>> wednesdayPlayers = await _dbHelper.getPlayersByLeague(League.wednesday);
-      
-      int playerCount = 0;
-      for (var player in [...mondayPlayers, ...wednesdayPlayers]) {
-        try {
-          // Create a clean copy of the player data without problematic fields
-          Map<String, dynamic> cleanPlayer = Map<String, dynamic>.from(player);
-          
-          // Remove any null values that might cause issues
-          cleanPlayer.removeWhere((key, value) => value == null);
-          
-          String docId = 'player_${player['league']}_${player['id']}_${DateTime.now().millisecondsSinceEpoch}';
-          await _firestore.collection('damaged_tablet_players').doc(docId).set({
-            ...cleanPlayer,
-            'uploaded_at': DateTime.now().toIso8601String(),
-            'source': 'damaged_tablet',
-            'upload_timestamp': FieldValue.serverTimestamp()
-          });
-          playerCount++;
-          print('Uploaded player $playerCount: ${player['first']} ${player['last']}');
-        } catch (e) {
-          print('Error uploading player ${player['id']}: $e');
-          // Continue with next player
-        }
-      }
-      
-      // Upload scores  
-      print('Uploading scores directly...');
-      List<Map<String, dynamic>> allScores = await _getLeagueScores(League.monday);
-      allScores.addAll(await _getLeagueScores(League.wednesday));
-      
-      int scoreCount = 0;
-      for (var score in allScores) {
-        try {
-          // Create a clean copy of the score data
-          Map<String, dynamic> cleanScore = Map<String, dynamic>.from(score);
-          
-          // Remove any null values that might cause issues
-          cleanScore.removeWhere((key, value) => value == null);
-          
-          String docId = 'score_${cleanScore['league'] ?? 'unknown'}_${cleanScore['player_id']}_${DateTime.now().millisecondsSinceEpoch}_$scoreCount';
-          await _firestore.collection('damaged_tablet_scores').doc(docId).set({
-            ...cleanScore,
-            'uploaded_at': DateTime.now().toIso8601String(),
-            'source': 'damaged_tablet',
-            'upload_timestamp': FieldValue.serverTimestamp()
-          });
-          scoreCount++;
-          if (scoreCount % 10 == 0) {
-            print('Uploaded $scoreCount scores...');
-          }
-        } catch (e) {
-          print('Error uploading score: $e');
-          // Continue with next score
-        }
-      }
-      
-      print('SUCCESS: Direct upload completed - $playerCount players, $scoreCount scores');
-    } catch (e) {
-      print('CRITICAL ERROR in direct upload: $e');
-      throw e;
-    }
-  }
 
   /// Sync all Firebase data to local database
   Future<bool> syncFromFirebase() async {
     try {
       if (!await isSyncEnabled()) {
-        print('Firebase sync is disabled');
         return false;
       }
 
@@ -454,7 +323,6 @@ class FirebaseService {
       if (user == null) {
         user = await signInAnonymously();
         if (user == null) {
-          print('Failed to authenticate with Firebase');
           return false;
         }
       }
@@ -471,10 +339,8 @@ class FirebaseService {
       // Sync settings from Firebase
       await _syncSettingsFromFirebase();
 
-      print('Successfully synced all data from Firebase');
       return true;
     } catch (e) {
-      print('Error syncing from Firebase: $e');
       return false;
     }
   }
@@ -584,9 +450,7 @@ class FirebaseService {
           }
         }
       }
-      print('Successfully synced ${snapshot.docs.length} games from Firebase');
     } catch (e) {
-      print('Error syncing games from Firebase: $e');
     }
   }
 
@@ -615,9 +479,7 @@ class FirebaseService {
       }
       
       await batch.commit();
-      print('Successfully synced ${allScores.length} scores to Firebase');
     } catch (e) {
-      print('Error syncing scores to Firebase: $e');
     }
   }
   
@@ -635,7 +497,6 @@ class FirebaseService {
         scores.addAll(playerScores);
       }
     } catch (e) {
-      print('Error getting league scores for ${league.toString()}: $e');
     }
     
     return scores;
@@ -657,17 +518,16 @@ class FirebaseService {
         String? leagueStr = data['league'];
         if (leagueStr != null) {
           League league = leagueStr == 'monday' ? League.monday : League.wednesday;
-          
+
           // Insert score into appropriate league table
+          // Ignore deletedScores return value - we're importing FROM Firebase
           await _dbHelper.insertScoreLeague(data, league);
         } else {
           // Fallback to generic insert if league not specified
           await _dbHelper.insertScore(data);
         }
       }
-      print('Successfully synced ${snapshot.docs.length} scores from Firebase');
     } catch (e) {
-      print('Error syncing scores from Firebase: $e');
     }
   }
 
@@ -705,9 +565,7 @@ class FirebaseService {
       }
       
       await batch.commit();
-      print('Successfully synced ${settingKeys.length} settings to Firebase');
     } catch (e) {
-      print('Error syncing settings to Firebase: $e');
     }
   }
 
@@ -743,7 +601,6 @@ class FirebaseService {
       
       return true;
     } catch (e) {
-      print('Error uploading game results: $e');
       return false;
     }
   }
@@ -773,11 +630,9 @@ class FirebaseService {
   
   Future<void> startAutoSync({Duration interval = const Duration(minutes: 5)}) async {
     if (_isAutoSyncRunning) {
-      print('Auto-sync already running');
       return;
     }
     
-    print('Starting auto-sync with ${interval.inMinutes} minute intervals');
     _isAutoSyncRunning = true;
     
     // Initial sync
@@ -794,7 +649,6 @@ class FirebaseService {
     _autoSyncTimer?.cancel();
     _autoSyncTimer = null;
     _isAutoSyncRunning = false;
-    print('Auto-sync stopped');
   }
   
   /// Perform bidirectional sync
@@ -802,8 +656,7 @@ class FirebaseService {
     try {
       if (!await isSyncEnabled()) return;
       
-      print('Auto-sync: Starting bidirectional sync...');
-      
+
       // Sync local data to Firebase
       bool uploadSuccess = await syncToFirebase();
       
@@ -812,12 +665,9 @@ class FirebaseService {
       
       if (uploadSuccess && downloadSuccess) {
         await setLastSyncTime();
-        print('Auto-sync: Completed successfully');
       } else {
-        print('Auto-sync: Partial failure (upload: $uploadSuccess, download: $downloadSuccess)');
       }
     } catch (e) {
-      print('Auto-sync error: $e');
     }
   }
 
@@ -825,7 +675,6 @@ class FirebaseService {
   Future<void> resolveConflicts() async {
     // Implementation for handling sync conflicts
     // This would compare timestamps and let user choose which data to keep
-    print('Conflict resolution not implemented yet');
   }
 
   /// Get sync status
@@ -850,7 +699,6 @@ class FirebaseService {
   Future<bool> syncMondayLeague() async {
     try {
       if (!await isSyncEnabled()) {
-        print('Firebase sync is disabled');
         return false;
       }
 
@@ -858,7 +706,6 @@ class FirebaseService {
       if (user == null) {
         user = await signInAnonymously();
         if (user == null) {
-          print('Failed to authenticate with Firebase');
           return false;
         }
       }
@@ -867,10 +714,8 @@ class FirebaseService {
       await _syncSpecificLeagueToFirebase(League.monday);
       await _syncSpecificLeagueFromFirebase(League.monday);
       
-      print('Successfully synced Monday League data');
       return true;
     } catch (e) {
-      print('Error syncing Monday League: $e');
       return false;
     }
   }
@@ -879,7 +724,6 @@ class FirebaseService {
   Future<bool> syncWednesdayLeague() async {
     try {
       if (!await isSyncEnabled()) {
-        print('Firebase sync is disabled');
         return false;
       }
 
@@ -887,7 +731,6 @@ class FirebaseService {
       if (user == null) {
         user = await signInAnonymously();
         if (user == null) {
-          print('Failed to authenticate with Firebase');
           return false;
         }
       }
@@ -896,10 +739,8 @@ class FirebaseService {
       await _syncSpecificLeagueToFirebase(League.wednesday);
       await _syncSpecificLeagueFromFirebase(League.wednesday);
       
-      print('Successfully synced Wednesday League data');
       return true;
     } catch (e) {
-      print('Error syncing Wednesday League: $e');
       return false;
     }
   }
@@ -950,7 +791,6 @@ class FirebaseService {
     }
     
     await batch.commit();
-    print('Synced ${players.length} players, ${games.length} games, and ${scores.length} scores for ${leagueStr} league to Firebase');
   }
 
   /// Sync specific league data from Firebase
@@ -993,7 +833,6 @@ class FirebaseService {
       await _dbHelper.insertScoreLeague(data, league);
     }
     
-    print('Synced ${playersSnapshot.docs.length} players and ${scoresSnapshot.docs.length} scores for ${leagueStr} league from Firebase');
   }
 
   /// Get comprehensive sync statistics
@@ -1024,14 +863,12 @@ class FirebaseService {
   /// Download and restore complete database from Firebase
   Future<bool> downloadAndRestoreDatabase() async {
     try {
-      print('Starting complete database restore from Firebase...');
-      
+
       // Authenticate first
       User? user = getCurrentUser();
       if (user == null) {
         user = await signInAnonymously();
         if (user == null) {
-          print('FAILED: Cannot authenticate with Firebase');
           return false;
         }
       }
@@ -1039,37 +876,28 @@ class FirebaseService {
       // Test connection
       bool canConnect = await testFirebaseConnection();
       if (!canConnect) {
-        print('FAILED: Cannot connect to Firebase');
         return false;
       }
       
       // Get backup/restore stats
-      Map<String, int> beforeCounts = await _dbHelper.getDataCounts();
-      print('Local data before restore: $beforeCounts');
-      
+      await _dbHelper.getDataCounts();
+
       // Download all data from Firebase
-      print('Downloading players from Firebase...');
       await _syncPlayersFromFirebase();
       
-      print('Downloading games from Firebase...');
       await _syncGamesFromFirebase();
       
-      print('Downloading scores from Firebase...');
       await _syncScoresFromFirebase();
       
-      print('Downloading settings from Firebase...');
       await _syncSettingsFromFirebase();
       
       // Get final stats
-      Map<String, int> afterCounts = await _dbHelper.getDataCounts();
-      print('Local data after restore: $afterCounts');
-      
+      await _dbHelper.getDataCounts();
+
       await setLastSyncTime();
-      print('SUCCESS: Database restored from Firebase');
-      
+
       return true;
     } catch (e) {
-      print('RESTORE FAILED: $e');
       return false;
     }
   }
@@ -1080,8 +908,7 @@ class FirebaseService {
       String timestamp = DateTime.now().toIso8601String().replaceAll(':', '-');
       String backupId = backupName ?? 'backup_$timestamp';
       
-      print('Creating Firebase backup: $backupId');
-      
+
       // Get current data counts
       Map<String, int> dataCounts = await _dbHelper.getDataCounts();
       
@@ -1097,10 +924,8 @@ class FirebaseService {
       // Upload all data with backup prefix
       await _createBackupData(backupId);
       
-      print('SUCCESS: Backup $backupId created with ${dataCounts['players']} players, ${dataCounts['games']} games, ${dataCounts['scores']} scores');
       return true;
     } catch (e) {
-      print('BACKUP FAILED: $e');
       return false;
     }
   }
@@ -1158,7 +983,6 @@ class FirebaseService {
       
       return backups;
     } catch (e) {
-      print('Error listing backups: $e');
       return [];
     }
   }
@@ -1166,12 +990,10 @@ class FirebaseService {
   /// Restore from specific backup
   Future<bool> restoreFromBackup(String backupId) async {
     try {
-      print('Restoring from backup: $backupId');
-      
+
       // Verify backup exists
       DocumentSnapshot backupDoc = await _firestore.collection('backups').doc(backupId).get();
       if (!backupDoc.exists) {
-        print('FAILED: Backup $backupId does not exist');
         return false;
       }
       
@@ -1199,16 +1021,12 @@ class FirebaseService {
       // Restore games
       QuerySnapshot gamesSnapshot = await _firestore.collection('backup_$backupId\_games').get();
       for (var doc in gamesSnapshot.docs) {
-        Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
         // Games will be restored through game recreation logic
-        print('Game restored: ${data['date']} for ${data['league']} league');
       }
       
-      print('SUCCESS: Restored from backup $backupId - ${playersSnapshot.docs.length} players, ${scoresSnapshot.docs.length} scores, ${gamesSnapshot.docs.length} games');
       await setLastSyncTime();
       return true;
     } catch (e) {
-      print('RESTORE FROM BACKUP FAILED: $e');
       return false;
     }
   }
@@ -1230,7 +1048,6 @@ class FirebaseService {
       _handleRealTimeGameResults(snapshot);
     });
     
-    print('Real-time sync enabled for both leagues');
   }
   
   /// Handle real-time player updates
@@ -1254,15 +1071,12 @@ class FirebaseService {
           break;
       }
     }
-    print('Real-time update: ${snapshot.docChanges.length} ${league.toString()} player changes processed');
   }
   
   /// Handle real-time game results
   void _handleRealTimeGameResults(QuerySnapshot snapshot) {
     for (var change in snapshot.docChanges) {
       if (change.type == DocumentChangeType.added) {
-        Map<String, dynamic> data = change.doc.data() as Map<String, dynamic>;
-        print('New game result received: Game ${data['game_id']}');
         // Process new game results here
       }
     }
@@ -1272,54 +1086,39 @@ class FirebaseService {
   /// Call this method to force upload all local data to Firebase
   Future<bool> uploadDamagedDatabaseToFirebase() async {
     try {
-      print('Starting upload of damaged tablet database to Firebase...');
-      
+
       // Force enable sync
       await setSyncEnabled(true);
       
       // Test connection
-      print('Testing Firebase connection...');
       bool canConnect = await testFirebaseConnection();
       if (!canConnect) {
-        print('FAILED: Cannot connect to Firebase - check internet and Firebase config');
         return false;
       }
       
       // Try to authenticate, but continue if it fails (for existing Firebase setups)
-      print('Attempting Firebase authentication...');
       User? user = getCurrentUser();
       if (user == null) {
         try {
           user = await signInAnonymously();
           if (user != null) {
-            print('Authentication successful: ${user.uid}');
           }
         } catch (e) {
-          print('Authentication failed, but continuing without auth: $e');
-          print('This may work if your Firebase has open security rules');
         }
       }
       
       // Upload all data (this may work even without auth if Firebase rules allow it)
-      print('Uploading players...');
       await _syncPlayersToFirebase();
       
-      print('Uploading games...');
       await _syncGamesToFirebase();
       
-      print('Uploading scores...');
       await _syncScoresToFirebase();
       
-      print('Uploading settings...');
       await _syncSettingsToFirebase();
       
-      print('SUCCESS: All damaged database data uploaded to Firebase');
       return true;
     } catch (e) {
-      print('UPLOAD FAILED: $e');
       if (e.toString().contains('PERMISSION_DENIED')) {
-        print('SOLUTION: Enable Anonymous Authentication in Firebase Console');
-        print('Or update Firebase Security Rules to allow public access');
       }
       return false;
     }
@@ -1328,21 +1127,17 @@ class FirebaseService {
   /// Restore data from damaged tablet collections
   Future<bool> restoreDamagedTabletData() async {
     try {
-      print('Starting restore from damaged tablet collections...');
-      
+
       // Test connection first
       bool canConnect = await testFirebaseConnection();
       if (!canConnect) {
-        print('FAILED: Cannot connect to Firebase');
         return false;
       }
 
       // Get current data counts before restore
-      Map<String, int> beforeCounts = await _dbHelper.getDataCounts();
-      print('Local data before restore: $beforeCounts');
-      
+      await _dbHelper.getDataCounts();
+
       // Restore players from damaged tablet collection
-      print('Downloading players from damaged_tablet_players...');
       QuerySnapshot playersSnapshot = await _firestore.collection('damaged_tablet_players').get();
       int playerCount = 0;
       
@@ -1360,16 +1155,12 @@ class FirebaseService {
           playerCount++;
           
           if (playerCount % 10 == 0) {
-            print('Restored $playerCount players...');
           }
         } catch (e) {
-          print('Error restoring player: $e');
         }
       }
-      print('Restored $playerCount players from damaged tablet backup');
-      
+
       // Restore scores from damaged tablet collection
-      print('Downloading scores from damaged_tablet_scores...');
       QuerySnapshot scoresSnapshot = await _firestore.collection('damaged_tablet_scores').get();
       int scoreCount = 0;
       
@@ -1394,16 +1185,12 @@ class FirebaseService {
           scoreCount++;
           
           if (scoreCount % 20 == 0) {
-            print('Restored $scoreCount scores...');
           }
         } catch (e) {
-          print('Error restoring score: $e');
         }
       }
-      print('Restored $scoreCount scores from damaged tablet backup');
-      
+
       // Restore golf courses
-      print('Downloading golf courses from damaged_tablet_golf_courses...');
       QuerySnapshot coursesSnapshot = await _firestore.collection('damaged_tablet_golf_courses').get();
       int courseCount = 0;
       
@@ -1419,13 +1206,10 @@ class FirebaseService {
           await _dbHelper.insertGolfCourse(data);
           courseCount++;
         } catch (e) {
-          print('Error restoring golf course: $e');
         }
       }
-      print('Restored $courseCount golf courses from damaged tablet backup');
-      
+
       // Restore course info
-      print('Downloading course info from damaged_tablet_course_info...');
       QuerySnapshot courseInfoSnapshot = await _firestore.collection('damaged_tablet_course_info').get();
       int courseInfoCount = 0;
       
@@ -1443,13 +1227,10 @@ class FirebaseService {
           await db.insert('course_info', data);
           courseInfoCount++;
         } catch (e) {
-          print('Error restoring course info: $e');
         }
       }
-      print('Restored $courseInfoCount course info records from damaged tablet backup');
-      
+
       // Restore settings
-      print('Downloading settings from damaged_tablet_settings...');
       QuerySnapshot settingsSnapshot = await _firestore.collection('damaged_tablet_settings').get();
       int settingsCount = 0;
       
@@ -1476,23 +1257,18 @@ class FirebaseService {
             settingsCount++;
           }
         } catch (e) {
-          print('Error restoring setting: $e');
         }
       }
-      print('Restored $settingsCount settings from damaged tablet backup');
-      
+
       // Get final data counts
       Map<String, int> afterCounts = await _dbHelper.getDataCounts();
-      print('Local data after restore: $afterCounts');
-      
+
       await setLastSyncTime();
       
-      print('SUCCESS: Damaged tablet data restored - $playerCount players, $scoreCount scores, $courseCount golf courses, $courseInfoCount course info, $settingsCount settings');
-      
+
       return true;
       
     } catch (e) {
-      print('RESTORE FROM DAMAGED TABLET FAILED: $e');
       return false;
     }
   }

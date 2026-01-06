@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../../models/league.dart';
 import '../../services/database_helper.dart';
 import '../../services/device_detection_service.dart';
+import '../../services/firebase_upload_service.dart';
 
 class MondayAdminScreen extends StatefulWidget {
   final League? currentLeague;
@@ -18,12 +19,39 @@ class _MondayAdminScreenState extends State<MondayAdminScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final DatabaseHelper _dbHelper = DatabaseHelper();
+  final FirebaseUploadService _firebaseUploadService = FirebaseUploadService();
   bool _isDownloading = false;
+  bool _firebaseUploadsEnabled = true;
+  bool _allowDuplicateDates = true;
 
   @override
   void initState() {
     super.initState();
     _initializeFirestore();
+    _loadFirebaseUploadsState();
+    _loadAllowDuplicateDatesState();
+  }
+
+  /// Load the Firebase uploads enabled state from SharedPreferences
+  Future<void> _loadFirebaseUploadsState() async {
+    // Wait for the state to be loaded from SharedPreferences
+    await FirebaseUploadService.loadUploadsEnabledState();
+    if (mounted) {
+      setState(() {
+        _firebaseUploadsEnabled = FirebaseUploadService.uploadsEnabled;
+      });
+    }
+  }
+
+  /// Load the allow duplicate dates state from SharedPreferences
+  Future<void> _loadAllowDuplicateDatesState() async {
+    // Wait for the state to be loaded from SharedPreferences
+    await DatabaseHelper.loadAllowDuplicateDatesState();
+    if (mounted) {
+      setState(() {
+        _allowDuplicateDates = DatabaseHelper.allowDuplicateDates;
+      });
+    }
   }
 
   void _initializeFirestore() {
@@ -52,6 +80,120 @@ class _MondayAdminScreenState extends State<MondayAdminScreen> {
           child: SingleChildScrollView(
             child: Column(
               children: [
+                const SizedBox(height: 20),
+
+                // Firebase Upload Toggle Checkbox
+                Center(
+                  child: SizedBox(
+                    width: MediaQuery.of(context).size.width * 0.7,
+                    child: Card(
+                      elevation: 4,
+                      color: _firebaseUploadsEnabled ? Colors.green[50] : Colors.red[50],
+                      child: CheckboxListTile(
+                        title: Text(
+                          'Turn off Firebase Uploads',
+                          style: TextStyle(
+                            fontSize: 20 * DeviceDetectionService.getFontScale(context),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        subtitle: Text(
+                          _firebaseUploadsEnabled
+                            ? 'Firebase uploads are currently ENABLED'
+                            : 'Firebase uploads are currently DISABLED',
+                          style: TextStyle(
+                            fontSize: 16 * DeviceDetectionService.getFontScale(context),
+                            color: _firebaseUploadsEnabled ? Colors.green[800] : Colors.red[800],
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        value: !_firebaseUploadsEnabled,
+                        onChanged: (bool? value) async {
+                          final newState = !(value ?? false);
+                          setState(() {
+                            _firebaseUploadsEnabled = newState;
+                          });
+
+                          // Save the state to SharedPreferences
+                          await FirebaseUploadService.saveUploadsEnabledState(newState);
+
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  _firebaseUploadsEnabled
+                                    ? 'Firebase uploads ENABLED'
+                                    : 'Firebase uploads DISABLED',
+                                ),
+                                backgroundColor: _firebaseUploadsEnabled ? Colors.green : Colors.red,
+                                duration: const Duration(seconds: 2),
+                              ),
+                            );
+                          }
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                // Allow Duplicate Dates Checkbox
+                Center(
+                  child: SizedBox(
+                    width: MediaQuery.of(context).size.width * 0.7,
+                    child: Card(
+                      elevation: 4,
+                      color: _allowDuplicateDates ? Colors.blue[50] : Colors.orange[50],
+                      child: CheckboxListTile(
+                        title: Text(
+                          'Allow Duplicate Dates',
+                          style: TextStyle(
+                            fontSize: 20 * DeviceDetectionService.getFontScale(context),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        subtitle: Text(
+                          _allowDuplicateDates
+                            ? 'Multiple scores can be stored for the same date'
+                            : 'Only one score per date allowed',
+                          style: TextStyle(
+                            fontSize: 16 * DeviceDetectionService.getFontScale(context),
+                            color: _allowDuplicateDates ? Colors.blue[800] : Colors.orange[800],
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        value: _allowDuplicateDates,
+                        onChanged: (bool? value) async {
+                          final newState = value ?? true;
+                          setState(() {
+                            _allowDuplicateDates = newState;
+                          });
+
+                          // Save the state to SharedPreferences
+                          await DatabaseHelper.saveAllowDuplicateDatesState(newState);
+
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  _allowDuplicateDates
+                                    ? 'Duplicate dates ALLOWED'
+                                    : 'Duplicate dates BLOCKED',
+                                ),
+                                backgroundColor: _allowDuplicateDates ? Colors.blue : Colors.orange,
+                                duration: const Duration(seconds: 2),
+                              ),
+                            );
+                          }
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
                 // Row 1
                 Row(
                   children: [
@@ -522,7 +664,14 @@ class _MondayAdminScreenState extends State<MondayAdminScreen> {
       // Use the passed league parameter
       League leagueEnum = league == 'monday' ? League.monday : League.wednesday;
 
-      await _dbHelper.insertScoreLeague(localScoreData, leagueEnum);
+      Map<String, dynamic> insertResult = await _dbHelper.insertScoreLeague(localScoreData, leagueEnum);
+      List<Map<String, dynamic>> deletedScores = insertResult['deletedScores'] as List<Map<String, dynamic>>;
+
+      // Delete old scores from Firebase if any were removed locally
+      if (deletedScores.isNotEmpty) {
+        final FirebaseUploadService firebaseService = FirebaseUploadService();
+        await firebaseService.deletePlayerScoresFromFirebase(deletedScores, leagueEnum);
+      }
     } catch (e) {
       rethrow;
     }

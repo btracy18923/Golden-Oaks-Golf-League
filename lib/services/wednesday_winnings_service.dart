@@ -22,8 +22,8 @@ class WednesdayWinningsService {
     // Sort players by net score (ascending - lower is better)
     List<Map<String, dynamic>> sortedPlayers = List.from(playerScores);
     sortedPlayers.sort((a, b) {
-      int netA = a['net_score'] ?? 999;
-      int netB = b['net_score'] ?? 999;
+      double netA = (a['net_score'] ?? 999).toDouble();
+      double netB = (b['net_score'] ?? 999).toDouble();
       return netA.compareTo(netB);
     });
 
@@ -34,11 +34,11 @@ class WednesdayWinningsService {
     // Calculate positions with tie handling
     int currentPlace = 1;
     int playersAtSameScore = 0;
-    int? lastNetScore;
+    double? lastNetScore;
 
     for (int i = 0; i < sortedPlayers.length; i++) {
       var player = sortedPlayers[i];
-      int netScore = player['net_score'] ?? 999;
+      double netScore = (player['net_score'] ?? 999).toDouble();
       String playerName = player['last'] ?? '';
 
       // Check for ties
@@ -127,8 +127,8 @@ class WednesdayWinningsService {
   }
 
   /// Counts players with a specific net score
-  int _countPlayersWithScore(List<Map<String, dynamic>> players, int netScore) {
-    return players.where((p) => p['net_score'] == netScore).length;
+  int _countPlayersWithScore(List<Map<String, dynamic>> players, double netScore) {
+    return players.where((p) => (p['net_score'] ?? 999).toDouble() == netScore).length;
   }
 
   /// Calculates group winnings based on group average scores
@@ -142,11 +142,11 @@ class WednesdayWinningsService {
     List<GroupScore> groupScores = [];
     for (int i = 0; i < groups.length; i++) {
       var group = groups[i];
-      List<int> netScores = [];
+      List<double> netScores = [];
 
       for (var player in group) {
         if (player != null && player['net_score'] != null) {
-          netScores.add(player['net_score'] as int);
+          netScores.add((player['net_score']).toDouble());
         }
       }
 
@@ -231,7 +231,7 @@ class WinningsResult {
   final int place;
   final double winnings;
   final bool isTied;
-  final int netScore;
+  final double netScore;
 
   WinningsResult({
     required this.place,

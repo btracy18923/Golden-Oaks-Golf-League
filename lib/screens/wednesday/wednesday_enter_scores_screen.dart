@@ -1131,8 +1131,8 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
         ? _navigateToClosestPin
         : (individualsComplete ? _handleAutoProcessGroups : null);
     Color processButtonColor = groupsProcessed
-        ? Colors.green[300]!
-        : (individualsComplete ? Colors.green[300]! : Colors.grey[400]!);
+        ? Colors.orange[300]!
+        : (individualsComplete ? Colors.orange[300]! : Colors.grey[400]!);
 
     // Build button list based on processing state
     List<Widget> buttons = [];
@@ -1168,25 +1168,29 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
       return ButtonBarUIService.buildButtonBar(
         context,
         backgroundColor: Colors.grey[300]!,
-        mainAxisAlignment: MainAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          SizedBox(
-            width: buttonWidth,
-            child: ElevatedButton(
-              onPressed: processButtonCallback,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: processButtonColor,
-                foregroundColor: Colors.black,
-                padding: buttonInternalPadding,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(buttonRadius),
+          Padding(
+            padding: const EdgeInsets.only(right: 20.0),
+            child: SizedBox(
+              width: buttonWidth,
+              child: ElevatedButton(
+                onPressed: processButtonCallback,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: processButtonColor,
+                  foregroundColor: Colors.black,
+                  padding: buttonInternalPadding,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(buttonRadius),
+                    side: const BorderSide(color: Colors.black, width: 2),
+                  ),
                 ),
-              ),
-              child: Text(
-                processButtonText,
-                style: TextStyle(
-                  fontSize: buttonFontSize,
-                  fontWeight: FontWeight.bold,
+                child: Text(
+                  processButtonText,
+                  style: TextStyle(
+                    fontSize: buttonFontSize,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ),

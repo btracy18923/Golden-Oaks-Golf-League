@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../services/database_helper.dart';
@@ -7,7 +6,6 @@ import '../../services/responsive_typography.dart';
 import '../../services/UI/button_bar_UI_service.dart';
 import '../../models/league.dart';
 import 'wednesday_enter_scores_screen.dart';
-import 'wednesday_closest_pin_screen.dart';
 import '../../widgets/responsive_wrapper.dart';
 
 class WednesdayPlayerSelectionScreen extends StatefulWidget {
@@ -67,12 +65,14 @@ class _WednesdayPlayerSelectionScreenState extends State<WednesdayPlayerSelectio
       setState(() {
         isLoading = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error loading Wednesday players: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading Wednesday players: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
   
@@ -108,11 +108,13 @@ class _WednesdayPlayerSelectionScreenState extends State<WednesdayPlayerSelectio
     return Scaffold(
       backgroundColor: Colors.grey[300],
       appBar: AppBar(
-        title: Text("Select Wednesday Players - ${DeviceDetectionService.getDeviceName(context)}"),
+        title: Text(
+          "Select Wednesday Players - ${DeviceDetectionService.getDeviceName(context)}",
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+        ),
         backgroundColor: Colors.orange[700],
         foregroundColor: Colors.white,
         centerTitle: true,
-        toolbarHeight: 48,
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -173,7 +175,6 @@ class _WednesdayPlayerSelectionScreenState extends State<WednesdayPlayerSelectio
         backgroundColor: Colors.orange[700],
         foregroundColor: Colors.white,
         centerTitle: true,
-        toolbarHeight: 64,
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -251,24 +252,6 @@ class _WednesdayPlayerSelectionScreenState extends State<WednesdayPlayerSelectio
     );
   }
   
-  Widget _buildTabletPlayerGrid() {
-    List<List<Map<String, dynamic>>> columns = _cachedColumns ?? [[], [], [], []];
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        for (int colIndex = 0; colIndex < 4; colIndex++)
-          Expanded(
-            child: Column(
-              children: [
-                for (var player in columns[colIndex])
-                  _buildTabletPlayerCheckbox(player),
-              ],
-            ),
-          ),
-      ],
-    );
-  }
 
   Widget _buildTablet10PlayerGrid() {
     List<List<Map<String, dynamic>>> columns = _cachedColumns ?? [[], [], [], []];
@@ -382,8 +365,8 @@ class _WednesdayPlayerSelectionScreenState extends State<WednesdayPlayerSelectio
           groups.add(group);
         }
       }
-      
-      // Navigate to Wednesday ores Screen
+
+      // Navigate to Wednesday Enter Scores Screen
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -404,32 +387,6 @@ class _WednesdayPlayerSelectionScreenState extends State<WednesdayPlayerSelectio
     }
   }
 
-  void _navigateToClosestPin() {
-    try {
-      // Get selected players
-      List<Map<String, dynamic>> selectedPlayers = players
-          .where((player) => selectedPlayerIds.contains(player['player_number'] as int))
-          .toList();
-
-      // Navigate to Wednesday Closest Pin Screen
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => WednesdayClosestPinScreen(
-            selectedPlayers: selectedPlayers,
-          ),
-        ),
-      );
-
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error navigating to Wednesday closest pin: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
 
   Widget _buildPhonePlayerCheckbox(Map<String, dynamic> player) {
     final int playerId = player['player_number'] as int;
@@ -490,64 +447,6 @@ class _WednesdayPlayerSelectionScreenState extends State<WednesdayPlayerSelectio
     );
   }
   
-  Widget _buildTabletPlayerCheckbox(Map<String, dynamic> player) {
-    final int playerId = player['player_number'] as int;
-    final bool isSelected = selectedPlayerIds.contains(playerId);
-    final String playerName = '${player['last']}, ${player['first']}';
-
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 1, horizontal: 2),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () => togglePlayerSelection(playerId),
-          borderRadius: BorderRadius.circular(4),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
-            child: Row(
-              children: [
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: isSelected ? _leagueColor : Colors.grey[300],
-                    border: Border.all(color: Colors.black, width: 1),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: isSelected
-                      ? const Center(
-                          child: Text(
-                            'X',
-                            style: TextStyle(
-                              color: Colors.black,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 18,
-                              height: 1.0,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        )
-                      : null,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    playerName,
-                    style: TextStyle(
-                      fontSize: ResponsiveTypography.getSmall(context),
-                      fontWeight: FontWeight.w500,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 
   Widget _buildTablet10PlayerCheckbox(Map<String, dynamic> player) {
     final int playerId = player['player_number'] as int;
@@ -615,7 +514,7 @@ class _WednesdayPlayerSelectionScreenState extends State<WednesdayPlayerSelectio
       children: [
         ButtonBarUIService.buildActionButton(
           context,
-          text: '◄---- Back',
+          text: '◄---- MainMenu',
           color: Colors.blue[300]!,
           onPressed: () => Navigator.of(context).pop(),
         ),

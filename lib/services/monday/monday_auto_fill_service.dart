@@ -53,7 +53,7 @@ class MondayAutoFillService extends BaseAutoFillService {
             skNumber: player.skNumber,
             skats: randomSkats.toString(),
             diff: diffValue,
-            money: player.money,
+            money: '', // Clear money so it can be recalculated
           );
         }
       }
@@ -99,7 +99,7 @@ class MondayAutoFillService extends BaseAutoFillService {
           skNumber: player.skNumber,
           skats: randomSkats.toString(),
           diff: diffValue,
-          money: player.money,
+          money: '', // Clear money so it can be recalculated
         );
       } else {
         // Return unchanged if no player assigned

@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/league.dart';
 import '../../services/database_helper.dart';
 import '../../services/device_detection_service.dart';
+import '../../services/firebase_upload_service.dart';
 
 class WednesdayAdminScreen extends StatefulWidget {
   final League? currentLeague;
@@ -16,12 +17,39 @@ class WednesdayAdminScreen extends StatefulWidget {
 class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final DatabaseHelper _dbHelper = DatabaseHelper();
+  final FirebaseUploadService _firebaseUploadService = FirebaseUploadService();
   bool _isDownloading = false;
+  bool _firebaseUploadsEnabled = true;
+  bool _allowDuplicateDates = true;
 
   @override
   void initState() {
     super.initState();
     _initializeFirestore();
+    _loadFirebaseUploadsState();
+    _loadAllowDuplicateDatesState();
+  }
+
+  /// Load the Firebase uploads enabled state from SharedPreferences
+  Future<void> _loadFirebaseUploadsState() async {
+    // Wait for the state to be loaded from SharedPreferences
+    await FirebaseUploadService.loadUploadsEnabledState();
+    if (mounted) {
+      setState(() {
+        _firebaseUploadsEnabled = FirebaseUploadService.uploadsEnabled;
+      });
+    }
+  }
+
+  /// Load the allow duplicate dates state from SharedPreferences
+  Future<void> _loadAllowDuplicateDatesState() async {
+    // Wait for the state to be loaded from SharedPreferences
+    await DatabaseHelper.loadAllowDuplicateDatesState();
+    if (mounted) {
+      setState(() {
+        _allowDuplicateDates = DatabaseHelper.allowDuplicateDates;
+      });
+    }
   }
 
   void _initializeFirestore() {
@@ -32,6 +60,8 @@ class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
         cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
       );
     } catch (e) {
+      // Firestore settings configuration failed - continue with defaults
+      debugPrint('Firestore settings configuration failed: $e');
     }
   }
 
@@ -49,7 +79,119 @@ class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
           child: SingleChildScrollView(
             child: Column(
               children: [
-                const SizedBox(height: 30),
+                const SizedBox(height: 20),
+
+                // Firebase Upload Toggle Checkbox
+                Center(
+                  child: SizedBox(
+                    width: MediaQuery.of(context).size.width * 0.7,
+                    child: Card(
+                      elevation: 4,
+                      color: _firebaseUploadsEnabled ? Colors.green[50] : Colors.red[50],
+                      child: CheckboxListTile(
+                        title: Text(
+                          'Turn off Firebase Uploads',
+                          style: TextStyle(
+                            fontSize: 20 * DeviceDetectionService.getFontScale(context),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        subtitle: Text(
+                          _firebaseUploadsEnabled
+                            ? 'Firebase uploads are currently ENABLED'
+                            : 'Firebase uploads are currently DISABLED',
+                          style: TextStyle(
+                            fontSize: 16 * DeviceDetectionService.getFontScale(context),
+                            color: _firebaseUploadsEnabled ? Colors.green[800] : Colors.red[800],
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        value: !_firebaseUploadsEnabled,
+                        onChanged: (bool? value) async {
+                          final newState = !(value ?? false);
+                          setState(() {
+                            _firebaseUploadsEnabled = newState;
+                          });
+
+                          // Save the state to SharedPreferences
+                          await FirebaseUploadService.saveUploadsEnabledState(newState);
+
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  _firebaseUploadsEnabled
+                                    ? 'Firebase uploads ENABLED'
+                                    : 'Firebase uploads DISABLED',
+                                ),
+                                backgroundColor: _firebaseUploadsEnabled ? Colors.green : Colors.red,
+                                duration: const Duration(seconds: 2),
+                              ),
+                            );
+                          }
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                // Allow Duplicate Dates Checkbox
+                Center(
+                  child: SizedBox(
+                    width: MediaQuery.of(context).size.width * 0.7,
+                    child: Card(
+                      elevation: 4,
+                      color: _allowDuplicateDates ? Colors.blue[50] : Colors.orange[50],
+                      child: CheckboxListTile(
+                        title: Text(
+                          'Allow Duplicate Dates',
+                          style: TextStyle(
+                            fontSize: 20 * DeviceDetectionService.getFontScale(context),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        subtitle: Text(
+                          _allowDuplicateDates
+                            ? 'Multiple scores can be stored for the same date'
+                            : 'Only one score per date allowed',
+                          style: TextStyle(
+                            fontSize: 16 * DeviceDetectionService.getFontScale(context),
+                            color: _allowDuplicateDates ? Colors.blue[800] : Colors.orange[800],
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        value: _allowDuplicateDates,
+                        onChanged: (bool? value) async {
+                          final newState = value ?? true;
+                          setState(() {
+                            _allowDuplicateDates = newState;
+                          });
+
+                          // Save the state to SharedPreferences
+                          await DatabaseHelper.saveAllowDuplicateDatesState(newState);
+
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  _allowDuplicateDates
+                                    ? 'Duplicate dates ALLOWED'
+                                    : 'Duplicate dates BLOCKED',
+                                ),
+                                backgroundColor: _allowDuplicateDates ? Colors.blue : Colors.orange,
+                                duration: const Duration(seconds: 2),
+                              ),
+                            );
+                          }
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 20),
 
                 GridView.count(
                   shrinkWrap: true,
@@ -74,6 +216,20 @@ class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
                     ),
 
                     _buildDownloadButton(
+                      _isDownloading ? 'Uploading...' : 'Copy M to W Profiles',
+                      _isDownloading ? Icons.hourglass_bottom : Icons.upload,
+                      _isDownloading ? Colors.grey[400]! : Colors.green[300]!,
+                      _isDownloading ? () {} : () => _copyMondayProfilesToWednesday(),
+                    ),
+
+                    _buildDownloadButton(
+                      'Copy OHC to HC',
+                      Icons.copy_all,
+                      Colors.purple[300]!,
+                      () => _copyOhcToHc(),
+                    ),
+
+                    _buildDownloadButton(
                       _isDownloading ? 'Downloading...' : 'Download Wed Player Profiles',
                       _isDownloading ? Icons.hourglass_bottom : Icons.people,
                       _isDownloading ? Colors.grey[400]! : Colors.blue[300]!,
@@ -85,20 +241,6 @@ class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
                       Icons.person_remove,
                       Colors.red[400]!,
                       () => _deleteWednesdayPlayerProfiles(),
-                    ),
-
-                    _buildDownloadButton(
-                      'Change all HC values to 15',
-                      Icons.settings,
-                      Colors.purple[300]!,
-                      () => _changeAllWednesdayHandicapsTo15(),
-                    ),
-
-                    _buildDownloadButton(
-                      _isDownloading ? 'Uploading...' : 'Copy M to W Profiles',
-                      _isDownloading ? Icons.hourglass_bottom : Icons.upload,
-                      _isDownloading ? Colors.grey[400]! : Colors.green[300]!,
-                      _isDownloading ? () {} : () => _copyMondayProfilesToWednesday(),
                     ),
                   ],
                 ),
@@ -156,27 +298,31 @@ class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
       }
 
       // Show success message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Download Complete!\n'
-            'Wednesday: $wednesdayCount players\n'
-            '${errorCount > 0 ? 'Errors: $errorCount\n' : ''}'
-            'Total: $wednesdayCount players downloaded'
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Download Complete!\n'
+              'Wednesday: $wednesdayCount players\n'
+              '${errorCount > 0 ? 'Errors: $errorCount\n' : ''}'
+              'Total: $wednesdayCount players downloaded'
+            ),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 4),
           ),
-          backgroundColor: Colors.green,
-          duration: const Duration(seconds: 4),
-        ),
-      );
+        );
+      }
 
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Download Failed: ${e.toString()}'),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 3),
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Download Failed: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
     } finally {
       setState(() {
         _isDownloading = false;
@@ -188,12 +334,13 @@ class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
   Future<void> _insertOrUpdatePlayer(Map<String, dynamic> playerData) async {
     try {
       // Clean the data to only include fields that exist in the local database schema
-      // Local players table has: player_number, first, last, skat_number, HC, cell, email, league
+      // Local players table has: player_number, first, last, skat_number, OHC, HC, cell, email, league
       Map<String, dynamic> cleanData = {
         'player_number': playerData['player_number'],
         'first': playerData['first'],
         'last': playerData['last'],
         'skat_number': playerData['skat_number'],
+        'OHC': playerData['OHC'],
         'HC': playerData['HC'],
         'cell': playerData['cell'],
         'email': playerData['email'],
@@ -235,7 +382,7 @@ class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
         await _dbHelper.insertPlayer(cleanData);
       }
     } catch (e) {
-      throw e;
+      rethrow;
     }
   }
 
@@ -287,27 +434,31 @@ class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
       }
 
       // Show success message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Download Complete!\n'
-            'Wednesday Scores: $wednesdayCount downloaded\n'
-            '${errorCount > 0 ? 'Errors: $errorCount\n' : ''}'
-            'Total: $wednesdayCount scores downloaded from W_player_scores'
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Download Complete!\n'
+              'Wednesday Scores: $wednesdayCount downloaded\n'
+              '${errorCount > 0 ? 'Errors: $errorCount\n' : ''}'
+              'Total: $wednesdayCount scores downloaded from W_player_scores'
+            ),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 4),
           ),
-          backgroundColor: Colors.green,
-          duration: const Duration(seconds: 4),
-        ),
-      );
+        );
+      }
 
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Download Failed: ${e.toString()}'),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 3),
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Download Failed: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
     } finally {
       setState(() {
         _isDownloading = false;
@@ -357,9 +508,16 @@ class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
       // Use the passed league parameter
       League leagueEnum = league == 'monday' ? League.monday : League.wednesday;
 
-      await _dbHelper.insertScoreLeague(localScoreData, leagueEnum);
+      Map<String, dynamic> insertResult = await _dbHelper.insertScoreLeague(localScoreData, leagueEnum);
+      List<Map<String, dynamic>> deletedScores = insertResult['deletedScores'] as List<Map<String, dynamic>>;
+
+      // Delete old scores from Firebase if any were removed locally
+      if (deletedScores.isNotEmpty) {
+        final FirebaseUploadService firebaseService = FirebaseUploadService();
+        await firebaseService.deletePlayerScoresFromFirebase(deletedScores, leagueEnum);
+      }
     } catch (e) {
-      throw e;
+      rethrow;
     }
   }
 
@@ -382,7 +540,7 @@ class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Wed Player Scores'),
-        content: const Text('This will permanently delete ALL scores, games, and winnings data for Wednesday league players only. This cannot be undone. Are you sure?'),
+        content: const Text('This will permanently delete ALL scores, games, and winnings data for Wednesday league players from both the local database and Firebase. This cannot be undone. Are you sure?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
@@ -399,89 +557,61 @@ class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
 
     if (confirmed == true) {
       try {
+        // Delete from local database
         await _dbHelper.clearWednesdayScoreData();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('All Wednesday score data has been cleared from the database'),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 3),
-          ),
-        );
+
+        // Delete from Firebase
+        await _deleteAllWednesdayScoresFromFirebase();
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('All Wednesday score data has been cleared from local database and Firebase'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error clearing data: $e'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
-          ),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error clearing data: $e'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
       }
     }
   }
 
-  Future<void> _changeAllWednesdayHandicapsTo15() async {
-    // Show confirmation dialog first
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirm Change Handicaps to 15'),
-        content: RichText(
-          text: const TextSpan(
-            style: TextStyle(color: Colors.black, fontSize: 16),
-            children: [
-              TextSpan(text: 'Are you sure you want to change all handicap values to 15?\n'),
-              TextSpan(text: 'This usually is done only for testing purposes.\n'),
-              TextSpan(text: 'Click '),
-              TextSpan(text: 'Cancel', style: TextStyle(fontWeight: FontWeight.bold)),
-              TextSpan(text: ' if you are not sure.\n'),
-              TextSpan(text: 'This cannot be undone.\n\n'),
-              TextSpan(
-                text: 'This will affect all players in the Wednesday league ONLY.',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Replace'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true) return;
-
+  /// Delete all Wednesday player scores from Firebase
+  Future<void> _deleteAllWednesdayScoresFromFirebase() async {
     try {
-      // Update HC column in players table for all Wednesday players
-      final db = await _dbHelper.database;
-      int rowsAffected = await db.rawUpdate('''
-        UPDATE players
-        SET HC = 15.0
-        WHERE league = 'wednesday'
-      ''');
+      // Get all documents from W_player_scores collection
+      QuerySnapshot snapshot = await _firestore.collection('W_player_scores').get();
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Successfully updated $rowsAffected Wednesday players with HC = 15'),
-          backgroundColor: Colors.green,
-          duration: const Duration(seconds: 3),
-        ),
-      );
+      if (snapshot.docs.isEmpty) {
+        debugPrint('No Wednesday scores found in Firebase to delete');
+        return;
+      }
+
+      // Create a batch to delete all documents
+      WriteBatch batch = _firestore.batch();
+      int count = 0;
+
+      for (var doc in snapshot.docs) {
+        batch.delete(doc.reference);
+        count++;
+      }
+
+      // Commit the batch deletion
+      await batch.commit();
+      debugPrint('Successfully deleted $count Wednesday scores from Firebase');
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error updating handicaps: $e'),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 3),
-        ),
-      );
+      debugPrint('Error deleting Wednesday scores from Firebase: $e');
+      rethrow;
     }
   }
 
@@ -533,21 +663,25 @@ class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
         count++;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Successfully deleted $count Wednesday player profiles'),
-          backgroundColor: Colors.green,
-          duration: const Duration(seconds: 3),
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Successfully deleted $count Wednesday player profiles'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error deleting players: $e'),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 3),
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error deleting players: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
     }
   }
 
@@ -571,13 +705,15 @@ class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
       QuerySnapshot mondaySnapshot = await _firestore.collection('M_player_profile').get();
 
       if (mondaySnapshot.docs.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('No profiles found in M_player_profile collection'),
-            backgroundColor: Colors.orange,
-            duration: Duration(seconds: 3),
-          ),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No profiles found in M_player_profile collection'),
+              backgroundColor: Colors.orange,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
         return;
       }
 
@@ -612,26 +748,104 @@ class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
       // Commit the batch
       await batch.commit();
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Successfully copied $count player profiles to W_player_profile!'),
-          backgroundColor: Colors.green,
-          duration: const Duration(seconds: 4),
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Successfully copied $count player profiles to W_player_profile!'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
 
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Copy Failed: ${e.toString()}'),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 3),
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Copy Failed: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
     } finally {
       setState(() {
         _isDownloading = false;
       });
+    }
+  }
+
+  Future<void> _copyOhcToHc() async {
+    // Show confirmation dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Copy OHC to HC'),
+        content: const Text(
+          'This will copy the OHC (Original Handicap) value to the HC (Handicap) field '
+          'for all Wednesday players.\n\n'
+          'This will overwrite existing HC values.\n\n'
+          'Are you sure?'
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.purple),
+            child: const Text('COPY OHC TO HC'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      // Get all Wednesday players
+      final wednesdayPlayers = await _dbHelper.getPlayersByLeague(League.wednesday);
+
+      int updatedCount = 0;
+      int skippedCount = 0;
+
+      for (var player in wednesdayPlayers) {
+        final playerNumber = player['player_number'];
+        final ohcValue = player['OHC'];
+
+        if (ohcValue != null && playerNumber != null) {
+          // Update the player's HC field with OHC value
+          await _dbHelper.updatePlayer(playerNumber, {'HC': ohcValue});
+          updatedCount++;
+        } else {
+          skippedCount++;
+        }
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Copy Complete!\n'
+              'Updated: $updatedCount players\n'
+              '${skippedCount > 0 ? 'Skipped: $skippedCount players (null OHC or player_number)' : ''}'
+            ),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error copying OHC to HC: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
     }
   }
 

@@ -1,13 +1,47 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/foundation.dart';
 import '../models/league.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper _instance = DatabaseHelper._internal();
   static Database? _database;
 
+  /// Global flag to allow duplicate dates in wednesday_scores
+  static bool allowDuplicateDates = true;
+
+  /// SharedPreferences key for storing the allow duplicate dates state
+  static const String _allowDuplicateDatesKey = 'allow_duplicate_dates_wednesday';
+
   factory DatabaseHelper() => _instance;
-  DatabaseHelper._internal();
+  DatabaseHelper._internal() {
+    loadAllowDuplicateDatesState();
+  }
+
+  /// Load the allow duplicate dates state from SharedPreferences
+  static Future<void> loadAllowDuplicateDatesState() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      allowDuplicateDates = prefs.getBool(_allowDuplicateDatesKey) ?? true;
+      debugPrint('Loaded allow duplicate dates state: $allowDuplicateDates');
+    } catch (e) {
+      debugPrint('Error loading allow duplicate dates state: $e');
+      allowDuplicateDates = true; // Default to enabled on error
+    }
+  }
+
+  /// Save the allow duplicate dates state to SharedPreferences
+  static Future<void> saveAllowDuplicateDatesState(bool allowed) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_allowDuplicateDatesKey, allowed);
+      allowDuplicateDates = allowed;
+      debugPrint('Saved allow duplicate dates state: $allowed');
+    } catch (e) {
+      debugPrint('Error saving allow duplicate dates state: $e');
+    }
+  }
 
   Future<Database> get database async {
     _database ??= await _initDatabase();
@@ -20,7 +54,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 21,
+      version: 22,
       onCreate: (db, version) {
         // DatabaseHelper: Creating new database with version $version
         return _createTables(db, version);
@@ -41,6 +75,7 @@ class DatabaseHelper {
         first TEXT NOT NULL,
         last TEXT NOT NULL,
         skat_number INTEGER,
+        OHC REAL,
         HC REAL,
         cell TEXT,
         email TEXT,
@@ -224,7 +259,6 @@ class DatabaseHelper {
         await db.execute('ALTER TABLE scores ADD COLUMN updated_at TEXT DEFAULT CURRENT_TIMESTAMP');
       } catch (e) {
         // Column might already exist
-        print('Warning: Could not add updated_at column to scores table: $e');
       }
     }
     if (oldVersion < 5) {
@@ -233,7 +267,6 @@ class DatabaseHelper {
         await db.execute('ALTER TABLE scores ADD COLUMN golf_course TEXT');
       } catch (e) {
         // Column might already exist
-        print('Warning: Could not add golf_course column to scores table: $e');
       }
     }
     if (oldVersion < 6) {
@@ -259,7 +292,6 @@ class DatabaseHelper {
         ''');
       } catch (e) {
         // Table might already exist
-        print('Warning: Could not create golf_courses table: $e');
       }
     }
     if (oldVersion < 7) {
@@ -267,9 +299,7 @@ class DatabaseHelper {
       try {
         // Note: SQLite doesn't support modifying constraints easily
         // For existing databases, this would require table recreation
-        print('Database schema updated for golf_courses (name now unique, id_number optional)');
       } catch (e) {
-        print('Warning: Could not update golf_courses constraints: $e');
       }
     }
     if (oldVersion < 8) {
@@ -295,9 +325,7 @@ class DatabaseHelper {
             updated_at TEXT DEFAULT CURRENT_TIMESTAMP
           )
         ''');
-        print('Golf courses table recreated with simplified schema');
       } catch (e) {
-        print('Warning: Could not recreate golf_courses table: $e');
       }
     }
     if (oldVersion < 9) {
@@ -322,9 +350,7 @@ class DatabaseHelper {
             updated_at TEXT DEFAULT CURRENT_TIMESTAMP
           )
         ''');
-        print('Golf courses table updated with additional detail fields');
       } catch (e) {
-        print('Warning: Could not update golf_courses table with additional fields: $e');
       }
     }
     if (oldVersion < 10) {
@@ -334,9 +360,7 @@ class DatabaseHelper {
         await db.execute('ALTER TABLE scores ADD COLUMN monday_skat_winnings REAL DEFAULT 0.0');
         await db.execute('ALTER TABLE scores ADD COLUMN wed_single_winnings REAL DEFAULT 0.0');
         await db.execute('ALTER TABLE scores ADD COLUMN wed_group_winnings REAL DEFAULT 0.0');
-        print('Added winnings columns to scores table');
       } catch (e) {
-        print('Warning: Could not add winnings columns to scores table: $e');
       }
     }
     if (oldVersion < 11) {
@@ -377,9 +401,7 @@ class DatabaseHelper {
           )
         ''');
         
-        print('Created separate Monday and Wednesday scores tables');
       } catch (e) {
-        print('Warning: Could not create separate league tables: $e');
       }
     }
     if (oldVersion < 12) {
@@ -396,9 +418,7 @@ class DatabaseHelper {
             updated_at TEXT DEFAULT CURRENT_TIMESTAMP
           )
         ''');
-        print('Created mulligans table');
       } catch (e) {
-        print('Warning: Could not create mulligans table: $e');
       }
     }
     if (oldVersion < 13) {
@@ -457,9 +477,7 @@ class DatabaseHelper {
         await db.execute('DROP TABLE players');
         await db.execute('ALTER TABLE players_new RENAME TO players');
         
-        print('Successfully migrated players table to remove unwanted fields');
       } catch (e) {
-        print('Warning: Could not migrate players table: $e');
       }
     }
     if (oldVersion < 16) {
@@ -492,9 +510,7 @@ class DatabaseHelper {
         await db.execute('DROP TABLE monday_scores');
         await db.execute('ALTER TABLE monday_scores_new RENAME TO monday_scores');
         
-        print('Successfully migrated monday_scores table to remove unwanted fields');
       } catch (e) {
-        print('Warning: Could not migrate monday_scores table: $e');
       }
     }
     if (oldVersion < 17) {
@@ -522,9 +538,7 @@ class DatabaseHelper {
         await db.execute('DROP TABLE golf_courses');
         await db.execute('ALTER TABLE golf_courses_new RENAME TO golf_courses');
         
-        print('Successfully migrated golf_courses table to remove unwanted fields');
       } catch (e) {
-        print('Warning: Could not migrate golf_courses table: $e');
       }
     }
     if (oldVersion < 18) {
@@ -552,9 +566,7 @@ class DatabaseHelper {
         await db.execute('DROP TABLE golf_courses');
         await db.execute('ALTER TABLE golf_courses_new RENAME TO golf_courses');
         
-        print('Successfully renamed holes field to Par3s in golf_courses table');
       } catch (e) {
-        print('Warning: Could not rename holes field to Par3s: $e');
       }
     }
     if (oldVersion < 19) {
@@ -587,9 +599,7 @@ class DatabaseHelper {
         await db.execute('DROP TABLE monday_scores');
         await db.execute('ALTER TABLE monday_scores_new RENAME TO monday_scores');
         
-        print('Successfully added id column to monday_scores table');
       } catch (e) {
-        print('Warning: Could not add id column to monday_scores table: $e');
       }
     }
     if (oldVersion < 20) {
@@ -620,18 +630,21 @@ class DatabaseHelper {
         await db.execute('DROP TABLE golf_courses');
         await db.execute('ALTER TABLE golf_courses_new RENAME TO golf_courses');
 
-        print('Successfully removed unwanted columns from golf_courses table');
       } catch (e) {
-        print('Warning: Could not migrate golf_courses table: $e');
       }
     }
     if (oldVersion < 21) {
       // Add HC column to players table for Wednesday league handicaps
       try {
         await db.execute('ALTER TABLE players ADD COLUMN HC REAL');
-        print('Successfully added HC column to players table');
       } catch (e) {
-        print('Warning: Could not add HC column to players table: $e');
+      }
+    }
+    if (oldVersion < 22) {
+      // Add OHC column to players table for Original Handicap (before adjustments)
+      try {
+        await db.execute('ALTER TABLE players ADD COLUMN OHC REAL');
+      } catch (e) {
       }
     }
   }
@@ -844,15 +857,50 @@ class DatabaseHelper {
   Future<Map<String, dynamic>?> getPlayerScoreByDate(int playerId, String date, League league) async {
     final db = await database;
     String tableName = league == League.monday ? 'monday_scores' : 'wednesday_scores';
-    
+
     List<Map<String, dynamic>> result = await db.query(
       tableName,
       where: 'player_id = ? AND date_played = ?',
       whereArgs: [playerId, date],
       limit: 1,
     );
-    
+
     return result.isNotEmpty ? result.first : null;
+  }
+
+  // Get the most recent N scores for a player (most recent first)
+  // When there are duplicate dates, selects rows from top-down (highest id first)
+  Future<List<Map<String, dynamic>>> getPlayerRecentScores(
+    int playerId,
+    League league, {
+    int limit = 20,
+  }) async {
+    final db = await database;
+    String tableName = league == League.monday ? 'monday_scores' : 'wednesday_scores';
+
+    return await db.query(
+      tableName,
+      where: 'player_id = ?',
+      whereArgs: [playerId],
+      orderBy: 'date_played DESC, id DESC',
+      limit: limit,
+    );
+  }
+
+  // Update a player's handicap in the players table
+  Future<void> updatePlayerHandicap(
+    int playerId,
+    double handicap,
+    League league,
+  ) async {
+    final db = await database;
+
+    await db.update(
+      'players',
+      {'HC': handicap},
+      where: 'player_number = ?',
+      whereArgs: [playerId],
+    );
   }
 
   // Helper method to clean up old score entries for league tables
@@ -883,30 +931,60 @@ class DatabaseHelper {
   }
 
   // Insert score into appropriate league table
-  Future<int> insertScoreLeague(Map<String, dynamic> score, League league) async {
+  // Returns a map with 'insertId' and 'deletedScores' for Firebase sync
+  Future<Map<String, dynamic>> insertScoreLeague(Map<String, dynamic> score, League league) async {
     final db = await database;
     String tableName = league == League.monday ? 'monday_scores' : 'wednesday_scores';
-    
-    return await db.transaction((txn) async {
-      // Insert the new score
-      int result = await txn.insert(tableName, score);
-      
-      // Clean up old scores to maintain 20 entry limit
-      await _cleanupOldScoresLeagueInTransaction(txn, score['player_id'] as int, tableName);
-      
-      return result;
+
+    List<Map<String, dynamic>> deletedScores = [];
+    int insertId = 0;
+
+    await db.transaction((txn) async {
+      // For Wednesday league, check for duplicate dates if flag is disabled
+      if (league == League.wednesday && !allowDuplicateDates) {
+        // Check if a score already exists for this player and date
+        List<Map<String, dynamic>> existingScores = await txn.query(
+          tableName,
+          where: 'player_id = ? AND date_played = ?',
+          whereArgs: [score['player_id'], score['date_played']],
+          limit: 1,
+        );
+
+        if (existingScores.isNotEmpty) {
+          // Duplicate found - update existing score instead of inserting
+          insertId = existingScores.first['id'] as int;
+          await txn.update(
+            tableName,
+            score,
+            where: 'id = ?',
+            whereArgs: [insertId],
+          );
+          debugPrint('Updated existing score (ID: $insertId) for player ${score['player_id']} on ${score['date_played']}');
+          return; // Skip insert and cleanup
+        }
+      }
+
+      // Insert the new score (or if duplicates are allowed, or if it's Monday league)
+      insertId = await txn.insert(tableName, score);
+
+      // Clean up old scores to maintain 15 entry limit
+      // This returns the list of scores that were deleted
+      deletedScores = await _cleanupOldScoresLeagueInTransaction(txn, score['player_id'] as int, tableName);
     });
+
+    return {
+      'insertId': insertId,
+      'deletedScores': deletedScores,
+    };
   }
 
   // Update group winnings for the most recent score record only
   Future<int> updateGroupWinnings(int playerId, double groupWinnings, League league) async {
-    print("DEBUG: updateGroupWinnings called - playerId: $playerId, groupWinnings: $groupWinnings, league: $league");
-    
+
     final db = await database;
     String tableName = league == League.monday ? 'monday_scores' : 'wednesday_scores';
     
-    print("DEBUG: Looking for records in table: $tableName");
-    
+
     // Find the most recent record for this player (highest ID = most recent)
     List<Map<String, dynamic>> recentRecords = await db.query(
       tableName,
@@ -916,12 +994,10 @@ class DatabaseHelper {
       limit: 1,
     );
     
-    print("DEBUG: Found ${recentRecords.length} recent records for player $playerId");
-    
+
     if (recentRecords.isNotEmpty) {
       int mostRecentId = recentRecords.first['id'] as int;
-      print("DEBUG: Updating record ID: $mostRecentId with group winnings: $groupWinnings");
-      
+
       // Update only the most recent record
       int rowsUpdated = await db.update(
         tableName,
@@ -930,10 +1006,8 @@ class DatabaseHelper {
         whereArgs: [mostRecentId],
       );
       
-      print("DEBUG: Database update completed - rows affected: $rowsUpdated");
       return rowsUpdated;
     } else {
-      print("DEBUG: No records found for player $playerId in table $tableName");
     }
     
     return 0; // No records found to update
@@ -941,8 +1015,7 @@ class DatabaseHelper {
 
   // Update a specific field in a score record by record ID
   Future<int> updateScoreField(int recordId, String fieldName, dynamic fieldValue, League league) async {
-    print("DEBUG: updateScoreField called - recordId: $recordId, fieldName: $fieldName, fieldValue: $fieldValue, league: $league");
-    
+
     final db = await database;
     String tableName = league == League.monday ? 'monday_scores' : 'wednesday_scores';
     
@@ -955,37 +1028,49 @@ class DatabaseHelper {
         whereArgs: [recordId],
       );
       
-      print("DEBUG: updateScoreField completed - rows affected: $rowsUpdated");
       return rowsUpdated;
     } catch (e) {
-      print("ERROR: Failed to update $fieldName in $tableName for record $recordId: $e");
       return 0;
     }
   }
 
   // Transaction-safe cleanup method for league tables
-  Future<void> _cleanupOldScoresLeagueInTransaction(Transaction txn, int playerId, String tableName) async {
+  // Returns list of deleted scores for Firebase sync
+  Future<List<Map<String, dynamic>>> _cleanupOldScoresLeagueInTransaction(Transaction txn, int playerId, String tableName) async {
     // Get count of scores for this player in this table
     List<Map<String, dynamic>> countResult = await txn.rawQuery('''
-      SELECT COUNT(*) as count 
-      FROM $tableName 
+      SELECT COUNT(*) as count
+      FROM $tableName
       WHERE player_id = ?
     ''', [playerId]);
-    
+
     int totalScores = countResult.first['count'] as int;
-    
-    // If more than 20 scores, delete the oldest ones
-    if (totalScores > 20) {
+
+    // If more than 15 scores, delete the oldest ones
+    if (totalScores > 15) {
+      // First, get the scores that will be deleted for Firebase sync
+      List<Map<String, dynamic>> scoresToDelete = await txn.rawQuery('''
+        SELECT * FROM $tableName
+        WHERE player_id = ?
+        ORDER BY id ASC
+        LIMIT ?
+      ''', [playerId, totalScores - 15]);
+
+      // Then delete them from local database
       await txn.rawQuery('''
-        DELETE FROM $tableName 
+        DELETE FROM $tableName
         WHERE id IN (
-          SELECT id FROM $tableName 
+          SELECT id FROM $tableName
           WHERE player_id = ?
-          ORDER BY id ASC 
+          ORDER BY id ASC
           LIMIT ?
         )
-      ''', [playerId, totalScores - 20]);
+      ''', [playerId, totalScores - 15]);
+
+      return scoresToDelete;
     }
+
+    return []; // No scores deleted
   }
 
   // Get player scores simple - directly from old scores table (legacy)
@@ -1181,25 +1266,35 @@ class DatabaseHelper {
   Future<int> updateScore(int scoreId, Map<String, dynamic> score) async {
     final db = await database;
     
-    print('Updating score ID $scoreId with data: $score');
     final result = await db.update(
       'scores',
       score,
       where: 'id = ?',
       whereArgs: [scoreId],
     );
-    print('Update result: $result rows affected');
-    
+
     return result;
   }
 
   Future<int> deleteScore(int scoreId) async {
     final db = await database;
-    
+
     return await db.delete(
       'scores',
       where: 'id = ?',
       whereArgs: [scoreId],
+    );
+  }
+
+  // Delete all scores for a specific date in a league
+  Future<int> deleteScoresByDate(String date, League league) async {
+    final db = await database;
+    String tableName = league == League.monday ? 'monday_scores' : 'wednesday_scores';
+
+    return await db.delete(
+      tableName,
+      where: 'date_played = ?',
+      whereArgs: [date],
     );
   }
 
@@ -1601,10 +1696,8 @@ class DatabaseHelper {
       final db = await database;
       var result = await db.rawQuery("SELECT name FROM sqlite_master WHERE type='table' AND name='players'");
       bool exists = result.isNotEmpty;
-      print('DatabaseHelper: Players table exists: $exists');
       return exists;
     } catch (e) {
-      print('DatabaseHelper: Error checking players table: $e');
       return false;
     }
   }

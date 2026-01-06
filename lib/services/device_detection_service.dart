@@ -22,14 +22,11 @@ class DeviceDetectionService {
   
   // Static cache to avoid recalculating device type
   static DeviceType? _cachedDeviceType;
-  static double? _cachedShortestSide;
-  
+
   /// Initialize device detection cache - call this once in main.dart
   static void initialize(BuildContext context) {
     final shortestSide = MediaQuery.of(context).size.shortestSide;
-    _cachedShortestSide = shortestSide;
     _cachedDeviceType = _calculateDeviceType(shortestSide);
-    print(_getDebugInfo(context));
   }
 
   /// Get device type based on screen dimensions - EXACT logic from ResponsiveWrapper
@@ -49,7 +46,7 @@ class DeviceDetectionService {
     // 6.5" phone: 412dp height (shortest side in landscape)
     // 10" tablet: Larger height due to lower density on same resolution
     final is6Point5Phone = shortestSide < 650;      // Phone range (includes former 8" tablets)
-    final is10Tablet = shortestSide >= 650;         // 10" tablet range
+// 10" tablet range
 
     if (is6Point5Phone) {
       return DeviceType.phone6Point5;
@@ -140,20 +137,8 @@ class DeviceDetectionService {
 
   /// Print debug info to console - matches ResponsiveWrapper behavior
   static void printDebugInfo(BuildContext context) {
-    print(getDebugInfo(context));
   }
   
-  /// Internal debug info method
-  static String _getDebugInfo(BuildContext context) {
-    final shortestSide = MediaQuery.of(context).size.shortestSide;
-    final size = MediaQuery.of(context).size;
-
-    if (is6Point5Phone(context)) {
-      return "DEBUG: Using 6.5\" Phone layout (${shortestSide}dp, ${size.width}x${size.height})";
-    } else {
-      return "DEBUG: Using 10\" Tablet layout (${shortestSide}dp, ${size.width}x${size.height})";
-    }
-  }
 
   /// Breakpoint constants for reference
   static const double phoneMaxWidth = 650.0;

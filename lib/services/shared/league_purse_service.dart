@@ -1,4 +1,5 @@
 import '../../models/league.dart';
+import '../league_amounts_persistence_service.dart';
 
 /// Service for managing league-specific purse information
 /// Handles purse amounts for both Monday and Wednesday leagues
@@ -207,7 +208,7 @@ class LeaguePurseService {
 
   // League-specific Mulligan amounts for calculation
   static double _mondayMulliganAmount = 2.0; // Default value for Monday
-  static double _wednesdayMulliganAmount = 2.0; // Default value for Wednesday
+  static double _wednesdayMulliganAmount = 1.0; // Default value for Wednesday
 
   /// Sets the Players Ante amount for a specific league
   static void setPlayersAnte(double amount, {League league = League.monday}) {
@@ -216,6 +217,8 @@ class LeaguePurseService {
     } else {
       _wednesdayPlayersAnte = amount;
     }
+    // Save to persistent storage
+    LeagueAmountsPersistenceService.savePlayerAnteAmount(amount, league);
   }
 
   /// Gets the Players Ante amount for a specific league
@@ -233,6 +236,8 @@ class LeaguePurseService {
     } else {
       _wednesdayClosestPinAmount = amount;
     }
+    // Save to persistent storage
+    LeagueAmountsPersistenceService.saveClosestPinAmount(amount, league);
   }
 
   /// Gets the Closest Pin amount for a specific league
@@ -250,6 +255,8 @@ class LeaguePurseService {
     } else {
       _wednesdayMulliganAmount = amount;
     }
+    // Save to persistent storage
+    LeagueAmountsPersistenceService.saveMulliganAmount(amount, league);
   }
 
   /// Gets the Mulligan amount for a specific league
@@ -310,5 +317,38 @@ class LeaguePurseService {
       'closestPinPurse': _closestPinPurse,
       'mulliganPurse': _mulliganPurse,
     };
+  }
+
+  /// Loads persisted amounts for a specific league from storage
+  /// If no persisted values exist, keeps the current default values
+  static Future<void> loadPersistedAmounts(League league) async {
+    final amounts = await LeagueAmountsPersistenceService.loadAllAmounts(league);
+
+    // Load Player Ante if persisted value exists
+    if (amounts['playerAnte'] != null) {
+      if (league == League.monday) {
+        _mondayPlayersAnte = amounts['playerAnte']!;
+      } else {
+        _wednesdayPlayersAnte = amounts['playerAnte']!;
+      }
+    }
+
+    // Load Closest Pin if persisted value exists
+    if (amounts['closestPin'] != null) {
+      if (league == League.monday) {
+        _mondayClosestPinAmount = amounts['closestPin']!;
+      } else {
+        _wednesdayClosestPinAmount = amounts['closestPin']!;
+      }
+    }
+
+    // Load Mulligan if persisted value exists
+    if (amounts['mulligan'] != null) {
+      if (league == League.monday) {
+        _mondayMulliganAmount = amounts['mulligan']!;
+      } else {
+        _wednesdayMulliganAmount = amounts['mulligan']!;
+      }
+    }
   }
 }

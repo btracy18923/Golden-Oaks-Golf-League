@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import '../models/league.dart';
@@ -123,7 +122,6 @@ class UploadQueueService {
         where: 'id = ?',
         whereArgs: [existingId],
       );
-      print('Updated existing upload queue entry for ${uploadType.name} - ${league.name}');
       return existingId;
     }
     
@@ -137,7 +135,6 @@ class UploadQueueService {
     };
     
     final id = await db.insert('pending_uploads', uploadData);
-    print('Queued upload: ${uploadType.name} for ${league.name} league (ID: $id)');
     return id;
   }
 
@@ -199,7 +196,6 @@ class UploadQueueService {
       whereArgs: [uploadId],
     );
     
-    print('Upload completed successfully (ID: $uploadId)');
   }
 
   /// Mark upload as failed
@@ -229,7 +225,6 @@ class UploadQueueService {
         whereArgs: [uploadId],
       );
       
-      print('Upload failed (ID: $uploadId, Retries: ${currentRetries + 1}): $errorMessage');
     }
   }
 
@@ -248,7 +243,6 @@ class UploadQueueService {
       whereArgs: [uploadId],
     );
     
-    print('Upload reset for retry (ID: $uploadId)');
   }
 
   /// Remove completed uploads older than specified days
@@ -257,13 +251,12 @@ class UploadQueueService {
     
     final cutoffDate = DateTime.now().subtract(Duration(days: daysOld));
     
-    final deletedCount = await db.delete(
+    await db.delete(
       'pending_uploads',
       where: 'status = ? AND updated_at < ?',
       whereArgs: ['completed', cutoffDate.toIso8601String()],
     );
     
-    print('Cleaned up $deletedCount old completed uploads');
   }
 
   /// Get upload statistics

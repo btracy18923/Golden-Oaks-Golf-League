@@ -43,8 +43,10 @@ class _WednesdayClosestPinScreenState extends State<WednesdayClosestPinScreen> {
   late double _closestPinValue;
   late double _remainingPurseAmount;
   late double _initialPurseAmount; // Store the original purse amount for Clear button
-  final Map<String, int> _playerClosestPinCounts = {};
+  final Map<String, double> _playerClosestPinCounts = {}; // Changed to double to support fractional counts
   final Map<String, double> _playerWinnings = {};
+  bool _tiedMode = false; // Track if tied mode is active
+  final List<String> _tiedPlayers = []; // Track players in the tie
   @override
   void initState() {
     super.initState();
@@ -74,7 +76,7 @@ class _WednesdayClosestPinScreenState extends State<WednesdayClosestPinScreen> {
     // Initialize player closest pin counts and winnings
     for (var player in widget.selectedPlayers) {
       String lastName = player['last'] ?? 'Unknown';
-      _playerClosestPinCounts[lastName] = 0;
+      _playerClosestPinCounts[lastName] = 0.0;
       _playerWinnings[lastName] = 0.0;
     }
 
@@ -103,9 +105,13 @@ class _WednesdayClosestPinScreenState extends State<WednesdayClosestPinScreen> {
       // Reset all player counts and winnings to 0
       for (var player in widget.selectedPlayers) {
         String lastName = player['last'] ?? 'Unknown';
-        _playerClosestPinCounts[lastName] = 0;
+        _playerClosestPinCounts[lastName] = 0.0;
         _playerWinnings[lastName] = 0.0;
       }
+
+      // Reset tied mode and tied players list
+      _tiedMode = false;
+      _tiedPlayers.clear();
     });
   }
 
@@ -153,15 +159,68 @@ class _WednesdayClosestPinScreenState extends State<WednesdayClosestPinScreen> {
     }
   }
 
+  void _handleTied() {
+    setState(() {
+      _tiedMode = !_tiedMode;
+      if (!_tiedMode) {
+        // Exiting tied mode - clear tied players list
+        _tiedPlayers.clear();
+      }
+    });
+  }
+
   void _handlePlayerTap(String lastName) {
-    if (_remainingClosestPins > 0) {
+    // In tied mode, allow selecting players regardless of remaining count (as long as tied mode is active)
+    // In normal mode, check if there are remaining closest pins
+    bool canSelectPlayer = (_tiedMode && _remainingClosestPins == 0) || _remainingClosestPins > 0;
+
+    if (canSelectPlayer) {
       setState(() {
-        _playerClosestPinCounts[lastName] = _playerClosestPinCounts[lastName]! + 1;
-        _remainingClosestPins--;
-        // Increase player's winnings by the fixed closest pin value
-        _playerWinnings[lastName] = _playerClosestPinCounts[lastName]! * _closestPinValue;
-        // Decrease the remaining purse amount by the closest pin value
-        _remainingPurseAmount -= _closestPinValue;
+        if (_tiedMode) {
+          // When entering tied mode, first check if we need to rebuild the tied list
+          // by finding all players who are currently in a tie (have fractional counts)
+          if (_tiedPlayers.isEmpty) {
+            for (var entry in _playerClosestPinCounts.entries) {
+              if (entry.value > 0 && entry.value <= 1.0) {
+                // Add all players with any count > 0
+                _tiedPlayers.add(entry.key);
+              }
+            }
+          }
+
+          // Add the newly tapped player if not already in the list
+          if (!_tiedPlayers.contains(lastName)) {
+            _tiedPlayers.add(lastName);
+          }
+
+          // Calculate split amount among all tied players
+          double splitAmount = _closestPinValue / _tiedPlayers.length;
+          double fractionalCount = 1.0 / _tiedPlayers.length;
+
+          // Update winnings and counts for all tied players
+          for (String playerName in _tiedPlayers) {
+            _playerClosestPinCounts[playerName] = fractionalCount;
+            _playerWinnings[playerName] = splitAmount;
+          }
+
+          // Only decrease remaining pins and purse when going from 0 to 1 player
+          if (_tiedPlayers.length == 1 && _remainingClosestPins > 0) {
+            _remainingClosestPins--;
+            _remainingPurseAmount -= _closestPinValue;
+          }
+
+          // Turn off TIED mode after selecting a player and clear the list
+          _tiedMode = false;
+          _tiedPlayers.clear();
+        } else {
+          // Normal mode - single winner gets full amount
+          _playerClosestPinCounts[lastName] = _playerClosestPinCounts[lastName]! + 1.0;
+          _remainingClosestPins--;
+          // Increase player's winnings by the fixed closest pin value
+          _playerWinnings[lastName] = _playerClosestPinCounts[lastName]! * _closestPinValue;
+          // Decrease the remaining purse amount by the closest pin value
+          _remainingPurseAmount -= _closestPinValue;
+        }
       });
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -190,7 +249,7 @@ class _WednesdayClosestPinScreenState extends State<WednesdayClosestPinScreen> {
     final fontSize = ResponsiveTypography.getBodyText(context);
 
     String lastName = player['last'] ?? 'Unknown';
-    int closestPinCount = _playerClosestPinCounts[lastName] ?? 0;
+    double closestPinCount = _playerClosestPinCounts[lastName] ?? 0.0;
     double winnings = _playerWinnings[lastName] ?? 0.0;
 
     // Calculate container height based on font size with minimal padding
@@ -238,19 +297,21 @@ class _WednesdayClosestPinScreenState extends State<WednesdayClosestPinScreen> {
               ),
             ),
             Container(
-              width: countSize,
+              width: countSize * 2,
               height: countSize,
               margin: const EdgeInsets.only(right: 4),
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: closestPinCount > 0 ? Colors.orange[300] : Colors.grey[100],
+                color: closestPinCount > 0 ? Colors.blue[100] : Colors.grey[100],
                 border: Border.all(
                   color: closestPinCount > 0 ? Colors.blue[700]! : Colors.grey[400]!,
                   width: 1,
                 ),
               ),
               child: Text(
-                '$closestPinCount',
+                closestPinCount % 1 == 0
+                    ? '${closestPinCount.toInt()}'
+                    : closestPinCount.toStringAsFixed(2),
                 style: TextStyle(
                   fontSize: deviceType == DeviceType.tablet10Inch ? fontSize + 2 : fontSize - 0,
                   fontWeight: FontWeight.bold,
@@ -414,6 +475,8 @@ class _WednesdayClosestPinScreenState extends State<WednesdayClosestPinScreen> {
             onSaveAndReturn: _handleSaveAndReturn,
             isEnterSkatsEnabled: _remainingPurseAmount == 0.0,
             league: 'Wednesday',
+            onTied: _handleTied,
+            isTiedMode: _tiedMode,
           ),
         ],
       ),

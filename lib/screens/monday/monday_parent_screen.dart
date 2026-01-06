@@ -12,7 +12,6 @@ import '../../services/screen_data_retention_service.dart';
 import '../../services/UI/parent_screen_service.dart';
 import '../../services/UI/custom_keypad_service.dart';
 import '../../services/UI/button_bar_UI_service.dart';
-import '../../services/responsive_typography.dart';
 import '../../services/device_detection_service.dart';
 import '../../widgets/responsive_wrapper.dart';
 
@@ -50,6 +49,7 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
     _setOrientation();
     _loadGolfCourses();
     _keypadController = CustomKeypadService.createController();
+    _loadPersistedAmounts();
 
     // Load values from LeaguePurseService for Monday league - these persist during the app session
     skatsAnte = LeaguePurseService.getPlayersAnte(league: League.monday);
@@ -59,6 +59,22 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
     _skatsAnteController.text = skatsAnte.toStringAsFixed(2);
     _closestPinController.text = closestPin.toStringAsFixed(2);
     _mulligansController.text = mulligans.toStringAsFixed(2);
+  }
+
+  /// Loads persisted amounts from storage and updates UI
+  Future<void> _loadPersistedAmounts() async {
+    await LeaguePurseService.loadPersistedAmounts(League.monday);
+
+    // Update local variables and controllers with loaded values
+    setState(() {
+      skatsAnte = LeaguePurseService.getPlayersAnte(league: League.monday);
+      closestPin = LeaguePurseService.getClosestPinAmount(league: League.monday);
+      mulligans = LeaguePurseService.getMulliganAmount(league: League.monday);
+
+      _skatsAnteController.text = skatsAnte.toStringAsFixed(2);
+      _closestPinController.text = closestPin.toStringAsFixed(2);
+      _mulligansController.text = mulligans.toStringAsFixed(2);
+    });
   }
 
   void _setOrientation() {
@@ -226,8 +242,8 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
         orElse: () => <String, dynamic>{},
       );
 
-      if (selectedCourse.isNotEmpty && selectedCourse['holes'] != null) {
-        final par3s = selectedCourse['holes'] as int;
+      if (selectedCourse.isNotEmpty && selectedCourse['Par3s'] != null) {
+        final par3s = selectedCourse['Par3s'] as int;
         final newClosestPin = par3s * 1.00; // Multiply by $1.00
 
         setState(() {
@@ -434,14 +450,12 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
       context,
       backgroundColor: Colors.grey[300]!,
       children: [
-        Expanded(
-          flex: 2,
-          child: ButtonBarUIService.buildActionButton(
-            context,
-            text: 'Player Selection',
-            color: selectedGolfCourse != null ? Colors.green[300]! : Colors.grey[400]!,
-            onPressed: selectedGolfCourse != null ? () => _navigateToPlayerSelection() : null,
-          ),
+        ButtonBarUIService.buildActionButton(
+          context,
+          text: 'Player Selection',
+          color: selectedGolfCourse != null ? Colors.green[300]! : Colors.grey[400]!,
+          onPressed: selectedGolfCourse != null ? () => _navigateToPlayerSelection() : null,
+          flex: 20,
         ),
         ButtonBarUIService.buildActionButton(
           context,

@@ -3,11 +3,11 @@ import 'package:flutter/services.dart';
 import '../../services/screen_data_retention_service.dart';
 import '../../services/database_helper.dart';
 import '../../services/device_detection_service.dart';
-import '../../services/responsive_typography.dart';
 import '../../services/UI/button_bar_UI_service.dart';
 import '../../models/league.dart';
 import '../main_menu_screen.dart';
 import '../../services/firebase_upload_service.dart';
+import '../../services/handicap_calculation_service.dart';
 
 class WednesdayResultsScreen extends StatefulWidget {
   final double groupPurseAmount;
@@ -67,8 +67,20 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
     super.dispose();
   }
 
+  bool _isSavingToDatabase = false;
+
   /// Saves the results data to the wednesday_scores table
   Future<void> _saveResultsToDatabase() async {
+    debugPrint('=== SAVE RESULTS TO DATABASE CALLED ===');
+
+    // Prevent double-saving
+    if (_isSavingToDatabase) {
+      debugPrint('=== ALREADY SAVING - ABORTING DUPLICATE CALL ===');
+      return;
+    }
+
+    _isSavingToDatabase = true;
+
     try {
       final selectedGolfCourse = _retentionService.selectedGolfCourse ?? 'Not Selected';
       final currentDate = DateTime.now().toIso8601String().split('T')[0];
@@ -87,7 +99,11 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
         }
       }
 
+      debugPrint('=== COLLECTED ${allSelectedPlayers.length} player entries from groups ===');
+
       // CRITICAL: Check for duplicate dates BEFORE saving anything
+      // TEMPORARILY DISABLED FOR TESTING - RE-ENABLE AFTER TESTING
+      /*
       bool duplicateFound = false;
       for (var player in allSelectedPlayers) {
         final playerName = player['last'].toString();
@@ -109,6 +125,7 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
 
       // If duplicate date found, show error and DO NOT SAVE
       if (duplicateFound) {
+        debugPrint('=== DUPLICATE DATE FOUND - ABORTING SAVE ===');
         if (!mounted) return;
         final fontSize = ResponsiveTypography.getBodyText(context);
 
@@ -124,96 +141,303 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
         );
         return;
       }
+      */
 
-      // Create initial rows for all selected players
-      Map<String, int> playerToRecordId = {};
+      debugPrint('=== DUPLICATE CHECK DISABLED - PROCEEDING WITH SAVE ===');
+
+      // Build a consolidated map of all player data (one entry per unique player)
+      Map<String, Map<String, dynamic>> consolidatedPlayerData = {};
+
+      // First pass: collect all players and their basic data
+      debugPrint('=== FIRST PASS: Processing ${allSelectedPlayers.length} player entries ===');
       for (var player in allSelectedPlayers) {
-        final playerName = player['last'].toString();
+        final playerName = player['last'].toString().trim(); // Add trim() to remove whitespace
+        final grossScore = player['gross_score'];
+
+        debugPrint('  Processing: "$playerName" - Gross: $grossScore - Has in map: ${consolidatedPlayerData.containsKey(playerName)}');
+
+        // Initialize player entry if it doesn't exist
+        if (!consolidatedPlayerData.containsKey(playerName)) {
+          consolidatedPlayerData[playerName] = {
+            'name': playerName,
+            'gross_score': null,
+            'individual_winnings': 0.0,
+            'group_winnings': 0.0,
+            'close_pin_winnings': 0.0,
+            'pos': null,
+            'manual_group': null,
+          };
+          debugPrint('    -> Created new entry for $playerName');
+        }
+
+        // Merge data from this instance (non-null values override)
+        if (player['gross_score'] != null) {
+          consolidatedPlayerData[playerName]!['gross_score'] = player['gross_score'];
+          debugPrint('    -> Updated gross score to ${player['gross_score']}');
+        }
+        if (player['manual_group'] != null) {
+          consolidatedPlayerData[playerName]!['manual_group'] = player['manual_group'];
+        }
+        if (player['pos'] != null && player['pos'].toString().isNotEmpty) {
+          consolidatedPlayerData[playerName]!['pos'] = player['pos'].toString();
+        }
+      }
+
+      debugPrint('=== After first pass: ${consolidatedPlayerData.length} unique players ===');
+
+      // Second pass: add data from individualWinners list (gross scores + winnings)
+      debugPrint('=== SECOND PASS: Processing ${widget.individualWinners.length} individual winners ===');
+      for (var winner in widget.individualWinners) {
+        if (winner['last'] != null) {
+          String playerName = winner['last'].toString().trim();
+
+          // Create entry if doesn't exist (some players might only be in individualWinners, not in groups)
+          if (!consolidatedPlayerData.containsKey(playerName)) {
+            consolidatedPlayerData[playerName] = {
+              'name': playerName,
+              'gross_score': null,
+              'individual_winnings': 0.0,
+              'group_winnings': 0.0,
+              'close_pin_winnings': 0.0,
+              'pos': null,
+              'manual_group': null,
+            };
+            debugPrint('  Created entry for $playerName (from individualWinners)');
+          }
+
+          // Add gross score from individualWinners
+          if (winner['gross_score'] != null) {
+            consolidatedPlayerData[playerName]!['gross_score'] = winner['gross_score'];
+            debugPrint('  $playerName: Gross score = ${winner['gross_score']}');
+          }
+
+          // Add individual winnings
+          if (winner['prize_money'] != null) {
+            String prizeMoney = winner['prize_money'].toString();
+            if (prizeMoney.contains('\$')) {
+              try {
+                double amount = double.parse(prizeMoney.replaceAll('\$', '').replaceAll(',', ''));
+                consolidatedPlayerData[playerName]!['individual_winnings'] = amount;
+                debugPrint('  $playerName: Individual winnings = \$$amount');
+              } catch (e) {
+                debugPrint('Error parsing individual winnings for $playerName: $e');
+              }
+            }
+          }
+        }
+      }
+
+      // Third pass: add group winnings from groups
+      debugPrint('=== THIRD PASS: Adding group winnings ===');
+      for (var group in widget.groups) {
+        for (var player in group) {
+          if (player != null &&
+              player['last'] != null &&
+              player['prize_money'] != null &&
+              player['manual_group'] != null) {
+            String playerName = player['last'].toString().trim();
+            String prizeMoney = player['prize_money'].toString();
+
+            if (consolidatedPlayerData.containsKey(playerName) && prizeMoney.contains('\$')) {
+              try {
+                double amount = double.parse(prizeMoney.replaceAll('\$', '').replaceAll(',', ''));
+                if (amount > 0) {
+                  consolidatedPlayerData[playerName]!['group_winnings'] = amount;
+                  debugPrint('  $playerName: Group winnings = \$$amount');
+                }
+              } catch (e) {
+                debugPrint('Error parsing group winnings for $playerName: $e');
+              }
+            } else if (!consolidatedPlayerData.containsKey(playerName)) {
+              debugPrint('  WARNING: $playerName not found in consolidated data (group)');
+            }
+          }
+        }
+      }
+
+      // Fourth pass: add closest pin winnings
+      debugPrint('=== FOURTH PASS: Adding closest pin winnings ===');
+      for (String playerName in playerClosestPinWinnings.keys) {
+        String trimmedName = playerName.trim();
+        double closePinWinnings = playerClosestPinWinnings[playerName] ?? 0.0;
+        if (consolidatedPlayerData.containsKey(trimmedName)) {
+          consolidatedPlayerData[trimmedName]!['close_pin_winnings'] = closePinWinnings;
+          debugPrint('  $trimmedName: Close pin = \$$closePinWinnings');
+        } else {
+          debugPrint('  WARNING: $trimmedName not found in consolidated data (close pin)');
+        }
+      }
+
+      // Now insert ONE row per player with ALL their data
+      debugPrint('=== STARTING SCORE INSERTION FOR ${consolidatedPlayerData.length} UNIQUE PLAYERS ===');
+
+      // Track all deleted scores for Firebase sync
+      List<Map<String, dynamic>> allDeletedScores = [];
+
+      for (var playerName in consolidatedPlayerData.keys) {
+        final playerData = consolidatedPlayerData[playerName]!;
+
         final dbPlayer = allDbPlayers.firstWhere(
           (p) => p['last'] == playerName,
           orElse: () => <String, dynamic>{}
         );
 
         if (dbPlayer.isNotEmpty) {
-          // Get player data
-          int? grossScore = player['gross_score'] as int?;
-          int? netScore = player['net_score'] as int?;
-          int? manualGroup = player['manual_group'] as int?;
-          String position = player['pos']?.toString() ?? '';
-          String prizeMoney = player['prize_money']?.toString() ?? '';
-
-          // Parse prize money
-          double individualWinnings = 0.0;
-          double teamWinnings = 0.0;
-          if (prizeMoney.isNotEmpty && prizeMoney.contains('\$')) {
-            try {
-              double amount = double.parse(prizeMoney.replaceAll('\$', '').replaceAll(',', ''));
-              // Check if player has a position to determine if it's team or individual winnings
-              if (position.isNotEmpty && manualGroup != null) {
-                teamWinnings = amount;
-              } else {
-                individualWinnings = amount;
-              }
-            } catch (e) {
-              // Skip if parsing fails
-            }
-          }
-
-          // Create initial score record
+          // Create complete score record with ALL data
           Map<String, dynamic> scoreData = {
             'player_id': dbPlayer['player_number'],
             'name': playerName,
             'date_played': currentDate,
             'golf_course': selectedGolfCourse,
-            'gross_score': grossScore,
-            'net_score': netScore,
-            'manual_group': manualGroup,
-            'team_place': position.isNotEmpty ? int.tryParse(position) : null,
-            'individual_winnings': individualWinnings,
-            'team_winnings': teamWinnings,
-            'close_pin_winnings': 0.0,
+            'gross_score': playerData['gross_score'],
+            'handicap': dbPlayer['HC'] ?? 0.0,
+            'pos': playerData['pos'],
+            'single_winnings': playerData['individual_winnings'] ?? 0.0,
+            'group_winnings': playerData['group_winnings'] ?? 0.0,
+            'close_pin_winnings': playerData['close_pin_winnings'] ?? 0.0,
           };
 
-          int recordId = await _databaseHelper.insertScoreLeague(scoreData, League.wednesday);
-          playerToRecordId[playerName] = recordId;
+          debugPrint('Inserting CONSOLIDATED score for: $playerName');
+          debugPrint('  - Gross: ${playerData['gross_score']}');
+          debugPrint('  - Individual: \$${playerData['individual_winnings']}');
+          debugPrint('  - Group: \$${playerData['group_winnings']}');
+          debugPrint('  - Close Pin: \$${playerData['close_pin_winnings']}');
+
+          Map<String, dynamic> insertResult = await _databaseHelper.insertScoreLeague(scoreData, League.wednesday);
+          int recordId = insertResult['insertId'] as int;
+          List<Map<String, dynamic>> deletedScores = insertResult['deletedScores'] as List<Map<String, dynamic>>;
+
+          debugPrint('  - Record ID: $recordId');
+
+          // Collect deleted scores for Firebase sync
+          if (deletedScores.isNotEmpty) {
+            allDeletedScores.addAll(deletedScores);
+            debugPrint('  - Deleted ${deletedScores.length} old score(s) for this player');
+          }
+        } else {
+          debugPrint('WARNING: No database player found for $playerName');
         }
       }
 
-      // Update Closest Pin Winnings for winners
-      for (String playerName in playerClosestPinWinnings.keys) {
-        double closePinWinnings = playerClosestPinWinnings[playerName] ?? 0.0;
+      debugPrint('=== SCORE INSERTION COMPLETE - ${consolidatedPlayerData.length} RECORDS CREATED ===');
 
-        if (closePinWinnings > 0.0 && playerToRecordId.containsKey(playerName)) {
-          int recordId = playerToRecordId[playerName]!;
-          await _databaseHelper.updateScoreField(
-            recordId,
-            'close_pin_winnings',
-            closePinWinnings,
-            League.wednesday
-          );
-        }
-      }
+      // Calculate and update handicaps for selected players only
+      debugPrint('=== STARTING HANDICAP CALCULATION ===');
+      await _updateSelectedPlayerHandicaps(allSelectedPlayers, allDbPlayers);
+      debugPrint('=== HANDICAP CALCULATION COMPLETE ===');
 
-      // Upload scores to Firebase after successful database save
+      // Upload NEW scores to Firebase FIRST
       await _uploadScoresToFirebase();
 
+      // Then delete old scores from Firebase if any were removed locally
+      if (allDeletedScores.isNotEmpty) {
+        debugPrint('=== DELETING ${allDeletedScores.length} OLD SCORES FROM FIREBASE ===');
+        await _deleteScoresFromFirebase(allDeletedScores);
+      }
+
       // Show success message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Results saved successfully! ${allSelectedPlayers.length} player records created.'),
-          backgroundColor: Colors.green,
-          duration: const Duration(seconds: 3),
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Results saved successfully! ${consolidatedPlayerData.length} player records created.'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
     } catch (e) {
+      debugPrint('ERROR in _saveResultsToDatabase: $e');
       // Show error message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error saving results: $e'),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 3),
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error saving results: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } finally {
+      _isSavingToDatabase = false;
+    }
+  }
+
+  /// Calculates and updates handicaps for selected players only
+  /// Uses the first 6 latest scores with positive gross data from wednesday_scores table
+  /// Algorithm:
+  /// - 1 score: Add 5 (OHC + 35) as the 2nd-6th scores, drop 2 highest, HC = (Avg of 4 remaining) - 35
+  /// - 2 scores: Add 4 (OHC + 35) as the 3rd-6th scores, drop 2 highest, HC = (Avg of 4 remaining) - 35
+  /// - 3 scores: Add 3 (OHC + 35) as the 4th-6th scores, drop 2 highest, HC = (Avg of 4 remaining) - 35
+  /// - 4 scores: Add 2 (OHC + 35) as the 5th-6th scores, drop 2 highest, HC = (Avg of 4 remaining) - 35
+  /// - 5 scores: Add 1 (OHC + 35) as the 6th score, drop 2 highest, HC = (Avg of 4 remaining) - 35
+  /// - 6+ scores: Drop 2 highest, HC = (Avg of 4 remaining) - 35
+  Future<void> _updateSelectedPlayerHandicaps(
+    List<Map<String, dynamic>> selectedPlayers,
+    List<Map<String, dynamic>> allDbPlayers,
+  ) async {
+    try {
+      final handicapService = HandicapCalculationService();
+
+      // Create a set of unique player names from selected players
+      Set<String> selectedPlayerNames = {};
+      for (var player in selectedPlayers) {
+        if (player['last'] != null && player['last'].toString().isNotEmpty) {
+          selectedPlayerNames.add(player['last'].toString().trim());
+        }
+      }
+
+      debugPrint('Updating handicaps for ${selectedPlayerNames.length} selected Wednesday players');
+
+      int updatedCount = 0;
+      for (var playerName in selectedPlayerNames) {
+        // Find the player in the database
+        final dbPlayer = allDbPlayers.firstWhere(
+          (p) => p['last'] == playerName,
+          orElse: () => <String, dynamic>{}
+        );
+
+        if (dbPlayer.isNotEmpty) {
+          final playerId = dbPlayer['player_number'];
+          final originalHandicap = (dbPlayer['OHC'] as num?)?.toDouble() ?? 0.0;
+
+          // Get the last 6 gross scores for this player (most recent first)
+          final scores = await _databaseHelper.getPlayerRecentScores(
+            playerId,
+            League.wednesday,
+            limit: 6,
+          );
+
+          // Extract gross scores only (filter out nulls)
+          List<int> grossScores = scores
+              .where((score) => score['gross_score'] != null)
+              .map((score) => score['gross_score'] as int)
+              .toList();
+
+          if (grossScores.isNotEmpty) {
+            // Calculate handicap using Wednesday league's OHC padding algorithm
+            double newHandicap = handicapService.calculateWednesdayHandicap(
+              grossScores: grossScores,
+              originalHandicap: originalHandicap,
+            );
+
+            debugPrint('Player: $playerName (ID: $playerId) - OHC: ${originalHandicap.toStringAsFixed(1)} - Scores: $grossScores - New HC: ${newHandicap.toStringAsFixed(1)}');
+
+            // Update the player's HC field in the players table
+            await _databaseHelper.updatePlayerHandicap(
+              playerId,
+              newHandicap,
+              League.wednesday,
+            );
+            updatedCount++;
+          }
+        } else {
+          debugPrint('WARNING: No database player found for $playerName during handicap update');
+        }
+      }
+      debugPrint('Successfully updated handicaps for $updatedCount selected players');
+    } catch (e) {
+      // Log error but don't stop the save process
+      debugPrint('Error updating handicaps: $e');
     }
   }
 
@@ -229,13 +453,35 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
     }
   }
 
+  /// Delete old scores from Firebase when they are removed locally
+  Future<void> _deleteScoresFromFirebase(List<Map<String, dynamic>> scoresToDelete) async {
+    try {
+      final success = await _firebaseUploadService.deletePlayerScoresFromFirebase(scoresToDelete, League.wednesday);
+      if (success) {
+        debugPrint('Successfully deleted ${scoresToDelete.length} old scores from Firebase');
+      } else {
+        debugPrint('Failed to delete old scores from Firebase');
+      }
+    } catch (e) {
+      debugPrint('Error deleting scores from Firebase: $e');
+      // Log error but don't show to user - deletion failure shouldn't block save operation
+    }
+  }
+
   /// Saves results to database and returns to the main menu
   Future<void> _saveResultsAndReturnToMainMenu() async {
-    if (_isSaving) return;
+    debugPrint('=== _saveResultsAndReturnToMainMenu CALLED - _isSaving=$_isSaving ===');
+
+    if (_isSaving) {
+      debugPrint('=== ALREADY SAVING - RETURNING EARLY ===');
+      return;
+    }
 
     setState(() {
       _isSaving = true;
     });
+
+    debugPrint('=== CALLING _saveResultsToDatabase ===');
 
     try {
       await _saveResultsToDatabase();
@@ -278,11 +524,11 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: Text(
+        title: const Text(
           'Wednesday League Results',
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            fontSize: ResponsiveTypography.getHeading(context),
+            fontSize: 24,
           ),
         ),
         backgroundColor: Colors.orange[300],
@@ -333,9 +579,12 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
           text: _isSaving ? 'Saving...' : 'Save Results',
           color: Colors.orange[600]!,
           onPressed: _isSaving ? null : _saveResultsAndReturnToMainMenu,
+          flex: 10,
         ),
-        ButtonBarUIService.buildSpacer(),
-        ButtonBarUIService.buildSpacer(),
+        Expanded(
+          flex: 20,
+          child: SizedBox(),
+        ),
       ],
     );
   }
@@ -366,23 +615,13 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
             const SizedBox(height: 16),
           ],
 
-          // Individual Payout Section (moved after Closest Pin)
-          _buildIndividualPayoutSection(),
+          // Consolidated Payout Summary Section
+          _buildConsolidatedPayoutSummary(),
 
           const SizedBox(height: 16),
 
-          // Individual Player Details Table
-          _buildIndividualPlayerDetailsTable(),
-
-          const SizedBox(height: 16),
-
-          // Groups Payout Section (moved after Individual Winners)
-          _buildGroupsPayoutSection(),
-
-          const SizedBox(height: 16),
-
-          // Groups Player Details Table
-          _buildGroupsPlayerDetailsTable(),
+          // Consolidated Payout Details Table
+          _buildConsolidatedPayoutTable(),
         ],
       ),
     );
@@ -404,8 +643,9 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
 
   /// Builds first row with Players' Ante, Closest Pin, and Mulligans
   Widget _buildParentScreenDataRow() {
-    final isPhone = DeviceDetectionService.isPhone(context);
-    final fontSize = isPhone ? 22.0 : 18.0;
+    final screenSize = MediaQuery.of(context).size;
+    final is6InchPhone = screenSize.width <= 900;
+    final double fontSize = is6InchPhone ? 22 : 24;
 
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
@@ -422,7 +662,7 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
               style: TextStyle(
                 fontWeight: FontWeight.w600,
                 color: Colors.black87,
-                fontSize: fontSize,
+                fontSize: fontSize - 10,
               ),
             ),
           ),
@@ -432,7 +672,7 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
               style: TextStyle(
                 fontWeight: FontWeight.w600,
                 color: Colors.black87,
-                fontSize: fontSize,
+                fontSize: fontSize - 10,
               ),
               textAlign: TextAlign.center,
             ),
@@ -443,7 +683,7 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
               style: TextStyle(
                 fontWeight: FontWeight.w600,
                 color: Colors.black87,
-                fontSize: fontSize,
+                fontSize: fontSize - 10,
               ),
               textAlign: TextAlign.end,
             ),
@@ -455,8 +695,9 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
 
   /// Builds second row with Total Players, Collect amount, and Party Fund
   Widget _buildPlayersAndCollectRow() {
-    final isPhone = DeviceDetectionService.isPhone(context);
-    final fontSize = isPhone ? 22.0 : 18.0;
+    final screenSize = MediaQuery.of(context).size;
+    final is6InchPhone = screenSize.width <= 900;
+    final double fontSize = is6InchPhone ? 22 : 24;
 
     // Count total players from groups
     int totalPlayers = 0;
@@ -481,7 +722,7 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
               style: TextStyle(
                 fontWeight: FontWeight.w600,
                 color: Colors.black87,
-                fontSize: fontSize,
+                fontSize: fontSize - 10,
               ),
             ),
           ),
@@ -491,7 +732,7 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
               style: TextStyle(
                 fontWeight: FontWeight.w600,
                 color: Colors.black87,
-                fontSize: fontSize,
+                fontSize: fontSize - 10,
               ),
               textAlign: TextAlign.center,
             ),
@@ -502,7 +743,7 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
               style: TextStyle(
                 fontWeight: FontWeight.w600,
                 color: Colors.black87,
-                fontSize: fontSize,
+                fontSize: fontSize - 10,
               ),
               textAlign: TextAlign.end,
               overflow: TextOverflow.ellipsis,
@@ -516,8 +757,9 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
 
   /// Builds third row with Golf Course
   Widget _buildGolfCourseRow() {
-    final isPhone = DeviceDetectionService.isPhone(context);
-    final fontSize = isPhone ? 22.0 : 18.0;
+    final screenSize = MediaQuery.of(context).size;
+    final is6InchPhone = screenSize.width <= 900;
+    final double fontSize = is6InchPhone ? 22 : 24;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -526,15 +768,16 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
         style: TextStyle(
           fontWeight: FontWeight.w600,
           color: Colors.black87,
-          fontSize: fontSize,
+          fontSize: fontSize - 10,
         ),
       ),
     );
   }
 
-  Widget _buildIndividualPayoutSection() {
-    final isPhone = DeviceDetectionService.isPhone(context);
-    final fontSize = isPhone ? 22.0 : 18.0;
+  Widget _buildConsolidatedPayoutSummary() {
+    final screenSize = MediaQuery.of(context).size;
+    final is6InchPhone = screenSize.width <= 900;
+    final double fontSize = is6InchPhone ? 14 : 24;
 
     // Get individual payout data from the saved individual winners (only count those with positive prize money)
     int individualWinnersCount = 0;
@@ -556,35 +799,6 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
         }
       }
     }
-
-    // Only show if there are individual winners with positive prize money
-    if (individualWinnersCount == 0) {
-      return const SizedBox.shrink();
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.blue[50],
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.blue[200]!),
-      ),
-      child: Center(
-        child: Text(
-          'Individual Payout Summary:  Winners: $individualWinnersCount  Total Payout: \$${totalIndividualPayout.toStringAsFixed(2)}',
-          style: TextStyle(
-            fontSize: fontSize,
-            fontWeight: FontWeight.bold,
-            color: Colors.blue[900],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildGroupsPayoutSection() {
-    final isPhone = DeviceDetectionService.isPhone(context);
-    final fontSize = isPhone ? 22.0 : 18.0;
 
     // Count group winners (players with manual_group and positive prize_money)
     int groupWinnersCount = 0;
@@ -609,20 +823,46 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
       }
     }
 
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.green[50],
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.green[200]!),
-      ),
-      child: Center(
-        child: Text(
-          'Group Payout Summary:  Winners: $groupWinnersCount  Total Payout: \$${widget.groupPayoutAmount.toStringAsFixed(2)}',
-          style: TextStyle(
-            fontSize: fontSize,
-            fontWeight: FontWeight.bold,
-            color: Colors.green[900],
+    // Only show if there are winners
+    if (individualWinnersCount == 0 && groupWinnersCount == 0) {
+      return const SizedBox.shrink();
+    }
+
+    return Center(
+      child: IntrinsicWidth(
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.purple[50],
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.purple[200]!),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              if (individualWinnersCount > 0)
+                Text(
+                  'Individual Payout Summary:  Winners: $individualWinnersCount  Total Payout: \$${totalIndividualPayout.toStringAsFixed(2)}',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: fontSize,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blue[900],
+                  ),
+                ),
+              if (individualWinnersCount > 0 && groupWinnersCount > 0)
+                const SizedBox(height: 8),
+              if (groupWinnersCount > 0)
+                Text(
+                  'Group Payout Summary:  Winners: $groupWinnersCount  Total Payout: \$${widget.groupPayoutAmount.toStringAsFixed(2)}',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: fontSize,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blue[900],
+                  ),
+                ),
+            ],
           ),
         ),
       ),
@@ -635,7 +875,6 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
     }
 
     final playerCounts = _retentionService.playerClosestPinCounts ?? {};
-    final playerWinnings = _retentionService.playerClosestPinWinnings ?? {};
 
     final winnersCount = playerCounts.values.where((count) => count > 0).length;
 
@@ -651,8 +890,9 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
   Widget _buildClosestPinWinnersTable() {
     final playerCounts = _retentionService.playerClosestPinCounts ?? {};
     final playerWinnings = _retentionService.playerClosestPinWinnings ?? {};
-    final isPhone = DeviceDetectionService.isPhone(context);
-    final fontSize = isPhone ? 22.0 : 18.0;
+    final screenSize = MediaQuery.of(context).size;
+    final is6InchPhone = screenSize.width <= 900;
+    final double fontSize = is6InchPhone ? 14 : 24;
 
     final winners = playerCounts.entries
         .where((entry) => entry.value > 0)
@@ -665,7 +905,7 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
 
     if (winners.isEmpty) return const SizedBox.shrink();
 
-    winners.sort((a, b) => (b['pins'] as int).compareTo(a['pins'] as int));
+    winners.sort((a, b) => (b['pins'] as double).compareTo(a['pins'] as double));
 
     // Create the table widget
     final tableWidget = Container(
@@ -677,15 +917,15 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(2),
             decoration: BoxDecoration(
-              color: Colors.green[300],
+              color: Colors.blue[300],
               border: Border(bottom: BorderSide(color: Colors.grey[400]!)),
             ),
             child: Row(
               children: [
                 Expanded(
-                  flex: isPhone ? 3 : 2,
+                  flex: is6InchPhone ? 2 : 2,
                   child: Text(
                     'Closest Pin Winners',
                     style: TextStyle(
@@ -697,7 +937,18 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
                 Expanded(
                   flex: 1,
                   child: Text(
-                    'Pins Won',
+                    'Won',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: fontSize,
+                    ),
+                    textAlign: TextAlign.right,
+                  ),
+                ),
+                Expanded(
+                  flex: 1,
+                  child: Text(
+                    '  \$\$\$',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: fontSize,
@@ -705,32 +956,18 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
                     textAlign: TextAlign.center,
                   ),
                 ),
-                Expanded(
-                  flex: 1,
-                  child: Padding(
-                    padding: const EdgeInsets.all(8),
-                    child: Text(
-                      '\$\$\$',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: fontSize,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ),
               ],
             ),
           ),
           ...winners.map((winner) => Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
             decoration: BoxDecoration(
               border: Border(bottom: BorderSide(color: Colors.grey[300]!, width: 0.5)),
             ),
             child: Row(
               children: [
                 Expanded(
-                  flex: isPhone ? 3 : 2,
+                  flex: is6InchPhone ? 3 : 2,
                   child: Text(
                     winner['name'] as String,
                     style: TextStyle(fontSize: fontSize),
@@ -740,7 +977,9 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
                 Expanded(
                   flex: 1,
                   child: Text(
-                    '${winner['pins']}',
+                    (winner['pins'] as double) % 1 == 0
+                        ? '${(winner['pins'] as double).toInt()}'
+                        : (winner['pins'] as double).toStringAsFixed(2),
                     textAlign: TextAlign.center,
                     style: TextStyle(fontSize: fontSize),
                   ),
@@ -748,13 +987,12 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
                 Expanded(
                   flex: 1,
                   child: Container(
-                    color: Colors.yellow[200],
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                    color: Colors.blue[100],
                     child: Text(
                       '\$${(winner['winnings'] as double).round()}',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: Colors.green[700],
+                        color: Colors.black,
                         fontWeight: FontWeight.w600,
                         fontSize: fontSize,
                       ),
@@ -777,74 +1015,59 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
     );
   }
 
-  Widget _buildIndividualPlayerDetailsTable() {
-    final labelFontSize = ResponsiveTypography.getLabel(context);
-    final bodyFontSize = ResponsiveTypography.getSmall(context);
+  Widget _buildConsolidatedPayoutTable() {
+    // Collect all players with winnings from both individual and group
+    Map<String, Map<String, dynamic>> allWinners = {};
 
-    // Filter to only include players with positive prize money
-    List<Map<String, dynamic>> winnersWithPrize = widget.individualWinners.where((player) {
-      if (player['prize_money'] == null) return false;
-      String prizeMoney = player['prize_money'].toString();
-      if (!prizeMoney.contains('\$')) return false;
-      try {
-        double amount = double.parse(prizeMoney.replaceAll('\$', '').replaceAll(',', ''));
-        return amount > 0;
-      } catch (e) {
-        return false;
+    // Add individual winners
+    for (var player in widget.individualWinners) {
+      if (player['prize_money'] != null && player['last'] != null) {
+        String prizeMoney = player['prize_money'].toString();
+        if (prizeMoney.contains('\$')) {
+          try {
+            double amount = double.parse(prizeMoney.replaceAll('\$', '').replaceAll(',', ''));
+            if (amount > 0) {
+              String playerName = player['last'].toString();
+              allWinners[playerName] = {
+                'name': playerName,
+                'individual_winnings': amount,
+                'group_number': null,
+                'group_winnings': 0.0,
+              };
+            }
+          } catch (e) {
+            // Skip if parsing fails
+          }
+        }
       }
-    }).toList();
+    }
 
-    if (winnersWithPrize.isEmpty) return const SizedBox.shrink();
-
-    return Table(
-          border: TableBorder.all(color: Colors.grey[400]!, width: 1),
-          columnWidths: const {
-            0: FlexColumnWidth(2),
-            1: FlexColumnWidth(1),
-            2: FlexColumnWidth(1),
-            3: FlexColumnWidth(1),
-          },
-          children: [
-            TableRow(
-              decoration: BoxDecoration(color: Colors.blue[300]),
-              children: [
-                _buildTableCell('Player', isHeader: true),
-                _buildTableCell('Gross', isHeader: true),
-                _buildTableCell('Net', isHeader: true),
-                _buildTableCell('\$\$\$', isHeader: true),
-              ],
-            ),
-            ...winnersWithPrize.map((player) => TableRow(
-              children: [
-                _buildTableCell(player['last']?.toString() ?? ''),
-                _buildTableCell(player['gross_score']?.toString() ?? ''),
-                _buildTableCell(player['net_score']?.toString() ?? ''),
-                _buildTableCell(player['prize_money']?.toString() ?? '', isMoneyColumn: true),
-              ],
-            )),
-          ],
-        );
-  }
-
-  Widget _buildGroupsPlayerDetailsTable() {
-    final labelFontSize = ResponsiveTypography.getLabel(context);
-    final bodyFontSize = ResponsiveTypography.getSmall(context);
-
-    // Collect players with group winnings (after groups processing) - only those with positive prize money
-    List<Map<String, dynamic>> groupWinners = [];
+    // Add group winners
     for (var group in widget.groups) {
       for (var player in group) {
         if (player != null &&
             player['prize_money'] != null &&
             player['manual_group'] != null &&
             player['last'] != null) {
-          // Check if prize money is positive
           String prizeMoney = player['prize_money'].toString();
           if (prizeMoney.contains('\$')) {
             try {
               double amount = double.parse(prizeMoney.replaceAll('\$', '').replaceAll(',', ''));
               if (amount > 0) {
-                groupWinners.add(player);
+                String playerName = player['last'].toString();
+                if (allWinners.containsKey(playerName)) {
+                  // Player already has individual winnings, add group info
+                  allWinners[playerName]!['group_number'] = player['manual_group'];
+                  allWinners[playerName]!['group_winnings'] = amount;
+                } else {
+                  // New player with only group winnings
+                  allWinners[playerName] = {
+                    'name': playerName,
+                    'individual_winnings': 0.0,
+                    'group_number': player['manual_group'],
+                    'group_winnings': amount,
+                  };
+                }
               }
             } catch (e) {
               // Skip if parsing fails
@@ -854,68 +1077,95 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
       }
     }
 
-    if (groupWinners.isEmpty) return const SizedBox.shrink();
+    if (allWinners.isEmpty) return const SizedBox.shrink();
 
-    // Sort by group number, then by name
-    groupWinners.sort((a, b) {
-      int groupA = a['manual_group'] ?? 0;
-      int groupB = b['manual_group'] ?? 0;
-      if (groupA != groupB) return groupA.compareTo(groupB);
-      return (a['last'] ?? '').toString().compareTo((b['last'] ?? '').toString());
+    // Sort by Individual winnings (highest first), then Group winnings (highest first)
+    List<Map<String, dynamic>> sortedWinners = allWinners.values.toList();
+    sortedWinners.sort((a, b) {
+      double aIndividual = a['individual_winnings'] as double;
+      double bIndividual = b['individual_winnings'] as double;
+      double aGroup = a['group_winnings'] as double;
+      double bGroup = b['group_winnings'] as double;
+
+      // Sort by individual winnings descending (highest first)
+      int individualComparison = bIndividual.compareTo(aIndividual);
+      if (individualComparison != 0) return individualComparison;
+
+      // If both have no individual winnings, sort by group winnings descending
+      if (aIndividual == 0 && bIndividual == 0) {
+        int groupComparison = bGroup.compareTo(aGroup);
+        if (groupComparison != 0) return groupComparison;
+      }
+
+      // If everything is the same, sort alphabetically by name
+      return (a['name'] as String).compareTo(b['name'] as String);
     });
 
     return Table(
-          border: TableBorder.all(color: Colors.grey[400]!, width: 1),
-          columnWidths: const {
-            0: FlexColumnWidth(2),
-            1: FlexColumnWidth(1),
-            2: FlexColumnWidth(1),
-            3: FlexColumnWidth(1),
-            4: FlexColumnWidth(1),
-            5: FlexColumnWidth(1),
-          },
+      border: TableBorder.all(color: Colors.grey[400]!, width: 1),
+      columnWidths: const {
+        0: FlexColumnWidth(2),
+        1: FlexColumnWidth(1),
+        2: FlexColumnWidth(1),
+        3: FlexColumnWidth(1),
+      },
+      children: [
+        TableRow(
+          decoration: BoxDecoration(color: Colors.blue[300]),
           children: [
-            TableRow(
-              decoration: BoxDecoration(color: Colors.green[300]),
-              children: [
-                _buildTableCell('Player', isHeader: true),
-                _buildTableCell('Grp#', isHeader: true),
-                _buildTableCell('Net', isHeader: true),
-                _buildTableCell('AVG', isHeader: true),
-                _buildTableCell('Pos', isHeader: true),
-                _buildTableCell('\$\$\$', isHeader: true),
-              ],
-            ),
-            ...groupWinners.map((player) => TableRow(
-              children: [
-                _buildTableCell(player['last']?.toString() ?? ''),
-                _buildTableCell(player['manual_group']?.toString() ?? ''),
-                _buildTableCell(player['net_score']?.toString() ?? ''),
-                _buildTableCell(player['avg_net']?.toString() ?? ''),
-                _buildTableCell(player['pos']?.toString() ?? ''),
-                _buildTableCell(player['prize_money']?.toString() ?? '', isMoneyColumn: true),
-              ],
-            )),
+            _buildTableCell('Player', isHeader: true),
+            _buildTableCell('Ind \$\$\$', isHeader: true),
+            _buildTableCell('Group \$\$\$', isHeader: true),
+            _buildTableCell('Total \$\$\$', isHeader: true),
           ],
-        );
+        ),
+        ...sortedWinners.map((player) {
+          double individualWinnings = player['individual_winnings'] as double;
+          double groupWinnings = player['group_winnings'] as double;
+          double totalWinnings = individualWinnings + groupWinnings;
+
+          return TableRow(
+            children: [
+              _buildTableCell(player['name'] as String),
+              _buildTableCell(
+                individualWinnings > 0
+                  ? '\$${individualWinnings.toStringAsFixed(2)}'
+                  : '',
+              ),
+              _buildTableCell(
+                groupWinnings > 0
+                  ? '\$${groupWinnings.toStringAsFixed(2)}'
+                  : '',
+              ),
+              _buildTableCell(
+                '\$${totalWinnings.toStringAsFixed(2)}',
+                isMoneyColumn: true,
+              ),
+            ],
+          );
+        }),
+      ],
+    );
   }
 
   Widget _buildTableCell(String text, {bool isHeader = false, bool isMoneyColumn = false}) {
-    final bodyFontSize = ResponsiveTypography.getSmall(context);
-    final cellPadding = DeviceDetectionService.isPhone(context) ? 4.0 : 8.0;
+    final screenSize = MediaQuery.of(context).size;
+    final is6InchPhone = screenSize.width <= 900;
+    final double fontSize = is6InchPhone ? 14 : 22;
+    final double cellPadding = is6InchPhone ? 2 : 8;
 
     return Container(
-      color: isMoneyColumn ? Colors.yellow[200] : null,
+      color: isMoneyColumn ? Colors.blue[100] : null,
       padding: EdgeInsets.all(cellPadding),
       child: Text(
         text,
         style: TextStyle(
-          fontSize: bodyFontSize,
+          fontSize: fontSize,
           fontWeight: isHeader ? FontWeight.bold : FontWeight.normal,
           color: isMoneyColumn && text.contains('\$') ? Colors.black :
                  isHeader ? Colors.black87 : Colors.black,
         ),
-        textAlign: TextAlign.center,
+        textAlign: isHeader || isMoneyColumn ? TextAlign.center : TextAlign.center,
         overflow: TextOverflow.ellipsis,
         maxLines: isHeader ? 2 : 1,
       ),

@@ -72,54 +72,59 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
 
       // CRITICAL: Check for duplicate dates BEFORE saving anything
       // If ANY player already has a score for today, abort the entire save operation
-      bool duplicateFound = false;
+      // Only check if duplicate dates are NOT allowed
+      if (!DatabaseHelper.allowDuplicateDates) {
+        bool duplicateFound = false;
+        for (var player in allSelectedPlayers) {
+          final dbPlayer = allDbPlayers.firstWhere(
+            (p) => p['last'] == player.name,
+            orElse: () => <String, dynamic>{}
+          );
+
+          if (dbPlayer.isNotEmpty) {
+            final playerId = dbPlayer['player_number'];
+            final existingScoreForDate = await _databaseHelper.getPlayerScoreByDate(playerId, currentDate, League.monday);
+
+            if (existingScoreForDate != null) {
+              duplicateFound = true;
+              break; // Stop checking as soon as we find one duplicate
+            }
+          }
+        }
+
+        // If duplicate date found, show error and DO NOT SAVE
+        if (duplicateFound) {
+          if (!mounted) return;
+          final screenSize = MediaQuery.of(context).size;
+          final is6InchPhone = screenSize.width <= 900;
+          final is8InchTablet = screenSize.width > 900 && screenSize.width <= 1200;
+          final double fontSize = is6InchPhone ? 14 : (is8InchTablet ? 16 : 34);
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Duplicate Play Dates - SKAT data not saved',
+                style: TextStyle(fontSize: fontSize + 10),
+              ),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 5),
+            ),
+          );
+          return; // STOP HERE - Do not save to database or Firebase
+        }
+      }
+
+      // STEP A1: Create initial rows for all selected players
+      Map<String, int> playerToRecordId = {}; // Track record IDs for updates
+      List<Map<String, dynamic>> allDeletedScores = []; // Track deleted scores for Firebase sync
+
       for (var player in allSelectedPlayers) {
+        // Find matching player in database
         final dbPlayer = allDbPlayers.firstWhere(
           (p) => p['last'] == player.name,
           orElse: () => <String, dynamic>{}
         );
 
-        if (dbPlayer.isNotEmpty) {
-          final playerId = dbPlayer['player_number'];
-          final existingScoreForDate = await _databaseHelper.getPlayerScoreByDate(playerId, currentDate, League.monday);
-
-          if (existingScoreForDate != null) {
-            duplicateFound = true;
-            break; // Stop checking as soon as we find one duplicate
-          }
-        }
-      }
-
-      // If duplicate date found, show error and DO NOT SAVE
-      if (duplicateFound) {
-        if (!mounted) return;
-        final screenSize = MediaQuery.of(context).size;
-        final is6InchPhone = screenSize.width <= 900;
-        final is8InchTablet = screenSize.width > 900 && screenSize.width <= 1200;
-        final double fontSize = is6InchPhone ? 14 : (is8InchTablet ? 16 : 34);
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Duplicate Play Dates - SKAT data not saved',
-              style: TextStyle(fontSize: fontSize + 10),
-            ),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 5),
-          ),
-        );
-        return; // STOP HERE - Do not save to database or Firebase
-      }
-
-      // STEP A1: Create initial rows for all selected players
-      Map<String, int> playerToRecordId = {}; // Track record IDs for updates
-      for (var player in allSelectedPlayers) {
-        // Find matching player in database
-        final dbPlayer = allDbPlayers.firstWhere(
-          (p) => p['last'] == player.name, 
-          orElse: () => <String, dynamic>{}
-        );
-        
         if (dbPlayer.isNotEmpty) {
           // Create initial score record with basic data
           Map<String, dynamic> scoreData = {
@@ -132,10 +137,18 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
             'skat_winnings': 0.0, // Will be updated in Step A3
             'skat_number': dbPlayer['skat_number'],
           };
-          
-          // Insert record and get the record ID
-          int recordId = await _databaseHelper.insertScoreLeague(scoreData, League.monday);
+
+          // Insert record and get the record ID and any deleted scores
+          Map<String, dynamic> insertResult = await _databaseHelper.insertScoreLeague(scoreData, League.monday);
+          int recordId = insertResult['insertId'] as int;
+          List<Map<String, dynamic>> deletedScores = insertResult['deletedScores'] as List<Map<String, dynamic>>;
+
           playerToRecordId[player.name] = recordId;
+
+          // Collect deleted scores for Firebase sync
+          if (deletedScores.isNotEmpty) {
+            allDeletedScores.addAll(deletedScores);
+          }
         }
       }
       
@@ -194,8 +207,14 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
         }
       }
       
-      // Upload scores to Firebase after successful database save
+      // Upload NEW scores to Firebase FIRST
       await _uploadScoresToFirebase();
+
+      // Then delete old scores from Firebase if any were removed locally
+      if (allDeletedScores.isNotEmpty) {
+        debugPrint('=== DELETING ${allDeletedScores.length} OLD SCORES FROM FIREBASE ===');
+        await _deleteScoresFromFirebase(allDeletedScores);
+      }
 
       // Show success message
       if (!mounted) return;
@@ -225,6 +244,21 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
       await _firebaseUploadService.uploadPlayerScoresTableWithQueue(League.monday);
     } catch (e) {
       // Error uploading/queuing player scores - will retry on next sync
+    }
+  }
+
+  /// Delete old scores from Firebase when they are removed locally
+  Future<void> _deleteScoresFromFirebase(List<Map<String, dynamic>> scoresToDelete) async {
+    try {
+      final success = await _firebaseUploadService.deletePlayerScoresFromFirebase(scoresToDelete, League.monday);
+      if (success) {
+        debugPrint('Successfully deleted ${scoresToDelete.length} old scores from Firebase');
+      } else {
+        debugPrint('Failed to delete old scores from Firebase');
+      }
+    } catch (e) {
+      debugPrint('Error deleting scores from Firebase: $e');
+      // Log error but don't show to user - deletion failure shouldn't block save operation
     }
   }
 
@@ -399,16 +433,21 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
   }
 
   Widget _buildSaveButton() {
+    final screenWidth = MediaQuery.of(context).size.width;
+
     return ButtonBarUIService.buildButtonBar(
       context,
       backgroundColor: Colors.grey[100]!,
       mainAxisAlignment: MainAxisAlignment.start,
       children: [
-        ButtonBarUIService.buildActionButton(
-          context,
-          text: _isSaving ? 'Saving...' : 'Save Results',
-          color: Colors.blue[600]!,
-          onPressed: _isSaving ? null : _saveResultsAndReturnToMainMenu,
+        SizedBox(
+          width: screenWidth / 3,
+          child: ButtonBarUIService.buildActionButton(
+            context,
+            text: _isSaving ? 'Saving...' : 'Save Results',
+            color: Colors.blue[300]!,
+            onPressed: _isSaving ? null : _saveResultsAndReturnToMainMenu,
+          ),
         ),
         ButtonBarUIService.buildSpacer(),
         ButtonBarUIService.buildSpacer(),
@@ -700,28 +739,45 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
 
     if (allPlayers.isEmpty) return const SizedBox.shrink();
 
+    // Sort players by money amount (highest first)
+    allPlayers.sort((a, b) {
+      // Parse money values, defaulting to 0 if parsing fails
+      double moneyA = 0.0;
+      double moneyB = 0.0;
+
+      if (a.money.isNotEmpty && a.money.contains('\$')) {
+        try {
+          moneyA = double.parse(a.money.replaceAll('\$', '').replaceAll(',', ''));
+        } catch (e) {
+          moneyA = 0.0;
+        }
+      }
+
+      if (b.money.isNotEmpty && b.money.contains('\$')) {
+        try {
+          moneyB = double.parse(b.money.replaceAll('\$', '').replaceAll(',', ''));
+        } catch (e) {
+          moneyB = 0.0;
+        }
+      }
+
+      // Sort descending (highest first)
+      return moneyB.compareTo(moneyA);
+    });
+
     final playersWithMoney = allPlayers.length;
 
-    // Calculate Skat Value: $$$ / DIFF (prefer whole numbers, fallback to rounded)
+    // Calculate Skat Value: Skat Purse / sum of all positive DIFF values
     double skatValue = 0.0;
-    double? fallbackValue;
+    double totalDiff = 0.0;
 
+    // Sum all positive DIFF values
     for (var player in allPlayers) {
-      if (player.money.isNotEmpty && player.money.contains('\$') &&
-          player.diff.isNotEmpty && player.diff != '-') {
+      if (player.diff.isNotEmpty && player.diff != '-') {
         try {
-          final moneyValue = double.parse(player.money.replaceAll('\$', '').replaceAll(',', ''));
           final diffValue = double.parse(player.diff.replaceAll('+', ''));
           if (diffValue > 0) {
-            final calculation = moneyValue / diffValue;
-            // Check if division results in a whole number (no remainder)
-            if (calculation == calculation.truncate()) {
-              skatValue = calculation;
-              break; // Use the first valid whole number calculation
-            } else {
-              // Store first calculation with remainder as fallback
-              fallbackValue ??= calculation;
-            }
+            totalDiff += diffValue;
           }
         } catch (e) {
           // Skip if parsing fails
@@ -729,9 +785,14 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
       }
     }
 
-    // If no whole number found, use rounded fallback value
-    if (skatValue == 0.0 && fallbackValue != null) {
-      skatValue = fallbackValue.round().toDouble();
+    // Calculate Skat Purse: total players × players ante
+    final selectedPlayers = _retentionService.selectedPlayers ?? [];
+    final playersAnte = _retentionService.playersAnte ?? 0.0;
+    final skatPurse = selectedPlayers.length * playersAnte;
+
+    // Calculate Skat Value
+    if (totalDiff > 0) {
+      skatValue = skatPurse / totalDiff;
     }
 
     return Column(
@@ -758,7 +819,18 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
                 ),
                 Expanded(
                   child: Text(
-                    'SKAT Winners: $playersWithMoney',
+                    '         SKAT Winners: $playersWithMoney',
+                    style: TextStyle(
+                      fontSize: fontSize,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
+
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    'Rounded....',
                     style: TextStyle(
                       fontSize: fontSize,
                       fontWeight: FontWeight.w600,
@@ -842,8 +914,9 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
     // Responsive font sizes for table cells
     final double fontSize = is6InchPhone ? 14 : 22;
     final double cellPadding = is6InchPhone ? 2 : 8;
-    
-    return Padding(
+
+    return Container(
+      color: isMoneyColumn ? Colors.blue[100] : null,
       padding: EdgeInsets.all(cellPadding),
       child: Text(
         text,
@@ -878,7 +951,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
     if (winners.isEmpty) return const SizedBox.shrink();
 
     // Sort by number of pins won (descending)
-    winners.sort((a, b) => (b['pins'] as int).compareTo(a['pins'] as int));
+    winners.sort((a, b) => (b['pins'] as double).compareTo(a['pins'] as double));
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -955,21 +1028,25 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
                     Expanded(
                       flex: 1,
                       child: Text(
-                        '${winner['pins']}',
+                        (winner['pins'] as double) % 1 == 0
+                            ? '${(winner['pins'] as double).toInt()}'
+                            : (winner['pins'] as double).toStringAsFixed(2),
                         textAlign: TextAlign.center,
                         style: TextStyle(fontSize: is6InchPhone ? 14 : 24),
                       ),
                     ),
                     Expanded(
                       flex: 1,
-                      child: Text(
-                        '\$${(winner['winnings'] as double).round()}',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontWeight: FontWeight.w600,
-                          fontSize: is6InchPhone ? 14 : 24,
-                          backgroundColor: Colors.yellow[200]
+                      child: Container(
+                        color: Colors.blue[100],
+                        child: Text(
+                          '\$${(winner['winnings'] as double).round()}',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.black,
+                            fontWeight: FontWeight.w600,
+                            fontSize: is6InchPhone ? 14 : 24,
+                          ),
                         ),
                       ),
                     ),

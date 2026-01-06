@@ -407,7 +407,7 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
               width: labelWidth,
               child: Text(
                 '$label:',
-                style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
               ),
             ),
             Expanded(
@@ -416,7 +416,7 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
               focusNode: focusNode,
               keyboardType: keyboardType,
               inputFormatters: inputFormatters,
-              style: ResponsiveTypography.smallStyle(context),
+                style: TextStyle(fontSize: ResponsiveTypography.getSmall(context) - 2),
               autocorrect: false,
               enableSuggestions: false,
               textInputAction: nextFocus != null ? TextInputAction.next : TextInputAction.done,

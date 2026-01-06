@@ -31,16 +31,13 @@ class FirebasePlayerImportService {
     List<String> skipped = [];
 
     try {
-      print('Starting import of Monday players from Firebase M_player_profile collection...');
 
       // Download all players from M_player_profile collection
       QuerySnapshot snapshot = await _firestore.collection('M_player_profile').get();
 
       totalDownloaded = snapshot.docs.length;
-      print('Downloaded $totalDownloaded players from Firebase M_player_profile collection');
 
       if (snapshot.docs.isEmpty) {
-        print('No players found in M_player_profile collection');
         return {
           'success': true,
           'total_downloaded': 0,
@@ -82,7 +79,6 @@ class FirebasePlayerImportService {
             if (playerExists) {
               if (skipExisting && !updateExisting) {
                 skipped.add('$firstName $lastName (already exists)');
-                print('Skipping existing player: $firstName $lastName');
                 continue;
               } else if (updateExisting) {
                 // Find the existing player and update
@@ -100,7 +96,6 @@ class FirebasePlayerImportService {
                 };
 
                 await _dbHelper.updatePlayer(existingPlayer['player_number'], updateData);
-                print('Updated existing player: $firstName $lastName');
                 totalImported++;
                 continue;
               }
@@ -138,16 +133,13 @@ class FirebasePlayerImportService {
           // Insert player into database
           await _dbHelper.insertPlayer(playerData);
           totalImported++;
-          print('Imported player #$totalImported: $firstName $lastName (player_number: $playerNumber)');
 
         } catch (e) {
           String errorMsg = 'Error importing player ${doc.id}: $e';
           errors.add(errorMsg);
-          print(errorMsg);
         }
       }
 
-      print('Import completed: $totalImported/$totalDownloaded players imported successfully');
 
       return {
         'success': true,
@@ -159,7 +151,6 @@ class FirebasePlayerImportService {
 
     } catch (e) {
       String errorMsg = 'CRITICAL ERROR during import: $e';
-      print(errorMsg);
       errors.add(errorMsg);
 
       return {
@@ -178,7 +169,6 @@ class FirebasePlayerImportService {
       QuerySnapshot snapshot = await _firestore.collection('M_player_profile').get();
       return snapshot.docs.length;
     } catch (e) {
-      print('Error getting Monday player count: $e');
       return 0;
     }
   }
@@ -204,7 +194,6 @@ class FirebasePlayerImportService {
 
       return players;
     } catch (e) {
-      print('Error previewing Monday players: $e');
       return [];
     }
   }
@@ -212,11 +201,9 @@ class FirebasePlayerImportService {
   /// Test Firebase connection to M_player_profile collection
   Future<bool> testMondayPlayerCollectionAccess() async {
     try {
-      QuerySnapshot snapshot = await _firestore.collection('M_player_profile').limit(1).get();
-      print('Successfully accessed M_player_profile collection');
+      await _firestore.collection('M_player_profile').limit(1).get();
       return true;
     } catch (e) {
-      print('Failed to access M_player_profile collection: $e');
       return false;
     }
   }

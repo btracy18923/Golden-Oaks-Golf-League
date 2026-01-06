@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'database_helper.dart';
 import 'firebase_service.dart';
-import '../models/league.dart';
 
 enum SyncStatus {
   idle,
@@ -46,7 +45,6 @@ class SyncService {
       try {
         _lastSyncTime = DateTime.parse(lastSyncStr);
       } catch (e) {
-        print('Error parsing last sync time: $e');
       }
     }
 
@@ -63,7 +61,6 @@ class SyncService {
       final connectivityResult = await Connectivity().checkConnectivity();
       return connectivityResult != ConnectivityResult.none;
     } catch (e) {
-      print('Error checking connectivity: $e');
       return false;
     }
   }
@@ -86,7 +83,6 @@ class SyncService {
   /// Internal sync method
   Future<bool> _performSync(SyncDirection direction) async {
     if (_currentStatus == SyncStatus.syncing) {
-      print('Sync already in progress');
       return false;
     }
 
@@ -146,7 +142,6 @@ class SyncService {
     } catch (e) {
       _updateStatus(SyncStatus.error);
       _setError('Sync error: $e');
-      print('Sync error: $e');
       return false;
     }
   }
@@ -184,7 +179,6 @@ class SyncService {
       // In a more advanced implementation, we'd sync just this player
       return await syncToFirebase();
     } catch (e) {
-      print('Error syncing player: $e');
       return false;
     }
   }
@@ -197,7 +191,6 @@ class SyncService {
 
       return await _firebaseService.uploadGameResults(gameId, playerResults);
     } catch (e) {
-      print('Error syncing game results: $e');
       return false;
     }
   }

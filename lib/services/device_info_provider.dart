@@ -114,6 +114,5 @@ class DeviceFlags {
 
   /// Print debug info to console
   static void printDebugInfo(BuildContext context) {
-    print(getDebugInfo(context));
   }
 }

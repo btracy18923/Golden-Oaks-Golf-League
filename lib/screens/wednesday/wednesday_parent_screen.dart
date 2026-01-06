@@ -21,7 +21,6 @@ class WednesdayParentScreen extends StatefulWidget {
 
 class _WednesdayParentScreenState extends State<WednesdayParentScreen> {
   // Wednesday always plays at Golden Oaks - fixed course
-  static const String fixedGolfCourse = 'Golden Oaks';
 
   // Editable league settings - will be loaded from LeaguePurseService
   late double playersAnte;
@@ -362,42 +361,6 @@ class _WednesdayParentScreenState extends State<WednesdayParentScreen> {
     );
   }
 
-  // Tablet content layout (8")
-  Widget _buildTabletContent() {
-    return Column(
-      children: [
-        Expanded(
-          child: Row(
-            children: [
-              // Left column with settings
-              Flexible(
-                flex: 4,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _buildTabletAnteWidget(),
-                    const SizedBox(height: 8),
-                    _buildTabletClosestPinWidget(),
-                    const SizedBox(height: 8),
-                    _buildTabletMulligansWidget(),
-                    const SizedBox(height: 8),
-                    _buildTabletEmptySpacerWidget(),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              // Right Side - Golden Oaks Image
-              Flexible(
-                flex: 6,
-                child: _buildGoldenOaksImage(),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
   // Tablet 10" content layout
   Widget _buildTablet10Content() {
     return Column(
@@ -595,164 +558,9 @@ class _WednesdayParentScreenState extends State<WednesdayParentScreen> {
 
   // Empty spacer widget for phone (replaces removed Select Course)
   Widget _buildEmptySpacerWidget() {
-    return Expanded(
+    return const Expanded(
       flex: 4,
-      child: Container(),
-    );
-  }
-
-  // Tablet widgets (8")
-  Widget _buildTabletAnteWidget() {
-    return Container(
-      height: 60,
-      padding: const EdgeInsets.all(6),
-      decoration: BoxDecoration(
-        color: Colors.orange[200],
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.black, width: 2),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Text(
-            'Players Ante      ',
-            style: ResponsiveTypography.labelStyle(context,
-              fontWeight: FontWeight.w600,
-              color: Colors.black,
-            ),
-          ),
-          const SizedBox(width: 8),
-          SizedBox(
-            width: 120,
-            child: Container(
-              height: 40,
-              decoration: BoxDecoration(
-                color: Colors.orange[100],
-                borderRadius: BorderRadius.circular(4),
-                border: Border.all(color: Colors.black, width: 1),
-              ),
-              alignment: Alignment.center,
-              child: GestureDetector(
-                onTap: () => _showKeypadForAmount('ante'),
-                child: Text(
-                  _getAmountDisplayValue('ante', playersAnte),
-                  style: ResponsiveTypography.displayStyle(context,
-                    fontWeight: FontWeight.bold,
-                    color: (_keypadController.isVisible && _currentEditField == 'ante') ? Colors.blue : Colors.black,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const Spacer(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTabletClosestPinWidget() {
-    return Container(
-      height: 60,
-      padding: const EdgeInsets.all(6),
-      decoration: BoxDecoration(
-        color: Colors.orange[200],
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.black, width: 2),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Text(
-            'Closest Pin        ',
-            style: ResponsiveTypography.labelStyle(context,
-              fontWeight: FontWeight.w600,
-              color: Colors.black,
-            ),
-          ),
-          const SizedBox(width: 8),
-          SizedBox(
-            width: 120,
-            child: Container(
-              height: 40,
-              decoration: BoxDecoration(
-                color: Colors.orange[100],
-                borderRadius: BorderRadius.circular(4),
-                border: Border.all(color: Colors.black, width: 1),
-              ),
-              alignment: Alignment.center,
-              child: GestureDetector(
-                onTap: () => _showKeypadForAmount('closestPin'),
-                child: Text(
-                  _getAmountDisplayValue('closestPin', closestPin),
-                  style: ResponsiveTypography.displayStyle(context,
-                    fontWeight: FontWeight.bold,
-                    color: (_keypadController.isVisible && _currentEditField == 'closestPin') ? Colors.blue : Colors.black,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const Spacer(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTabletMulligansWidget() {
-    return Container(
-      height: 60,
-      padding: const EdgeInsets.all(6),
-      decoration: BoxDecoration(
-        color: Colors.orange[200],
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.black, width: 2),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Text(
-            'Mulligans           ',
-            style: ResponsiveTypography.labelStyle(context,
-              fontWeight: FontWeight.w600,
-              color: Colors.black,
-            ),
-          ),
-          const SizedBox(width: 8),
-          SizedBox(
-            width: 120,
-            child: Container(
-              height: 40,
-              decoration: BoxDecoration(
-                color: Colors.orange[100],
-                borderRadius: BorderRadius.circular(4),
-                border: Border.all(color: Colors.black, width: 1),
-              ),
-              alignment: Alignment.center,
-              child: GestureDetector(
-                onTap: () => _showKeypadForAmount('mulligans'),
-                child: Text(
-                  _getAmountDisplayValue('mulligans', mulligans),
-                  style: ResponsiveTypography.displayStyle(context,
-                    fontWeight: FontWeight.bold,
-                    color: (_keypadController.isVisible && _currentEditField == 'mulligans') ? Colors.blue : Colors.black,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const Spacer(),
-        ],
-      ),
-    );
-  }
-
-  // Empty spacer widget for 8" tablet (replaces removed Select Course)
-  Widget _buildTabletEmptySpacerWidget() {
-    return Container(
-      height: 90,
+      child: SizedBox.expand(),
     );
   }
 
@@ -906,7 +714,7 @@ class _WednesdayParentScreenState extends State<WednesdayParentScreen> {
 
   // Empty spacer widget for 10" tablet (replaces removed Select Course)
   Widget _buildTablet10EmptySpacerWidget() {
-    return Container(
+    return const SizedBox(
       height: 120,
     );
   }
@@ -944,14 +752,12 @@ class _WednesdayParentScreenState extends State<WednesdayParentScreen> {
       context,
       backgroundColor: Colors.grey[300]!,
       children: [
-        SizedBox(
-          width: 345,
-          child: ButtonBarUIService.buildActionButton(
-            context,
-            text: 'Player Selection',
-            color: Colors.orange[300]!,
-            onPressed: () => _navigateToPlayerSelection(),
-          ),
+        ButtonBarUIService.buildActionButton(
+          context,
+          text: 'Player Selection',
+          color: Colors.orange[300]!,
+          onPressed: () => _navigateToPlayerSelection(),
+          flex: 14,
         ),
         ButtonBarUIService.buildActionButton(
           context,

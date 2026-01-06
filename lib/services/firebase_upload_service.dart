@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/league.dart';
 import 'database_helper.dart';
 import 'upload_queue_service.dart';
@@ -8,10 +10,42 @@ import 'upload_queue_service.dart';
 class FirebaseUploadService {
   static final FirebaseUploadService _instance = FirebaseUploadService._internal();
   static FirebaseFirestore? _firestore;
-  
+
+  /// Global flag to disable all Firebase uploads
+  static bool uploadsEnabled = true;
+
+  /// SharedPreferences key for storing the uploads enabled state
+  static const String _uploadsEnabledKey = 'firebase_uploads_enabled';
+
   factory FirebaseUploadService() => _instance;
-  FirebaseUploadService._internal();
-  
+  FirebaseUploadService._internal() {
+    loadUploadsEnabledState();
+  }
+
+  /// Load the uploads enabled state from SharedPreferences
+  static Future<void> loadUploadsEnabledState() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      uploadsEnabled = prefs.getBool(_uploadsEnabledKey) ?? true;
+      debugPrint('Loaded Firebase uploads enabled state: $uploadsEnabled');
+    } catch (e) {
+      debugPrint('Error loading uploads enabled state: $e');
+      uploadsEnabled = true; // Default to enabled on error
+    }
+  }
+
+  /// Save the uploads enabled state to SharedPreferences
+  static Future<void> saveUploadsEnabledState(bool enabled) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_uploadsEnabledKey, enabled);
+      uploadsEnabled = enabled;
+      debugPrint('Saved Firebase uploads enabled state: $enabled');
+    } catch (e) {
+      debugPrint('Error saving uploads enabled state: $e');
+    }
+  }
+
   final UploadQueueService _uploadQueueService = UploadQueueService();
   
   Future<FirebaseFirestore> get firestore async {
@@ -24,6 +58,11 @@ class FirebaseUploadService {
 
   /// Uploads player table data to Firebase
   Future<bool> uploadPlayerTable(League league) async {
+    if (!uploadsEnabled) {
+      debugPrint('Firebase uploads are disabled');
+      return false;
+    }
+
     try {
       final db = await firestore;
       final databaseHelper = DatabaseHelper();
@@ -32,7 +71,6 @@ class FirebaseUploadService {
       final players = await databaseHelper.getPlayersByLeague(league);
       
       if (players.isEmpty) {
-        print('No players found for ${league.name} league');
         return true; // Not an error if no players exist
       }
       
@@ -74,9 +112,18 @@ class FirebaseUploadService {
             'upload_timestamp': FieldValue.serverTimestamp(),
           };
         } else {
-          // For Wednesday: include all fields as before
-          firebaseData = Map<String, dynamic>.from(player);
-          firebaseData['upload_timestamp'] = FieldValue.serverTimestamp();
+          // For Wednesday (W_player_profile): exclude skat_number field
+          firebaseData = <String, dynamic>{
+            'player_number': player['player_number'],  // Player #
+            'first': player['first'],                  // First
+            'last': player['last'],                    // Last
+            'OHC': player['OHC'],                      // OHC
+            'HC': player['HC'],                        // HC
+            'cell': player['cell'],                    // Phone
+            'email': player['email'],                  // Email
+            'league': player['league'],                // League
+            'upload_timestamp': FieldValue.serverTimestamp(),
+          };
         }
         
         // Remove any null values
@@ -88,17 +135,20 @@ class FirebaseUploadService {
       // Execute the batch operation
       await batch.commit();
       
-      print('Successfully uploaded ${players.length} players for ${league.name} league to Firebase');
       return true;
       
     } catch (e) {
-      print('Error uploading player table for ${league.name} league: $e');
       return false;
     }
   }
 
   /// Uploads golf course table data to Firebase
   Future<bool> uploadGolfCourseTable(League league) async {
+    if (!uploadsEnabled) {
+      debugPrint('Firebase uploads are disabled');
+      return false;
+    }
+
     try {
       final db = await firestore;
       final databaseHelper = DatabaseHelper();
@@ -107,7 +157,6 @@ class FirebaseUploadService {
       final golfCourses = await databaseHelper.getGolfCoursesByLeague(league);
       
       if (golfCourses.isEmpty) {
-        print('No golf courses found for ${league.name} league');
         return true; // Not an error if no courses exist
       }
       
@@ -116,7 +165,6 @@ class FirebaseUploadService {
       
       // Get collection reference based on league (only Monday has golf courses)
       if (league != League.monday) {
-        print('No golf courses collection for ${league.name} league - only Monday league has golf courses');
         return true; // Not an error - Wednesday doesn't have golf courses
       }
       
@@ -148,36 +196,66 @@ class FirebaseUploadService {
       // Execute the batch operation
       await batch.commit();
       
-      print('Successfully uploaded ${golfCourses.length} golf courses for ${league.name} league to Firebase');
       return true;
       
     } catch (e) {
-      print('Error uploading golf course table for ${league.name} league: $e');
       return false;
     }
   }
 
   /// Uploads player scores table data to Firebase
   Future<bool> uploadPlayerScoresTable(League league) async {
+    if (!uploadsEnabled) {
+      debugPrint('Firebase uploads are disabled');
+      return false;
+    }
+
     try {
       final db = await firestore;
       final databaseHelper = DatabaseHelper();
-      
+
       // Get all player scores for the specified league
-      final scores = await databaseHelper.getScoresByLeague(league);
-      
-      if (scores.isEmpty) {
-        print('No scores found for ${league.name} league');
+      final scoresFromDb = await databaseHelper.getScoresByLeague(league);
+
+      if (scoresFromDb.isEmpty) {
         return true; // Not an error if no scores exist
       }
-      
+
+      // Create a mutable copy of the scores list for sorting
+      final scores = List<Map<String, dynamic>>.from(scoresFromDb);
+
+      // Sort scores by date (oldest first, newest last)
+      // This ensures oldest dates are uploaded last and appear last in Firebase
+      scores.sort((a, b) {
+        final dateA = a['date_played']?.toString() ?? '';
+        final dateB = b['date_played']?.toString() ?? '';
+
+        // Parse dates for comparison
+        try {
+          // Dates are in MM/DD/YY format - convert to comparable format
+          final partsA = dateA.split('/');
+          final partsB = dateB.split('/');
+
+          if (partsA.length == 3 && partsB.length == 3) {
+            // Convert to YYYYMMDD format for comparison
+            final fullDateA = '20${partsA[2]}${partsA[0].padLeft(2, '0')}${partsA[1].padLeft(2, '0')}';
+            final fullDateB = '20${partsB[2]}${partsB[0].padLeft(2, '0')}${partsB[1].padLeft(2, '0')}';
+            return fullDateA.compareTo(fullDateB); // Ascending order (oldest first)
+          }
+        } catch (e) {
+          // If parsing fails, keep original order
+        }
+
+        return 0;
+      });
+
       // Create a batch operation for efficient upload
       final batch = db.batch();
-      
+
       // Get collection reference based on league
       final collectionName = league == League.monday ? 'M_player_scores' : 'W_player_scores';
       final collection = db.collection(collectionName);
-      
+
       // Add each score record to the batch
       for (final score in scores) {
         // Create document ID in format: MM-DD-YY_PlayerName_ID
@@ -186,9 +264,8 @@ class FirebaseUploadService {
         if (league == League.monday) {
           // For Monday (M_player_scores): use MM-DD-YY_PlayerName_ID format
           final dateStr = score['date_played'] ?? '';
-          final playerName = (score['name'] ?? '').toString().replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
-          final recordId = score['id']?.toString() ?? 'unknown';
-          
+          (score['name'] ?? '').toString().replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
+
           // Convert date from YYYY-MM-DD to MM-DD-YY format
           String formattedDate = '';
           if (dateStr.isNotEmpty) {
@@ -208,18 +285,39 @@ class FirebaseUploadService {
           // Use player_id + date for consistent document IDs across devices (prevents duplicates)
           docId = '${formattedDate}_${score['player_id']}';
         } else {
-          // For Wednesday: use player_id + date for consistency (prevents duplicates)
-          if (score['date_played'] != null) {
+          // For Wednesday: use LastName_MM-DD-YY_RecordID format to allow duplicates
+          // Note: Cannot use slashes (/) in Firebase document IDs as they're interpreted as path separators
+          String formattedDate = 'unknown-date';
+          if (score['date_played'] != null && score['date_played'].toString().isNotEmpty) {
+            final dateStr = score['date_played'].toString();
+
+            // The date is already stored in MM/DD/YY format in the database
+            // Convert to MM-DD-YY format (replace slashes with dashes, keep zero padding)
             try {
-              final date = DateTime.parse(score['date_played']);
-              wednesdayFormattedDate = '${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}-${date.year.toString().substring(2)}';
+              final parts = dateStr.split('/');
+              if (parts.length == 3) {
+                final month = parts[0].padLeft(2, '0'); // Ensure 2 digits
+                final day = parts[1].padLeft(2, '0'); // Ensure 2 digits
+                final year = parts[2].padLeft(2, '0'); // Ensure 2 digits
+                formattedDate = '$month-$day-$year'; // Use dashes instead of slashes
+              } else {
+                formattedDate = dateStr.replaceAll('/', '-'); // Replace slashes with dashes
+              }
             } catch (e) {
-              wednesdayFormattedDate = 'unknown-date';
+              formattedDate = dateStr.replaceAll('/', '-'); // Replace slashes with dashes
             }
-          } else {
-            wednesdayFormattedDate = 'unknown-date';
           }
-          docId = '${wednesdayFormattedDate}_${score['player_id']}';
+
+          // Extract last name from the 'name' field
+          // The 'name' field in wednesday_scores is already just the last name (set by seed service)
+          String lastName = 'Unknown';
+          if (score['name'] != null && score['name'].toString().isNotEmpty) {
+            lastName = score['name'].toString().trim();
+          }
+
+          // Use record ID to make each document unique and allow duplicate dates
+          final recordId = score['id'] ?? 'unknown';
+          docId = '${lastName}_${formattedDate}_$recordId';
         }
         
         final docRef = collection.doc(docId);
@@ -231,10 +329,7 @@ class FirebaseUploadService {
           // For Monday (M_player_scores): exclude specific fields and rename others
           
           // Debug logging to check actual values from database
-          print('DEBUG: Raw score data from database:');
-          print('  close_pin_winnings: ${score['close_pin_winnings']} (${score['close_pin_winnings'].runtimeType})');
-          print('  skat_winnings: ${score['skat_winnings']} (${score['skat_winnings'].runtimeType})');
-          
+
           // Format currency values
           String formatCurrency(dynamic value) {
             if (value == null || value == 0 || value == 0.0) return '\$0.00';
@@ -254,23 +349,17 @@ class FirebaseUploadService {
             'upload_timestamp': FieldValue.serverTimestamp(),
           };
           
-          print('DEBUG: Firebase data being uploaded:');
-          print('  Close Pin Winnings: ${firebaseData['Close Pin Winnings']}');
-          print('  SKAT Winnings: ${firebaseData['SKAT Winnings']}');
-          
+
           // Check if document already exists to prevent duplicates for Monday league
           // Only check when WiFi is available to avoid blocking offline uploads
           if (await _isWiFiConnected()) {
             try {
               final existingDoc = await docRef.get();
               if (existingDoc.exists) {
-                String playerName = score['name']?.toString() ?? 'Unknown';
-                String dateFromDocId = docId.split('_')[0]; // Extract date from document ID
-                print('Skipping duplicate score upload for $playerName on $dateFromDocId');
+// Extract date from document ID
                 continue; // Skip this score, it already exists in Firebase
               }
             } catch (e) {
-              print('Warning: Could not check for existing document: $e');
               // Continue with upload if check fails
             }
           }
@@ -278,39 +367,122 @@ class FirebaseUploadService {
           // For Wednesday: include all fields as before
           firebaseData = Map<String, dynamic>.from(score);
           firebaseData['upload_timestamp'] = FieldValue.serverTimestamp();
-          
-          // Check if document already exists to prevent duplicates for Wednesday league
-          // Only check when WiFi is available to avoid blocking offline uploads
-          if (await _isWiFiConnected()) {
-            try {
-              final existingDoc = await docRef.get();
-              if (existingDoc.exists) {
-                String playerName = score['name']?.toString() ?? 'Unknown';
-                String formattedDate = wednesdayFormattedDate ?? 'unknown-date';
-                print('Skipping duplicate score upload for ${playerName} on ${formattedDate}');
-                continue; // Skip this score, it already exists in Firebase
-              }
-            } catch (e) {
-              print('Warning: Could not check for existing Wednesday document: $e');
-              // Continue with upload if check fails
-            }
-          }
+
+          // Note: No duplicate check for Wednesday - using merge mode to update existing documents
         }
-        
+
         // Remove any null values
         firebaseData.removeWhere((key, value) => value == null);
-        
+
         batch.set(docRef, firebaseData, SetOptions(merge: true));
       }
-      
+
       // Execute the batch operation
       await batch.commit();
-      
-      print('Successfully uploaded ${scores.length} score records for ${league.name} league to Firebase');
+
+      debugPrint('Successfully uploaded ${scores.length} scores to Firebase');
       return true;
-      
+
     } catch (e) {
-      print('Error uploading player scores table for ${league.name} league: $e');
+      debugPrint('Error uploading scores to Firebase: $e');
+      return false;
+    }
+  }
+
+  /// Deletes player scores from Firebase based on provided score data
+  /// Used when old scores are deleted locally to maintain sync
+  Future<bool> deletePlayerScoresFromFirebase(
+    List<Map<String, dynamic>> scoresToDelete,
+    League league
+  ) async {
+    if (!uploadsEnabled) {
+      debugPrint('Firebase uploads are disabled');
+      return false;
+    }
+
+    try {
+      final db = await firestore;
+
+      if (scoresToDelete.isEmpty) {
+        return true; // Nothing to delete
+      }
+
+      // Create a batch operation for efficient deletion
+      final batch = db.batch();
+
+      // Get collection reference based on league
+      final collectionName = league == League.monday ? 'M_player_scores' : 'W_player_scores';
+      final collection = db.collection(collectionName);
+
+      // Add each score deletion to the batch
+      for (final score in scoresToDelete) {
+        // Create document ID using the same format as upload
+        String docId;
+
+        if (league == League.monday) {
+          // For Monday: use MM-DD-YY_PlayerID format
+          final dateStr = score['date_played'] ?? '';
+          String formattedDate = '';
+
+          if (dateStr.isNotEmpty) {
+            try {
+              final date = DateTime.parse(dateStr);
+              final month = date.month.toString().padLeft(2, '0');
+              final day = date.day.toString().padLeft(2, '0');
+              final year = (date.year % 100).toString().padLeft(2, '0');
+              formattedDate = '$month-$day-$year';
+            } catch (e) {
+              formattedDate = 'unknown-date';
+            }
+          } else {
+            formattedDate = 'unknown-date';
+          }
+
+          docId = '${formattedDate}_${score['player_id']}';
+        } else {
+          // For Wednesday: use LastName_MM-DD-YY_RecordID format (matching upload format)
+          String formattedDate = 'unknown-date';
+          if (score['date_played'] != null && score['date_played'].toString().isNotEmpty) {
+            final dateStr = score['date_played'].toString();
+
+            try {
+              final parts = dateStr.split('/');
+              if (parts.length == 3) {
+                final month = parts[0].padLeft(2, '0');
+                final day = parts[1].padLeft(2, '0');
+                final year = parts[2].padLeft(2, '0');
+                formattedDate = '$month-$day-$year';
+              } else {
+                formattedDate = dateStr.replaceAll('/', '-');
+              }
+            } catch (e) {
+              formattedDate = dateStr.replaceAll('/', '-');
+            }
+          }
+
+          // Extract last name
+          String lastName = 'Unknown';
+          if (score['name'] != null && score['name'].toString().isNotEmpty) {
+            lastName = score['name'].toString().trim();
+          }
+
+          // Use record ID to match upload format and ensure correct deletion
+          final recordId = score['id'] ?? 'unknown';
+          docId = '${lastName}_${formattedDate}_$recordId';
+        }
+
+        final docRef = collection.doc(docId);
+        batch.delete(docRef);
+      }
+
+      // Execute the batch deletion
+      await batch.commit();
+
+      debugPrint('Successfully deleted ${scoresToDelete.length} scores from Firebase');
+      return true;
+
+    } catch (e) {
+      debugPrint('Error deleting scores from Firebase: $e');
       return false;
     }
   }
@@ -321,18 +493,22 @@ class FirebaseUploadService {
     required List<Map<String, dynamic>> data,
     String? documentIdField,
   }) async {
+    if (!uploadsEnabled) {
+      debugPrint('Firebase uploads are disabled');
+      return false;
+    }
+
     try {
       final db = await firestore;
-      
+
       if (data.isEmpty) {
-        print('No data to upload for collection: $collectionName');
         return true;
       }
-      
+
       // Create a batch operation for efficient upload
       final batch = db.batch();
       final collection = db.collection(collectionName);
-      
+
       // Add each record to the batch
       for (int i = 0; i < data.length; i++) {
         final record = data[i];
@@ -359,11 +535,9 @@ class FirebaseUploadService {
       // Execute the batch operation
       await batch.commit();
       
-      print('Successfully uploaded ${data.length} records to Firebase collection: $collectionName');
       return true;
       
     } catch (e) {
-      print('Error uploading data to collection $collectionName: $e');
       return false;
     }
   }
@@ -375,7 +549,6 @@ class FirebaseUploadService {
       final results = await connectivity.checkConnectivity();
       return results.contains(ConnectivityResult.wifi);
     } catch (e) {
-      print('Error checking WiFi connectivity: $e');
       return false;
     }
   }
@@ -387,41 +560,93 @@ class FirebaseUploadService {
         uploadType: uploadType,
         league: league,
       );
-      print('Upload queued for later: ${uploadType.name} - ${league.name}');
       return true;
     } catch (e) {
-      print('Error queuing upload: $e');
       return false;
     }
   }
 
   /// Upload with connectivity checking and queuing
   Future<bool> uploadPlayerTableWithQueue(League league) async {
+    if (!uploadsEnabled) {
+      debugPrint('Firebase uploads are disabled');
+      return false;
+    }
+
     if (await _isWiFiConnected()) {
       return await uploadPlayerTable(league);
     } else {
-      print('No WiFi connection - queuing player table upload for ${league.name}');
       return await _queueUpload(UploadType.players, league);
     }
   }
 
   /// Upload with connectivity checking and queuing
   Future<bool> uploadGolfCourseTableWithQueue(League league) async {
+    if (!uploadsEnabled) {
+      debugPrint('Firebase uploads are disabled');
+      return false;
+    }
+
     if (await _isWiFiConnected()) {
       return await uploadGolfCourseTable(league);
     } else {
-      print('No WiFi connection - queuing golf course table upload for ${league.name}');
       return await _queueUpload(UploadType.golfCourses, league);
     }
   }
 
   /// Upload with connectivity checking and queuing
   Future<bool> uploadPlayerScoresTableWithQueue(League league) async {
+    if (!uploadsEnabled) {
+      debugPrint('Firebase uploads are disabled');
+      return false;
+    }
+
     if (await _isWiFiConnected()) {
       return await uploadPlayerScoresTable(league);
     } else {
-      print('No WiFi connection - queuing scores table upload for ${league.name}');
       return await _queueUpload(UploadType.scores, league);
+    }
+  }
+
+  /// Delete a player from Firebase
+  Future<bool> deletePlayerFromFirebase(League league, String lastName) async {
+    if (!uploadsEnabled) {
+      debugPrint('Firebase uploads are disabled');
+      return false;
+    }
+
+    try {
+      final db = await firestore;
+
+      // Get collection reference based on league
+      final collectionName = league == League.monday ? 'M_player_profile' : 'W_player_profile';
+      final collection = db.collection(collectionName);
+
+      // Clean the last name for document ID (same logic as upload)
+      final cleanedLastName = lastName.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
+
+      // Delete the document
+      await collection.doc(cleanedLastName).delete();
+
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Delete a player from Firebase with connectivity checking
+  Future<bool> deletePlayerFromFirebaseWithQueue(League league, String lastName) async {
+    if (!uploadsEnabled) {
+      debugPrint('Firebase uploads are disabled');
+      return false;
+    }
+
+    if (await _isWiFiConnected()) {
+      return await deletePlayerFromFirebase(league, lastName);
+    } else {
+      // If no WiFi, we can't delete from Firebase now
+      // Return false to indicate offline mode
+      return false;
     }
   }
 
@@ -432,7 +657,6 @@ class FirebaseUploadService {
       await db.collection('_test').doc('connection').get();
       return true;
     } catch (e) {
-      print('Firebase connection test failed: $e');
       return false;
     }
   }

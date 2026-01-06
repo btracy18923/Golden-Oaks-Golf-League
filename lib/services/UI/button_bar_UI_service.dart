@@ -90,6 +90,7 @@ class ButtonBarUIService {
     required Color color,
     required VoidCallback? onPressed,
     int maxLines = 1,
+    int flex = 10,
   }) {
     final buttonPadding = getButtonPadding(context);
     final buttonInternalPadding = getButtonInternalPadding(context);
@@ -97,6 +98,7 @@ class ButtonBarUIService {
     final buttonFontSize = ResponsiveTypography.getButton(context);
 
     return Expanded(
+      flex: flex,
       child: Padding(
         padding: buttonPadding,
         child: ElevatedButton(

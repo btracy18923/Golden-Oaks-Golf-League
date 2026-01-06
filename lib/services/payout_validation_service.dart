@@ -34,14 +34,9 @@ class PayoutValidationService {
     required double currentMulliganPurse,
   }) async {
     try {
-      print('=== PAYOUT VALIDATION SERVICE DEBUG (INDIVIDUAL) ===');
-      print('Number of players received: ${players.length}');
-      print('Total selected players: $totalSelectedPlayers');
-      print('Current mulligan purse passed in: \$${currentMulliganPurse.toStringAsFixed(2)}');
-      
+
       // Calculate total actual payouts using rounded amounts (same as displayed to user)
       double totalActualPayouts = 0.0;
-      print('Individual player payout details:');
       for (int i = 0; i < players.length; i++) {
         var player = players[i];
         double winnings = player['winnings']?.toDouble() ?? 0.0;
@@ -49,42 +44,23 @@ class PayoutValidationService {
         double roundedWinningsAsDouble = roundedWinnings.toDouble();
         totalActualPayouts += roundedWinningsAsDouble;
         
-        String playerName = '${player['first'] ?? 'Unknown'} ${player['last'] ?? 'Player'}';
-        print('  Player ${i+1}: $playerName');
-        print('    Raw winnings: \$${winnings.toStringAsFixed(2)}');
-        print('    Rounded winnings: \$${roundedWinnings.toStringAsFixed(2)}');
-        print('    Prize money field: ${player['prize_money'] ?? 'null'}');
-        print('    Position field: ${player['pos'] ?? 'null'}');
       }
-      print('Calculated total actual payouts: \$${totalActualPayouts.toStringAsFixed(2)}');
 
       // Get expected purse based on league type
       double expectedPurse = await _getExpectedIndividualPurse(league, totalSelectedPlayers);
-      print('Expected individual purse: \$${expectedPurse.toStringAsFixed(2)}');
-      
+
       // Calculate difference (actual - expected)
       double difference = totalActualPayouts - expectedPurse;
-      print('Difference (actual - expected): \$${difference.toStringAsFixed(2)}');
-      
+
       // Calculate adjusted mulligan purse
       double adjustedMulliganPurse = currentMulliganPurse - difference;
-      print('Adjusted mulligan purse: \$${adjustedMulliganPurse.toStringAsFixed(2)}');
-      
+
       // Determine if adjustment is needed
       bool requiresAdjustment = difference.abs() > 0.01; // Allow for small rounding differences
-      print('Requires adjustment: $requiresAdjustment (threshold: 0.01)');
-      
+
       // Generate description
       String description = _generateDescription(difference, 'individual');
-      print('Generated description: $description');
-      
-      print('Final validation result:');
-      print('  Total actual payouts: \$${totalActualPayouts.toStringAsFixed(2)}');
-      print('  Expected purse: \$${expectedPurse.toStringAsFixed(2)}');
-      print('  Difference: \$${difference.toStringAsFixed(2)}');
-      print('  Adjusted mulligan purse: \$${adjustedMulliganPurse.toStringAsFixed(2)}');
-      print('  Requires adjustment: $requiresAdjustment');
-      print('========================================================');
+
 
       return PayoutValidationResult(
         totalActualPayouts: totalActualPayouts,
@@ -114,25 +90,17 @@ class PayoutValidationService {
     required double currentMulliganPurse,
   }) async {
     try {
-      print('=== PAYOUT VALIDATION SERVICE DEBUG (GROUPS) ===');
-      print('Number of groups received: ${groups.length}');
-      print('Total selected players: $totalSelectedPlayers');
-      print('Current mulligan purse passed in: \$${currentMulliganPurse.toStringAsFixed(2)}');
-      
+
       // Check for stored adjusted mulligan purse first
       String leagueStr = league == League.monday ? 'monday' : 'wednesday';
       double? storedAdjustedAmount = await DatabaseHelper().getAdjustedMulliganPurse(leagueStr);
       double effectiveMulliganPurse = storedAdjustedAmount ?? currentMulliganPurse;
       
-      print('Stored adjusted mulligan purse: ${storedAdjustedAmount != null ? '\$${storedAdjustedAmount.toStringAsFixed(2)}' : 'None'}');
-      print('Effective mulligan purse being used: \$${effectiveMulliganPurse.toStringAsFixed(2)}');
-      
+
       // Calculate total actual group payouts using rounded amounts
       double totalActualPayouts = 0.0;
-      print('Group payout details:');
       for (int i = 0; i < groups.length; i++) {
         var group = groups[i];
-        print('  Group ${i+1}:');
         for (int j = 0; j < group.length; j++) {
           var player = group[j];
           if (player != null) {
@@ -140,46 +108,25 @@ class PayoutValidationService {
             int roundedGroupWinnings = groupWinnings.round(); // Round to match display
             totalActualPayouts += roundedGroupWinnings.toDouble();
             
-            String playerName = '${player['first'] ?? 'Unknown'} ${player['last'] ?? 'Player'}';
-            print('    Player ${j+1}: $playerName');
-            print('      Raw group winnings: \$${groupWinnings.toStringAsFixed(2)}');
-            print('      Rounded group winnings: \$${roundedGroupWinnings.toStringAsFixed(2)}');
-            print('      Group position: ${player['group_position'] ?? 'null'}');
           }
         }
       }
-      print('Calculated total actual group payouts: \$${totalActualPayouts.toStringAsFixed(2)}');
 
       // Get expected group purse based on league type
       double expectedPurse = await _getExpectedGroupPurse(league, totalSelectedPlayers);
-      print('Expected group purse: \$${expectedPurse.toStringAsFixed(2)}');
-      
+
       // Calculate difference (actual - expected)
       double difference = totalActualPayouts - expectedPurse;
-      print('Difference (actual - expected): \$${difference.toStringAsFixed(2)}');
-      
+
       // Calculate adjusted mulligan purse using the effective amount
       double adjustedMulliganPurse = effectiveMulliganPurse - difference;
-      print('Adjusted mulligan purse calculation:');
-      print('  Effective mulligan purse: \$${effectiveMulliganPurse.toStringAsFixed(2)}');
-      print('  Minus difference: \$${difference.toStringAsFixed(2)}');
-      print('  Equals adjusted: \$${adjustedMulliganPurse.toStringAsFixed(2)}');
-      
+
       // Determine if adjustment is needed
       bool requiresAdjustment = difference.abs() > 0.01; // Allow for small rounding differences
-      print('Requires adjustment: $requiresAdjustment (threshold: 0.01)');
-      
+
       // Generate description
       String description = _generateDescription(difference, 'group');
-      print('Generated description: $description');
-      
-      print('Final group validation result:');
-      print('  Total actual group payouts: \$${totalActualPayouts.toStringAsFixed(2)}');
-      print('  Expected group purse: \$${expectedPurse.toStringAsFixed(2)}');
-      print('  Difference: \$${difference.toStringAsFixed(2)}');
-      print('  Adjusted mulligan purse: \$${adjustedMulliganPurse.toStringAsFixed(2)}');
-      print('  Requires adjustment: $requiresAdjustment');
-      print('============================================================');
+
 
       return PayoutValidationResult(
         totalActualPayouts: totalActualPayouts,
@@ -263,39 +210,28 @@ class PayoutValidationService {
   }
 
   Future<double> _getExpectedIndividualPurse(League league, int totalSelectedPlayers) async {
-    print('Calculating expected individual purse for $league league with $totalSelectedPlayers players');
-    
+
     if (league == League.wednesday) {
       // Use CSV individual amounts for Wednesday league
-      print('Using CSV payout service for Wednesday league');
       Map<String, double> payoutData = await CsvPayoutService().getPayoutAmounts(totalSelectedPlayers);
-      print('CSV payout data: $payoutData');
       double expectedPurse = payoutData['total_individual'] ?? 0.0;
-      print('Expected individual purse from CSV: \$${expectedPurse.toStringAsFixed(2)}');
       return expectedPurse;
     } else {
       // Use Skat Purse calculation for Monday league
       double skatPurse = LeaguePurseService.skatPurse;
-      print('Monday league Skat purse: \$${skatPurse.toStringAsFixed(2)}');
-      print('Expected individual purse equals Skat purse: \$${skatPurse.toStringAsFixed(2)}');
       return skatPurse;
     }
   }
 
   Future<double> _getExpectedGroupPurse(League league, int totalSelectedPlayers) async {
-    print('Calculating expected group purse for $league league with $totalSelectedPlayers players');
-    
+
     if (league == League.wednesday) {
       // Use CSV group amounts for Wednesday league
-      print('Using Group CSV payout service for Wednesday league');
       Map<String, double> groupPayoutData = await GroupCsvPayoutService().getPayoutAmounts(totalSelectedPlayers);
-      print('Group CSV payout data: $groupPayoutData');
       double expectedPurse = groupPayoutData['groups_total'] ?? 0.0;
-      print('Expected group purse from CSV: \$${expectedPurse.toStringAsFixed(2)}');
       return expectedPurse;
     } else {
       // Monday league doesn't use group payouts - return 0
-      print('Monday league does not use group payouts');
       return 0.0;
     }
   }

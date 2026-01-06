@@ -487,13 +487,30 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
       return;
     }
 
+    // Hide keypad before auto-fill
+    _hideKeypad();
+
+    // Restore Skat Purse and Mulligan Purse before recalculating (in case this is a re-autofill)
+    if (widget.selectedPlayers != null && widget.playersAnte != null) {
+      double freshSkatPurse = widget.selectedPlayers!.length * widget.playersAnte!;
+      LeaguePurseService.setSkatPurse(freshSkatPurse);
+
+      // Restore Mulligan Purse to original value
+      double freshMulliganPurse = LeaguePurseService.mulliganAmount * widget.selectedPlayers!.length;
+      LeaguePurseService.setMulliganPurse(freshMulliganPurse, isExplicit: false);
+    } else if (widget.selectedPlayers != null) {
+      LeaguePurseService.calculateSkatPurseFromCount(widget.selectedPlayers!.length);
+
+      // Restore Mulligan Purse to original value
+      double freshMulliganPurse = LeaguePurseService.mulliganAmount * widget.selectedPlayers!.length;
+      LeaguePurseService.setMulliganPurse(freshMulliganPurse, isExplicit: false);
+    }
+
+    // Perform autofill and update groups
     setState(() {
       final autoFillService = AutoFillFactory.create(League.monday);
       groups = autoFillService.autoFillData(groups);
     });
-
-    // Hide keypad after auto-fill is complete
-    _hideKeypad();
 
     // Automatically calculate money after auto-fill completes all SKATS
     if (_areAllSkatsFieldsComplete()) {
@@ -525,10 +542,10 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
         for (int playerIndex = 0; playerIndex < groups[groupIndex].length; playerIndex++) {
           var player = groups[groupIndex][playerIndex];
           double payout = payouts[player.name] ?? 0.0;
-          
+
           // Format the payout amount - rounded to whole dollars
           String moneyValue = payout > 0 ? '\$${payout.round().toString()}' : '';
-          
+
           // Update the player data with the calculated money value
           groups[groupIndex][playerIndex] = PlayerData(
             name: player.name,
@@ -537,38 +554,26 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
             diff: player.diff,
             money: moneyValue,
           );
-          
+
           if (payout > 0) {
           }
         }
       }
+
+      // Calculate total distributed money and update the Payout field
+      double totalDistributed = _calculateTotalDistributedMoney();
+      _payoutAmount = totalDistributed;
+
+      // Keep Skat Purse unchanged - don't subtract payouts from it
+      // Skat Purse remains at: Selected Players × Player's Ante
+
+      // Adjust Mulligan Purse based on the difference between Skat Purse and Payout
+      double currentSkatPurse = LeaguePurseService.skatPurse;
+      double difference = totalDistributed - currentSkatPurse;
+      double currentMulligan = LeaguePurseService.mulliganPurse;
+      double adjustedMulligan = currentMulligan - difference;
+      LeaguePurseService.setMulliganPurse(adjustedMulligan);
     });
-    
-    // Calculate total distributed money and update the Skat Purse
-    double totalDistributed = _calculateTotalDistributedMoney();
-    double remainingSkatPurse = LeaguePurseService.skatPurse - totalDistributed;
-    double currentMulligan = LeaguePurseService.mulliganPurse;
-    
-    if (remainingSkatPurse > 0) {
-      // Positive remaining: transfer to Mulligan Purse
-      double newMulliganPurse = currentMulligan + remainingSkatPurse;
-      LeaguePurseService.setMulliganPurse(newMulliganPurse);
-      LeaguePurseService.setRemainingPurse(0.0);
-
-    } else if (remainingSkatPurse < 0) {
-      // Negative remaining: take deficit from Mulligan Purse
-      double deficit = -remainingSkatPurse; // Make positive
-      double newMulliganPurse = currentMulligan - deficit;
-      LeaguePurseService.setMulliganPurse(newMulliganPurse);
-      LeaguePurseService.setRemainingPurse(0.0);
-
-    } else {
-      // Exactly 0 remaining
-      LeaguePurseService.setRemainingPurse(0.0);
-    }
-    
-    // Set Skat Purse to 0.0 after winnings are distributed
-    LeaguePurseService.setSkatPurse(0.0);
     
     // Apply Skat # adjustments based on DIFF values
     final skatAdjustmentService = SkatAdjustmentService();
@@ -726,29 +731,19 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
       }
     }
     
-    // Calculate total distributed money and update the Skat Purse
+    // Calculate total distributed money and update the Payout field
     double totalDistributed = _calculateTotalDistributedMoney();
-    double remainingSkatPurse = LeaguePurseService.skatPurse - totalDistributed;
+    _payoutAmount = totalDistributed;
+
+    // Keep Skat Purse unchanged - don't subtract payouts from it
+    // Skat Purse remains at: Selected Players × Player's Ante
+
+    // Adjust Mulligan Purse based on the difference between Skat Purse and Payout
+    double currentSkatPurse = LeaguePurseService.skatPurse;
+    double difference = totalDistributed - currentSkatPurse;
     double currentMulligan = LeaguePurseService.mulliganPurse;
-    
-    if (remainingSkatPurse > 0) {
-      // Positive remaining: transfer to Mulligan Purse
-      double newMulliganPurse = currentMulligan + remainingSkatPurse;
-      LeaguePurseService.setMulliganPurse(newMulliganPurse);
-      LeaguePurseService.setRemainingPurse(0.0);
-    } else if (remainingSkatPurse < 0) {
-      // Negative remaining: take deficit from Mulligan Purse
-      double deficit = -remainingSkatPurse; // Make positive
-      double newMulliganPurse = currentMulligan - deficit;
-      LeaguePurseService.setMulliganPurse(newMulliganPurse);
-      LeaguePurseService.setRemainingPurse(0.0);
-    } else {
-      // Exactly 0 remaining
-      LeaguePurseService.setRemainingPurse(0.0);
-    }
-    
-    // Set Skat Purse to 0.0 after winnings are recalculated
-    LeaguePurseService.setSkatPurse(0.0);
+    double adjustedMulligan = currentMulligan - difference;
+    LeaguePurseService.setMulliganPurse(adjustedMulligan);
   }
 
   /// Handles SKATS input change and calculates DIFF automatically
@@ -1246,7 +1241,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
           // Main content
           Column(
             children: [
-              EnterScoresUIService.buildPurseHeader(context, League.monday, onReturn: _handleReturn, onAutoFill: _handleAutoFill),
+              EnterScoresUIService.buildPurseHeader(context, League.monday, onReturn: _handleReturn, onAutoFill: _handleAutoFill, payoutAmount: _payoutAmount),
               EnterScoresUIService.buildGroupsGrid(
                 context,
                 groups,

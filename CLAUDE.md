@@ -62,10 +62,10 @@ All screens are Flutter widgets managed by Navigator:
 - Admin Screen - Administrative functions
 
 #### 3. Handicap Calculation System
-Implements USGA-compliant handicap calculation with progressive methodology:
-- **1-4 scores**: Blending method with progressive blend factors
-- **5+ scores**: Full USGA method using lowest differentials
-- Detailed algorithm documented in `Handicap_Calculation_Method.txt`
+Implements a simplified handicap calculation for Wednesday league based on recent scores:
+- Algorithm uses the most recent 6 scores
+- Algorithm uses the lowest 4 of 6 scores and averages them for the HC
+- Implemented in `lib/services/handicap_calculation_service.dart`
 
 #### 4. Prize Distribution
 Dynamic prize calculation system supporting 4-40 players with configurable distribution tables
@@ -161,9 +161,12 @@ If needed, create separate screen variants:
 ### Code Changes and Testing
 **IMPORTANT**: When code changes are made, prompt the user to perform a hot restart in their Flutter development environment instead of Claude running tests and syntax error checks. The user will handle verification through their IDE's hot restart functionality.
 
-### Git Workflow Instructions
+### Important Git Workflow Instructions
 **IMPORTANT**: Do not automatically commit changes or push changes to GitHub. The user will explicitly tell you when to commit and push. Always wait for user instructions before running git commit or git push commands.
 
+### Important League Instructions
+***IMPORTANT***: When making changes to one league DO NOT assume the same changes are to be made to the other league.  Ask First.
+
 6.5" phone (720 × 1600 pixels,  20:9 ratio
-8" Fire Table: 800 x 1200 pixels
+
 

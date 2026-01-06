@@ -109,14 +109,33 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
 
   Future<void> _loadPlayerScores(String playerLast) async {
     try {
+      final playerNumber = _players.firstWhere((p) => p['last'] == playerLast)['player_number'];
       final scores = await _databaseHelper.getPlayerScoresSimple(
-        _players.firstWhere((p) => p['last'] == playerLast)['player_number'],
+        playerNumber,
         _selectedLeague
       );
-      setState(() {
-        _scores = scores;
-        _selectedScoreIndex = null; // Clear selection when loading new player scores
-      });
+
+      // Limit to 20 scores - if more than 20, delete the oldest ones
+      if (scores.length > 20) {
+        // Get the scores to delete (everything after the first 20)
+        final scoresToDelete = scores.sublist(20);
+
+        // Delete each excess score from the database
+        for (var score in scoresToDelete) {
+          await _databaseHelper.deleteScore(score['id']);
+        }
+
+        // Keep only the first 20 scores
+        setState(() {
+          _scores = scores.sublist(0, 20);
+          _selectedScoreIndex = null; // Clear selection when loading new player scores
+        });
+      } else {
+        setState(() {
+          _scores = scores;
+          _selectedScoreIndex = null; // Clear selection when loading new player scores
+        });
+      }
     } catch (e) {
       _showErrorDialog('Error loading scores: $e');
     }
@@ -197,7 +216,7 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
             ),
             child: Text(
               playerName,
-              style: ResponsiveTypography.smallStyle(context,
+              style: TextStyle(fontSize: ResponsiveTypography.getSmall(context) - 3,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               ),
               overflow: TextOverflow.ellipsis,
@@ -241,7 +260,7 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
   Widget _buildScoresTable() {
     // Define device categories using DeviceDetectionService
     final isPhone = DeviceDetectionService.is6Point5Phone(context);  // 6.5" phones
-    final isTablet = DeviceDetectionService.is10Tablet(context);  // 10" tablets
+    DeviceDetectionService.is10Tablet(context);  // 10" tablets
 
     // Adjust table width based on screen size and orientation
     double tableWidth;
@@ -254,7 +273,7 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
     }
 
     final isCompact = isPhone;
-    final isMedium = false;
+    const isMedium = false;
     
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -440,7 +459,7 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
       );
     }
   }
-
+  // Data Table Header
   Widget _buildFlexHeaderCell(String text, int flex, {bool isCompact = false}) {
     return Expanded(
       flex: flex,
@@ -452,9 +471,7 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
         child: Center(
           child: Text(
             text,
-            style: ResponsiveTypography.smallStyle(context,
-              fontWeight: FontWeight.bold,
-            ).copyWith(height: 1.0), // Reduce line height to tighten spacing
+            style: TextStyle(fontSize: ResponsiveTypography.getSmall(context) - 4, fontWeight: FontWeight.bold, height: 1.0),
             textAlign: TextAlign.center,
             maxLines: 2, // Allow text to wrap to 2 lines
             overflow: TextOverflow.visible,
@@ -464,12 +481,12 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
     );
   }
 
-
+  // Table Data: Date, SKAT #, Close Pin $$$, SKAT $$$
   Widget _buildFlexDataCell(String text, int flex, {bool isCompact = false}) {
     return Expanded(
       flex: flex,
       child: Container(
-        height: isCompact ? 25 : 30,
+        height: isCompact ? 35 : 30,
         decoration: BoxDecoration(
           border: Border.all(color: Colors.black, width: 0.5),
         ),
@@ -477,7 +494,7 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
           alignment: Alignment.center,
           child: Text(
             text,
-            style: ResponsiveTypography.smallStyle(context),
+            style: TextStyle(fontSize: ResponsiveTypography.getSmall(context) - 3),
             textAlign: TextAlign.center,
             overflow: TextOverflow.ellipsis,
           ),
@@ -485,12 +502,12 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
       ),
     );
   }
-
+  //Table Data: Golf Course
   Widget _buildFlexDataCellLeftAligned(String text, int flex, {bool isCompact = false}) {
     return Expanded(
       flex: flex,
       child: Container(
-        height: isCompact ? 25 : 30,
+        height: isCompact ? 35 : 30,
         decoration: BoxDecoration(
           border: Border.all(color: Colors.black, width: 0.5),
         ),
@@ -498,7 +515,7 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
           alignment: Alignment.centerLeft,
           child: Text(
             text,
-            style: ResponsiveTypography.smallStyle(context),
+            style: TextStyle(fontSize: ResponsiveTypography.getSmall(context) - 3),
             textAlign: TextAlign.left,
             overflow: TextOverflow.ellipsis,
           ),
@@ -507,12 +524,12 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
     );
   }
 
-
+  // Lock Icon and Name
   Widget _buildFlexDataCellWithIcon(String text, bool isUnlocked, int flex, {bool isCompact = false}) {
     return Expanded(
       flex: flex,
       child: Container(
-        height: isCompact ? 25 : 30,
+        height: isCompact ? 35 : 30,
         decoration: BoxDecoration(
           border: Border.all(color: Colors.black, width: 0.5),
         ),
@@ -531,7 +548,7 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
                 alignment: Alignment.center,
                 child: Text(
                   text,
-                  style: ResponsiveTypography.smallStyle(context),
+                  style: TextStyle(fontSize: ResponsiveTypography.getSmall(context) - 3),
                   textAlign: TextAlign.center,
                   overflow: TextOverflow.ellipsis,
                 ),

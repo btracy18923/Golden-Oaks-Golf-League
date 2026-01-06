@@ -1,5 +1,4 @@
 import 'database_helper.dart';
-import '../models/league.dart';
 
 /// Service to handle Skat # adjustments based on DIFF values
 /// Implements the following calculation rules:
@@ -44,8 +43,7 @@ class SkatAdjustmentService {
     Map<String, int> adjustments = {};
     
     try {
-      print("=== APPLYING SKAT # ADJUSTMENTS ===");
-      
+
       for (int groupIndex = 0; groupIndex < playerGroups.length; groupIndex++) {
         for (int playerIndex = 0; playerIndex < playerGroups[groupIndex].length; playerIndex++) {
           var player = playerGroups[groupIndex][playerIndex];
@@ -73,25 +71,15 @@ class SkatAdjustmentService {
                 
                 adjustments[player.name] = adjustment;
                 
-                print("Player: ${player.name}");
-                print("  DIFF: ${player.diff}");
-                print("  Adjustment: ${adjustment > 0 ? '+' : ''}$adjustment");
-                print("  Old Skat #: $currentSkatNumber");
-                print("  New Skat #: $newSkatNumber");
-                print("");
               }
             } catch (e) {
-              print("Error processing adjustment for ${player.name}: $e");
             }
           }
         }
       }
       
-      print("=== SKAT # ADJUSTMENTS COMPLETE ===");
-      print("Total players adjusted: ${adjustments.length}");
-      
+
     } catch (e) {
-      print("Error applying Skat # adjustments: $e");
     }
     
     return adjustments;
@@ -120,12 +108,9 @@ class SkatAdjustmentService {
           whereArgs: [playerId],
         );
         
-        print("Updated Skat # for ${playerName} (ID: $playerId) to $newSkatNumber");
       } else {
-        print("Warning: Player $playerName not found in Monday league");
       }
     } catch (e) {
-      print("Error updating Skat # for $playerName: $e");
       rethrow;
     }
   }
