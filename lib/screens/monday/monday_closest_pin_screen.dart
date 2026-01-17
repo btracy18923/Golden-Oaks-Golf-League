@@ -436,7 +436,7 @@ class _MondayClosestPinScreenState extends State<MondayClosestPinScreen> {
             context,
             onClear: _handleClear,
             onSaveAndReturn: _handleSaveAndReturn,
-            isEnterSkatsEnabled: _playerClosestPinCounts.values.any((count) => count > 0),
+            isEnterSkatsEnabled: _remainingClosestPins == 0,
             league: 'Monday',
             onTied: _handleTied,
             isTiedMode: _tiedMode,

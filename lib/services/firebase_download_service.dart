@@ -1,0 +1,362 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
+import '../models/league.dart';
+import 'database_helper.dart';
+
+/// Service for downloading data from Firebase into the local database
+/// Handles initial data population for each league
+class FirebaseDownloadService {
+  static final FirebaseDownloadService _instance = FirebaseDownloadService._internal();
+  factory FirebaseDownloadService() => _instance;
+  FirebaseDownloadService._internal();
+
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final DatabaseHelper _dbHelper = DatabaseHelper();
+
+  /// Download all Monday league data from Firebase
+  /// This includes players, scores, and golf courses
+  Future<Map<String, dynamic>> downloadMondayLeagueData() async {
+    debugPrint('=== DOWNLOADING MONDAY LEAGUE DATA FROM FIREBASE ===');
+
+    int playersDownloaded = 0;
+    int scoresDownloaded = 0;
+    int coursesDownloaded = 0;
+    List<String> errors = [];
+
+    try {
+      // Download Monday players from M_player_profile
+      final playersResult = await _downloadMondayPlayers();
+      playersDownloaded = playersResult['count'] as int;
+      if (playersResult['errors'] != null) {
+        errors.addAll(playersResult['errors'] as List<String>);
+      }
+
+      // Download Monday scores from M_player_scores
+      final scoresResult = await _downloadMondayScores();
+      scoresDownloaded = scoresResult['count'] as int;
+      if (scoresResult['errors'] != null) {
+        errors.addAll(scoresResult['errors'] as List<String>);
+      }
+
+      // Download Monday golf courses from M_golf_course
+      final coursesResult = await _downloadMondayGolfCourses();
+      coursesDownloaded = coursesResult['count'] as int;
+      if (coursesResult['errors'] != null) {
+        errors.addAll(coursesResult['errors'] as List<String>);
+      }
+
+      debugPrint('✓ Monday league download complete: $playersDownloaded players, $scoresDownloaded scores, $coursesDownloaded courses');
+
+      return {
+        'success': true,
+        'players': playersDownloaded,
+        'scores': scoresDownloaded,
+        'courses': coursesDownloaded,
+        'errors': errors,
+      };
+    } catch (e) {
+      debugPrint('✗ Error downloading Monday league data: $e');
+      errors.add('Critical error: $e');
+      return {
+        'success': false,
+        'players': playersDownloaded,
+        'scores': scoresDownloaded,
+        'courses': coursesDownloaded,
+        'errors': errors,
+      };
+    }
+  }
+
+  /// Download all Wednesday league data from Firebase
+  /// This includes players and scores
+  Future<Map<String, dynamic>> downloadWednesdayLeagueData() async {
+    debugPrint('=== DOWNLOADING WEDNESDAY LEAGUE DATA FROM FIREBASE ===');
+
+    int playersDownloaded = 0;
+    int scoresDownloaded = 0;
+    List<String> errors = [];
+
+    try {
+      // Download Wednesday players from W_player_profile
+      final playersResult = await _downloadWednesdayPlayers();
+      playersDownloaded = playersResult['count'] as int;
+      if (playersResult['errors'] != null) {
+        errors.addAll(playersResult['errors'] as List<String>);
+      }
+
+      // Download Wednesday scores from W_player_scores
+      final scoresResult = await _downloadWednesdayScores();
+      scoresDownloaded = scoresResult['count'] as int;
+      if (scoresResult['errors'] != null) {
+        errors.addAll(scoresResult['errors'] as List<String>);
+      }
+
+      debugPrint('✓ Wednesday league download complete: $playersDownloaded players, $scoresDownloaded scores');
+
+      return {
+        'success': true,
+        'players': playersDownloaded,
+        'scores': scoresDownloaded,
+        'errors': errors,
+      };
+    } catch (e) {
+      debugPrint('✗ Error downloading Wednesday league data: $e');
+      errors.add('Critical error: $e');
+      return {
+        'success': false,
+        'players': playersDownloaded,
+        'scores': scoresDownloaded,
+        'errors': errors,
+      };
+    }
+  }
+
+  /// Download Monday players from M_player_profile collection
+  Future<Map<String, dynamic>> _downloadMondayPlayers() async {
+    int count = 0;
+    List<String> errors = [];
+
+    try {
+      debugPrint('Downloading Monday players from M_player_profile...');
+      QuerySnapshot snapshot = await _firestore.collection('M_player_profile').get();
+
+      for (var doc in snapshot.docs) {
+        try {
+          Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+
+          // Map Firebase fields to local database fields
+          Map<String, dynamic> playerData = {
+            'player_number': data['player_number'],
+            'first': data['first'] ?? '',
+            'last': data['last'] ?? '',
+            'skat_number': data['skat_number'],
+            'cell': data['cell'],
+            'email': data['email'],
+            'league': 'monday',
+          };
+
+          // Remove null values
+          playerData.removeWhere((key, value) => value == null);
+
+          // Insert into local database
+          await _dbHelper.insertPlayer(playerData);
+          count++;
+        } catch (e) {
+          errors.add('Error importing player ${doc.id}: $e');
+        }
+      }
+
+      debugPrint('Downloaded $count Monday players');
+      return {'count': count, 'errors': errors};
+    } catch (e) {
+      errors.add('Error downloading Monday players: $e');
+      return {'count': count, 'errors': errors};
+    }
+  }
+
+  /// Download Wednesday players from W_player_profile collection
+  Future<Map<String, dynamic>> _downloadWednesdayPlayers() async {
+    int count = 0;
+    List<String> errors = [];
+
+    try {
+      debugPrint('Downloading Wednesday players from W_player_profile...');
+      QuerySnapshot snapshot = await _firestore.collection('W_player_profile').get();
+
+      for (var doc in snapshot.docs) {
+        try {
+          Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+
+          // Map Firebase fields to local database fields
+          Map<String, dynamic> playerData = {
+            'player_number': data['player_number'],
+            'first': data['first'] ?? '',
+            'last': data['last'] ?? '',
+            'OHC': data['OHC'],
+            'HC': data['HC'],
+            'cell': data['cell'],
+            'email': data['email'],
+            'league': 'wednesday',
+          };
+
+          // Remove null values
+          playerData.removeWhere((key, value) => value == null);
+
+          // Insert into local database
+          await _dbHelper.insertPlayer(playerData);
+          count++;
+        } catch (e) {
+          errors.add('Error importing player ${doc.id}: $e');
+        }
+      }
+
+      debugPrint('Downloaded $count Wednesday players');
+      return {'count': count, 'errors': errors};
+    } catch (e) {
+      errors.add('Error downloading Wednesday players: $e');
+      return {'count': count, 'errors': errors};
+    }
+  }
+
+  /// Download Monday scores from M_player_scores collection
+  Future<Map<String, dynamic>> _downloadMondayScores() async {
+    int count = 0;
+    List<String> errors = [];
+
+    try {
+      debugPrint('Downloading Monday scores from M_player_scores...');
+      QuerySnapshot snapshot = await _firestore.collection('M_player_scores').get();
+
+      for (var doc in snapshot.docs) {
+        try {
+          Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+
+          // Parse currency values (remove $ and convert to double)
+          double parseCurrency(dynamic value) {
+            if (value == null) return 0.0;
+            String str = value.toString().replaceAll('\$', '').trim();
+            return double.tryParse(str) ?? 0.0;
+          }
+
+          // Map Firebase fields to local database fields
+          Map<String, dynamic> scoreData = {
+            'player_id': data['player_id'],
+            'name': data['name'],
+            'date_played': data['date_played'],
+            'golf_course': data['golf_course'],
+            'skat_number': data['SKAT #'],
+            'gross_score': data['gross_score'],
+            'skats_score': data['skats_score'],
+            'close_pin_winnings': parseCurrency(data['Close Pin Winnings']),
+            'skat_winnings': parseCurrency(data['SKAT Winnings']),
+          };
+
+          // Remove null values
+          scoreData.removeWhere((key, value) => value == null);
+
+          // Insert into monday_scores table
+          final db = await _dbHelper.database;
+          await db.insert('monday_scores', scoreData);
+          count++;
+        } catch (e) {
+          errors.add('Error importing score ${doc.id}: $e');
+        }
+      }
+
+      debugPrint('Downloaded $count Monday scores');
+      return {'count': count, 'errors': errors};
+    } catch (e) {
+      errors.add('Error downloading Monday scores: $e');
+      return {'count': count, 'errors': errors};
+    }
+  }
+
+  /// Download Wednesday scores from W_player_scores collection
+  Future<Map<String, dynamic>> _downloadWednesdayScores() async {
+    int count = 0;
+    List<String> errors = [];
+
+    try {
+      debugPrint('Downloading Wednesday scores from W_player_scores...');
+      QuerySnapshot snapshot = await _firestore.collection('W_player_scores').get();
+
+      for (var doc in snapshot.docs) {
+        try {
+          Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+
+          // Map Firebase fields to local database fields
+          Map<String, dynamic> scoreData = {
+            'player_id': data['player_id'],
+            'name': data['name'],
+            'date_played': data['date_played'],
+            'golf_course': data['golf_course'] ?? 'The Hideout',
+            'handicap': data['HC'],
+            'gross_score': data['gross_score'],
+            'close_pin_winnings': data['close_pin_winnings'] ?? 0.0,
+            'single_winnings': data['single_winnings'] ?? 0.0,
+            'group_winnings': data['group_winnings'] ?? 0.0,
+            'pos': data['pos'],
+            'prize_money': data['prize_money'],
+          };
+
+          // Remove null values
+          scoreData.removeWhere((key, value) => value == null);
+
+          // Insert into wednesday_scores table
+          final db = await _dbHelper.database;
+          await db.insert('wednesday_scores', scoreData);
+          count++;
+        } catch (e) {
+          errors.add('Error importing score ${doc.id}: $e');
+        }
+      }
+
+      debugPrint('Downloaded $count Wednesday scores');
+      return {'count': count, 'errors': errors};
+    } catch (e) {
+      errors.add('Error downloading Wednesday scores: $e');
+      return {'count': count, 'errors': errors};
+    }
+  }
+
+  /// Download Monday golf courses from M_golf_course collection
+  Future<Map<String, dynamic>> _downloadMondayGolfCourses() async {
+    int count = 0;
+    List<String> errors = [];
+
+    try {
+      debugPrint('Downloading Monday golf courses from M_golf_course...');
+      QuerySnapshot snapshot = await _firestore.collection('M_golf_course').get();
+
+      for (var doc in snapshot.docs) {
+        try {
+          Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+
+          // Map Firebase fields to local database fields
+          Map<String, dynamic> courseData = {
+            'name': data['name'],
+            'phone': data['phone'],
+            'Par3s': data['Par3s'],
+            'tees': data['tees'],
+            'travel_time': data['travel_time'],
+          };
+
+          // Remove null values
+          courseData.removeWhere((key, value) => value == null);
+
+          // Insert into golf_courses table
+          await _dbHelper.insertGolfCourse(courseData);
+          count++;
+        } catch (e) {
+          errors.add('Error importing golf course ${doc.id}: $e');
+        }
+      }
+
+      debugPrint('Downloaded $count Monday golf courses');
+      return {'count': count, 'errors': errors};
+    } catch (e) {
+      errors.add('Error downloading Monday golf courses: $e');
+      return {'count': count, 'errors': errors};
+    }
+  }
+
+  /// Check if Monday league has any local data
+  Future<bool> hasMondayData() async {
+    try {
+      final players = await _dbHelper.getPlayersByLeague(League.monday);
+      return players.isNotEmpty;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Check if Wednesday league has any local data
+  Future<bool> hasWednesdayData() async {
+    try {
+      final players = await _dbHelper.getPlayersByLeague(League.wednesday);
+      return players.isNotEmpty;
+    } catch (e) {
+      return false;
+    }
+  }
+}

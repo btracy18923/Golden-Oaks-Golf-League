@@ -13,6 +13,7 @@ import '../../services/UI/parent_screen_service.dart';
 import '../../services/UI/custom_keypad_service.dart';
 import '../../services/UI/button_bar_UI_service.dart';
 import '../../services/device_detection_service.dart';
+import '../../services/firebase_download_service.dart';
 import '../../widgets/responsive_wrapper.dart';
 
 class MondayParentScreen extends StatefulWidget {
@@ -47,6 +48,7 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
   void initState() {
     super.initState();
     _setOrientation();
+    _checkAndDownloadMondayData();
     _loadGolfCourses();
     _keypadController = CustomKeypadService.createController();
     _loadPersistedAmounts();
@@ -75,6 +77,58 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
       _closestPinController.text = closestPin.toStringAsFixed(2);
       _mulligansController.text = mulligans.toStringAsFixed(2);
     });
+  }
+
+  /// Check if Monday league data exists locally, if not download from Firebase
+  Future<void> _checkAndDownloadMondayData() async {
+    try {
+      final downloadService = FirebaseDownloadService();
+
+      // Check if Monday data exists
+      final hasData = await downloadService.hasMondayData();
+
+      if (!hasData) {
+        // Show loading indicator
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Downloading Monday league data from Firebase...'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+
+        // Download Monday league data from Firebase
+        final result = await downloadService.downloadMondayLeagueData();
+
+        if (mounted) {
+          if (result['success'] == true) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Downloaded ${result['players']} players, ${result['scores']} scores, and ${result['courses']} golf courses',
+                ),
+                duration: const Duration(seconds: 3),
+                backgroundColor: Colors.green,
+              ),
+            );
+
+            // Reload golf courses after download
+            _loadGolfCourses();
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Error downloading Monday league data from Firebase'),
+                duration: Duration(seconds: 3),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Error checking/downloading Monday data: $e');
+    }
   }
 
   void _setOrientation() {

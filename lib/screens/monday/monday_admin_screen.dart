@@ -799,7 +799,7 @@ class _MondayAdminScreenState extends State<MondayAdminScreen> {
               TextSpan(text: 'Cancel', style: TextStyle(fontWeight: FontWeight.bold)),
               TextSpan(text: ' if you are not sure.\n'),
               TextSpan(text: 'This cannot be undone.\n\n'),
-              TextSpan(text: 'This will affect all players in BOTH Monday and Wednesday leagues.'),
+              TextSpan(text: 'This will affect Monday League players only.'),
             ],
           ),
         ),
@@ -820,9 +820,8 @@ class _MondayAdminScreenState extends State<MondayAdminScreen> {
     if (confirmed != true) return;
 
     try {
-      // Update all players' Skat # to 35 for both leagues
+      // Update only Monday league players' Skat # to 35
       final mondayPlayers = await _dbHelper.getPlayersByLeague(League.monday);
-      final wednesdayPlayers = await _dbHelper.getPlayersByLeague(League.wednesday);
 
       int count = 0;
       for (var player in mondayPlayers) {
@@ -838,26 +837,26 @@ class _MondayAdminScreenState extends State<MondayAdminScreen> {
         count++;
       }
 
-      for (var player in wednesdayPlayers) {
-        await _dbHelper.updatePlayer(player['player_number'], {
-          'player_number': player['player_number'],
-          'first': player['first'],
-          'last': player['last'],
-          'skat_number': 35,
-          'league': player['league'],
-          'cell': player['cell'],
-          'email': player['email'],
-        });
-        count++;
-      }
+      // Upload updated player data to Firebase
+      final firebaseSuccess = await _firebaseUploadService.uploadPlayerTableWithQueue(League.monday);
 
-      scaffoldMessenger.showSnackBar(
-        SnackBar(
-          content: Text('All Skat # values replaced to 35 for $count players'),
-          backgroundColor: Colors.green,
-          duration: const Duration(seconds: 3),
-        ),
-      );
+      if (firebaseSuccess) {
+        scaffoldMessenger.showSnackBar(
+          SnackBar(
+            content: Text('All Skat # values replaced to 35 for $count Monday players (local & Firebase)'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      } else {
+        scaffoldMessenger.showSnackBar(
+          SnackBar(
+            content: Text('All Skat # values replaced to 35 for $count Monday players (Firebase will sync when WiFi available)'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
     } catch (e) {
       scaffoldMessenger.showSnackBar(
         SnackBar(

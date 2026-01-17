@@ -823,18 +823,36 @@ class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
         }
       }
 
+      // Upload updated player data to Firebase
+      final firebaseSuccess = await _firebaseUploadService.uploadPlayerTableWithQueue(League.wednesday);
+
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Copy Complete!\n'
-              'Updated: $updatedCount players\n'
-              '${skippedCount > 0 ? 'Skipped: $skippedCount players (null OHC or player_number)' : ''}'
+        if (firebaseSuccess) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Copy Complete!\n'
+                'Updated: $updatedCount players (local & Firebase)\n'
+                '${skippedCount > 0 ? 'Skipped: $skippedCount players (null OHC or player_number)' : ''}'
+              ),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 4),
             ),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 4),
-          ),
-        );
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Copy Complete!\n'
+                'Updated: $updatedCount players locally\n'
+                'Firebase will sync when WiFi is available\n'
+                '${skippedCount > 0 ? 'Skipped: $skippedCount players (null OHC or player_number)' : ''}'
+              ),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {

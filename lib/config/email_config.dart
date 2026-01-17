@@ -2,6 +2,7 @@
 class EmailConfig {
   /// ProShop email address
   static const String proShopEmail = 'btracy18923@gmail.com';
+  //// "grohol@aol.com" - also change phone # '9083775851' in line 1453
 
   /// Administrator email addresses
   static const List<String> adminEmails = [
@@ -13,8 +14,8 @@ class EmailConfig {
   /// Default fallback email (used when player has no email)
   static const String fallbackEmail = 'btracy18923@gmail.com';
 
-  /// Sender email (must match SendGrid verified sender)
-  static const String senderEmail = 'noreply@sandboxb6fd959adeab4f16a46fed32bd290dc6.mailgun.org';
+  /// Sender email (custom domain)
+  static const String senderEmail = 'noreply@goldenoaks.golf';
 
   /// Sender name
   static const String senderName = 'Golden Oaks Golf League';

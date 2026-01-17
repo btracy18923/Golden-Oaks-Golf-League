@@ -238,9 +238,6 @@ class DatabaseHelper {
 
     // Insert default settings
     await _insertDefaultSettings(db);
-    
-    // Insert sample data for testing
-    await _insertSampleData(db);
   }
 
   Future<void> _upgradeDatabase(Database db, int oldVersion, int newVersion) async {
@@ -757,6 +754,36 @@ class DatabaseHelper {
 
   Future<int> insertPlayer(Map<String, dynamic> player) async {
     final db = await database;
+
+    // Check if player already exists with this player_number
+    final playerNumber = player['player_number'];
+    if (playerNumber != null) {
+      List<Map<String, dynamic>> existing = await db.query(
+        'players',
+        where: 'player_number = ?',
+        whereArgs: [playerNumber],
+        limit: 1,
+      );
+
+      if (existing.isNotEmpty) {
+        final existingLeague = existing.first['league'] as String?;
+        final newLeague = player['league'] as String?;
+
+        // If player exists in a different league, update to 'both'
+        if (existingLeague != null && newLeague != null && existingLeague != newLeague && existingLeague != 'both') {
+          player['league'] = 'both';
+        }
+
+        // Update existing player
+        return await db.update(
+          'players',
+          player,
+          where: 'player_number = ?',
+          whereArgs: [playerNumber],
+        );
+      }
+    }
+
     return await db.insert('players', player);
   }
 
@@ -900,6 +927,38 @@ class DatabaseHelper {
       {'HC': handicap},
       where: 'player_number = ?',
       whereArgs: [playerId],
+    );
+  }
+
+  /// Updates the handicap field in the wednesday_scores table for a specific player and date
+  Future<void> updateWednesdayScoreHandicap(
+    int playerId,
+    String datePlayed,
+    double handicap,
+  ) async {
+    final db = await database;
+
+    await db.update(
+      'wednesday_scores',
+      {'handicap': handicap},
+      where: 'player_id = ? AND date_played = ?',
+      whereArgs: [playerId, datePlayed],
+    );
+  }
+
+  /// Updates the handicap field in the wednesday_scores table for a specific record ID
+  /// This ensures only the exact row is updated, not all rows matching player/date
+  Future<void> updateWednesdayScoreHandicapById(
+    int recordId,
+    double handicap,
+  ) async {
+    final db = await database;
+
+    await db.update(
+      'wednesday_scores',
+      {'handicap': handicap},
+      where: 'id = ?',
+      whereArgs: [recordId],
     );
   }
 

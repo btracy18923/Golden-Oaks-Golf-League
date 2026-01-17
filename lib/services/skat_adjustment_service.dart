@@ -89,25 +89,25 @@ class SkatAdjustmentService {
   Future<void> _updatePlayerSkatNumber(String playerName, int newSkatNumber) async {
     try {
       final db = await _databaseHelper.database;
-      
-      // Find player by name in Monday league
+
+      // Find player by name in Monday league (also check 'both' for players in both leagues)
       final players = await db.query(
         'players',
-        where: 'last = ? AND league = ?',
-        whereArgs: [playerName, 'monday'],
+        where: 'last = ? AND (league = ? OR league = ?)',
+        whereArgs: [playerName, 'monday', 'both'],
       );
-      
+
       if (players.isNotEmpty) {
-        int playerId = players.first['id'] as int;
-        
+        int playerNumber = players.first['player_number'] as int;
+
         // Update the Skat # in the players table
         await db.update(
           'players',
           {'skat_number': newSkatNumber},
-          where: 'id = ?',
-          whereArgs: [playerId],
+          where: 'player_number = ?',
+          whereArgs: [playerNumber],
         );
-        
+
       } else {
       }
     } catch (e) {

@@ -227,7 +227,7 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
         }
       }
 
-      // Third pass: add group winnings from groups
+      // Third pass: add group winnings from groups (include wildcards - they can win in multiple groups)
       debugPrint('=== THIRD PASS: Adding group winnings ===');
       for (var group in widget.groups) {
         for (var player in group) {
@@ -237,13 +237,16 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
               player['manual_group'] != null) {
             String playerName = player['last'].toString().trim();
             String prizeMoney = player['prize_money'].toString();
+            bool isWildcard = player['is_wild_card'] == true;
 
             if (consolidatedPlayerData.containsKey(playerName) && prizeMoney.contains('\$')) {
               try {
                 double amount = double.parse(prizeMoney.replaceAll('\$', '').replaceAll(',', ''));
                 if (amount > 0) {
-                  consolidatedPlayerData[playerName]!['group_winnings'] = amount;
-                  debugPrint('  $playerName: Group winnings = \$$amount');
+                  // Accumulate group winnings (player can win in primary group AND as wildcard)
+                  double currentWinnings = (consolidatedPlayerData[playerName]!['group_winnings'] as double?) ?? 0.0;
+                  consolidatedPlayerData[playerName]!['group_winnings'] = currentWinnings + amount;
+                  debugPrint('  $playerName: Group winnings ${isWildcard ? "(wildcard)" : ""} = \$$amount (total: \$${currentWinnings + amount})');
                 }
               } catch (e) {
                 debugPrint('Error parsing group winnings for $playerName: $e');
@@ -273,6 +276,9 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
 
       // Track all deleted scores for Firebase sync
       List<Map<String, dynamic>> allDeletedScores = [];
+
+      // Track inserted record IDs for HC update (keyed by player name)
+      Map<String, int> insertedRecordIds = {};
 
       for (var playerName in consolidatedPlayerData.keys) {
         final playerData = consolidatedPlayerData[playerName]!;
@@ -309,6 +315,9 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
 
           debugPrint('  - Record ID: $recordId');
 
+          // Store the record ID for later HC update
+          insertedRecordIds[playerName] = recordId;
+
           // Collect deleted scores for Firebase sync
           if (deletedScores.isNotEmpty) {
             allDeletedScores.addAll(deletedScores);
@@ -323,8 +332,23 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
 
       // Calculate and update handicaps for selected players only
       debugPrint('=== STARTING HANDICAP CALCULATION ===');
-      await _updateSelectedPlayerHandicaps(allSelectedPlayers, allDbPlayers);
+      Map<String, double> newHandicaps = await _updateSelectedPlayerHandicaps(allSelectedPlayers, allDbPlayers);
       debugPrint('=== HANDICAP CALCULATION COMPLETE ===');
+
+      // Update the score records with the new HC values (using record ID for precision)
+      debugPrint('=== UPDATING SCORE RECORDS WITH NEW HC VALUES ===');
+      for (var playerName in newHandicaps.keys) {
+        final newHC = newHandicaps[playerName]!;
+        final recordId = insertedRecordIds[playerName];
+        if (recordId != null) {
+          // Update the handicap field using the specific record ID (not date)
+          await _databaseHelper.updateWednesdayScoreHandicapById(recordId, newHC);
+          debugPrint('  Updated HC for $playerName (record ID: $recordId) to ${newHC.toStringAsFixed(1)}');
+        } else {
+          debugPrint('  WARNING: No record ID found for $playerName - skipping HC update');
+        }
+      }
+      debugPrint('=== SCORE RECORDS HC UPDATE COMPLETE ===');
 
       // Upload NEW scores to Firebase FIRST
       await _uploadScoresToFirebase();
@@ -371,10 +395,13 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
   /// - 4 scores: Add 2 (OHC + 35) as the 5th-6th scores, drop 2 highest, HC = (Avg of 4 remaining) - 35
   /// - 5 scores: Add 1 (OHC + 35) as the 6th score, drop 2 highest, HC = (Avg of 4 remaining) - 35
   /// - 6+ scores: Drop 2 highest, HC = (Avg of 4 remaining) - 35
-  Future<void> _updateSelectedPlayerHandicaps(
+  /// Returns a map of player names to their new handicap values
+  Future<Map<String, double>> _updateSelectedPlayerHandicaps(
     List<Map<String, dynamic>> selectedPlayers,
     List<Map<String, dynamic>> allDbPlayers,
   ) async {
+    Map<String, double> newHandicaps = {};
+
     try {
       final handicapService = HandicapCalculationService();
 
@@ -428,6 +455,9 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
               newHandicap,
               League.wednesday,
             );
+
+            // Store the new handicap for updating score records
+            newHandicaps[playerName] = newHandicap;
             updatedCount++;
           }
         } else {
@@ -439,17 +469,28 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
       // Log error but don't stop the save process
       debugPrint('Error updating handicaps: $e');
     }
+
+    return newHandicaps;
   }
 
-  /// Upload player scores to Firebase after saving to database
+  /// Upload player scores and player profiles to Firebase after saving to database
+  /// This ensures updated HC values are synced to Firebase
   Future<void> _uploadScoresToFirebase() async {
     try {
-      final success = await _firebaseUploadService.uploadPlayerScoresTableWithQueue(League.wednesday);
-      if (!success) {
-        // Log failure but don't show to user
+      // Upload scores
+      final scoresSuccess = await _firebaseUploadService.uploadPlayerScoresTableWithQueue(League.wednesday);
+      if (!scoresSuccess) {
+        debugPrint('Failed to upload scores to Firebase');
+      }
+
+      // Upload player profiles to sync updated HC values
+      final profilesSuccess = await _firebaseUploadService.uploadPlayerTableWithQueue(League.wednesday);
+      if (!profilesSuccess) {
+        debugPrint('Failed to upload player profiles to Firebase');
       }
     } catch (e) {
       // Log error but don't show to user
+      debugPrint('Error uploading to Firebase: $e');
     }
   }
 
@@ -800,20 +841,21 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
       }
     }
 
-    // Count group winners (players with manual_group and positive prize_money)
-    int groupWinnersCount = 0;
+    // Count unique group winners (players can appear in multiple groups as wildcards, count each player once)
+    Set<String> groupWinnerNames = {};
     for (var group in widget.groups) {
       for (var player in group) {
         if (player != null &&
             player['prize_money'] != null &&
-            player['manual_group'] != null) {
+            player['manual_group'] != null &&
+            player['last'] != null) {
           // Check if prize money is positive
           String prizeMoney = player['prize_money'].toString();
           if (prizeMoney.contains('\$')) {
             try {
               double amount = double.parse(prizeMoney.replaceAll('\$', '').replaceAll(',', ''));
               if (amount > 0) {
-                groupWinnersCount++;
+                groupWinnerNames.add(player['last'].toString());
               }
             } catch (e) {
               // Skip if parsing fails
@@ -822,6 +864,7 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
         }
       }
     }
+    int groupWinnersCount = groupWinnerNames.length;
 
     // Only show if there are winners
     if (individualWinnersCount == 0 && groupWinnersCount == 0) {
@@ -1042,7 +1085,7 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
       }
     }
 
-    // Add group winners
+    // Add group winners (include wildcards - they can win in multiple groups)
     for (var group in widget.groups) {
       for (var player in group) {
         if (player != null &&
@@ -1056,9 +1099,13 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
               if (amount > 0) {
                 String playerName = player['last'].toString();
                 if (allWinners.containsKey(playerName)) {
-                  // Player already has individual winnings, add group info
-                  allWinners[playerName]!['group_number'] = player['manual_group'];
-                  allWinners[playerName]!['group_winnings'] = amount;
+                  // Player already exists, accumulate group winnings (can win in primary + wildcard group)
+                  double currentGroupWinnings = (allWinners[playerName]!['group_winnings'] as double?) ?? 0.0;
+                  allWinners[playerName]!['group_winnings'] = currentGroupWinnings + amount;
+                  // Update group number only if not already set (primary group takes precedence)
+                  if (allWinners[playerName]!['group_number'] == null) {
+                    allWinners[playerName]!['group_number'] = player['manual_group'];
+                  }
                 } else {
                   // New player with only group winnings
                   allWinners[playerName] = {

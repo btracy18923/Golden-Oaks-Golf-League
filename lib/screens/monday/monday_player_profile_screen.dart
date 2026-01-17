@@ -353,13 +353,16 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
         // Clear focus first
         FocusScope.of(context).unfocus();
 
+        // Get player's last name for Firebase deletion before clearing
+        final lastName = _selectedPlayer!['last']?.toString() ?? '';
+
         await _databaseHelper.deletePlayer(_selectedPlayer!['player_number']);
         _clearForm();
         _refreshPlayerList();
-        
+
         // Ensure absolutely no field has focus after deletion
         FocusScope.of(context).unfocus();
-        
+
         // Also clear focus from all individual focus nodes
         _idFocus.unfocus();
         _firstFocus.unfocus();
@@ -367,8 +370,18 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
         _skatFocus.unfocus();
         _cellFocus.unfocus();
         _emailFocus.unfocus();
-        
-        _showSuccessDialog('Player deleted successfully!');
+
+        // Delete from Firebase as well
+        if (lastName.isNotEmpty) {
+          final firebaseSuccess = await _firebaseUploadService.deletePlayerFromFirebaseWithQueue(_selectedLeague, lastName);
+          if (firebaseSuccess) {
+            _showSuccessDialog('Player deleted from local database and Firebase!');
+          } else {
+            _showSuccessDialog('Player deleted locally! Firebase deletion will sync when WiFi is available.');
+          }
+        } else {
+          _showSuccessDialog('Player deleted successfully!');
+        }
       } catch (e) {
         _showErrorDialog('Error deleting player: $e');
       }

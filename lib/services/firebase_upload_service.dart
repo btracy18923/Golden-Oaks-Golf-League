@@ -181,7 +181,7 @@ class FirebaseUploadService {
           'id': course['id'],
           'name': course['name'],
           'phone': course['phone'],
-          'Par3s': course['holes'], // Rename "holes" to "Par3s"
+          'Par3s': course['Par3s'],
           'tees': course['tees'],
           'travel_time': course['travel_time'],
           'upload_timestamp': FieldValue.serverTimestamp(),
@@ -205,19 +205,27 @@ class FirebaseUploadService {
 
   /// Uploads player scores table data to Firebase
   Future<bool> uploadPlayerScoresTable(League league) async {
+    debugPrint('=== STARTING UPLOAD PLAYER SCORES TABLE ===');
+    debugPrint('League: $league');
+    debugPrint('Uploads enabled: $uploadsEnabled');
+
     if (!uploadsEnabled) {
       debugPrint('Firebase uploads are disabled');
       return false;
     }
 
     try {
+      debugPrint('Getting Firestore instance...');
       final db = await firestore;
       final databaseHelper = DatabaseHelper();
 
       // Get all player scores for the specified league
+      debugPrint('Fetching scores from local database...');
       final scoresFromDb = await databaseHelper.getScoresByLeague(league);
+      debugPrint('Found ${scoresFromDb.length} scores in local database');
 
       if (scoresFromDb.isEmpty) {
+        debugPrint('No scores to upload');
         return true; // Not an error if no scores exist
       }
 
@@ -262,9 +270,20 @@ class FirebaseUploadService {
         String docId;
         String? wednesdayFormattedDate; // For Wednesday league date formatting
         if (league == League.monday) {
-          // For Monday (M_player_scores): use MM-DD-YY_PlayerName_ID format
+          // For Monday (M_player_scores): use LastName_MM-DD-YY format
           final dateStr = score['date_played'] ?? '';
-          (score['name'] ?? '').toString().replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
+
+          // Extract last name from full name (format: "First Last")
+          String lastName = 'Unknown';
+          if (score['name'] != null && score['name'].toString().isNotEmpty) {
+            final fullName = score['name'].toString().trim();
+            final nameParts = fullName.split(' ');
+            if (nameParts.length > 1) {
+              lastName = nameParts.last; // Get the last word as last name
+            } else {
+              lastName = fullName; // Use the whole name if no space found
+            }
+          }
 
           // Convert date from YYYY-MM-DD to MM-DD-YY format
           String formattedDate = '';
@@ -281,30 +300,40 @@ class FirebaseUploadService {
           } else {
             formattedDate = 'unknown-date';
           }
-          
-          // Use player_id + date for consistent document IDs across devices (prevents duplicates)
-          docId = '${formattedDate}_${score['player_id']}';
+
+          // Use record ID to make each document unique and allow duplicate dates
+          final recordId = score['id'] ?? 'unknown';
+          docId = '${lastName}_${formattedDate}_$recordId';
+          debugPrint('Creating Monday score document: $docId');
         } else {
-          // For Wednesday: use LastName_MM-DD-YY_RecordID format to allow duplicates
+          // For Wednesday: use LastName_MM-DD-YY_RecordID format
           // Note: Cannot use slashes (/) in Firebase document IDs as they're interpreted as path separators
           String formattedDate = 'unknown-date';
           if (score['date_played'] != null && score['date_played'].toString().isNotEmpty) {
             final dateStr = score['date_played'].toString();
 
-            // The date is already stored in MM/DD/YY format in the database
-            // Convert to MM-DD-YY format (replace slashes with dashes, keep zero padding)
+            // Handle both YYYY-MM-DD and MM/DD/YY formats
             try {
-              final parts = dateStr.split('/');
-              if (parts.length == 3) {
-                final month = parts[0].padLeft(2, '0'); // Ensure 2 digits
-                final day = parts[1].padLeft(2, '0'); // Ensure 2 digits
-                final year = parts[2].padLeft(2, '0'); // Ensure 2 digits
-                formattedDate = '$month-$day-$year'; // Use dashes instead of slashes
-              } else {
-                formattedDate = dateStr.replaceAll('/', '-'); // Replace slashes with dashes
+              if (dateStr.contains('-')) {
+                // YYYY-MM-DD format (e.g., "2026-01-08")
+                final date = DateTime.parse(dateStr);
+                final month = date.month.toString().padLeft(2, '0');
+                final day = date.day.toString().padLeft(2, '0');
+                final year = (date.year % 100).toString().padLeft(2, '0');
+                formattedDate = '$month-$day-$year';
+              } else if (dateStr.contains('/')) {
+                // MM/DD/YY format (e.g., "01/08/26")
+                final parts = dateStr.split('/');
+                if (parts.length == 3) {
+                  final month = parts[0].padLeft(2, '0');
+                  final day = parts[1].padLeft(2, '0');
+                  final year = parts[2].padLeft(2, '0');
+                  formattedDate = '$month-$day-$year';
+                }
               }
             } catch (e) {
-              formattedDate = dateStr.replaceAll('/', '-'); // Replace slashes with dashes
+              debugPrint('Error parsing Wednesday date: $dateStr - $e');
+              formattedDate = 'unknown-date';
             }
           }
 
@@ -318,8 +347,9 @@ class FirebaseUploadService {
           // Use record ID to make each document unique and allow duplicate dates
           final recordId = score['id'] ?? 'unknown';
           docId = '${lastName}_${formattedDate}_$recordId';
+          debugPrint('Creating Wednesday score document: $docId');
         }
-        
+
         final docRef = collection.doc(docId);
         
         // Prepare data for Firebase with different field sets for each league
@@ -348,25 +378,15 @@ class FirebaseUploadService {
             'league': score['league'],
             'upload_timestamp': FieldValue.serverTimestamp(),
           };
-          
 
-          // Check if document already exists to prevent duplicates for Monday league
-          // Only check when WiFi is available to avoid blocking offline uploads
-          if (await _isWiFiConnected()) {
-            try {
-              final existingDoc = await docRef.get();
-              if (existingDoc.exists) {
-// Extract date from document ID
-                continue; // Skip this score, it already exists in Firebase
-              }
-            } catch (e) {
-              // Continue with upload if check fails
-            }
-          }
+          // Note: No duplicate check needed - record ID makes each document unique and allows duplicate dates
         } else {
           // For Wednesday: include all fields as before
           firebaseData = Map<String, dynamic>.from(score);
           firebaseData['upload_timestamp'] = FieldValue.serverTimestamp();
+
+          // Wednesday league always plays at "The Hideout"
+          firebaseData['golf_course'] = 'The Hideout';
 
           // Note: No duplicate check for Wednesday - using merge mode to update existing documents
         }
@@ -378,13 +398,15 @@ class FirebaseUploadService {
       }
 
       // Execute the batch operation
+      debugPrint('Committing batch upload to Firebase...');
       await batch.commit();
 
-      debugPrint('Successfully uploaded ${scores.length} scores to Firebase');
+      debugPrint('✓ SUCCESS! Uploaded ${scores.length} scores to Firebase collection: $collectionName');
       return true;
 
     } catch (e) {
-      debugPrint('Error uploading scores to Firebase: $e');
+      debugPrint('✗ ERROR uploading scores to Firebase: $e');
+      debugPrint('Error details: ${e.toString()}');
       return false;
     }
   }
@@ -420,10 +442,22 @@ class FirebaseUploadService {
         String docId;
 
         if (league == League.monday) {
-          // For Monday: use MM-DD-YY_PlayerID format
+          // For Monday: use LastName_MM-DD-YY format (matching upload format)
           final dateStr = score['date_played'] ?? '';
-          String formattedDate = '';
 
+          // Extract last name from full name (format: "First Last")
+          String lastName = 'Unknown';
+          if (score['name'] != null && score['name'].toString().isNotEmpty) {
+            final fullName = score['name'].toString().trim();
+            final nameParts = fullName.split(' ');
+            if (nameParts.length > 1) {
+              lastName = nameParts.last; // Get the last word as last name
+            } else {
+              lastName = fullName; // Use the whole name if no space found
+            }
+          }
+
+          String formattedDate = '';
           if (dateStr.isNotEmpty) {
             try {
               final date = DateTime.parse(dateStr);
@@ -438,25 +472,37 @@ class FirebaseUploadService {
             formattedDate = 'unknown-date';
           }
 
-          docId = '${formattedDate}_${score['player_id']}';
+          // Use record ID to match upload format and ensure correct deletion
+          final recordId = score['id'] ?? 'unknown';
+          docId = '${lastName}_${formattedDate}_$recordId';
         } else {
           // For Wednesday: use LastName_MM-DD-YY_RecordID format (matching upload format)
           String formattedDate = 'unknown-date';
           if (score['date_played'] != null && score['date_played'].toString().isNotEmpty) {
             final dateStr = score['date_played'].toString();
 
+            // Handle both YYYY-MM-DD and MM/DD/YY formats
             try {
-              final parts = dateStr.split('/');
-              if (parts.length == 3) {
-                final month = parts[0].padLeft(2, '0');
-                final day = parts[1].padLeft(2, '0');
-                final year = parts[2].padLeft(2, '0');
+              if (dateStr.contains('-')) {
+                // YYYY-MM-DD format (e.g., "2026-01-08")
+                final date = DateTime.parse(dateStr);
+                final month = date.month.toString().padLeft(2, '0');
+                final day = date.day.toString().padLeft(2, '0');
+                final year = (date.year % 100).toString().padLeft(2, '0');
                 formattedDate = '$month-$day-$year';
-              } else {
-                formattedDate = dateStr.replaceAll('/', '-');
+              } else if (dateStr.contains('/')) {
+                // MM/DD/YY format (e.g., "01/08/26")
+                final parts = dateStr.split('/');
+                if (parts.length == 3) {
+                  final month = parts[0].padLeft(2, '0');
+                  final day = parts[1].padLeft(2, '0');
+                  final year = parts[2].padLeft(2, '0');
+                  formattedDate = '$month-$day-$year';
+                }
               }
             } catch (e) {
-              formattedDate = dateStr.replaceAll('/', '-');
+              debugPrint('Error parsing Wednesday date for delete: $dateStr - $e');
+              formattedDate = 'unknown-date';
             }
           }
 
@@ -596,14 +642,22 @@ class FirebaseUploadService {
 
   /// Upload with connectivity checking and queuing
   Future<bool> uploadPlayerScoresTableWithQueue(League league) async {
+    debugPrint('=== UPLOAD PLAYER SCORES WITH QUEUE ===');
+    debugPrint('League: $league');
+
     if (!uploadsEnabled) {
-      debugPrint('Firebase uploads are disabled');
+      debugPrint('✗ Firebase uploads are DISABLED - skipping upload');
       return false;
     }
 
-    if (await _isWiFiConnected()) {
+    final isConnected = await _isWiFiConnected();
+    debugPrint('WiFi connected: $isConnected');
+
+    if (isConnected) {
+      debugPrint('WiFi available - uploading immediately');
       return await uploadPlayerScoresTable(league);
     } else {
+      debugPrint('No WiFi - queuing upload for later');
       return await _queueUpload(UploadType.scores, league);
     }
   }
@@ -646,6 +700,48 @@ class FirebaseUploadService {
     } else {
       // If no WiFi, we can't delete from Firebase now
       // Return false to indicate offline mode
+      return false;
+    }
+  }
+
+  /// Delete a golf course from Firebase
+  Future<bool> deleteGolfCourseFromFirebase(String courseName) async {
+    if (!uploadsEnabled) {
+      debugPrint('Firebase uploads are disabled');
+      return false;
+    }
+
+    try {
+      final db = await firestore;
+
+      // Only Monday has golf courses in Firebase
+      final collection = db.collection('M_golf_course');
+
+      // Clean the course name for document ID (same logic as upload)
+      final cleanedCourseName = courseName.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
+
+      // Delete the document
+      await collection.doc(cleanedCourseName).delete();
+
+      debugPrint('Successfully deleted golf course "$courseName" from Firebase');
+      return true;
+    } catch (e) {
+      debugPrint('Error deleting golf course from Firebase: $e');
+      return false;
+    }
+  }
+
+  /// Delete a golf course from Firebase with connectivity checking
+  Future<bool> deleteGolfCourseFromFirebaseWithQueue(String courseName) async {
+    if (!uploadsEnabled) {
+      debugPrint('Firebase uploads are disabled');
+      return false;
+    }
+
+    if (await _isWiFiConnected()) {
+      return await deleteGolfCourseFromFirebase(courseName);
+    } else {
+      // If no WiFi, we can't delete from Firebase now
       return false;
     }
   }

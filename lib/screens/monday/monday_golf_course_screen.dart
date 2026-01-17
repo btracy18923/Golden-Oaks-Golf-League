@@ -290,24 +290,50 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
     return true;
   }
 
+  bool _checkForDuplicateCourse() {
+    final courseName = _nameController.text.trim().toLowerCase();
+
+    // Check for duplicate course name
+    for (var course in _courses) {
+      final existingName = (course['name'] ?? '').toString().toLowerCase();
+      if (existingName == courseName) {
+        _showErrorDialog('Course "$courseName" already exists!');
+        return true;
+      }
+    }
+
+    return false;
+  }
+
   Future<void> _addCourse() async {
     // Remove focus from form fields immediately
     FocusManager.instance.primaryFocus?.unfocus();
 
     if (!_validateForm()) return;
 
+    // Check for duplicate course name
+    if (_checkForDuplicateCourse()) return;
+
     try {
       await _databaseHelper.insertGolfCourse({
         'name': _nameController.text.trim(),
         'phone': _phoneController.text.trim(),
-        'Par3s': 4,
+        'Par3s': int.tryParse(_holesController.text.trim()) ?? 4,
         'tees': _teesController.text.trim(),
         'travel_time': _travelTimeController.text.trim(),
       });
-      
+
       _clearForm();
       _refreshCourseList();
-      _showSuccessDialog('Course added successfully!');
+
+      // Immediately try to upload to Firebase
+      final league = widget.league ?? League.monday;
+      final uploadSuccess = await _firebaseUploadService.uploadGolfCourseTableWithQueue(league);
+      if (uploadSuccess) {
+        _showSuccessDialog('Course added and uploaded to Firebase!');
+      } else {
+        _showSuccessDialog('Course added locally! Firebase upload queued for when WiFi is available.');
+      }
     } catch (e) {
       _showErrorDialog('Error adding course: $e');
     }
@@ -346,10 +372,24 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
     
     if (confirmed == true) {
       try {
+        // Get course name before deleting
+        final courseNameToDelete = _selectedCourse!['name']?.toString() ?? '';
+
         await _databaseHelper.deleteGolfCourse(_selectedCourse!['id']);
         _clearForm();
         _refreshCourseList();
-        _showSuccessDialog('Course deleted successfully!');
+
+        // Delete from Firebase as well
+        if (courseNameToDelete.isNotEmpty) {
+          final firebaseSuccess = await _firebaseUploadService.deleteGolfCourseFromFirebaseWithQueue(courseNameToDelete);
+          if (firebaseSuccess) {
+            _showSuccessDialog('Course deleted from local database and Firebase!');
+          } else {
+            _showSuccessDialog('Course deleted locally! Firebase deletion will sync when WiFi is available.');
+          }
+        } else {
+          _showSuccessDialog('Course deleted successfully!');
+        }
       } catch (e) {
         _showErrorDialog('Error deleting course: $e');
       }
@@ -429,7 +469,11 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
                 ),
               ),
               onFieldSubmitted: (_) {
-                _saveCurrentField(controller);
+                // Only save field if editing an existing course
+                // When adding a new course (_selectedCourse == null), just move to next field
+                if (_selectedCourse != null) {
+                  _saveCurrentField(controller);
+                }
                 if (nextFocus != null) {
                   FocusScope.of(context).requestFocus(nextFocus);
                 } else {

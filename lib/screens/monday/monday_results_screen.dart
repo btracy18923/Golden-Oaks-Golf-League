@@ -9,6 +9,7 @@ import '../../models/league.dart';
 import '../main_menu_screen.dart';
 import '../../services/firebase_upload_service.dart';
 import '../../widgets/responsive_wrapper.dart';
+import '../../services/skat_adjustment_service.dart';
 
 class MondayResultsScreen extends StatefulWidget {
   const MondayResultsScreen({super.key});
@@ -21,6 +22,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
   final ScreenDataRetentionService _retentionService = ScreenDataRetentionService();
   final DatabaseHelper _databaseHelper = DatabaseHelper();
   final FirebaseUploadService _firebaseUploadService = FirebaseUploadService();
+  final SkatAdjustmentService _skatAdjustmentService = SkatAdjustmentService();
   bool _isSaving = false;
 
   @override
@@ -191,22 +193,29 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
         if (playerToRecordId.containsKey(player.name)) {
           // Find player's SKAT # from database
           final dbPlayer = allDbPlayers.firstWhere(
-            (p) => p['last'] == player.name, 
+            (p) => p['last'] == player.name,
             orElse: () => <String, dynamic>{}
           );
-          
+
           if (dbPlayer.isNotEmpty && dbPlayer['skat_number'] != null) {
             int recordId = playerToRecordId[player.name]!;
             await _databaseHelper.updateScoreField(
-              recordId, 
-              'skats_score', 
+              recordId,
+              'skats_score',
               dbPlayer['skat_number'],
               League.monday
             );
           }
         }
       }
-      
+
+      // STEP A5: Apply SKAT # adjustments based on DIFF values
+      // This updates the player's SKAT # in the players table for next time
+      await _skatAdjustmentService.applySkatAdjustments(playerGroups);
+
+      // Upload player profile data to Firebase (includes updated SKAT #)
+      await _firebaseUploadService.uploadPlayerTableWithQueue(League.monday);
+
       // Upload NEW scores to Firebase FIRST
       await _uploadScoresToFirebase();
 

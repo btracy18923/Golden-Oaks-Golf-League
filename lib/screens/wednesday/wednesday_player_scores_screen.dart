@@ -669,13 +669,14 @@ class _WednesdayPlayerScoresScreenState extends State<WednesdayPlayerScoresScree
       children: [
         ButtonBarUIService.buildActionButton(
           context,
-          text: '◄---- MainMenu/',
+          text: '◄---- MainMenu',
           color: Colors.blue[300]!,
           onPressed: () => Navigator.of(context).pop(),
+          flex: 5, // 25% of screen width (5 out of 20 total flex units) - matches player_profile_screen
         ),
-        ButtonBarUIService.buildSpacer(),
-        ButtonBarUIService.buildSpacer(),
-        ButtonBarUIService.buildSpacer(),
+        const Expanded(flex: 5, child: SizedBox()), // Spacer with flex: 5
+        const Expanded(flex: 5, child: SizedBox()), // Spacer with flex: 5
+        const Expanded(flex: 5, child: SizedBox()), // Spacer with flex: 5
       ],
     );
   }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'dart:math';
 import '../popup_utils.dart';
 import '../../services/shared/league_purse_service.dart';
@@ -1318,12 +1319,12 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
       onPressed: selectedForSwap.length == 2 ? _handleSwap : null,
     ));
 
-    // Email ProShop button
+    // Email and Texts button
     buttons.add(ButtonBarUIService.buildActionButton(
       context,
-      text: 'Email ProShop',
+      text: 'Email and Texts',
       color: Colors.orange[200]!,
-      onPressed: _handleEmailProShop,
+      onPressed: _handleEmailAndTexts,
     ));
 
     return ButtonBarUIService.buildButtonBar(
@@ -1377,11 +1378,44 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
     });
   }
 
-  /// Handler for Email ProShop button - sends via backend service
-  Future<void> _handleEmailProShop() async {
-    // Dismiss any open keyboard before sending email
+  /// Handler for Email and Texts button - shows dialog with options
+  void _handleEmailAndTexts() {
+    // Dismiss any open keyboard before showing dialog
     FocusScope.of(context).unfocus();
 
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Email and Texts'),
+          content: const Text('Choose an action:'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _handleEmailProShop();
+              },
+              child: const Text('Email Proshop'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _handleTextPlayers();
+              },
+              child: const Text('Text Players'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// Handler for Email ProShop - sends via backend service
+  Future<void> _handleEmailProShop() async {
     final backendEmailService = BackendEmailService();
 
     // Build email subject
@@ -1410,6 +1444,143 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
         ),
       );
     }
+  }
+
+  /// Handler for Text Players - sends SMS with player groups to all players
+  Future<void> _handleTextPlayers() async {
+    // TEST MODE: Set to true to send only to test number, false for real player numbers
+    const bool testMode = true;
+    const String testPhoneNumber = '9082087608';
+
+    // Collect phone numbers from all players in all groups
+    final phoneNumbers = <String>[];
+
+    if (testMode) {
+      phoneNumbers.add(testPhoneNumber);
+    } else {
+      // Production mode: collect all player cell numbers
+      for (var group in groups) {
+        for (var player in group) {
+          if (player != null) {
+            final cell = player['cell']?.toString() ?? '';
+            // Clean phone number - remove non-digits
+            final cleanNumber = cell.replaceAll(RegExp(r'[^\d]'), '');
+            if (cleanNumber.length >= 10) {
+              phoneNumbers.add(cleanNumber);
+            }
+          }
+        }
+      }
+    }
+
+    if (phoneNumbers.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No phone numbers found for players'),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+      return;
+    }
+
+    // Build message body with all groups (like pro shop email)
+    final message = _buildTextPlayersMessage();
+
+    // Encode the message for URL
+    final encodedMessage = Uri.encodeComponent(message);
+
+    // Join phone numbers with commas for group text
+    final recipients = phoneNumbers.join(',');
+
+    // Try Android-friendly SMS URI format
+    final smsUri = Uri.parse('sms:$recipients?body=$encodedMessage');
+
+    try {
+      final launched = await launchUrl(
+        smsUri,
+        mode: LaunchMode.externalApplication,
+      );
+
+      if (!launched && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not open SMS app'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error opening SMS: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
+
+  /// Gets the next upcoming Wednesday date formatted as M/DD/YY
+  String _getNextWednesday() {
+    final now = DateTime.now();
+    // DateTime.weekday: 1=Monday, 2=Tuesday, 3=Wednesday, etc.
+    int daysUntilWednesday = (DateTime.wednesday - now.weekday) % 7;
+    // If today is Wednesday, use today (daysUntilWednesday would be 0)
+    if (daysUntilWednesday == 0 && now.hour >= 12) {
+      // If it's Wednesday afternoon, show next Wednesday
+      daysUntilWednesday = 7;
+    }
+    final nextWed = now.add(Duration(days: daysUntilWednesday));
+
+    final month = nextWed.month;
+    final day = nextWed.day;
+    final year = (nextWed.year % 100).toString().padLeft(2, '0');
+    return '$month/$day/$year';
+  }
+
+  /// Builds the SMS message body showing all groups (like pro shop email)
+  String _buildTextPlayersMessage() {
+    final buffer = StringBuffer();
+    final nextWednesday = _getNextWednesday();
+
+    buffer.writeln('Wed Golf $nextWednesday');
+
+    // Filter out empty groups and empty players
+    final validGroups = <List<Map<String, dynamic>>>[];
+    for (var group in groups) {
+      final validPlayers = group.where((player) {
+        if (player == null) return false;
+        final name = player['last']?.toString() ?? '';
+        return name.isNotEmpty;
+      }).cast<Map<String, dynamic>>().toList();
+
+      if (validPlayers.isNotEmpty) {
+        validGroups.add(validPlayers);
+      }
+    }
+
+    int totalPlayers = 0;
+    for (int groupIndex = 0; groupIndex < validGroups.length; groupIndex++) {
+      final group = validGroups[groupIndex];
+      buffer.writeln('Group ${groupIndex + 1}:');
+
+      for (var player in group) {
+        final firstName = player['first']?.toString() ?? '';
+        final lastName = player['last']?.toString() ?? '';
+        buffer.writeln('  $firstName $lastName');
+        totalPlayers++;
+      }
+    }
+
+    buffer.writeln('Total: $totalPlayers players');
+
+    return buffer.toString();
   }
 
   /// Builds the email body for ProShop player list

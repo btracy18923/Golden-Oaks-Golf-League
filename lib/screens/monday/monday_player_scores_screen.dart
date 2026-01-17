@@ -908,10 +908,11 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
           text: '◄---- Back',
           color: Colors.blue[300]!,
           onPressed: () => Navigator.of(context).pop(),
+          flex: 5, // 25% of screen width (5 out of 20 total flex units)
         ),
-        ButtonBarUIService.buildSpacer(),
-        ButtonBarUIService.buildSpacer(),
-        ButtonBarUIService.buildSpacer(),
+        const Expanded(flex: 5, child: SizedBox()), // Spacer with flex: 5
+        const Expanded(flex: 5, child: SizedBox()), // Spacer with flex: 5
+        const Expanded(flex: 5, child: SizedBox()), // Spacer with flex: 5
       ],
     );
   }

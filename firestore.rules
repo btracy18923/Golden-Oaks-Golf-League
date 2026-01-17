@@ -1,0 +1,53 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Allow read/write access to all collections
+    // This is necessary because the app uses custom authentication (not Firebase Auth)
+    // Security is handled by the application layer through password validation
+    match /{document=**} {
+      allow read, write: if true;
+    }
+
+    // Alternative: More restrictive rules (commented out)
+    // Uncomment these and remove the above rule if you want more granular control
+
+    /*
+    // Players collection - read by all, write restricted
+    match /players/{playerId} {
+      allow read: if true;
+      allow write: if false; // Only modified through Flutter app
+    }
+
+    // Scores collection
+    match /scores/{scoreId} {
+      allow read: if true;
+      allow write: if false; // Only modified through Flutter app
+    }
+
+    // Announcements collection
+    match /announcements/{announcementId} {
+      allow read: if true;
+      allow create, update, delete: if true; // Web app needs to post/delete announcements
+    }
+
+    // Play dates collection
+    match /playDates/{playDateId} {
+      allow read: if true;
+      allow create, update, delete: if true; // Web app needs to schedule play dates
+    }
+
+    // Availability collection
+    match /availability/{availId} {
+      allow read, write: if true; // Users need to update their availability
+    }
+
+    // Courses collection
+    match /courses/{courseId} {
+      allow read: if true;
+      allow write: if false; // Only modified through Flutter app
+    }
+    */
+  }
+}
