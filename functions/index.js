@@ -1,4 +1,4 @@
-const functions = require('firebase-functions');
+const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
 const FormData = require('form-data');
 const fetch = require('node-fetch');
@@ -31,13 +31,12 @@ exports.sendMailgunEmail = functions.firestore
         throw new Error('Missing required message fields: subject or text/html');
       }
 
-      // Mailgun configuration - API key should be set via Firebase environment config
-      // Run: firebase functions:config:set mailgun.apikey="YOUR_API_KEY"
-      const MAILGUN_API_KEY = functions.config().mailgun?.apikey || process.env.MAILGUN_API_KEY;
+      // Mailgun configuration - API key from environment variable or Firebase config
+      const MAILGUN_API_KEY = process.env.MAILGUN_API_KEY || functions.config().mailgun?.apikey;
       const MAILGUN_DOMAIN = 'goldenoaks.golf';
 
       if (!MAILGUN_API_KEY) {
-        throw new Error('Mailgun API key not configured. Set via: firebase functions:config:set mailgun.apikey="YOUR_KEY"');
+        throw new Error('Mailgun API key not configured');
       }
       const MAILGUN_API_URL = `https://api.mailgun.net/v3/${MAILGUN_DOMAIN}/messages`;
 
