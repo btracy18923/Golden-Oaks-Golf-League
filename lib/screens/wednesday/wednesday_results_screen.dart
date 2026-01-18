@@ -71,11 +71,8 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
 
   /// Saves the results data to the wednesday_scores table
   Future<void> _saveResultsToDatabase() async {
-    debugPrint('=== SAVE RESULTS TO DATABASE CALLED ===');
-
     // Prevent double-saving
     if (_isSavingToDatabase) {
-      debugPrint('=== ALREADY SAVING - ABORTING DUPLICATE CALL ===');
       return;
     }
 
@@ -98,8 +95,6 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
           }
         }
       }
-
-      debugPrint('=== COLLECTED ${allSelectedPlayers.length} player entries from groups ===');
 
       // CRITICAL: Check for duplicate dates BEFORE saving anything
       // TEMPORARILY DISABLED FOR TESTING - RE-ENABLE AFTER TESTING
@@ -125,7 +120,6 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
 
       // If duplicate date found, show error and DO NOT SAVE
       if (duplicateFound) {
-        debugPrint('=== DUPLICATE DATE FOUND - ABORTING SAVE ===');
         if (!mounted) return;
         final fontSize = ResponsiveTypography.getBodyText(context);
 
@@ -143,18 +137,12 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
       }
       */
 
-      debugPrint('=== DUPLICATE CHECK DISABLED - PROCEEDING WITH SAVE ===');
-
       // Build a consolidated map of all player data (one entry per unique player)
       Map<String, Map<String, dynamic>> consolidatedPlayerData = {};
 
       // First pass: collect all players and their basic data
-      debugPrint('=== FIRST PASS: Processing ${allSelectedPlayers.length} player entries ===');
       for (var player in allSelectedPlayers) {
-        final playerName = player['last'].toString().trim(); // Add trim() to remove whitespace
-        final grossScore = player['gross_score'];
-
-        debugPrint('  Processing: "$playerName" - Gross: $grossScore - Has in map: ${consolidatedPlayerData.containsKey(playerName)}');
+        final playerName = player['last'].toString().trim();
 
         // Initialize player entry if it doesn't exist
         if (!consolidatedPlayerData.containsKey(playerName)) {
@@ -167,13 +155,11 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
             'pos': null,
             'manual_group': null,
           };
-          debugPrint('    -> Created new entry for $playerName');
         }
 
         // Merge data from this instance (non-null values override)
         if (player['gross_score'] != null) {
           consolidatedPlayerData[playerName]!['gross_score'] = player['gross_score'];
-          debugPrint('    -> Updated gross score to ${player['gross_score']}');
         }
         if (player['manual_group'] != null) {
           consolidatedPlayerData[playerName]!['manual_group'] = player['manual_group'];
@@ -183,10 +169,7 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
         }
       }
 
-      debugPrint('=== After first pass: ${consolidatedPlayerData.length} unique players ===');
-
       // Second pass: add data from individualWinners list (gross scores + winnings)
-      debugPrint('=== SECOND PASS: Processing ${widget.individualWinners.length} individual winners ===');
       for (var winner in widget.individualWinners) {
         if (winner['last'] != null) {
           String playerName = winner['last'].toString().trim();
@@ -202,13 +185,11 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
               'pos': null,
               'manual_group': null,
             };
-            debugPrint('  Created entry for $playerName (from individualWinners)');
           }
 
           // Add gross score from individualWinners
           if (winner['gross_score'] != null) {
             consolidatedPlayerData[playerName]!['gross_score'] = winner['gross_score'];
-            debugPrint('  $playerName: Gross score = ${winner['gross_score']}');
           }
 
           // Add individual winnings
@@ -218,7 +199,6 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
               try {
                 double amount = double.parse(prizeMoney.replaceAll('\$', '').replaceAll(',', ''));
                 consolidatedPlayerData[playerName]!['individual_winnings'] = amount;
-                debugPrint('  $playerName: Individual winnings = \$$amount');
               } catch (e) {
                 debugPrint('Error parsing individual winnings for $playerName: $e');
               }
@@ -228,7 +208,6 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
       }
 
       // Third pass: add group winnings from groups (include wildcards - they can win in multiple groups)
-      debugPrint('=== THIRD PASS: Adding group winnings ===');
       for (var group in widget.groups) {
         for (var player in group) {
           if (player != null &&
@@ -237,7 +216,6 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
               player['manual_group'] != null) {
             String playerName = player['last'].toString().trim();
             String prizeMoney = player['prize_money'].toString();
-            bool isWildcard = player['is_wild_card'] == true;
 
             if (consolidatedPlayerData.containsKey(playerName) && prizeMoney.contains('\$')) {
               try {
@@ -246,33 +224,29 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
                   // Accumulate group winnings (player can win in primary group AND as wildcard)
                   double currentWinnings = (consolidatedPlayerData[playerName]!['group_winnings'] as double?) ?? 0.0;
                   consolidatedPlayerData[playerName]!['group_winnings'] = currentWinnings + amount;
-                  debugPrint('  $playerName: Group winnings ${isWildcard ? "(wildcard)" : ""} = \$$amount (total: \$${currentWinnings + amount})');
                 }
               } catch (e) {
                 debugPrint('Error parsing group winnings for $playerName: $e');
               }
             } else if (!consolidatedPlayerData.containsKey(playerName)) {
-              debugPrint('  WARNING: $playerName not found in consolidated data (group)');
+              debugPrint('WARNING: $playerName not found in consolidated data (group)');
             }
           }
         }
       }
 
       // Fourth pass: add closest pin winnings
-      debugPrint('=== FOURTH PASS: Adding closest pin winnings ===');
       for (String playerName in playerClosestPinWinnings.keys) {
         String trimmedName = playerName.trim();
         double closePinWinnings = playerClosestPinWinnings[playerName] ?? 0.0;
         if (consolidatedPlayerData.containsKey(trimmedName)) {
           consolidatedPlayerData[trimmedName]!['close_pin_winnings'] = closePinWinnings;
-          debugPrint('  $trimmedName: Close pin = \$$closePinWinnings');
         } else {
-          debugPrint('  WARNING: $trimmedName not found in consolidated data (close pin)');
+          debugPrint('WARNING: $trimmedName not found in consolidated data (close pin)');
         }
       }
 
       // Now insert ONE row per player with ALL their data
-      debugPrint('=== STARTING SCORE INSERTION FOR ${consolidatedPlayerData.length} UNIQUE PLAYERS ===');
 
       // Track all deleted scores for Firebase sync
       List<Map<String, dynamic>> allDeletedScores = [];
@@ -303,17 +277,9 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
             'close_pin_winnings': playerData['close_pin_winnings'] ?? 0.0,
           };
 
-          debugPrint('Inserting CONSOLIDATED score for: $playerName');
-          debugPrint('  - Gross: ${playerData['gross_score']}');
-          debugPrint('  - Individual: \$${playerData['individual_winnings']}');
-          debugPrint('  - Group: \$${playerData['group_winnings']}');
-          debugPrint('  - Close Pin: \$${playerData['close_pin_winnings']}');
-
           Map<String, dynamic> insertResult = await _databaseHelper.insertScoreLeague(scoreData, League.wednesday);
           int recordId = insertResult['insertId'] as int;
           List<Map<String, dynamic>> deletedScores = insertResult['deletedScores'] as List<Map<String, dynamic>>;
-
-          debugPrint('  - Record ID: $recordId');
 
           // Store the record ID for later HC update
           insertedRecordIds[playerName] = recordId;
@@ -321,41 +287,32 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
           // Collect deleted scores for Firebase sync
           if (deletedScores.isNotEmpty) {
             allDeletedScores.addAll(deletedScores);
-            debugPrint('  - Deleted ${deletedScores.length} old score(s) for this player');
           }
         } else {
           debugPrint('WARNING: No database player found for $playerName');
         }
       }
 
-      debugPrint('=== SCORE INSERTION COMPLETE - ${consolidatedPlayerData.length} RECORDS CREATED ===');
-
       // Calculate and update handicaps for selected players only
-      debugPrint('=== STARTING HANDICAP CALCULATION ===');
       Map<String, double> newHandicaps = await _updateSelectedPlayerHandicaps(allSelectedPlayers, allDbPlayers);
-      debugPrint('=== HANDICAP CALCULATION COMPLETE ===');
 
       // Update the score records with the new HC values (using record ID for precision)
-      debugPrint('=== UPDATING SCORE RECORDS WITH NEW HC VALUES ===');
       for (var playerName in newHandicaps.keys) {
         final newHC = newHandicaps[playerName]!;
         final recordId = insertedRecordIds[playerName];
         if (recordId != null) {
           // Update the handicap field using the specific record ID (not date)
           await _databaseHelper.updateWednesdayScoreHandicapById(recordId, newHC);
-          debugPrint('  Updated HC for $playerName (record ID: $recordId) to ${newHC.toStringAsFixed(1)}');
         } else {
-          debugPrint('  WARNING: No record ID found for $playerName - skipping HC update');
+          debugPrint('WARNING: No record ID found for $playerName - skipping HC update');
         }
       }
-      debugPrint('=== SCORE RECORDS HC UPDATE COMPLETE ===');
 
       // Upload NEW scores to Firebase FIRST
       await _uploadScoresToFirebase();
 
       // Then delete old scores from Firebase if any were removed locally
       if (allDeletedScores.isNotEmpty) {
-        debugPrint('=== DELETING ${allDeletedScores.length} OLD SCORES FROM FIREBASE ===');
         await _deleteScoresFromFirebase(allDeletedScores);
       }
 
@@ -413,8 +370,6 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
         }
       }
 
-      debugPrint('Updating handicaps for ${selectedPlayerNames.length} selected Wednesday players');
-
       int updatedCount = 0;
       for (var playerName in selectedPlayerNames) {
         // Find the player in the database
@@ -447,8 +402,6 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
               originalHandicap: originalHandicap,
             );
 
-            debugPrint('Player: $playerName (ID: $playerId) - OHC: ${originalHandicap.toStringAsFixed(1)} - Scores: $grossScores - New HC: ${newHandicap.toStringAsFixed(1)}');
-
             // Update the player's HC field in the players table
             await _databaseHelper.updatePlayerHandicap(
               playerId,
@@ -464,7 +417,6 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
           debugPrint('WARNING: No database player found for $playerName during handicap update');
         }
       }
-      debugPrint('Successfully updated handicaps for $updatedCount selected players');
     } catch (e) {
       // Log error but don't stop the save process
       debugPrint('Error updating handicaps: $e');
@@ -498,9 +450,7 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
   Future<void> _deleteScoresFromFirebase(List<Map<String, dynamic>> scoresToDelete) async {
     try {
       final success = await _firebaseUploadService.deletePlayerScoresFromFirebase(scoresToDelete, League.wednesday);
-      if (success) {
-        debugPrint('Successfully deleted ${scoresToDelete.length} old scores from Firebase');
-      } else {
+      if (!success) {
         debugPrint('Failed to delete old scores from Firebase');
       }
     } catch (e) {
@@ -511,18 +461,13 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
 
   /// Saves results to database and returns to the main menu
   Future<void> _saveResultsAndReturnToMainMenu() async {
-    debugPrint('=== _saveResultsAndReturnToMainMenu CALLED - _isSaving=$_isSaving ===');
-
     if (_isSaving) {
-      debugPrint('=== ALREADY SAVING - RETURNING EARLY ===');
       return;
     }
 
     setState(() {
       _isSaving = true;
     });
-
-    debugPrint('=== CALLING _saveResultsToDatabase ===');
 
     try {
       await _saveResultsToDatabase();
@@ -1071,8 +1016,10 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
             double amount = double.parse(prizeMoney.replaceAll('\$', '').replaceAll(',', ''));
             if (amount > 0) {
               String playerName = player['last'].toString();
+              double? netScore = player['net_score'] != null ? (player['net_score'] as num).toDouble() : null;
               allWinners[playerName] = {
                 'name': playerName,
+                'net_score': netScore,
                 'individual_winnings': amount,
                 'group_number': null,
                 'group_winnings': 0.0,
@@ -1098,6 +1045,7 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
               double amount = double.parse(prizeMoney.replaceAll('\$', '').replaceAll(',', ''));
               if (amount > 0) {
                 String playerName = player['last'].toString();
+                double? netScore = player['net_score'] != null ? (player['net_score'] as num).toDouble() : null;
                 if (allWinners.containsKey(playerName)) {
                   // Player already exists, accumulate group winnings (can win in primary + wildcard group)
                   double currentGroupWinnings = (allWinners[playerName]!['group_winnings'] as double?) ?? 0.0;
@@ -1106,10 +1054,15 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
                   if (allWinners[playerName]!['group_number'] == null) {
                     allWinners[playerName]!['group_number'] = player['manual_group'];
                   }
+                  // Update net_score if not already set
+                  if (allWinners[playerName]!['net_score'] == null && netScore != null) {
+                    allWinners[playerName]!['net_score'] = netScore;
+                  }
                 } else {
                   // New player with only group winnings
                   allWinners[playerName] = {
                     'name': playerName,
+                    'net_score': netScore,
                     'individual_winnings': 0.0,
                     'group_number': player['manual_group'],
                     'group_winnings': amount,
@@ -1126,25 +1079,18 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
 
     if (allWinners.isEmpty) return const SizedBox.shrink();
 
-    // Sort by Individual winnings (highest first), then Group winnings (highest first)
+    // Sort by Net score (lowest first)
     List<Map<String, dynamic>> sortedWinners = allWinners.values.toList();
     sortedWinners.sort((a, b) {
-      double aIndividual = a['individual_winnings'] as double;
-      double bIndividual = b['individual_winnings'] as double;
-      double aGroup = a['group_winnings'] as double;
-      double bGroup = b['group_winnings'] as double;
+      // Get net scores, use high value for null to push them to the end
+      double aNet = (a['net_score'] as double?) ?? 999.0;
+      double bNet = (b['net_score'] as double?) ?? 999.0;
 
-      // Sort by individual winnings descending (highest first)
-      int individualComparison = bIndividual.compareTo(aIndividual);
-      if (individualComparison != 0) return individualComparison;
+      // Sort by net score ascending (lowest first)
+      int netComparison = aNet.compareTo(bNet);
+      if (netComparison != 0) return netComparison;
 
-      // If both have no individual winnings, sort by group winnings descending
-      if (aIndividual == 0 && bIndividual == 0) {
-        int groupComparison = bGroup.compareTo(aGroup);
-        if (groupComparison != 0) return groupComparison;
-      }
-
-      // If everything is the same, sort alphabetically by name
+      // If net scores are the same, sort alphabetically by name
       return (a['name'] as String).compareTo(b['name'] as String);
     });
 
@@ -1155,12 +1101,14 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
         1: FlexColumnWidth(1),
         2: FlexColumnWidth(1),
         3: FlexColumnWidth(1),
+        4: FlexColumnWidth(1),
       },
       children: [
         TableRow(
           decoration: BoxDecoration(color: Colors.blue[300]),
           children: [
             _buildTableCell('Player', isHeader: true),
+            _buildTableCell('Net', isHeader: true),
             _buildTableCell('Ind \$\$\$', isHeader: true),
             _buildTableCell('Group \$\$\$', isHeader: true),
             _buildTableCell('Total \$\$\$', isHeader: true),
@@ -1170,10 +1118,14 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
           double individualWinnings = player['individual_winnings'] as double;
           double groupWinnings = player['group_winnings'] as double;
           double totalWinnings = individualWinnings + groupWinnings;
+          double? netScore = player['net_score'] as double?;
 
           return TableRow(
             children: [
               _buildTableCell(player['name'] as String),
+              _buildTableCell(
+                netScore != null ? netScore.toStringAsFixed(1) : '',
+              ),
               _buildTableCell(
                 individualWinnings > 0
                   ? '\$${individualWinnings.toStringAsFixed(2)}'

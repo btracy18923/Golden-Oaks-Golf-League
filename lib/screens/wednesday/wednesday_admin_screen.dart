@@ -4,6 +4,7 @@ import '../../models/league.dart';
 import '../../services/database_helper.dart';
 import '../../services/device_detection_service.dart';
 import '../../services/firebase_upload_service.dart';
+import '../../services/firebase_download_service.dart';
 
 class WednesdayAdminScreen extends StatefulWidget {
   final League? currentLeague;
@@ -18,6 +19,7 @@ class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final DatabaseHelper _dbHelper = DatabaseHelper();
   final FirebaseUploadService _firebaseUploadService = FirebaseUploadService();
+  final FirebaseDownloadService _firebaseDownloadService = FirebaseDownloadService();
   bool _isDownloading = false;
   bool _firebaseUploadsEnabled = true;
   bool _allowDuplicateDates = true;
@@ -241,6 +243,13 @@ class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
                       Icons.person_remove,
                       Colors.red[400]!,
                       () => _deleteWednesdayPlayerProfiles(),
+                    ),
+
+                    _buildDownloadButton(
+                      'Create W_starting_OHC',
+                      Icons.content_copy,
+                      Colors.teal[300]!,
+                      () => _createStartingOHCCollection(),
                     ),
                   ],
                 ),
@@ -782,7 +791,7 @@ class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
       builder: (context) => AlertDialog(
         title: const Text('Copy OHC to HC'),
         content: const Text(
-          'This will copy the OHC (Original Handicap) value to the HC (Handicap) field '
+          'This will copy the Starting Handicap (OHC) from Firebase to the HC (Handicap) field '
           'for all Wednesday players.\n\n'
           'This will overwrite existing HC values.\n\n'
           'Are you sure?'
@@ -804,18 +813,24 @@ class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
     if (confirmed != true) return;
 
     try {
-      // Get all Wednesday players
+      // Get all Wednesday players from local database
       final wednesdayPlayers = await _dbHelper.getPlayersByLeague(League.wednesday);
+
+      // Get all starting handicaps from Firebase W_starting_handicap collection
+      final startingHandicaps = await _firebaseDownloadService.getAllStartingHandicaps();
 
       int updatedCount = 0;
       int skippedCount = 0;
 
       for (var player in wednesdayPlayers) {
         final playerNumber = player['player_number'];
-        final ohcValue = player['OHC'];
+        final lastName = player['last']?.toString() ?? '';
+
+        // Get OHC from Firebase (using last name as key)
+        final ohcValue = startingHandicaps[lastName];
 
         if (ohcValue != null && playerNumber != null) {
-          // Update the player's HC field with OHC value
+          // Update the player's HC field with OHC value from Firebase
           await _dbHelper.updatePlayer(playerNumber, {'HC': ohcValue});
           updatedCount++;
         } else {
@@ -833,7 +848,7 @@ class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
               content: Text(
                 'Copy Complete!\n'
                 'Updated: $updatedCount players (local & Firebase)\n'
-                '${skippedCount > 0 ? 'Skipped: $skippedCount players (null OHC or player_number)' : ''}'
+                '${skippedCount > 0 ? 'Skipped: $skippedCount players (no OHC in Firebase)' : ''}'
               ),
               backgroundColor: Colors.green,
               duration: const Duration(seconds: 4),
@@ -846,7 +861,7 @@ class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
                 'Copy Complete!\n'
                 'Updated: $updatedCount players locally\n'
                 'Firebase will sync when WiFi is available\n'
-                '${skippedCount > 0 ? 'Skipped: $skippedCount players (null OHC or player_number)' : ''}'
+                '${skippedCount > 0 ? 'Skipped: $skippedCount players (no OHC in Firebase)' : ''}'
               ),
               backgroundColor: Colors.green,
               duration: const Duration(seconds: 4),
@@ -859,6 +874,79 @@ class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error copying OHC to HC: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _createStartingOHCCollection() async {
+    // Show confirmation dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Create W_starting_OHC Collection'),
+        content: const Text(
+          'This will create/update the W_starting_OHC collection in Firebase by copying:\n\n'
+          '• player_number\n'
+          '• Last Name\n'
+          '• OHC (from HC field)\n\n'
+          'for all players in W_player_profile.\n\n'
+          'Are you sure?'
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.teal),
+            child: const Text('CREATE'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Creating W_starting_OHC collection...'),
+          backgroundColor: Colors.teal,
+          duration: Duration(seconds: 2),
+        ),
+      );
+
+      final success = await _firebaseUploadService.createStartingOHCCollection();
+
+      if (mounted) {
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('W_starting_OHC collection created successfully!'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to create W_starting_OHC collection. Check if Firebase uploads are enabled.'),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 3),
           ),

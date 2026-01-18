@@ -867,12 +867,12 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
           // Create a new player map with updated scores
           Map<String, dynamic> newPlayer = Map<String, dynamic>.from(player);
 
-          // Get OHC (Original Handicap) value for score calculation
-          double ohc = (newPlayer['OHC'] ?? 0.0).toDouble();
-          int ohcValue = ohc.round();
+          // Get HC (Handicap) value for score calculation
+          double hc = (newPlayer['HC'] ?? 0.0).toDouble();
+          int hcValue = hc.round();
 
-          // Calculate gross score: OHC + 35 ± random(-2 to +3)
-          int baseScore = ohcValue + 35;
+          // Calculate gross score: HC + 35 ± random(-2 to +3)
+          int baseScore = hcValue + 35;
           int randomAdjustment = random.nextInt(6) - 2; // -2 to +3
           int grossScore = baseScore + randomAdjustment;
 

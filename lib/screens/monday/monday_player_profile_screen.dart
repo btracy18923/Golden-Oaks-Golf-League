@@ -210,17 +210,32 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
       _showErrorDialog('ID Number is required!');
       return false;
     }
-    
+
     if (_firstController.text.trim().isEmpty) {
       _showErrorDialog('First Name is required!');
       return false;
     }
-    
+
     if (_lastController.text.trim().isEmpty) {
       _showErrorDialog('Last Name is required!');
       return false;
     }
-    
+
+    if (_skatController.text.trim().isEmpty) {
+      _showErrorDialog('SKAT# is required!');
+      return false;
+    }
+
+    if (_cellController.text.trim().isEmpty) {
+      _showErrorDialog('Cell Phone is required!');
+      return false;
+    }
+
+    if (_emailController.text.trim().isEmpty) {
+      _showErrorDialog('Email is required!');
+      return false;
+    }
+
     return true;
   }
 

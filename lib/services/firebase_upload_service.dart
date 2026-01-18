@@ -27,7 +27,6 @@ class FirebaseUploadService {
     try {
       final prefs = await SharedPreferences.getInstance();
       uploadsEnabled = prefs.getBool(_uploadsEnabledKey) ?? true;
-      debugPrint('Loaded Firebase uploads enabled state: $uploadsEnabled');
     } catch (e) {
       debugPrint('Error loading uploads enabled state: $e');
       uploadsEnabled = true; // Default to enabled on error
@@ -40,7 +39,6 @@ class FirebaseUploadService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_uploadsEnabledKey, enabled);
       uploadsEnabled = enabled;
-      debugPrint('Saved Firebase uploads enabled state: $enabled');
     } catch (e) {
       debugPrint('Error saving uploads enabled state: $e');
     }
@@ -59,7 +57,6 @@ class FirebaseUploadService {
   /// Uploads player table data to Firebase
   Future<bool> uploadPlayerTable(League league) async {
     if (!uploadsEnabled) {
-      debugPrint('Firebase uploads are disabled');
       return false;
     }
 
@@ -113,11 +110,11 @@ class FirebaseUploadService {
           };
         } else {
           // For Wednesday (W_player_profile): exclude skat_number field
+          // Note: OHC (Starting Handicap) is stored separately in W_starting_handicap collection
           firebaseData = <String, dynamic>{
             'player_number': player['player_number'],  // Player #
             'first': player['first'],                  // First
             'last': player['last'],                    // Last
-            'OHC': player['OHC'],                      // OHC
             'HC': player['HC'],                        // HC
             'cell': player['cell'],                    // Phone
             'email': player['email'],                  // Email
@@ -145,7 +142,6 @@ class FirebaseUploadService {
   /// Uploads golf course table data to Firebase
   Future<bool> uploadGolfCourseTable(League league) async {
     if (!uploadsEnabled) {
-      debugPrint('Firebase uploads are disabled');
       return false;
     }
 
@@ -205,27 +201,18 @@ class FirebaseUploadService {
 
   /// Uploads player scores table data to Firebase
   Future<bool> uploadPlayerScoresTable(League league) async {
-    debugPrint('=== STARTING UPLOAD PLAYER SCORES TABLE ===');
-    debugPrint('League: $league');
-    debugPrint('Uploads enabled: $uploadsEnabled');
-
     if (!uploadsEnabled) {
-      debugPrint('Firebase uploads are disabled');
       return false;
     }
 
     try {
-      debugPrint('Getting Firestore instance...');
       final db = await firestore;
       final databaseHelper = DatabaseHelper();
 
       // Get all player scores for the specified league
-      debugPrint('Fetching scores from local database...');
       final scoresFromDb = await databaseHelper.getScoresByLeague(league);
-      debugPrint('Found ${scoresFromDb.length} scores in local database');
 
       if (scoresFromDb.isEmpty) {
-        debugPrint('No scores to upload');
         return true; // Not an error if no scores exist
       }
 
@@ -304,7 +291,6 @@ class FirebaseUploadService {
           // Use record ID to make each document unique and allow duplicate dates
           final recordId = score['id'] ?? 'unknown';
           docId = '${lastName}_${formattedDate}_$recordId';
-          debugPrint('Creating Monday score document: $docId');
         } else {
           // For Wednesday: use LastName_MM-DD-YY_RecordID format
           // Note: Cannot use slashes (/) in Firebase document IDs as they're interpreted as path separators
@@ -347,7 +333,6 @@ class FirebaseUploadService {
           // Use record ID to make each document unique and allow duplicate dates
           final recordId = score['id'] ?? 'unknown';
           docId = '${lastName}_${formattedDate}_$recordId';
-          debugPrint('Creating Wednesday score document: $docId');
         }
 
         final docRef = collection.doc(docId);
@@ -398,15 +383,11 @@ class FirebaseUploadService {
       }
 
       // Execute the batch operation
-      debugPrint('Committing batch upload to Firebase...');
       await batch.commit();
-
-      debugPrint('✓ SUCCESS! Uploaded ${scores.length} scores to Firebase collection: $collectionName');
       return true;
 
     } catch (e) {
-      debugPrint('✗ ERROR uploading scores to Firebase: $e');
-      debugPrint('Error details: ${e.toString()}');
+      debugPrint('Error uploading scores to Firebase: $e');
       return false;
     }
   }
@@ -418,7 +399,6 @@ class FirebaseUploadService {
     League league
   ) async {
     if (!uploadsEnabled) {
-      debugPrint('Firebase uploads are disabled');
       return false;
     }
 
@@ -523,8 +503,6 @@ class FirebaseUploadService {
 
       // Execute the batch deletion
       await batch.commit();
-
-      debugPrint('Successfully deleted ${scoresToDelete.length} scores from Firebase');
       return true;
 
     } catch (e) {
@@ -540,7 +518,6 @@ class FirebaseUploadService {
     String? documentIdField,
   }) async {
     if (!uploadsEnabled) {
-      debugPrint('Firebase uploads are disabled');
       return false;
     }
 
@@ -615,7 +592,6 @@ class FirebaseUploadService {
   /// Upload with connectivity checking and queuing
   Future<bool> uploadPlayerTableWithQueue(League league) async {
     if (!uploadsEnabled) {
-      debugPrint('Firebase uploads are disabled');
       return false;
     }
 
@@ -629,7 +605,6 @@ class FirebaseUploadService {
   /// Upload with connectivity checking and queuing
   Future<bool> uploadGolfCourseTableWithQueue(League league) async {
     if (!uploadsEnabled) {
-      debugPrint('Firebase uploads are disabled');
       return false;
     }
 
@@ -642,22 +617,15 @@ class FirebaseUploadService {
 
   /// Upload with connectivity checking and queuing
   Future<bool> uploadPlayerScoresTableWithQueue(League league) async {
-    debugPrint('=== UPLOAD PLAYER SCORES WITH QUEUE ===');
-    debugPrint('League: $league');
-
     if (!uploadsEnabled) {
-      debugPrint('✗ Firebase uploads are DISABLED - skipping upload');
       return false;
     }
 
     final isConnected = await _isWiFiConnected();
-    debugPrint('WiFi connected: $isConnected');
 
     if (isConnected) {
-      debugPrint('WiFi available - uploading immediately');
       return await uploadPlayerScoresTable(league);
     } else {
-      debugPrint('No WiFi - queuing upload for later');
       return await _queueUpload(UploadType.scores, league);
     }
   }
@@ -665,7 +633,6 @@ class FirebaseUploadService {
   /// Delete a player from Firebase
   Future<bool> deletePlayerFromFirebase(League league, String lastName) async {
     if (!uploadsEnabled) {
-      debugPrint('Firebase uploads are disabled');
       return false;
     }
 
@@ -691,7 +658,6 @@ class FirebaseUploadService {
   /// Delete a player from Firebase with connectivity checking
   Future<bool> deletePlayerFromFirebaseWithQueue(League league, String lastName) async {
     if (!uploadsEnabled) {
-      debugPrint('Firebase uploads are disabled');
       return false;
     }
 
@@ -707,7 +673,6 @@ class FirebaseUploadService {
   /// Delete a golf course from Firebase
   Future<bool> deleteGolfCourseFromFirebase(String courseName) async {
     if (!uploadsEnabled) {
-      debugPrint('Firebase uploads are disabled');
       return false;
     }
 
@@ -722,8 +687,6 @@ class FirebaseUploadService {
 
       // Delete the document
       await collection.doc(cleanedCourseName).delete();
-
-      debugPrint('Successfully deleted golf course "$courseName" from Firebase');
       return true;
     } catch (e) {
       debugPrint('Error deleting golf course from Firebase: $e');
@@ -734,7 +697,6 @@ class FirebaseUploadService {
   /// Delete a golf course from Firebase with connectivity checking
   Future<bool> deleteGolfCourseFromFirebaseWithQueue(String courseName) async {
     if (!uploadsEnabled) {
-      debugPrint('Firebase uploads are disabled');
       return false;
     }
 
@@ -753,6 +715,150 @@ class FirebaseUploadService {
       await db.collection('_test').doc('connection').get();
       return true;
     } catch (e) {
+      return false;
+    }
+  }
+
+  /// Upload a player's starting handicap to W_starting_handicap collection
+  /// This is used for Wednesday league players only
+  /// Collection contains: last (Last Name), starting_handicap (OHC), player_number
+  Future<bool> uploadStartingHandicap({
+    required int playerNumber,
+    required String lastName,
+    required double startingHandicap,
+  }) async {
+    if (!uploadsEnabled) {
+      return false;
+    }
+
+    try {
+      final db = await firestore;
+      final collection = db.collection('W_starting_handicap');
+
+      // Use cleaned last name as document ID
+      final docId = lastName.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
+
+      final data = <String, dynamic>{
+        'last': lastName,
+        'starting_handicap': startingHandicap,
+        'player_number': playerNumber,
+      };
+
+      await collection.doc(docId).set(data, SetOptions(merge: true));
+      return true;
+    } catch (e) {
+      debugPrint('Error uploading starting handicap: $e');
+      return false;
+    }
+  }
+
+  /// Delete a player's starting handicap from W_starting_handicap collection
+  Future<bool> deleteStartingHandicap(String lastName) async {
+    if (!uploadsEnabled) {
+      return false;
+    }
+
+    try {
+      final db = await firestore;
+      final collection = db.collection('W_starting_handicap');
+
+      // Use cleaned last name as document ID
+      final docId = lastName.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
+
+      await collection.doc(docId).delete();
+      return true;
+    } catch (e) {
+      debugPrint('Error deleting starting handicap: $e');
+      return false;
+    }
+  }
+
+  /// Upload a single player's data to W_starting_OHC collection
+  /// Used when adding a new Wednesday player
+  Future<bool> uploadPlayerToStartingOHC({
+    required int playerNumber,
+    required String lastName,
+    required double hc,
+  }) async {
+    if (!uploadsEnabled) {
+      return false;
+    }
+
+    try {
+      final db = await firestore;
+      final collection = db.collection('W_starting_OHC');
+
+      // Use cleaned last name as document ID
+      final docId = lastName.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
+
+      final data = <String, dynamic>{
+        'player_number': playerNumber,
+        'Last Name': lastName,
+        'OHC': hc,
+      };
+
+      await collection.doc(docId).set(data);
+      return true;
+    } catch (e) {
+      debugPrint('Error uploading player to W_starting_OHC: $e');
+      return false;
+    }
+  }
+
+  /// Create W_starting_OHC collection by copying player_number, last (Last Name), and HC (OHC)
+  /// from W_player_profile for all Wednesday league players
+  Future<bool> createStartingOHCCollection() async {
+    if (!uploadsEnabled) {
+      return false;
+    }
+
+    try {
+      final db = await firestore;
+
+      // Read all documents from W_player_profile
+      final sourceCollection = db.collection('W_player_profile');
+      final targetCollection = db.collection('W_starting_OHC');
+
+      final snapshot = await sourceCollection.get();
+
+      if (snapshot.docs.isEmpty) {
+        return true;
+      }
+
+      // Create a batch operation for efficient upload
+      final batch = db.batch();
+
+      for (final doc in snapshot.docs) {
+        final playerData = doc.data();
+
+        // Extract the required fields
+        final playerNumber = playerData['player_number'];
+        final lastName = playerData['last'] ?? '';
+        final ohc = playerData['HC']; // Read HC value from W_player_profile, store as OHC
+
+        // Use the document ID from source (which is the cleaned last name)
+        final docId = doc.id;
+
+        final targetDocRef = targetCollection.doc(docId);
+
+        final newData = <String, dynamic>{
+          'player_number': playerNumber,
+          'Last Name': lastName,
+          'OHC': ohc,
+        };
+
+        // Remove any null values
+        newData.removeWhere((key, value) => value == null);
+
+        batch.set(targetDocRef, newData);
+      }
+
+      // Execute the batch operation
+      await batch.commit();
+      return true;
+
+    } catch (e) {
+      debugPrint('Error creating W_starting_OHC collection: $e');
       return false;
     }
   }

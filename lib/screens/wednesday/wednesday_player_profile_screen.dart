@@ -32,7 +32,6 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
   final TextEditingController _idController = TextEditingController();
   final TextEditingController _firstController = TextEditingController();
   final TextEditingController _lastController = TextEditingController();
-  final TextEditingController _ohcController = TextEditingController();
   final TextEditingController _handicapController = TextEditingController();
   final TextEditingController _cellController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
@@ -41,7 +40,6 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
   final FocusNode _idFocus = FocusNode();
   final FocusNode _firstFocus = FocusNode();
   final FocusNode _lastFocus = FocusNode();
-  final FocusNode _ohcFocus = FocusNode();
   final FocusNode _handicapFocus = FocusNode();
   final FocusNode _cellFocus = FocusNode();
   final FocusNode _emailFocus = FocusNode();
@@ -62,7 +60,6 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
     _idController.dispose();
     _firstController.dispose();
     _lastController.dispose();
-    _ohcController.dispose();
     _handicapController.dispose();
     _cellController.dispose();
     _emailController.dispose();
@@ -70,7 +67,6 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
     _idFocus.dispose();
     _firstFocus.dispose();
     _lastFocus.dispose();
-    _ohcFocus.dispose();
     _handicapFocus.dispose();
     _cellFocus.dispose();
     _emailFocus.dispose();
@@ -93,7 +89,6 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
     _idFocus.addListener(_onFocusChange);
     _firstFocus.addListener(_onFocusChange);
     _lastFocus.addListener(_onFocusChange);
-    _ohcFocus.addListener(_onFocusChange);
     _handicapFocus.addListener(_onFocusChange);
     _cellFocus.addListener(_onFocusChange);
     _emailFocus.addListener(_onFocusChange);
@@ -103,7 +98,6 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
     final anyFocused = _idFocus.hasFocus ||
                       _firstFocus.hasFocus ||
                       _lastFocus.hasFocus ||
-                      _ohcFocus.hasFocus ||
                       _handicapFocus.hasFocus ||
                       _cellFocus.hasFocus ||
                       _emailFocus.hasFocus;
@@ -137,7 +131,6 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
     _idController.clear();
     _firstController.clear();
     _lastController.clear();
-    _ohcController.clear();
     _handicapController.clear();
     _cellController.clear();
     _emailController.clear();
@@ -155,7 +148,6 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
     bool hasFormData = _idController.text.trim().isNotEmpty ||
                       _firstController.text.trim().isNotEmpty ||
                       _lastController.text.trim().isNotEmpty ||
-                      _ohcController.text.trim().isNotEmpty ||
                       _handicapController.text.trim().isNotEmpty ||
                       _cellController.text.trim().isNotEmpty ||
                       _emailController.text.trim().isNotEmpty;
@@ -195,7 +187,6 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
       _idController.text = playerNumber.isEmpty ? '' : playerNumber.padLeft(4, '0');
       _firstController.text = player['first'] ?? '';
       _lastController.text = player['last'] ?? '';
-      _ohcController.text = player['OHC']?.toString() ?? '';
       _handicapController.text = player['HC']?.toString() ?? '';
       _cellController.text = player['cell'] ?? '';
       _emailController.text = player['email'] ?? '';
@@ -229,6 +220,21 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
 
     if (_lastController.text.trim().isEmpty) {
       _showErrorDialog('Last Name is required!');
+      return false;
+    }
+
+    if (_handicapController.text.trim().isEmpty) {
+      _showErrorDialog('HC (Handicap) is required!');
+      return false;
+    }
+
+    if (_cellController.text.trim().isEmpty) {
+      _showErrorDialog('Cell Phone is required!');
+      return false;
+    }
+
+    if (_emailController.text.trim().isEmpty) {
+      _showErrorDialog('Email is required!');
       return false;
     }
 
@@ -271,22 +277,37 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
     try {
       final leagueStr = _selectedLeague == League.monday ? 'monday' : 'wednesday';
 
+      // Insert player to local database (OHC is managed directly in Firebase)
       await _databaseHelper.insertPlayer({
         'player_number': int.tryParse(_idController.text) ?? 0,
         'first': _firstController.text.trim(),
         'last': _lastController.text.trim(),
-        'OHC': double.tryParse(_ohcController.text) ?? 0.0,
         'HC': double.tryParse(_handicapController.text) ?? 0.0,
         'league': leagueStr,
         'cell': _cellController.text.trim(),
         'email': _emailController.text.trim(),
       });
 
+      // Save form values before clearing for W_starting_OHC upload
+      final playerNumber = int.tryParse(_idController.text) ?? 0;
+      final lastName = _lastController.text.trim();
+      final hc = double.tryParse(_handicapController.text) ?? 0.0;
+
       _clearForm();
       _refreshPlayerList();
 
       // Immediately try to upload to Firebase
       final uploadSuccess = await _firebaseUploadService.uploadPlayerTableWithQueue(_selectedLeague);
+
+      // Also upload to W_starting_OHC collection for Wednesday players
+      if (_selectedLeague == League.wednesday) {
+        await _firebaseUploadService.uploadPlayerToStartingOHC(
+          playerNumber: playerNumber,
+          lastName: lastName,
+          hc: hc,
+        );
+      }
+
       if (uploadSuccess) {
         _showSuccessDialog('Player added and uploaded to Firebase!');
       } else {
@@ -312,7 +333,6 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
         'player_number': int.tryParse(_idController.text) ?? 0,
         'first': _firstController.text.trim(),
         'last': _lastController.text.trim(),
-        'OHC': double.tryParse(_ohcController.text) ?? 0.0,
         'HC': double.tryParse(_handicapController.text) ?? 0.0,
         'league': leagueStr,
         'cell': _cellController.text.trim(),
@@ -387,7 +407,6 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
           _idFocus.unfocus();
           _firstFocus.unfocus();
           _lastFocus.unfocus();
-          _ohcFocus.unfocus();
           _handicapFocus.unfocus();
           _cellFocus.unfocus();
           _emailFocus.unfocus();
@@ -561,14 +580,12 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
       _idController,
       _firstController,
       _lastController,
-      _ohcController,
       _handicapController,
       _cellController,
       _emailController,
       _idFocus,
       _firstFocus,
       _lastFocus,
-      _ohcFocus,
       _handicapFocus,
       _cellFocus,
       _emailFocus,
@@ -670,14 +687,12 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
     TextEditingController idController,
     TextEditingController firstController,
     TextEditingController lastController,
-    TextEditingController ohcController,
     TextEditingController handicapController,
     TextEditingController cellController,
     TextEditingController emailController,
     FocusNode idFocus,
     FocusNode firstFocus,
     FocusNode lastFocus,
-    FocusNode ohcFocus,
     FocusNode handicapFocus,
     FocusNode cellFocus,
     FocusNode emailFocus,
@@ -699,21 +714,10 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
               const SizedBox(height: 0),
               buildCompactFormField('First Name', firstController, firstFocus, lastFocus),
               const SizedBox(height: 0),
-              buildCompactFormField('Last Name', lastController, lastFocus, ohcFocus),
+              buildCompactFormField('Last Name', lastController, lastFocus, handicapFocus),
               const SizedBox(height: 0),
-              Row(
-                children: [
-                  Expanded(
-                    child: buildCompactFormField('OHC', ohcController, ohcFocus, handicapFocus,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true)),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: buildCompactFormField('HC', handicapController, handicapFocus, cellFocus,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true)),
-                  ),
-                ],
-              ),
+              buildCompactFormField('HC', handicapController, handicapFocus, cellFocus,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true)),
               const SizedBox(height: 0),
               buildCompactFormField('Cell Phone', cellController, cellFocus, emailFocus,
                 keyboardType: const TextInputType.numberWithOptions(decimal: false)),
@@ -739,21 +743,10 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
               const SizedBox(height: 8),
               buildCompactFormField('First Name', firstController, firstFocus, lastFocus),
               const SizedBox(height: 8),
-              buildCompactFormField('Last Name', lastController, lastFocus, ohcFocus),
+              buildCompactFormField('Last Name', lastController, lastFocus, handicapFocus),
               const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: buildCompactFormField('OHC', ohcController, ohcFocus, handicapFocus,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true)),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: buildCompactFormField('HC', handicapController, handicapFocus, cellFocus,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true)),
-                  ),
-                ],
-              ),
+              buildCompactFormField('HC', handicapController, handicapFocus, cellFocus,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true)),
               const SizedBox(height: 8),
               buildCompactFormField('Cell Phone', cellController, cellFocus, emailFocus,
                 keyboardType: const TextInputType.numberWithOptions(decimal: false)),
@@ -835,15 +828,13 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: is6InchPhoneLandscape ? [
-                    _buildHeaderCellLeftAlign('Name', tableWidth * 0.35, fontSize),
-                    _buildHeaderCell('OHC', tableWidth * 0.12, fontSize),
-                    _buildHeaderCell('HC', tableWidth * 0.12, fontSize),
-                    _buildHeaderCell('Phone', tableWidth * 0.41, fontSize),
+                    _buildHeaderCellLeftAlign('Name', tableWidth * 0.40, fontSize),
+                    _buildHeaderCell('HC', tableWidth * 0.15, fontSize),
+                    _buildHeaderCell('Phone', tableWidth * 0.45, fontSize),
                   ] : [
-                    _buildHeaderCellLeftAlign('Name', tableWidth * 0.38, fontSize),
-                    _buildHeaderCell('OHC', tableWidth * 0.12, fontSize),
-                    _buildHeaderCell('HC', tableWidth * 0.12, fontSize),
-                    _buildHeaderCell('Phone', tableWidth * 0.38, fontSize),
+                    _buildHeaderCellLeftAlign('Name', tableWidth * 0.40, fontSize),
+                    _buildHeaderCell('HC', tableWidth * 0.15, fontSize),
+                    _buildHeaderCell('Phone', tableWidth * 0.45, fontSize),
                   ],
                 ),
               ),
@@ -932,13 +923,11 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
     return Row(
       children: [
         _buildDataCell('${player['first'] ?? ''} ${player['last'] ?? ''}',
-                      tableWidth * 0.35, fontSize, alignLeft: true),
-        _buildDataCell(player['OHC']?.toString() ?? '',
-                      tableWidth * 0.12, fontSize),
+                      tableWidth * 0.40, fontSize, alignLeft: true),
         _buildDataCell(player['HC']?.toString() ?? '',
-                      tableWidth * 0.12, fontSize),
+                      tableWidth * 0.15, fontSize),
         _buildDataCell(formatPhoneNumber(player['cell']),
-                      tableWidth * 0.41, fontSize),
+                      tableWidth * 0.45, fontSize),
       ],
     );
   }
@@ -946,10 +935,9 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
   Widget _buildWednesdayTabletPlayerRow(Map<String, dynamic> player, double tableWidth, String Function(String?) formatPhoneNumber, double fontSize) {
     return Row(
       children: [
-        _buildDataCell('${player['first'] ?? ''} ${player['last'] ?? ''}', tableWidth * 0.38, fontSize, alignLeft: true),
-        _buildDataCell(player['OHC']?.toString() ?? '', tableWidth * 0.12, fontSize),
-        _buildDataCell(player['HC']?.toString() ?? '', tableWidth * 0.12, fontSize),
-        _buildDataCell(formatPhoneNumber(player['cell']), tableWidth * 0.38, fontSize),
+        _buildDataCell('${player['first'] ?? ''} ${player['last'] ?? ''}', tableWidth * 0.40, fontSize, alignLeft: true),
+        _buildDataCell(player['HC']?.toString() ?? '', tableWidth * 0.15, fontSize),
+        _buildDataCell(formatPhoneNumber(player['cell']), tableWidth * 0.45, fontSize),
       ],
     );
   }

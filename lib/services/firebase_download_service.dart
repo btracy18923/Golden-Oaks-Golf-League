@@ -168,11 +168,11 @@ class FirebaseDownloadService {
           Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
 
           // Map Firebase fields to local database fields
+          // Note: OHC (Starting Handicap) is stored separately in W_starting_handicap collection
           Map<String, dynamic> playerData = {
             'player_number': data['player_number'],
             'first': data['first'] ?? '',
             'last': data['last'] ?? '',
-            'OHC': data['OHC'],
             'HC': data['HC'],
             'cell': data['cell'],
             'email': data['email'],
@@ -357,6 +357,81 @@ class FirebaseDownloadService {
       return players.isNotEmpty;
     } catch (e) {
       return false;
+    }
+  }
+
+  /// Get a player's starting handicap (OHC) from W_starting_OHC collection
+  /// Returns null if not found or on error
+  Future<double?> getStartingHandicap(String lastName) async {
+    try {
+      // Use cleaned last name as document ID
+      final docId = lastName.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
+
+      final doc = await _firestore.collection('W_starting_OHC').doc(docId).get();
+
+      if (doc.exists) {
+        final data = doc.data();
+        if (data != null && data['OHC'] != null) {
+          return (data['OHC'] as num).toDouble();
+        }
+      }
+
+      debugPrint('No OHC found for $lastName in W_starting_OHC');
+      return null;
+    } catch (e) {
+      debugPrint('Error getting OHC for $lastName: $e');
+      return null;
+    }
+  }
+
+  /// Get a player's starting handicap (OHC) by player number from W_starting_OHC
+  /// Returns null if not found or on error
+  Future<double?> getStartingHandicapByPlayerNumber(int playerNumber) async {
+    try {
+      final snapshot = await _firestore
+          .collection('W_starting_OHC')
+          .where('player_number', isEqualTo: playerNumber)
+          .limit(1)
+          .get();
+
+      if (snapshot.docs.isNotEmpty) {
+        final data = snapshot.docs.first.data();
+        if (data['OHC'] != null) {
+          return (data['OHC'] as num).toDouble();
+        }
+      }
+
+      debugPrint('No OHC found for player number $playerNumber in W_starting_OHC');
+      return null;
+    } catch (e) {
+      debugPrint('Error getting OHC for player number $playerNumber: $e');
+      return null;
+    }
+  }
+
+  /// Get all starting handicaps from W_starting_OHC collection
+  /// Returns a map of lastName -> OHC value
+  Future<Map<String, double>> getAllStartingHandicaps() async {
+    final Map<String, double> handicaps = {};
+
+    try {
+      final snapshot = await _firestore.collection('W_starting_OHC').get();
+
+      for (var doc in snapshot.docs) {
+        final data = doc.data();
+        final lastName = data['Last Name']?.toString() ?? '';
+        final handicap = data['OHC'];
+
+        if (lastName.isNotEmpty && handicap != null) {
+          handicaps[lastName] = (handicap as num).toDouble();
+        }
+      }
+
+      debugPrint('Retrieved ${handicaps.length} starting handicaps from W_starting_OHC');
+      return handicaps;
+    } catch (e) {
+      debugPrint('Error getting all starting handicaps: $e');
+      return handicaps;
     }
   }
 }
