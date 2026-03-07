@@ -1,13 +1,13 @@
 /// Email configuration for the Golden Oaks Golf League app
 class EmailConfig {
   /// ProShop email address
-  static const String proShopEmail = 'btracy18923@gmail.com';
-  //// "grohol@aol.com" - also change phone # '9083775851' in line 1453
+  static const String proShopEmail = 'grohol@aol.com';
+  //// "grohol@aol.com" - also change phone # '9083775851' in line 1453 in wednesday_enter_scores_screen
 
   /// Administrator email addresses
   static const List<String> adminEmails = [
     'btracy18923@gmail.com', // TODO: Replace with actual admin email
-    'btracy18923@gmail.com', // TODO: Replace with actual admin email
+    'grohol@aol.com', // TODO: Replace with actual admin email
     'btracy18923@gmail.com', // TODO: Replace with actual admin email
   ];
 

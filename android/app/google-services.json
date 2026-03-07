@@ -9,7 +9,7 @@
       "client_info": {
         "mobilesdk_app_id": "1:926599368373:android:c777f4a9d09b6b736fb8fc",
         "android_client_info": {
-          "package_name": "com.goldenoaks.golf_app_v2"
+          "package_name": "com.goldenoaks.golf"
         }
       },
       "oauth_client": [],
@@ -28,7 +28,7 @@
       "client_info": {
         "mobilesdk_app_id": "1:926599368373:android:53915f9c0fba171f6fb8fc",
         "android_client_info": {
-          "package_name": "com.goldenoaks.golf_app_v4"
+          "package_name": "com.goldenoaks.golf"
         }
       },
       "oauth_client": [],

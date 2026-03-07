@@ -1,15 +1,14 @@
 const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
-const FormData = require('form-data');
-const fetch = require('node-fetch');
+const { Resend } = require('resend');
 
 admin.initializeApp();
 
 /**
- * Cloud Function to send emails via Mailgun API
+ * Cloud Function to send emails via Resend API
  * Triggered when a document is created in the 'mail' collection
  */
-exports.sendMailgunEmail = functions.firestore
+exports.sendEmail = functions.firestore
   .document('mail/{mailId}')
   .onCreate(async (snap, context) => {
     const mailData = snap.data();
@@ -31,58 +30,43 @@ exports.sendMailgunEmail = functions.firestore
         throw new Error('Missing required message fields: subject or text/html');
       }
 
-      // Mailgun configuration - API key from environment variable or Firebase config
-      const MAILGUN_API_KEY = process.env.MAILGUN_API_KEY || functions.config().mailgun?.apikey;
-      const MAILGUN_DOMAIN = 'goldenoaks.golf';
+      // Resend configuration - API key from environment variable or Firebase config
+      const RESEND_API_KEY = process.env.RESEND_API_KEY || functions.config().resend?.apikey;
 
-      if (!MAILGUN_API_KEY) {
-        throw new Error('Mailgun API key not configured');
-      }
-      const MAILGUN_API_URL = `https://api.mailgun.net/v3/${MAILGUN_DOMAIN}/messages`;
-
-      // Prepare form data for Mailgun API
-      const form = new FormData();
-      form.append('from', mailData.from || `Golden Oaks Golf League <noreply@${MAILGUN_DOMAIN}>`);
-
-      // Handle 'to' field (can be array or string)
-      if (Array.isArray(to)) {
-        to.forEach(recipient => form.append('to', recipient));
-      } else {
-        form.append('to', to);
+      if (!RESEND_API_KEY) {
+        throw new Error('Resend API key not configured');
       }
 
-      form.append('subject', subject);
+      // Initialize Resend with API key
+      const resend = new Resend(RESEND_API_KEY);
 
-      if (html) {
-        form.append('html', html);
-      }
+      // Prepare email message
+      const emailMessage = {
+        from: mailData.from || 'Golden Oaks Golf League <noreply@goldenoaks.golf>',
+        to: Array.isArray(to) ? to : [to], // Resend expects an array
+        subject: subject,
+      };
+
+      // Add text content if provided
       if (text) {
-        form.append('text', text);
+        emailMessage.text = text;
       }
 
-      // Optional reply-to
+      // Add HTML content if provided
+      if (html) {
+        emailMessage.html = html;
+      }
+
+      // Add reply-to if provided
       if (mailData.replyTo) {
-        form.append('h:Reply-To', mailData.replyTo);
+        emailMessage.reply_to = mailData.replyTo;
       }
 
-      // Send email via Mailgun API
-      console.log('Sending email via Mailgun API...');
-      const response = await fetch(MAILGUN_API_URL, {
-        method: 'POST',
-        headers: {
-          'Authorization': 'Basic ' + Buffer.from(`api:${MAILGUN_API_KEY}`).toString('base64'),
-          ...form.getHeaders()
-        },
-        body: form
-      });
+      // Send email via Resend
+      console.log('Sending email via Resend API...');
+      const response = await resend.emails.send(emailMessage);
 
-      const responseData = await response.json();
-
-      if (!response.ok) {
-        throw new Error(`Mailgun API error: ${JSON.stringify(responseData)}`);
-      }
-
-      console.log('Email sent successfully:', responseData);
+      console.log('Email sent successfully:', response);
 
       // Update Firestore document with delivery status
       await snap.ref.update({
@@ -91,8 +75,8 @@ exports.sendMailgunEmail = functions.firestore
           startTime: admin.firestore.FieldValue.serverTimestamp(),
           endTime: admin.firestore.FieldValue.serverTimestamp(),
           info: {
-            messageId: responseData.id,
-            response: responseData.message
+            messageId: response.data?.id || response.id,
+            response: 'Email sent successfully'
           }
         }
       });

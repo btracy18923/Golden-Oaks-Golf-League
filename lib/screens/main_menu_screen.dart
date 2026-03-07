@@ -75,7 +75,7 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
         title: Text(
-          'Golden Oaks Golf League - ${DeviceDetectionService.getDeviceName(context)}',
+          'Golden Oaks Golf League - 3.7.26',
           style: const TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 18,

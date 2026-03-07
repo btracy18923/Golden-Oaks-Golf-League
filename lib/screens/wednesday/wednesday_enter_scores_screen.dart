@@ -1450,7 +1450,10 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
   Future<void> _handleTextPlayers() async {
     // TEST MODE: Set to true to send only to test number, false for real player numbers
     const bool testMode = true;
-    const String testPhoneNumber = '9082087608';
+    // Alex Grohol mobile number
+    const String testPhoneNumber = '9083775851';
+    // Bill Tracy mobile number
+    // const String testPhoneNumber = '9082087608';
 
     // Collect phone numbers from all players in all groups
     final phoneNumbers = <String>[];
