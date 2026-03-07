@@ -921,7 +921,7 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        const ADMIN_PLAYER_NUMBERS = ['2561']; // Replace with actual admin player numbers
+        const ADMIN_PLAYER_NUMBERS = ['2561', '0819']; // Admin player numbers
 
         let currentUser = null;
         let isAdmin = false;
@@ -1039,7 +1039,7 @@
                 player.name = `${player.first} ${player.last}`;
 
                 // Check if admin based on player number (compare as strings)
-                isAdmin = ADMIN_PLAYER_NUMBERS.includes(String(playerNumber));
+                isAdmin = ADMIN_PLAYER_NUMBERS.includes(String(playerNumber)) || ADMIN_PLAYER_NUMBERS.includes(playerNumber.padStart(4, '0'));
 
                 currentUser = player;
 
