@@ -1016,9 +1016,9 @@
                 console.log('Player number from Firebase:', player.player_number, 'Type:', typeof player.player_number);
                 console.log('Player number entered:', playerNumber, 'Type:', typeof playerNumber);
 
-                // Verify player_number matches (convert both to strings for comparison)
-                const storedPlayerNumber = String(player.player_number);
-                const enteredPlayerNumber = String(playerNumber);
+                // Verify player_number matches (strip leading zeros since Firebase stores as number)
+                const storedPlayerNumber = String(parseInt(player.player_number, 10));
+                const enteredPlayerNumber = String(parseInt(playerNumber, 10));
 
                 if (storedPlayerNumber !== enteredPlayerNumber) {
                     throw new Error('Player number does not match the email address');
