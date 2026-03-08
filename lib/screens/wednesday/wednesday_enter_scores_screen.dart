@@ -79,6 +79,10 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
   // Adjust Players overlay state
   bool _showAdjustPlayersOverlay = false;
 
+  // Triple-click delete functionality
+  String? _deleteTargetPlayerName;
+  int _deleteTargetTapCount = 0;
+
   // State
   List<List<Map<String, dynamic>?>> groups = [];
   List<Map<String, dynamic>> selectedPlayers = [];
@@ -511,8 +515,43 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
     _createControllersForPlayers();
   }
 
+  /// Returns true if a player is selected for deletion (triple-clicked)
+  bool _isDeleteMode() {
+    return _deleteTargetPlayerName != null && _deleteTargetTapCount >= 3;
+  }
+
+  /// Handles deleting the triple-clicked player
+  void _handleDeletePlayer() {
+    if (_deleteTargetPlayerName == null) return;
+
+    setState(() {
+      // Remove the player from all groups
+      for (int groupIndex = 0; groupIndex < groups.length; groupIndex++) {
+        groups[groupIndex].removeWhere((player) =>
+            player != null && player['last'] == _deleteTargetPlayerName);
+      }
+      _deleteTargetPlayerName = null;
+      _deleteTargetTapCount = 0;
+      selectedForSwap.clear();
+    });
+    _createControllersForPlayers();
+  }
+
+  /// Resets delete mode
+  void _resetDeleteMode() {
+    _deleteTargetPlayerName = null;
+    _deleteTargetTapCount = 0;
+  }
+
+  /// Gets the text for the shuffle/delete button
+  String _getShuffleButtonText() {
+    if (_isDeleteMode()) return 'Delete';
+    return 'Shuffle';
+  }
+
   /// Gets the color for the shuffle button based on score data or group processing
   Color _getShuffleButtonColor() {
+    if (_isDeleteMode()) return Colors.red;
     if (_hasAnyScoreData() || groupsProcessed) {
       return Colors.grey[400]!;
     }
@@ -521,6 +560,7 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
 
   /// Gets the handler for the shuffle button based on score data or group processing
   VoidCallback? _getShuffleButtonHandler() {
+    if (_isDeleteMode()) return _handleDeletePlayer;
     if (_hasAnyScoreData()) {
       return _handleShuffleDisabledDueToScores;
     }
@@ -557,6 +597,26 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
 
     String playerLast = player['last'] ?? '';
     setState(() {
+      // Track triple-click for delete (only in adjust players overlay)
+      if (_showAdjustPlayersOverlay) {
+        if (_deleteTargetPlayerName == playerLast) {
+          if (_deleteTargetTapCount >= 3) {
+            // 4th click - cancel delete mode
+            _resetDeleteMode();
+            selectedForSwap.clear();
+            return;
+          }
+          _deleteTargetTapCount++;
+          // On 2nd and 3rd click, don't pass through to swap service
+          return;
+        } else {
+          // Different player tapped - reset delete tracking
+          _resetDeleteMode();
+          _deleteTargetPlayerName = playerLast;
+          _deleteTargetTapCount = 1;
+        }
+      }
+
       if (selectedForSwap.contains(playerLast)) {
         selectedForSwap.remove(playerLast);
       } else {
@@ -590,7 +650,20 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
 
   bool _isPlayerSelected(String playerName) {
     if (_hasAnyScoreData() || groupsProcessed) return false;
+    // Keep player highlighted during delete progression
+    if (_deleteTargetPlayerName == playerName && _deleteTargetTapCount >= 1) {
+      return true;
+    }
     return selectedForSwap.contains(playerName);
+  }
+
+  /// Returns the background color for a player based on delete tap count
+  Color? _getPlayerSelectedColor(String playerName) {
+    if (_deleteTargetPlayerName == playerName) {
+      if (_deleteTargetTapCount >= 3) return Colors.red;
+      if (_deleteTargetTapCount == 2) return Colors.purple[200];
+    }
+    return null; // Use default color for swap selection
   }
 
   bool _isEmptySlotSelected(int groupIndex, int playerIndex) {
@@ -1261,6 +1334,7 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
                 onGrossScoreChanged: _onGrossScoreChangedWrapper,
                 grossFocusNodes: _focusNodeMatrix,
                 isPlayerFocused: _isPlayerFocusedWrapper,
+                getPlayerSelectedColor: _getPlayerSelectedColor,
               ),
               _buildBottomButtons(individualsProcessingComplete, groupsProcessed),
             ],
@@ -1303,10 +1377,10 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
       onPressed: _handleCloseAdjustPlayersOverlay,
     ));
 
-    // Shuffle button
+    // Shuffle/Delete button
     buttons.add(ButtonBarUIService.buildActionButton(
       context,
-      text: 'Shuffle',
+      text: _getShuffleButtonText(),
       color: _getShuffleButtonColor(),
       onPressed: _getShuffleButtonHandler(),
     ));
@@ -1375,6 +1449,7 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
     setState(() {
       _showAdjustPlayersOverlay = false;
       selectedForSwap.clear(); // Clear any swap selections when closing
+      _resetDeleteMode(); // Clear any delete selection when closing
     });
   }
 

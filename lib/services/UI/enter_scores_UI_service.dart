@@ -333,6 +333,7 @@ class EnterScoresUIService {
     Function(PlayerData, String)? onSkatsChanged,
     List<List<FocusNode?>>? skatsFocusNodes,
     bool Function(PlayerData player)? isPlayerFocused,
+    Color? Function(PlayerData player)? getPlayerSelectedColor,
   }) {
     final deviceType = getDeviceType(context);
     final padding = getResponsivePadding(deviceType);
@@ -362,6 +363,7 @@ class EnterScoresUIService {
                   onSkatsChanged: onSkatsChanged,
                   skatsFocusNodes: skatsFocusNodes,
                   isPlayerFocused: isPlayerFocused,
+                  getPlayerSelectedColor: getPlayerSelectedColor,
                 ),
                 SizedBox(height: spacing),
                 buildGroupRowThreeColumn(
@@ -380,6 +382,7 @@ class EnterScoresUIService {
                   onSkatsChanged: onSkatsChanged,
                   skatsFocusNodes: skatsFocusNodes,
                   isPlayerFocused: isPlayerFocused,
+                  getPlayerSelectedColor: getPlayerSelectedColor,
                 ),
                 SizedBox(height: spacing),
                 buildGroupRowThreeColumn(
@@ -398,6 +401,7 @@ class EnterScoresUIService {
                   onSkatsChanged: onSkatsChanged,
                   skatsFocusNodes: skatsFocusNodes,
                   isPlayerFocused: isPlayerFocused,
+                  getPlayerSelectedColor: getPlayerSelectedColor,
                 ),
                 SizedBox(height: spacing),
                 buildGroupRow(
@@ -414,6 +418,7 @@ class EnterScoresUIService {
                   onSkatsChanged: onSkatsChanged,
                   skatsFocusNodes: skatsFocusNodes,
                   isPlayerFocused: isPlayerFocused,
+                  getPlayerSelectedColor: getPlayerSelectedColor,
                 ),
               ],
             ),
@@ -442,6 +447,7 @@ class EnterScoresUIService {
                   onSkatsChanged: onSkatsChanged,
                   skatsFocusNodes: skatsFocusNodes,
                   isPlayerFocused: isPlayerFocused,
+                  getPlayerSelectedColor: getPlayerSelectedColor,
                 ),
                 SizedBox(height: spacing),
                 buildGroupRow(
@@ -458,6 +464,7 @@ class EnterScoresUIService {
                   onSkatsChanged: onSkatsChanged,
                   skatsFocusNodes: skatsFocusNodes,
                   isPlayerFocused: isPlayerFocused,
+                  getPlayerSelectedColor: getPlayerSelectedColor,
                 ),
                 SizedBox(height: spacing),
                 buildGroupRow(
@@ -474,6 +481,7 @@ class EnterScoresUIService {
                   onSkatsChanged: onSkatsChanged,
                   skatsFocusNodes: skatsFocusNodes,
                   isPlayerFocused: isPlayerFocused,
+                  getPlayerSelectedColor: getPlayerSelectedColor,
                 ),
                 SizedBox(height: spacing),
                 buildGroupRow(
@@ -490,6 +498,7 @@ class EnterScoresUIService {
                   onSkatsChanged: onSkatsChanged,
                   skatsFocusNodes: skatsFocusNodes,
                   isPlayerFocused: isPlayerFocused,
+                  getPlayerSelectedColor: getPlayerSelectedColor,
                 ),
                 SizedBox(height: spacing),
                 buildGroupRow(
@@ -506,6 +515,7 @@ class EnterScoresUIService {
                   onSkatsChanged: onSkatsChanged,
                   skatsFocusNodes: skatsFocusNodes,
                   isPlayerFocused: isPlayerFocused,
+                  getPlayerSelectedColor: getPlayerSelectedColor,
                 ),
               ],
             ),
@@ -532,6 +542,7 @@ class EnterScoresUIService {
     Function(PlayerData, String)? onSkatsChanged,
     List<List<FocusNode?>>? skatsFocusNodes,
     bool Function(PlayerData player)? isPlayerFocused,
+    Color? Function(PlayerData player)? getPlayerSelectedColor,
   }) {
     final deviceType = getDeviceType(context);
     final spacing = deviceType == DeviceType.phone6_5 ? 4.0 : 8.0;
@@ -553,6 +564,7 @@ class EnterScoresUIService {
               onSkatsChanged: onSkatsChanged,
               skatsFocusNodes: skatsFocusNodes,
               isPlayerFocused: isPlayerFocused,
+              getPlayerSelectedColor: getPlayerSelectedColor,
             ),
           ),
           SizedBox(width: spacing),
@@ -576,6 +588,7 @@ class EnterScoresUIService {
             onSkatsChanged: onSkatsChanged,
             skatsFocusNodes: skatsFocusNodes,
             isPlayerFocused: isPlayerFocused,
+            getPlayerSelectedColor: getPlayerSelectedColor,
           ),
         ),
         SizedBox(width: spacing),
@@ -592,6 +605,7 @@ class EnterScoresUIService {
             onSkatsChanged: onSkatsChanged,
             skatsFocusNodes: skatsFocusNodes,
             isPlayerFocused: isPlayerFocused,
+            getPlayerSelectedColor: getPlayerSelectedColor,
           ),
         ),
       ],
@@ -616,6 +630,7 @@ class EnterScoresUIService {
     Function(PlayerData, String)? onSkatsChanged,
     List<List<FocusNode?>>? skatsFocusNodes,
     bool Function(PlayerData player)? isPlayerFocused,
+    Color? Function(PlayerData player)? getPlayerSelectedColor,
   }) {
     final deviceType = getDeviceType(context);
     final spacing = deviceType == DeviceType.phone6_5 ? 4.0 : 8.0;
@@ -635,6 +650,7 @@ class EnterScoresUIService {
             onSkatsChanged: onSkatsChanged,
             skatsFocusNodes: skatsFocusNodes,
             isPlayerFocused: isPlayerFocused,
+            getPlayerSelectedColor: getPlayerSelectedColor,
           ),
         ),
         SizedBox(width: spacing),
@@ -651,6 +667,7 @@ class EnterScoresUIService {
             onSkatsChanged: onSkatsChanged,
             skatsFocusNodes: skatsFocusNodes,
             isPlayerFocused: isPlayerFocused,
+            getPlayerSelectedColor: getPlayerSelectedColor,
           ),
         ),
         SizedBox(width: spacing),
@@ -667,6 +684,7 @@ class EnterScoresUIService {
             onSkatsChanged: onSkatsChanged,
             skatsFocusNodes: skatsFocusNodes,
             isPlayerFocused: isPlayerFocused,
+            getPlayerSelectedColor: getPlayerSelectedColor,
           ),
         ),
       ],
@@ -687,6 +705,7 @@ class EnterScoresUIService {
     Function(PlayerData, String)? onSkatsChanged,
     List<List<FocusNode?>>? skatsFocusNodes,
     bool Function(PlayerData player)? isPlayerFocused,
+    Color? Function(PlayerData player)? getPlayerSelectedColor,
   }) {
     final deviceType = getDeviceType(context);
     final groupHeight = getResponsiveGroupHeight(deviceType);
@@ -725,6 +744,7 @@ class EnterScoresUIService {
               onSkatsChanged: onSkatsChanged,
               skatsFocusNodes: skatsFocusNodes,
               isPlayerFocused: isPlayerFocused,
+              getPlayerSelectedColor: getPlayerSelectedColor,
             ),
           ),
         ],
@@ -797,8 +817,8 @@ class EnterScoresUIService {
   /// Builds the rows for a specific group showing players or empty rows
   /// Responsive design adapts row generation
   static Widget buildGroupRows(
-    BuildContext context, 
-    List<List<PlayerData>> groups, 
+    BuildContext context,
+    List<List<PlayerData>> groups,
     int groupIndex, {
     Function(int groupIndex, int playerIndex, PlayerData player)? onPlayerTap,
     Function(int groupIndex, int playerIndex)? onEmptySlotTap,
@@ -807,20 +827,23 @@ class EnterScoresUIService {
     Function(PlayerData, String)? onSkatsChanged,
     List<List<FocusNode?>>? skatsFocusNodes,
     bool Function(PlayerData player)? isPlayerFocused,
+    Color? Function(PlayerData player)? getPlayerSelectedColor,
   }) {
     return Column(
       children: List.generate(4, (rowIndex) {
         if (rowIndex < groups[groupIndex].length) {
           final player = groups[groupIndex][rowIndex];
           final isSelected = isPlayerSelected?.call(player) ?? false;
-          
+          final selectedColor = getPlayerSelectedColor?.call(player);
+
           return buildPlayerRow(
-            context, 
+            context,
             player,
-            onPlayerTap: onPlayerTap != null 
+            onPlayerTap: onPlayerTap != null
               ? () => onPlayerTap(groupIndex, rowIndex, player)
               : null,
             isSelected: isSelected,
+            selectedColor: selectedColor,
             onSkatsChanged: onSkatsChanged,
             skatsFocusNode: skatsFocusNodes?[groupIndex]?[rowIndex],
             showSkatsFocus: isPlayerFocused?.call(player) ?? false,
@@ -845,6 +868,7 @@ class EnterScoresUIService {
   static Widget buildPlayerRow(BuildContext context, PlayerData player, {
     VoidCallback? onPlayerTap,
     bool isSelected = false,
+    Color? selectedColor,
     Function(PlayerData, String)? onSkatsChanged,
     FocusNode? skatsFocusNode,
     bool showSkatsFocus = false,
@@ -859,7 +883,7 @@ class EnterScoresUIService {
       ),
       child: Row(
         children: [
-          buildClickablePlayerCell(context, player.name, flex: 2, hasLeftBorder: true, onTap: onPlayerTap, isSelected: isSelected),
+          buildClickablePlayerCell(context, player.name, flex: 2, hasLeftBorder: true, onTap: onPlayerTap, isSelected: isSelected, selectedColor: selectedColor),
           buildPlayerCell(context, player.skNumber, flex: 1),
           buildInputCell(
             context, 
@@ -960,7 +984,7 @@ class EnterScoresUIService {
 
   /// Builds a clickable cell for displaying player data (name, SK number, money)
   /// Responsive design adapts padding and font size, with bold formatting for data fields
-  static Widget buildClickablePlayerCell(BuildContext context, String text, {int flex = 1, bool hasLeftBorder = false, bool isCurrency = false, VoidCallback? onTap, bool isSelected = false}) {
+  static Widget buildClickablePlayerCell(BuildContext context, String text, {int flex = 1, bool hasLeftBorder = false, bool isCurrency = false, VoidCallback? onTap, bool isSelected = false, Color? selectedColor}) {
     final deviceType = getDeviceType(context);
     final tableDataFontSize = getTableDataFontSize(context);
     final padding = getResponsivePadding(deviceType);
@@ -977,7 +1001,7 @@ class EnterScoresUIService {
     }
 
     // Selection background color for the cell
-    Color? backgroundColor = isSelected ? Colors.blue[100] : null;
+    Color? backgroundColor = isSelected ? (selectedColor ?? Colors.blue[100]) : null;
 
     return Expanded(
       flex: flex,
@@ -1311,6 +1335,7 @@ class EnterScoresUIService {
     Function(Map<String, dynamic>, String)? onGrossScoreChanged,
     List<List<FocusNode?>>? grossFocusNodes,
     bool Function(Map<String, dynamic> player)? isPlayerFocused,
+    Color? Function(String playerName)? getPlayerSelectedColor,
   }) {
     final isPhone = DeviceDetectionService.isPhone(context);
     final padding = EdgeInsets.all(isPhone ? 4.0 : 8.0);
@@ -1326,6 +1351,7 @@ class EnterScoresUIService {
       grossFocusNodes: grossFocusNodes,
       isPlayerFocused: isPlayerFocused,
       useThreeColumns: false,
+      getPlayerSelectedColor: getPlayerSelectedColor,
     );
   }
 
@@ -1343,6 +1369,7 @@ class EnterScoresUIService {
     List<List<FocusNode?>>? grossFocusNodes,
     bool Function(Map<String, dynamic>)? isPlayerFocused,
     required bool useThreeColumns,
+    Color? Function(String)? getPlayerSelectedColor,
   }) {
     return Expanded(
       child: Padding(
@@ -1353,27 +1380,27 @@ class EnterScoresUIService {
               _buildWednesdayGroupRow(context, groups, 0, 1, 'Group 1', 'Group 2', groupsProcessed, spacing,
                 onPlayerTap: onPlayerTap, onEmptySlotTap: onEmptySlotTap, isPlayerSelected: isPlayerSelected,
                 isEmptySlotSelected: isEmptySlotSelected, onGrossScoreChanged: onGrossScoreChanged,
-                grossFocusNodes: grossFocusNodes, isPlayerFocused: isPlayerFocused, useThreeColumns: useThreeColumns),
+                grossFocusNodes: grossFocusNodes, isPlayerFocused: isPlayerFocused, useThreeColumns: useThreeColumns, getPlayerSelectedColor: getPlayerSelectedColor),
               SizedBox(height: spacing),
               _buildWednesdayGroupRow(context, groups, 2, 3, 'Group 3', 'Group 4', groupsProcessed, spacing,
                 onPlayerTap: onPlayerTap, onEmptySlotTap: onEmptySlotTap, isPlayerSelected: isPlayerSelected,
                 isEmptySlotSelected: isEmptySlotSelected, onGrossScoreChanged: onGrossScoreChanged,
-                grossFocusNodes: grossFocusNodes, isPlayerFocused: isPlayerFocused, useThreeColumns: useThreeColumns),
+                grossFocusNodes: grossFocusNodes, isPlayerFocused: isPlayerFocused, useThreeColumns: useThreeColumns, getPlayerSelectedColor: getPlayerSelectedColor),
               SizedBox(height: spacing),
               _buildWednesdayGroupRow(context, groups, 4, 5, 'Group 5', 'Group 6', groupsProcessed, spacing,
                 onPlayerTap: onPlayerTap, onEmptySlotTap: onEmptySlotTap, isPlayerSelected: isPlayerSelected,
                 isEmptySlotSelected: isEmptySlotSelected, onGrossScoreChanged: onGrossScoreChanged,
-                grossFocusNodes: grossFocusNodes, isPlayerFocused: isPlayerFocused, useThreeColumns: useThreeColumns),
+                grossFocusNodes: grossFocusNodes, isPlayerFocused: isPlayerFocused, useThreeColumns: useThreeColumns, getPlayerSelectedColor: getPlayerSelectedColor),
               SizedBox(height: spacing),
               _buildWednesdayGroupRow(context, groups, 6, 7, 'Group 7', 'Group 8', groupsProcessed, spacing,
                 onPlayerTap: onPlayerTap, onEmptySlotTap: onEmptySlotTap, isPlayerSelected: isPlayerSelected,
                 isEmptySlotSelected: isEmptySlotSelected, onGrossScoreChanged: onGrossScoreChanged,
-                grossFocusNodes: grossFocusNodes, isPlayerFocused: isPlayerFocused, useThreeColumns: useThreeColumns),
+                grossFocusNodes: grossFocusNodes, isPlayerFocused: isPlayerFocused, useThreeColumns: useThreeColumns, getPlayerSelectedColor: getPlayerSelectedColor),
               SizedBox(height: spacing),
               _buildWednesdayGroupRow(context, groups, 8, 9, 'Group 9', 'Group 10', groupsProcessed, spacing,
                 onPlayerTap: onPlayerTap, onEmptySlotTap: onEmptySlotTap, isPlayerSelected: isPlayerSelected,
                 isEmptySlotSelected: isEmptySlotSelected, onGrossScoreChanged: onGrossScoreChanged,
-                grossFocusNodes: grossFocusNodes, isPlayerFocused: isPlayerFocused, useThreeColumns: useThreeColumns),
+                grossFocusNodes: grossFocusNodes, isPlayerFocused: isPlayerFocused, useThreeColumns: useThreeColumns, getPlayerSelectedColor: getPlayerSelectedColor),
             ],
           ),
         ),
@@ -1399,6 +1426,7 @@ class EnterScoresUIService {
     List<List<FocusNode?>>? grossFocusNodes,
     bool Function(Map<String, dynamic>)? isPlayerFocused,
     required bool useThreeColumns,
+    Color? Function(String)? getPlayerSelectedColor,
   }) {
     if (rightIndex == -1) {
       return Row(
@@ -1407,7 +1435,7 @@ class EnterScoresUIService {
             child: _buildWednesdayGroup(context, groups, leftIndex, leftTitle, groupsProcessed,
               onPlayerTap: onPlayerTap, onEmptySlotTap: onEmptySlotTap, isPlayerSelected: isPlayerSelected,
               isEmptySlotSelected: isEmptySlotSelected, onGrossScoreChanged: onGrossScoreChanged,
-              grossFocusNodes: grossFocusNodes, isPlayerFocused: isPlayerFocused, useThreeColumns: useThreeColumns),
+              grossFocusNodes: grossFocusNodes, isPlayerFocused: isPlayerFocused, useThreeColumns: useThreeColumns, getPlayerSelectedColor: getPlayerSelectedColor),
           ),
           SizedBox(width: spacing),
           Expanded(child: Container()),
@@ -1421,14 +1449,14 @@ class EnterScoresUIService {
           child: _buildWednesdayGroup(context, groups, leftIndex, leftTitle, groupsProcessed,
             onPlayerTap: onPlayerTap, onEmptySlotTap: onEmptySlotTap, isPlayerSelected: isPlayerSelected,
             isEmptySlotSelected: isEmptySlotSelected, onGrossScoreChanged: onGrossScoreChanged,
-            grossFocusNodes: grossFocusNodes, isPlayerFocused: isPlayerFocused, useThreeColumns: useThreeColumns),
+            grossFocusNodes: grossFocusNodes, isPlayerFocused: isPlayerFocused, useThreeColumns: useThreeColumns, getPlayerSelectedColor: getPlayerSelectedColor),
         ),
         SizedBox(width: spacing),
         Expanded(
           child: _buildWednesdayGroup(context, groups, rightIndex, rightTitle, groupsProcessed,
             onPlayerTap: onPlayerTap, onEmptySlotTap: onEmptySlotTap, isPlayerSelected: isPlayerSelected,
             isEmptySlotSelected: isEmptySlotSelected, onGrossScoreChanged: onGrossScoreChanged,
-            grossFocusNodes: grossFocusNodes, isPlayerFocused: isPlayerFocused, useThreeColumns: useThreeColumns),
+            grossFocusNodes: grossFocusNodes, isPlayerFocused: isPlayerFocused, useThreeColumns: useThreeColumns, getPlayerSelectedColor: getPlayerSelectedColor),
         ),
       ],
     );
@@ -1449,6 +1477,7 @@ class EnterScoresUIService {
     List<List<FocusNode?>>? grossFocusNodes,
     bool Function(Map<String, dynamic>)? isPlayerFocused,
     required bool useThreeColumns,
+    Color? Function(String)? getPlayerSelectedColor,
   }) {
     final groupHeight = getWednesdayGroupHeight(context);
 
@@ -1479,7 +1508,7 @@ class EnterScoresUIService {
         _buildWednesdayGroupRows(context, groups, groupIndex, groupsProcessed,
           onPlayerTap: onPlayerTap, onEmptySlotTap: onEmptySlotTap, isPlayerSelected: isPlayerSelected,
           isEmptySlotSelected: isEmptySlotSelected, onGrossScoreChanged: onGrossScoreChanged,
-          grossFocusNodes: grossFocusNodes, isPlayerFocused: isPlayerFocused, useThreeColumns: useThreeColumns),
+          grossFocusNodes: grossFocusNodes, isPlayerFocused: isPlayerFocused, useThreeColumns: useThreeColumns, getPlayerSelectedColor: getPlayerSelectedColor),
       ],
     );
   }
@@ -1568,6 +1597,7 @@ class EnterScoresUIService {
     List<List<FocusNode?>>? grossFocusNodes,
     bool Function(Map<String, dynamic>)? isPlayerFocused,
     required bool useThreeColumns,
+    Color? Function(String)? getPlayerSelectedColor,
   }) {
     return Column(
       children: List.generate(4, (rowIndex) {
@@ -1577,6 +1607,7 @@ class EnterScoresUIService {
 
         if (player != null) {
           final isSelected = isPlayerSelected?.call(player['last'] ?? '') ?? false;
+          final selectedColor = getPlayerSelectedColor?.call(player['last'] ?? '');
           return _buildWednesdayPlayerRow(context, player, groupIndex, rowIndex, groupsProcessed,
             onPlayerTap: onPlayerTap != null ? () => onPlayerTap(groupIndex, rowIndex, player) : null,
             isSelected: isSelected,
@@ -1584,6 +1615,7 @@ class EnterScoresUIService {
             grossFocusNode: grossFocusNodes?[groupIndex][rowIndex],
             showFocus: isPlayerFocused?.call(player) ?? false,
             useThreeColumns: useThreeColumns,
+            selectedColor: selectedColor,
           );
         } else {
           final isSelected = isEmptySlotSelected?.call(groupIndex, rowIndex) ?? false;
@@ -1609,6 +1641,7 @@ class EnterScoresUIService {
     FocusNode? grossFocusNode,
     bool showFocus = false,
     required bool useThreeColumns,
+    Color? selectedColor,
   }) {
     final rowHeight = getWednesdayRowHeight(context);
     const config = LeagueUIConfig.wednesday;
@@ -1661,7 +1694,7 @@ class EnterScoresUIService {
       child: Row(
         children: [
           // Name cell (clickable)
-          _buildWednesdayClickableNameCell(context, name, isWildCard, flex: nameFlex, onTap: onPlayerTap, isSelected: isSelected),
+          _buildWednesdayClickableNameCell(context, name, isWildCard, flex: nameFlex, onTap: onPlayerTap, isSelected: isSelected, selectedColor: selectedColor),
           // Handicap (only when not processed)
           if (!groupsProcessed)
             _buildWednesdayDataCell(context, handicap.toStringAsFixed(1), flex: hcFlex),
@@ -1740,6 +1773,7 @@ class EnterScoresUIService {
     int flex = 1,
     VoidCallback? onTap,
     bool isSelected = false,
+    Color? selectedColor,
   }) {
     final isPhone = DeviceDetectionService.isPhone(context);
     const config = LeagueUIConfig.wednesday;
@@ -1754,7 +1788,7 @@ class EnterScoresUIService {
               left: BorderSide(color: Colors.black, width: 1),
               right: BorderSide(color: Colors.black, width: 1),
             ),
-            color: isSelected ? config.selectedColor : Colors.white,
+            color: isSelected ? (selectedColor ?? config.selectedColor) : Colors.white,
           ),
           padding: EdgeInsets.symmetric(horizontal: isPhone ? 2 : 4),
           child: Row(

@@ -63,6 +63,10 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
   // Adjust Players overlay state
   bool _showAdjustPlayersOverlay = false;
 
+  // Triple-click delete functionality
+  String? _deleteTargetPlayerName;
+  int _deleteTargetTapCount = 0;
+
   // Focus nodes for SKATS input fields - organized by group and player index
   final List<List<FocusNode?>> _skatsFocusNodes = [
     [null, null, null, null], // Group 0 (Group 1)
@@ -596,13 +600,33 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
 
   /// Handles player tap for swap selection
   void _onPlayerTap(int groupIndex, int playerIndex, PlayerData player) {
-    
+
     // Prevent any swap functionality if SKATS data exists
     if (_hasAnySkatsData()) {
       return;
     }
-    
+
     setState(() {
+      // Track triple-click for delete (only in adjust players overlay)
+      if (_showAdjustPlayersOverlay) {
+        if (_deleteTargetPlayerName == player.name) {
+          if (_deleteTargetTapCount >= 3) {
+            // 4th click - cancel delete mode
+            _resetDeleteMode();
+            _swapService.clearSelection();
+            return;
+          }
+          _deleteTargetTapCount++;
+          // On 2nd and 3rd click, don't pass through to swap service
+          return;
+        } else {
+          // Different player tapped - reset delete tracking
+          _resetDeleteMode();
+          _deleteTargetPlayerName = player.name;
+          _deleteTargetTapCount = 1;
+        }
+      }
+
       _swapService.handlePlayerSelection(player.name);
     });
   }
@@ -621,13 +645,26 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     });
   }
 
-  /// Checks if a player is selected for swapping
+  /// Checks if a player is selected for swapping or delete
   bool _isPlayerSelected(PlayerData player) {
     // Prevent highlighting if SKATS data exists
     if (_hasAnySkatsData()) {
       return false;
     }
+    // Keep player highlighted during delete progression
+    if (_deleteTargetPlayerName == player.name && _deleteTargetTapCount >= 1) {
+      return true;
+    }
     return _swapService.isPlayerSelected(player.name);
+  }
+
+  /// Returns the background color for a player based on delete tap count
+  Color? _getPlayerSelectedColor(PlayerData player) {
+    if (_deleteTargetPlayerName == player.name) {
+      if (_deleteTargetTapCount >= 3) return Colors.red;
+      if (_deleteTargetTapCount == 2) return Colors.purple[200];
+    }
+    return null; // Use default color (blue[100] for swap selection)
   }
 
   /// Checks if an empty slot is selected for swapping
@@ -1129,8 +1166,38 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
   }
 
 
+  /// Returns true if a player is selected for deletion (triple-clicked)
+  bool _isDeleteMode() {
+    return _deleteTargetPlayerName != null && _deleteTargetTapCount >= 3;
+  }
+
+  /// Handles deleting the triple-clicked player
+  void _handleDeletePlayer() {
+    if (_deleteTargetPlayerName == null) return;
+
+    setState(() {
+      _removePlayerFromGroups(_deleteTargetPlayerName!);
+      _deleteTargetPlayerName = null;
+      _deleteTargetTapCount = 0;
+      _swapService.clearSelection();
+    });
+  }
+
+  /// Resets delete mode
+  void _resetDeleteMode() {
+    _deleteTargetPlayerName = null;
+    _deleteTargetTapCount = 0;
+  }
+
+  /// Gets the text for the shuffle/delete button
+  String _getShuffleButtonText() {
+    if (_isDeleteMode()) return 'Delete';
+    return 'Shuffle';
+  }
+
   /// Gets the color for the shuffle button based on SKATS data only
   Color _getShuffleButtonColor() {
+    if (_isDeleteMode()) return Colors.red;
     if (_hasAnySkatsData()) {
       return Colors.grey[400]!;
     }
@@ -1139,6 +1206,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
 
   /// Gets the handler for the shuffle button based on SKATS data only
   VoidCallback _getShuffleButtonHandler() {
+    if (_isDeleteMode()) return _handleDeletePlayer;
     if (_hasAnySkatsData()) {
       return _handleShuffleDisabledDueToSkats;
     }
@@ -1252,6 +1320,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
                 onSkatsChanged: _onSkatsChanged,
                 skatsFocusNodes: _skatsFocusNodes,
                 isPlayerFocused: _isPlayerFocused,
+                getPlayerSelectedColor: _getPlayerSelectedColor,
               ),
               _buildBottomButtonsWithSwap(),
             ],
@@ -1384,10 +1453,10 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
       onPressed: _handleCloseAdjustPlayersOverlay,
     ));
 
-    // Shuffle button
+    // Shuffle/Delete button
     buttons.add(ButtonBarUIService.buildActionButton(
       context,
-      text: 'Shuffle',
+      text: _getShuffleButtonText(),
       color: _getShuffleButtonColor(),
       onPressed: _getShuffleButtonHandler(),
     ));
@@ -1429,6 +1498,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     setState(() {
       _showAdjustPlayersOverlay = false;
       _swapService.clearSelection(); // Clear any swap selections when closing
+      _resetDeleteMode(); // Clear any delete selection when closing
     });
   }
 
