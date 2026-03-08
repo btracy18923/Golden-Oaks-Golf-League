@@ -495,18 +495,24 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     _hideKeypad();
 
     // Restore Skat Purse and Mulligan Purse before recalculating (in case this is a re-autofill)
-    if (widget.selectedPlayers != null && widget.playersAnte != null) {
-      double freshSkatPurse = widget.selectedPlayers!.length * widget.playersAnte!;
+    // Count actual players from groups (accounts for any deleted players)
+    int currentPlayerCount = 0;
+    for (var group in groups) {
+      currentPlayerCount += group.length;
+    }
+
+    if (widget.playersAnte != null) {
+      double freshSkatPurse = currentPlayerCount * widget.playersAnte!;
       LeaguePurseService.setSkatPurse(freshSkatPurse);
 
       // Restore Mulligan Purse to original value
-      double freshMulliganPurse = LeaguePurseService.mulliganAmount * widget.selectedPlayers!.length;
+      double freshMulliganPurse = LeaguePurseService.mulliganAmount * currentPlayerCount;
       LeaguePurseService.setMulliganPurse(freshMulliganPurse, isExplicit: false);
-    } else if (widget.selectedPlayers != null) {
-      LeaguePurseService.calculateSkatPurseFromCount(widget.selectedPlayers!.length);
+    } else {
+      LeaguePurseService.calculateSkatPurseFromCount(currentPlayerCount);
 
       // Restore Mulligan Purse to original value
-      double freshMulliganPurse = LeaguePurseService.mulliganAmount * widget.selectedPlayers!.length;
+      double freshMulliganPurse = LeaguePurseService.mulliganAmount * currentPlayerCount;
       LeaguePurseService.setMulliganPurse(freshMulliganPurse, isExplicit: false);
     }
 
@@ -1180,6 +1186,16 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
       _deleteTargetPlayerName = null;
       _deleteTargetTapCount = 0;
       _swapService.clearSelection();
+
+      // Recalculate purse amounts based on new player count
+      int newPlayerCount = 0;
+      for (var group in groups) {
+        newPlayerCount += group.length;
+      }
+      double ante = LeaguePurseService.playersAnte;
+      LeaguePurseService.setSkatPurse(ante * newPlayerCount);
+      LeaguePurseService.setClosestPinPurse(LeaguePurseService.closestPinAmount * newPlayerCount, isExplicit: false);
+      LeaguePurseService.setMulliganPurse(LeaguePurseService.mulliganAmount * newPlayerCount, isExplicit: false);
     });
   }
 

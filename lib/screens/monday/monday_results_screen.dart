@@ -615,9 +615,13 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
 
   /// Builds Total Players, Collect amount, and Mulligan/Party funds on one row
   Widget _buildPlayersAndCollectRow() {
-    final selectedPlayers = _retentionService.selectedPlayers ?? [];
-    final selectedCount = selectedPlayers.length;
-    
+    // Count actual players from groups (accounts for any deleted players)
+    final playerGroups = _retentionService.playerGroups ?? [];
+    int selectedCount = 0;
+    for (var group in playerGroups) {
+      selectedCount += group.length;
+    }
+
     // Calculate collect amount: (Players Ante + Closest Pin + Mulligan) * Total Players
     final playersAnte = _retentionService.playersAnte ?? 0.0;
     final closestPin = _retentionService.closestPinAmount ?? 0.0;
@@ -795,9 +799,13 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
     }
 
     // Calculate Skat Purse: total players × players ante
-    final selectedPlayers = _retentionService.selectedPlayers ?? [];
+    final playerGroupsForSkat = _retentionService.playerGroups ?? [];
+    int actualPlayerCount = 0;
+    for (var group in playerGroupsForSkat) {
+      actualPlayerCount += group.length;
+    }
     final playersAnte = _retentionService.playersAnte ?? 0.0;
-    final skatPurse = selectedPlayers.length * playersAnte;
+    final skatPurse = actualPlayerCount * playersAnte;
 
     // Calculate Skat Value
     if (totalDiff > 0) {

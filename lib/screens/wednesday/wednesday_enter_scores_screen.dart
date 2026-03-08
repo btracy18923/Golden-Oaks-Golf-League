@@ -525,16 +525,21 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
     if (_deleteTargetPlayerName == null) return;
 
     setState(() {
-      // Remove the player from all groups
+      // Remove the player from all groups by setting their slot to null
       for (int groupIndex = 0; groupIndex < groups.length; groupIndex++) {
-        groups[groupIndex].removeWhere((player) =>
-            player != null && player['last'] == _deleteTargetPlayerName);
+        for (int i = 0; i < groups[groupIndex].length; i++) {
+          if (groups[groupIndex][i] != null && groups[groupIndex][i]!['last'] == _deleteTargetPlayerName) {
+            groups[groupIndex][i] = null;
+          }
+        }
       }
       _deleteTargetPlayerName = null;
       _deleteTargetTapCount = 0;
       selectedForSwap.clear();
     });
     _createControllersForPlayers();
+    // Recalculate purse amounts based on new player count
+    updateTitleInformation();
   }
 
   /// Resets delete mode

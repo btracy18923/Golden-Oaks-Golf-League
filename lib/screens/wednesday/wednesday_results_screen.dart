@@ -685,11 +685,11 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
     final is6InchPhone = screenSize.width <= 900;
     final double fontSize = is6InchPhone ? 22 : 24;
 
-    // Count total players from groups
+    // Count total players from groups (excluding wildcards)
     int totalPlayers = 0;
     for (var group in widget.groups) {
       for (var player in group) {
-        if (player != null && player['last'] != null && player['last'].toString().isNotEmpty) {
+        if (player != null && player['last'] != null && player['last'].toString().isNotEmpty && player['is_wild_card'] != true) {
           totalPlayers++;
         }
       }
