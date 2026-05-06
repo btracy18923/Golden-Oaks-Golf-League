@@ -9,6 +9,43 @@ import '../config/email_config.dart';
 class BackendEmailService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
+  /// Sends Monday league results to administrators
+  ///
+  /// Parameters:
+  /// - [subject]: Email subject line
+  /// - [body]: Email body content (plain text)
+  ///
+  /// Returns:
+  /// - true if email document was successfully created in Firestore
+  /// - false if there was an error
+  Future<bool> sendMondayResultsEmail({
+    required String subject,
+    required String body,
+  }) async {
+    try {
+      final recipientList = EmailConfig.adminEmails.toSet().toList();
+
+      debugPrint('Sending Monday results email to ${recipientList.length} recipients');
+
+      await _firestore.collection('mail').add({
+        'to': recipientList,
+        'from': EmailConfig.senderEmail,
+        'message': {
+          'subject': subject,
+          'text': body,
+        },
+        'createdAt': FieldValue.serverTimestamp(),
+        'type': 'monday_results',
+      });
+
+      debugPrint('Monday results email document created successfully');
+      return true;
+    } catch (e) {
+      debugPrint('Error creating Monday results email document: $e');
+      return false;
+    }
+  }
+
   /// Sends Wednesday league results to ProShop, players, and administrators
   ///
   /// Parameters:

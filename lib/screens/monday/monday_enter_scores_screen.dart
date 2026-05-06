@@ -454,6 +454,12 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
 
   /// Moves focus to the next available SKATS input field
   void _moveToNextSkatsField(int currentGroupIndex, int currentPlayerIndex) {
+    // Failsafe: if all players already have skat numbers, just hide the keypad
+    if (_areAllSkatsFieldsComplete()) {
+      _hideKeypad();
+      return;
+    }
+
     // First, try to move to next player in the same group
     for (int playerIndex = currentPlayerIndex + 1; playerIndex < groups[currentGroupIndex].length; playerIndex++) {
       FocusNode? nextFocus = _skatsFocusNodes[currentGroupIndex][playerIndex];

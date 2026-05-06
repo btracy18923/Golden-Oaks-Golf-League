@@ -75,7 +75,7 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
         title: Text(
-          'Golden Oaks Golf League - 3.8.26',
+          'Golden Oaks Golf League - 5.6.26',
           style: const TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 18,
@@ -111,7 +111,7 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
         title: Text(
-          'Golden Oaks Golf League - 3.8.26',
+          'Golden Oaks Golf League - 5.6.26',
           style: const TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 20,

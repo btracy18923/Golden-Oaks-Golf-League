@@ -10,6 +10,7 @@ import '../main_menu_screen.dart';
 import '../../services/firebase_upload_service.dart';
 import '../../widgets/responsive_wrapper.dart';
 import '../../services/skat_adjustment_service.dart';
+import '../../services/backend_email_service.dart';
 
 class MondayResultsScreen extends StatefulWidget {
   const MondayResultsScreen({super.key});
@@ -225,6 +226,9 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
         await _deleteScoresFromFirebase(allDeletedScores);
       }
 
+      // Send results email to admins
+      await _sendResultsEmail(allSelectedPlayers);
+
       // Show success message
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -254,6 +258,110 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
     } catch (e) {
       // Error uploading/queuing player scores - will retry on next sync
     }
+  }
+
+  /// Builds and sends the Monday results email to admins
+  Future<void> _sendResultsEmail(List<PlayerData> allSelectedPlayers) async {
+    try {
+      final emailService = BackendEmailService();
+      final currentDate = DateTime.now().toIso8601String().split('T')[0];
+      final subject = 'Golden Oaks Monday League Results - $currentDate';
+      final body = _buildResultsEmailBody(allSelectedPlayers, currentDate);
+      await emailService.sendMondayResultsEmail(subject: subject, body: body);
+    } catch (e) {
+      debugPrint('Error sending Monday results email: $e');
+    }
+  }
+
+  /// Builds the plain-text email body matching the results screen layout
+  String _buildResultsEmailBody(List<PlayerData> allSelectedPlayers, String date) {
+    final buffer = StringBuffer();
+
+    buffer.writeln('GOLDEN OAKS MONDAY LEAGUE RESULTS');
+    buffer.writeln('Date: $date');
+    buffer.writeln('Golf Course: ${_retentionService.selectedGolfCourse ?? 'Not Selected'}');
+    buffer.writeln('');
+
+    // Financial summary
+    final playersAnte = _retentionService.playersAnte ?? 0.0;
+    final closestPin = _retentionService.closestPinAmount ?? 0.0;
+    final mulligan = _retentionService.mulliganAmount ?? 0.0;
+    final totalPlayers = allSelectedPlayers.length;
+    final collectAmount = (playersAnte + closestPin + mulligan) * totalPlayers;
+    final partyFund = LeaguePurseService.mulliganPurse;
+
+    buffer.writeln('Players Ante: \$${playersAnte.toStringAsFixed(2)}');
+    buffer.writeln('Closest Pin: \$${closestPin.toStringAsFixed(2)}');
+    buffer.writeln('Mulligan: \$${mulligan.toStringAsFixed(2)}');
+    buffer.writeln('Total Players: $totalPlayers');
+    buffer.writeln('Collect: \$${collectAmount.toStringAsFixed(2)}');
+    buffer.writeln('Party Fund: \$${partyFund.toStringAsFixed(2)}');
+    buffer.writeln('');
+
+    // Closest pin winners
+    final playerCounts = _retentionService.playerClosestPinCounts ?? {};
+    final playerWinnings = _retentionService.playerClosestPinWinnings ?? {};
+    final winners = playerCounts.entries.where((e) => e.value > 0).toList();
+    if (winners.isNotEmpty) {
+      buffer.writeln('CLOSEST PIN WINNERS');
+      buffer.writeln('-' * 40);
+      for (final entry in winners) {
+        final winnings = playerWinnings[entry.key] ?? 0.0;
+        buffer.writeln('${entry.key}  Pins: ${entry.value}  \$${winnings.round()}');
+      }
+      buffer.writeln('');
+    }
+
+    // SKAT winners (players with positive DIFF)
+    final playerGroups = _retentionService.playerGroups ?? [];
+    List<PlayerData> skatWinners = [];
+    double totalDiff = 0.0;
+    int actualPlayerCount = 0;
+    for (var group in playerGroups) {
+      actualPlayerCount += group.length;
+    }
+    for (var group in playerGroups) {
+      for (var player in group) {
+        if (player.diff.isNotEmpty && player.diff != '-') {
+          try {
+            final diffValue = double.parse(player.diff.replaceAll('+', ''));
+            if (diffValue > 0) {
+              skatWinners.add(player);
+              totalDiff += diffValue;
+            }
+          } catch (_) {}
+        }
+      }
+    }
+
+    if (skatWinners.isNotEmpty) {
+      final skatPurse = actualPlayerCount * playersAnte;
+      final skatValue = totalDiff > 0 ? skatPurse / totalDiff : 0.0;
+
+      buffer.writeln('SKAT WINNERS');
+      buffer.writeln('Skat Value: \$${skatValue.toStringAsFixed(2)}');
+      buffer.writeln('-' * 50);
+      buffer.writeln('Player            SK#    Skats   Diff   \$\$\$');
+      buffer.writeln('-' * 50);
+
+      skatWinners.sort((a, b) {
+        double mA = 0, mB = 0;
+        try { mA = double.parse(a.money.replaceAll('\$', '').replaceAll(',', '')); } catch (_) {}
+        try { mB = double.parse(b.money.replaceAll('\$', '').replaceAll(',', '')); } catch (_) {}
+        return mB.compareTo(mA);
+      });
+
+      for (final player in skatWinners) {
+        final name = player.name.padRight(18);
+        final skNum = player.skNumber.padRight(7);
+        final skats = (player.skats.isEmpty ? '-' : player.skats).padRight(8);
+        final diff = (player.diff.isEmpty ? '-' : player.diff).padRight(7);
+        final money = player.money.isEmpty ? '-' : player.money;
+        buffer.writeln('$name$skNum$skats$diff$money');
+      }
+    }
+
+    return buffer.toString();
   }
 
   /// Delete old scores from Firebase when they are removed locally

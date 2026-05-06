@@ -226,7 +226,7 @@ class FirebaseDownloadService {
             'golf_course': data['golf_course'],
             'skat_number': data['SKAT #'],
             'gross_score': data['gross_score'],
-            'skats_score': data['skats_score'],
+            'skats_score': data['SKAT #'],
             'close_pin_winnings': parseCurrency(data['Close Pin Winnings']),
             'skat_winnings': parseCurrency(data['SKAT Winnings']),
           };

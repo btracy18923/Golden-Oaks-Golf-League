@@ -9,7 +9,7 @@ class DatabaseHelper {
   static Database? _database;
 
   /// Global flag to allow duplicate dates in wednesday_scores
-  static bool allowDuplicateDates = true;
+  static bool allowDuplicateDates = false;
 
   /// SharedPreferences key for storing the allow duplicate dates state
   static const String _allowDuplicateDatesKey = 'allow_duplicate_dates_wednesday';
@@ -23,11 +23,11 @@ class DatabaseHelper {
   static Future<void> loadAllowDuplicateDatesState() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      allowDuplicateDates = prefs.getBool(_allowDuplicateDatesKey) ?? true;
+      allowDuplicateDates = prefs.getBool(_allowDuplicateDatesKey) ?? false;
       debugPrint('Loaded allow duplicate dates state: $allowDuplicateDates');
     } catch (e) {
       debugPrint('Error loading allow duplicate dates state: $e');
-      allowDuplicateDates = true; // Default to enabled on error
+      allowDuplicateDates = false; // Default to blocked on error
     }
   }
 
