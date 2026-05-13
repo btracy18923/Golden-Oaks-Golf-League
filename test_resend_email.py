@@ -11,7 +11,7 @@ import requests
 
 # ── Configuration ────────────────────────────────────────────────────────────
 
-RESEND_API_KEY = "re_Ha5ovv4P_LDuiouUtRhRof2nfbVaXkh85"
+RESEND_API_KEY = ""  # Set via environment variable - never hardcode keys here
 RESEND_URL     = "https://api.resend.com/emails"
 
 # The "from" address — the domain must be verified in your Resend account.

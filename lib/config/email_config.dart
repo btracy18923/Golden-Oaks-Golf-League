@@ -1,7 +1,7 @@
 /// Email configuration for the Golden Oaks Golf League app
 class EmailConfig {
   /// Resend API key
-  static const String sendGridApiKey = 're_Ha5ovv4P_LDuiouUtRhRof2nfbVaXkh85';
+  static const String sendGridApiKey = '';
 
   /// ProShop email address
   static const String proShopEmail = 'pro.shop@thehideout.us';
