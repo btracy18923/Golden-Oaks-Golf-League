@@ -796,6 +796,12 @@
                         <button class="primary" onclick="showAdminScreen('schedulePlayDate')" style="padding: 20px; font-size: 1.1em;">
                             📅 Schedule Play Date
                         </button>
+                        <button class="primary" onclick="showAdminScreen('emailBlast')" style="padding: 20px; font-size: 1.1em; grid-column: 1 / -1;">
+                            📧 Email Blast
+                        </button>
+                        <button class="primary" onclick="showAdminScreen('textBlast')" style="padding: 20px; font-size: 1.1em; grid-column: 1 / -1;">
+                            💬 Text Blast
+                        </button>
                     </div>
                 </div>
                 
@@ -829,6 +835,59 @@
                     <div id="annResult"></div>
                 </div>
                 
+                <!-- Email Blast Screen -->
+                <div id="emailBlastScreen" class="card" style="display: none;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3>📧 Email Blast</h3>
+                        <button onclick="showAdminTabSelection()" style="background: #718096; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">
+                            ← Back to Admin Menu
+                        </button>
+                    </div>
+                    <form id="emailBlastForm">
+                        <div class="form-group">
+                            <label>Subject</label>
+                            <input type="text" id="blastSubject" required placeholder="Enter email subject">
+                        </div>
+                        <div class="form-group">
+                            <label>Message</label>
+                            <textarea id="blastMessage" rows="8" required placeholder="Enter your message to all league players..."></textarea>
+                        </div>
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px;">
+                            <button type="button" onclick="previewEmailBlast()" style="background: #718096; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer;">
+                                👥 Preview Recipients
+                            </button>
+                            <button type="submit" class="primary" id="blastSendBtn">📧 Send Email Blast</button>
+                        </div>
+                    </form>
+                    <div id="blastPreview" style="margin-top: 20px;"></div>
+                    <div id="blastResult" style="margin-top: 20px;"></div>
+                </div>
+
+                <!-- Text Blast Screen -->
+                <div id="textBlastScreen" class="card" style="display: none;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3>💬 Text Blast</h3>
+                        <button onclick="showAdminTabSelection()" style="background: #718096; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">
+                            ← Back to Admin Menu
+                        </button>
+                    </div>
+                    <div class="form-group">
+                        <label>Message</label>
+                        <textarea id="textBlastMessage" rows="6" placeholder="Enter your text message to all league players..."></textarea>
+                    </div>
+                    <p style="color: #718096; font-size: 0.85em; margin-top: 6px;">
+                        ⚠️ Use this from your phone or tablet — clicking "Open SMS App" opens your messaging app with all recipients and the message pre-filled. Tap Send to deliver.
+                    </p>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px;">
+                        <button type="button" onclick="previewTextBlast()" style="background: #718096; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer;">
+                            👥 Preview Recipients
+                        </button>
+                        <button type="button" onclick="sendTextBlast()" id="textBlastSendBtn" class="primary">💬 Open SMS App</button>
+                    </div>
+                    <div id="textBlastPreview" style="margin-top: 20px;"></div>
+                    <div id="textBlastResult" style="margin-top: 20px;"></div>
+                </div>
+
                 <!-- Schedule Play Date Screen -->
                 <div id="schedulePlayDateScreen" class="card" style="display: none;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
@@ -848,7 +907,7 @@
                                 <option value="">Select a course...</option>
                             </select>
                         </div>
-                        <div class="form-group">
+                        <div class="form-group" id="departTimeGroup">
                             <label>Departure Time</label>
                             <input type="text" id="departTime" list="timeOptions" placeholder="Select or type time" onblur="if(this.value && !this.value.toUpperCase().includes('AM') && !this.value.toUpperCase().includes('PM')) this.value += ' AM'">
                             <datalist id="timeOptions">
@@ -873,13 +932,33 @@
                                 <option value="11:30 AM">
                                 <option value="11:45 AM">
                                 <option value="12:00 PM">
+                                <option value="12:15 PM">
+                                <option value="12:30 PM">
+                                <option value="12:45 PM">
+                                <option value="1:00 PM">
+                                <option value="1:15 PM">
+                                <option value="1:30 PM">
+                                <option value="1:45 PM">
+                                <option value="2:00 PM">
+                                <option value="2:15 PM">
+                                <option value="2:30 PM">
+                                <option value="2:45 PM">
+                                <option value="3:00 PM">
+                                <option value="3:15 PM">
+                                <option value="3:30 PM">
+                                <option value="3:45 PM">
+                                <option value="4:00 PM">
+                                <option value="4:15 PM">
+                                <option value="4:30 PM">
+                                <option value="4:45 PM">
+                                <option value="5:00 PM">
                             </datalist>
                         </div>
                         <div class="form-group">
                             <label>Tee Time</label>
                             <input type="text" id="teeTime" list="timeOptions" placeholder="Select or type time" onblur="if(this.value && !this.value.toUpperCase().includes('AM') && !this.value.toUpperCase().includes('PM')) this.value += ' AM'">
                         </div>
-                        <div class="form-group">
+                        <div class="form-group" id="meetAtGroup">
                             <label>Meet At</label>
                             <div style="display: flex; gap: 20px; flex-wrap: wrap;">
                                 <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
@@ -1011,18 +1090,25 @@
                     throw new Error(`Email not found in ${selectedLeague === 'monday' ? 'Monday' : 'Wednesday'} league roster`);
                 }
 
-                const player = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
+                // Find the document whose player_number matches (multiple docs may share an email)
+                const enteredPlayerNumber = String(parseInt(playerNumber, 10));
+                let player = null;
+                for (const docSnap of snapshot.docs) {
+                    const data = docSnap.data();
+                    console.log('Checking player:', data.first, data.last, '| player_number:', data.player_number);
+                    if (String(parseInt(data.player_number, 10)) === enteredPlayerNumber) {
+                        player = { id: docSnap.id, ...data };
+                        break;
+                    }
+                }
+
+                if (!player) {
+                    throw new Error('Player number does not match the email address');
+                }
+
                 console.log('Found player:', player.first, player.last);
                 console.log('Player number from Firebase:', player.player_number, 'Type:', typeof player.player_number);
                 console.log('Player number entered:', playerNumber, 'Type:', typeof playerNumber);
-
-                // Verify player_number matches (strip leading zeros since Firebase stores as number)
-                const storedPlayerNumber = String(parseInt(player.player_number, 10));
-                const enteredPlayerNumber = String(parseInt(playerNumber, 10));
-
-                if (storedPlayerNumber !== enteredPlayerNumber) {
-                    throw new Error('Player number does not match the email address');
-                }
 
                 console.log('Player number verified successfully');
 
@@ -1308,66 +1394,21 @@
                         }
                     }
 
-                    // Check if user is signed up for this play date
-                    let isSignedUp = false;
-                    const signupRef = collection(db, signupCollection);
-                    const q = query(signupRef, where('playDateId', '==', playDate.id), where('playerId', '==', currentUser.id));
-                    const signupSnapshot = await getDocs(q);
-                    isSignedUp = !signupSnapshot.empty && signupSnapshot.docs[0].data().isPlaying;
-
-                    // Create date card
-                    if (isAdmin) {
-                        // Admin sees card with their own checkbox and a button to view all players
-                        const checkboxId = `signup_${playDate.id}`;
-                        const labelId = `label_${playDate.id}`;
-                        htmlContent += `
-                            <div class="card">
-                                <h3>${new Date(playDate.date.seconds * 1000).toLocaleDateString()} - ${courseName}</h3>
-                                <div style="margin-bottom: 15px;">
-                                    <p><strong>Course:</strong> ${courseName}</p>
-                                    <p><strong>Departure:</strong> ${playDate.departureTime || 'TBD'}</p>
-                                    <p><strong>Tee Time:</strong> ${playDate.teeTime || 'TBD'}</p>
-                                    ${playDate.meetAt ? `<p><strong>Meet At:</strong> ${playDate.meetAt}</p>` : ''}
-                                    ${playDate.notes ? `<p><strong>Notes:</strong> ${playDate.notes}</p>` : ''}
-                                </div>
-                                <label class="checkbox-label" style="display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 10px; background: #f7fafc; border-radius: 6px; margin-top: 15px;">
-                                    <input type="checkbox"
-                                           id="${checkboxId}"
-                                           ${isSignedUp ? 'checked' : ''}
-                                           onchange="toggleSignup('${currentUser.id}', '${playDate.id}', this.checked, '${checkboxId}', '${labelId}')"
-                                           style="width: 18px; height: 18px; cursor: pointer;">
-                                    <span id="${labelId}" style="font-weight: 500;">${isSignedUp ? 'Signed up' : 'Click to sign up'}</span>
-                                </label>
-                                <button onclick="showPlayDateDetails('${playDate.id}', '${courseName.replace(/'/g, "\\'")}', ${playDate.date.seconds}, '${playDate.departureTime || ''}', '${playDate.teeTime || ''}', '${(playDate.meetAt || '').replace(/'/g, "\\'")}', '${(playDate.notes || '').replace(/'/g, "\\'")}')" style="width: 100%; margin-top: 10px; padding: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
-                                    View Who's Playing →
-                                </button>
+                    htmlContent += `
+                        <div class="card">
+                            <h3>${new Date(playDate.date.seconds * 1000).toLocaleDateString()} - ${courseName}</h3>
+                            <div style="margin-bottom: 15px;">
+                                <p><strong>Course:</strong> ${courseName}</p>
+                                <p><strong>Departure:</strong> ${playDate.departureTime || 'TBD'}</p>
+                                <p><strong>Tee Time:</strong> ${playDate.teeTime || 'TBD'}</p>
+                                ${playDate.meetAt ? `<p><strong>Meet At:</strong> ${playDate.meetAt}</p>` : ''}
+                                ${playDate.notes ? `<p><strong>Notes:</strong> ${playDate.notes}</p>` : ''}
                             </div>
-                        `;
-                    } else {
-                        // Regular player sees checkbox on card
-                        const checkboxId = `signup_${playDate.id}`;
-                        const labelId = `label_${playDate.id}`;
-                        htmlContent += `
-                            <div class="card">
-                                <h3>${new Date(playDate.date.seconds * 1000).toLocaleDateString()} - ${courseName}</h3>
-                                <div style="margin-bottom: 15px;">
-                                    <p><strong>Course:</strong> ${courseName}</p>
-                                    <p><strong>Departure:</strong> ${playDate.departureTime || 'TBD'}</p>
-                                    <p><strong>Tee Time:</strong> ${playDate.teeTime || 'TBD'}</p>
-                                    ${playDate.meetAt ? `<p><strong>Meet At:</strong> ${playDate.meetAt}</p>` : ''}
-                                    ${playDate.notes ? `<p><strong>Notes:</strong> ${playDate.notes}</p>` : ''}
-                                </div>
-                                <label class="checkbox-label" style="display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 10px; background: #f7fafc; border-radius: 6px; margin-top: 15px;">
-                                    <input type="checkbox"
-                                           id="${checkboxId}"
-                                           ${isSignedUp ? 'checked' : ''}
-                                           onchange="toggleSignup('${currentUser.id}', '${playDate.id}', this.checked, '${checkboxId}', '${labelId}')"
-                                           style="width: 18px; height: 18px; cursor: pointer;">
-                                    <span id="${labelId}" style="font-weight: 500;">${isSignedUp ? 'Signed up' : 'Click to sign up'}</span>
-                                </label>
-                            </div>
-                        `;
-                    }
+                            <button onclick="showPlayDateDetails('${playDate.id}', '${courseName.replace(/'/g, "\\'")}', ${playDate.date.seconds}, '${playDate.departureTime || ''}', '${playDate.teeTime || ''}', '${(playDate.meetAt || '').replace(/'/g, "\\'")}', '${(playDate.notes || '').replace(/'/g, "\\'")}')" style="width: 100%; margin-top: 15px; padding: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                                Click to Play / Not Play →
+                            </button>
+                        </div>
+                    `;
                 }
 
                 container.innerHTML = htmlContent;
@@ -1410,26 +1451,14 @@
                         </div>
                 `;
 
-                if (isAdmin) {
-                    // Admin sees all players who are playing
-                    htmlContent += '<h4>Who\'s Playing</h4>';
-                    htmlContent += '<div id="adminPlayersList"></div>';
-                    htmlContent += '</div>';
-                    container.innerHTML = htmlContent;
+                // Everyone sees the full player list
+                // Admin can edit all players; regular players can only edit themselves
+                htmlContent += '<h4>Who\'s Playing</h4>';
+                htmlContent += '<div id="playersStatusList"></div>';
+                htmlContent += '</div>';
+                container.innerHTML = htmlContent;
 
-                    // Load all players for admin
-                    await loadAdminPlayersForDate(playDateId, collectionName);
-
-                } else {
-                    // Regular user sees only their checkbox
-                    htmlContent += '<p style="color: #4a5568; margin-bottom: 15px;">Check box to play</p>';
-                    htmlContent += '<div id="userCheckbox"></div>';
-                    htmlContent += '</div>';
-                    container.innerHTML = htmlContent;
-
-                    // Load only current user's checkbox
-                    await loadUserCheckbox(playDateId);
-                }
+                await loadPlayersStatusList(playDateId, collectionName);
 
             } catch (err) {
                 container.innerHTML = `<div class="card"><div class="error">Error loading play date details: ${err.message}</div></div>`;
@@ -1557,6 +1586,77 @@
             }
         }
 
+        async function loadPlayersStatusList(playDateId, collectionName) {
+            try {
+                const displayLeague = isAdmin && adminSelectedLeague ? adminSelectedLeague : selectedLeague;
+                const signupCollection = displayLeague === 'monday' ? 'M_Signups' : 'W_Signups';
+
+                const playersRef = collection(db, collectionName);
+                const snapshot = await getDocs(playersRef);
+                const players = snapshot.docs.map(doc => {
+                    const data = doc.data();
+                    return { id: doc.id, ...data, name: `${data.first} ${data.last}` };
+                }).sort((a, b) => (a.last || '').localeCompare(b.last || ''));
+
+                const signupRef = collection(db, signupCollection);
+                const sq = query(signupRef, where('playDateId', '==', playDateId));
+                const signupSnapshot = await getDocs(sq);
+
+                const statusMap = {};
+                signupSnapshot.docs.forEach(doc => {
+                    const data = doc.data();
+                    if (typeof data.isPlaying === 'boolean') statusMap[data.playerId] = data.isPlaying;
+                });
+
+                const container = document.getElementById('playersStatusList');
+                if (players.length === 0) {
+                    container.innerHTML = '<p style="color: #718096; text-align: center; padding: 20px;">No players found</p>';
+                    return;
+                }
+
+                container.innerHTML = '<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;">' +
+                players.map(player => {
+                    const status = statusMap[player.id];
+                    const canEdit = isAdmin || player.id === currentUser.id;
+                    const bgColor = status === true ? '#c6f6d5' : status === false ? '#fed7d7' : '#f7fafc';
+                    const borderColor = status === true ? '#48bb78' : status === false ? '#fc8181' : '#e2e8f0';
+                    const indicator = status === true ? '✓' : status === false ? '✗' : '–';
+                    const indicatorColor = status === true ? '#22543d' : status === false ? '#c53030' : '#a0aec0';
+
+                    if (canEdit) {
+                        const rowBg = status === true ? '#c6f6d5' : status === false ? '#fed7d7' : 'white';
+                        const rowBorder = status === true ? '#48bb78' : status === false ? '#fc8181' : '#e2e8f0';
+                        return `
+                            <div style="padding: 6px; border: 2px solid ${rowBorder}; background: ${rowBg}; border-radius: 6px; display: flex; align-items: center; gap: 4px;">
+                                <span style="font-weight: 600; color: #2d3748; flex: 1; min-width: 0; font-size: 0.85em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${player.name}</span>
+                                <button onclick="window.toggleAvailability('${player.id}', '${playDateId}', true, 'playersStatusList')"
+                                        style="padding: 4px 8px; border-radius: 4px; border: 1px solid #48bb78; background: ${status === true ? '#48bb78' : 'white'}; color: ${status === true ? 'white' : '#276749'}; font-weight: 600; cursor: pointer; font-size: 0.75em; white-space: nowrap;">
+                                    ${status === true ? '✓ ' : ''}Playing
+                                </button>
+                                <button onclick="window.toggleAvailability('${player.id}', '${playDateId}', false, 'playersStatusList')"
+                                        style="padding: 4px 8px; border-radius: 4px; border: 1px solid #fc8181; background: ${status === false ? '#fc8181' : 'white'}; color: ${status === false ? 'white' : '#c53030'}; font-weight: 600; cursor: pointer; font-size: 0.75em; white-space: nowrap;">
+                                    ${status === false ? '✗ ' : ''}NOT
+                                </button>
+                            </div>
+                        `;
+                    } else {
+                        const rowBg = status === true ? '#c6f6d5' : status === false ? '#fed7d7' : 'white';
+                        const rowBorder = status === true ? '#48bb78' : status === false ? '#fc8181' : '#e2e8f0';
+                        const displayIndicator = status === true ? '✓' : status === false ? '✗' : '';
+                        const displayColor = status === true ? '#22543d' : '#c53030';
+                        return `
+                            <div style="padding: 6px; border: 2px solid ${rowBorder}; background: ${rowBg}; border-radius: 6px; display: flex; align-items: center; gap: 6px;">
+                                ${displayIndicator ? `<span style="font-weight: 700; color: ${displayColor}; font-size: 1em;">${displayIndicator}</span>` : ''}
+                                <span style="font-weight: 600; color: #2d3748; font-size: 0.85em;">${player.name}</span>
+                            </div>
+                        `;
+                    }
+                }).join('') + '</div>';
+            } catch (err) {
+                document.getElementById('playersStatusList').innerHTML = `<div class="error">Error loading players: ${err.message}</div>`;
+            }
+        }
+
         async function loadAvailability(playDateId, containerId = 'playersList') {
             try {
                 // Get the current league to display
@@ -1612,15 +1712,8 @@
             }
         }
         
-        window.toggleSignup = async function(playerId, playDateId, isPlaying, checkboxId, labelId) {
+        window.toggleSignup = async function(playerId, playDateId, isPlaying) {
             try {
-                // Update the label text immediately
-                const labelElement = document.getElementById(labelId);
-                if (labelElement) {
-                    labelElement.textContent = isPlaying ? 'Signed up' : 'Click to sign up';
-                }
-
-                // Get the current league to use the correct signup collection
                 const displayLeague = isAdmin && adminSelectedLeague ? adminSelectedLeague : selectedLeague;
                 const signupCollection = displayLeague === 'monday' ? 'M_Signups' : 'W_Signups';
 
@@ -1632,11 +1725,10 @@
                     updatedAt: Timestamp.now()
                 });
 
-                console.log('Signup updated successfully');
+                loadAllPlayDates();
             } catch (err) {
                 console.error('Error updating signup:', err);
                 alert('Error updating signup: ' + err.message);
-                // Reload to restore correct state
                 loadAllPlayDates();
             }
         };
@@ -1676,6 +1768,9 @@
                 } else if (containerId === 'adminPlayersList') {
                     const collectionName = displayLeague === 'monday' ? 'M_player_profile' : 'W_player_profile';
                     loadAdminPlayersForDate(playDateId, collectionName);
+                } else if (containerId === 'playersStatusList') {
+                    const collectionName = displayLeague === 'monday' ? 'M_player_profile' : 'W_player_profile';
+                    loadPlayersStatusList(playDateId, collectionName);
                 } else {
                     loadAvailability(playDateId, containerId);
                 }
@@ -2528,18 +2623,46 @@ Your current HC is displayed when you log in.
             document.getElementById('adminTabSelection').style.display = 'none';
             document.getElementById('postAnnouncementScreen').style.display = 'none';
             document.getElementById('schedulePlayDateScreen').style.display = 'none';
+            document.getElementById('emailBlastScreen').style.display = 'none';
+            document.getElementById('textBlastScreen').style.display = 'none';
         };
 
         // Admin screen navigation functions
         window.showAdminScreen = function(screenType) {
             document.getElementById('adminTabSelection').style.display = 'none';
+            document.getElementById('postAnnouncementScreen').style.display = 'none';
+            document.getElementById('schedulePlayDateScreen').style.display = 'none';
+            document.getElementById('emailBlastScreen').style.display = 'none';
+            document.getElementById('textBlastScreen').style.display = 'none';
 
             if (screenType === 'postAnnouncement') {
                 document.getElementById('postAnnouncementScreen').style.display = 'block';
-                document.getElementById('schedulePlayDateScreen').style.display = 'none';
             } else if (screenType === 'schedulePlayDate') {
-                document.getElementById('postAnnouncementScreen').style.display = 'none';
                 document.getElementById('schedulePlayDateScreen').style.display = 'block';
+                const league = adminSelectedLeague || selectedLeague;
+                const departTimeGroup = document.getElementById('departTimeGroup');
+                const meetAtGroup = document.getElementById('meetAtGroup');
+                const teeTimeInput = document.getElementById('teeTime');
+                const marinaCheckbox = document.querySelector('input[name="meetAt"][value="Marina"]');
+                if (league === 'wednesday') {
+                    departTimeGroup.style.display = 'none';
+                    meetAtGroup.style.display = 'none';
+                    teeTimeInput.value = '1:00 PM';
+                } else {
+                    departTimeGroup.style.display = '';
+                    meetAtGroup.style.display = '';
+                    teeTimeInput.value = '';
+                    document.querySelectorAll('input[name="meetAt"]').forEach(cb => cb.checked = false);
+                    if (marinaCheckbox) marinaCheckbox.checked = true;
+                }
+            } else if (screenType === 'emailBlast') {
+                document.getElementById('emailBlastScreen').style.display = 'block';
+                document.getElementById('blastPreview').innerHTML = '';
+                document.getElementById('blastResult').innerHTML = '';
+            } else if (screenType === 'textBlast') {
+                document.getElementById('textBlastScreen').style.display = 'block';
+                document.getElementById('textBlastPreview').innerHTML = '';
+                document.getElementById('textBlastResult').innerHTML = '';
             }
         };
 
@@ -2547,6 +2670,8 @@ Your current HC is displayed when you log in.
             document.getElementById('adminTabSelection').style.display = 'block';
             document.getElementById('postAnnouncementScreen').style.display = 'none';
             document.getElementById('schedulePlayDateScreen').style.display = 'none';
+            document.getElementById('emailBlastScreen').style.display = 'none';
+            document.getElementById('textBlastScreen').style.display = 'none';
         };
         
         window.deleteAnnouncement = async function(announcementId) {
@@ -2650,6 +2775,262 @@ Your current HC is displayed when you log in.
             }
         };
 
+        // --- Email Blast ---
+
+        window.previewEmailBlast = async function() {
+            const preview = document.getElementById('blastPreview');
+            preview.innerHTML = '<div class="loading">Loading recipients...</div>';
+            try {
+                const displayLeague = adminSelectedLeague || selectedLeague;
+                const collectionName = displayLeague === 'monday' ? 'M_player_profile' : 'W_player_profile';
+                const snapshot = await getDocs(collection(db, collectionName));
+
+                const seen = new Set();
+                const recipients = [];
+                snapshot.docs.forEach(d => {
+                    const data = d.data();
+                    const email = (data.email || '').trim().toLowerCase();
+                    if (email.includes('@') && email.includes('.') && !seen.has(email)) {
+                        seen.add(email);
+                        recipients.push({ name: `${data.first} ${data.last}`, email });
+                    }
+                });
+                recipients.sort((a, b) => a.name.localeCompare(b.name));
+
+                if (recipients.length === 0) {
+                    preview.innerHTML = '<div class="error">No players with email addresses found.</div>';
+                    return;
+                }
+
+                const leagueLabel = displayLeague === 'monday' ? 'Monday' : 'Wednesday';
+                let html = `<div class="info-box">
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
+                        <strong id="emailBlastCount">0 ${leagueLabel} players selected</strong>
+                        <div style="display:flex; gap:8px;">
+                            <button type="button" onclick="toggleAllEmailRecipients(true)" style="background:#48bb78; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer; font-size:0.85em;">Select All</button>
+                            <button type="button" onclick="toggleAllEmailRecipients(false)" style="background:#fc8181; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer; font-size:0.85em;">Deselect All</button>
+                        </div>
+                    </div>
+                    <div style="columns:2; gap:16px;">`;
+
+                recipients.forEach(r => {
+                    html += `<label style="display:flex; align-items:center; gap:6px; cursor:pointer; padding:3px 0; break-inside:avoid;">
+                        <input type="checkbox" class="email-recipient-cb" data-email="${r.email}" data-name="${r.name}"
+                               onchange="updateEmailBlastCount()"
+                               style="width:16px; height:16px; cursor:pointer;">
+                        ${r.name}
+                    </label>`;
+                });
+
+                html += `</div></div>`;
+                preview.innerHTML = html;
+                // Force unchecked — overrides any browser form-state restoration
+                document.querySelectorAll('.email-recipient-cb').forEach(cb => cb.checked = false);
+            } catch (err) {
+                preview.innerHTML = `<div class="error">Error loading recipients: ${err.message}</div>`;
+            }
+        };
+
+        window.toggleAllEmailRecipients = function(checked) {
+            document.querySelectorAll('.email-recipient-cb').forEach(cb => cb.checked = checked);
+            updateEmailBlastCount();
+        };
+
+        window.updateEmailBlastCount = function() {
+            const total = document.querySelectorAll('.email-recipient-cb:checked').length;
+            const countEl = document.getElementById('emailBlastCount');
+            if (countEl) {
+                const displayLeague = adminSelectedLeague || selectedLeague;
+                const leagueLabel = displayLeague === 'monday' ? 'Monday' : 'Wednesday';
+                countEl.textContent = `${total} ${leagueLabel} player${total !== 1 ? 's' : ''} selected`;
+            }
+        };
+
+        document.getElementById('emailBlastForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!isAdmin) { alert('You must be an administrator to send email blasts'); return; }
+
+            const subject = document.getElementById('blastSubject').value.trim();
+            const message = document.getElementById('blastMessage').value.trim();
+            const result = document.getElementById('blastResult');
+            const sendBtn = document.getElementById('blastSendBtn');
+
+            try {
+                const displayLeague = adminSelectedLeague || selectedLeague;
+
+                // If preview checkboxes exist, use them; otherwise fetch all
+                const checkboxes = document.querySelectorAll('.email-recipient-cb:checked');
+                let uniqueEmails;
+                if (checkboxes.length > 0) {
+                    uniqueEmails = Array.from(checkboxes).map(cb => cb.dataset.email);
+                } else {
+                    const collectionName = displayLeague === 'monday' ? 'M_player_profile' : 'W_player_profile';
+                    const snapshot = await getDocs(collection(db, collectionName));
+                    const seen = new Set();
+                    snapshot.docs.forEach(d => {
+                        const email = (d.data().email || '').trim().toLowerCase();
+                        if (email.includes('@') && email.includes('.')) seen.add(email);
+                    });
+                    uniqueEmails = [...seen];
+                }
+
+                if (uniqueEmails.length === 0) {
+                    result.innerHTML = '<div class="error">No recipients selected.</div>';
+                    return;
+                }
+
+                if (!confirm(`Send email blast to ${uniqueEmails.length} player${uniqueEmails.length !== 1 ? 's' : ''}?`)) return;
+
+                sendBtn.disabled = true;
+                sendBtn.textContent = 'Sending...';
+
+                const sgResponse = await fetch('/.netlify/functions/send-email', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        to: uniqueEmails,
+                        subject: subject,
+                        text: message
+                    })
+                });
+
+                if (sgResponse.status !== 200) {
+                    const errBody = await sgResponse.text();
+                    throw new Error(`Email error ${sgResponse.status}: ${errBody}`);
+                }
+
+                result.innerHTML = `<div class="success">Email blast sent to ${uniqueEmails.length} player${uniqueEmails.length !== 1 ? 's' : ''}!</div>`;
+                e.target.reset();
+                document.getElementById('blastPreview').innerHTML = '';
+                setTimeout(() => result.innerHTML = '', 5000);
+            } catch (err) {
+                result.innerHTML = `<div class="error">Error: ${err.message}</div>`;
+            } finally {
+                sendBtn.disabled = false;
+                sendBtn.textContent = '📧 Send Email Blast';
+            }
+        });
+
+        // --- Text Blast ---
+
+        async function getPlayerPhoneNumbers() {
+            const displayLeague = adminSelectedLeague || selectedLeague;
+            const collectionName = displayLeague === 'monday' ? 'M_player_profile' : 'W_player_profile';
+            const snapshot = await getDocs(collection(db, collectionName));
+
+            const seen = new Set();
+            const recipients = [];
+            snapshot.docs.forEach(d => {
+                const data = d.data();
+                const raw = (data.cell || data.phone || '').toString().replace(/\D/g, '');
+                if (raw.length >= 10 && !seen.has(raw)) {
+                    seen.add(raw);
+                    recipients.push({ name: `${data.first || ''} ${data.last || ''}`.trim(), number: raw });
+                }
+            });
+            recipients.sort((a, b) => a.name.localeCompare(b.name));
+            return recipients;
+        }
+
+        window.previewTextBlast = async function() {
+            const preview = document.getElementById('textBlastPreview');
+            preview.innerHTML = '<div class="loading">Loading recipients...</div>';
+            try {
+                const recipients = await getPlayerPhoneNumbers();
+                if (recipients.length === 0) {
+                    preview.innerHTML = '<div class="error">No players with cell numbers found.</div>';
+                    return;
+                }
+                const displayLeague = adminSelectedLeague || selectedLeague;
+                const leagueLabel = displayLeague === 'monday' ? 'Monday' : 'Wednesday';
+
+                let html = `<div class="info-box">
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
+                        <strong id="textBlastCount">${recipients.length} ${leagueLabel} players selected</strong>
+                        <div style="display:flex; gap:8px;">
+                            <button type="button" onclick="toggleAllTextRecipients(true)" style="background:#48bb78; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer; font-size:0.85em;">Select All</button>
+                            <button type="button" onclick="toggleAllTextRecipients(false)" style="background:#fc8181; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer; font-size:0.85em;">Deselect All</button>
+                        </div>
+                    </div>
+                    <div style="columns:2; gap:16px;">`;
+
+                recipients.forEach((r, i) => {
+                    html += `<label style="display:flex; align-items:center; gap:6px; cursor:pointer; padding:3px 0; break-inside:avoid;">
+                        <input type="checkbox" class="text-recipient-cb" data-number="${r.number}" data-name="${r.name}" checked
+                               onchange="updateTextBlastCount()"
+                               style="width:16px; height:16px; cursor:pointer;">
+                        ${r.name}
+                    </label>`;
+                });
+
+                html += `</div></div>`;
+                preview.innerHTML = html;
+            } catch (err) {
+                preview.innerHTML = `<div class="error">Error loading recipients: ${err.message}</div>`;
+            }
+        };
+
+        window.toggleAllTextRecipients = function(checked) {
+            document.querySelectorAll('.text-recipient-cb').forEach(cb => cb.checked = checked);
+            updateTextBlastCount();
+        };
+
+        window.updateTextBlastCount = function() {
+            const total = document.querySelectorAll('.text-recipient-cb:checked').length;
+            const countEl = document.getElementById('textBlastCount');
+            if (countEl) {
+                const displayLeague = adminSelectedLeague || selectedLeague;
+                const leagueLabel = displayLeague === 'monday' ? 'Monday' : 'Wednesday';
+                countEl.textContent = `${total} ${leagueLabel} player${total !== 1 ? 's' : ''} selected`;
+            }
+        };
+
+        window.sendTextBlast = async function() {
+            if (!isAdmin) { alert('You must be an administrator to send text blasts'); return; }
+
+            const message = document.getElementById('textBlastMessage').value.trim();
+            const result = document.getElementById('textBlastResult');
+            const sendBtn = document.getElementById('textBlastSendBtn');
+
+            if (!message) {
+                result.innerHTML = '<div class="error">Please enter a message.</div>';
+                return;
+            }
+
+            try {
+                // If preview checkboxes exist, use them; otherwise fetch all
+                const checkboxes = document.querySelectorAll('.text-recipient-cb:checked');
+                let numbers;
+                if (checkboxes.length > 0) {
+                    numbers = Array.from(checkboxes).map(cb => cb.dataset.number);
+                } else {
+                    const recipients = await getPlayerPhoneNumbers();
+                    numbers = recipients.map(r => r.number);
+                }
+
+                if (numbers.length === 0) {
+                    result.innerHTML = '<div class="error">No recipients selected.</div>';
+                    return;
+                }
+
+                if (!confirm(`Open SMS app to text ${numbers.length} player${numbers.length !== 1 ? 's' : ''}?`)) return;
+
+                sendBtn.disabled = true;
+                sendBtn.textContent = 'Opening...';
+
+                const smsUri = `sms:${numbers.join(',')}?body=${encodeURIComponent(message)}`;
+                window.location.href = smsUri;
+
+                result.innerHTML = `<div class="success">SMS app opened with ${numbers.length} recipient${numbers.length !== 1 ? 's' : ''}. Tap Send in your messaging app.</div>`;
+                setTimeout(() => result.innerHTML = '', 8000);
+            } catch (err) {
+                result.innerHTML = `<div class="error">Error: ${err.message}</div>`;
+            } finally {
+                sendBtn.disabled = false;
+                sendBtn.textContent = '💬 Open SMS App';
+            }
+        };
+
         document.getElementById('playDateForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
@@ -2680,15 +3061,22 @@ Your current HC is displayed when you log in.
                     }
                 }
 
-                // Get selected "Meet At" checkboxes
-                const meetAtCheckboxes = document.querySelectorAll('input[name="meetAt"]:checked');
-                const meetAtValues = Array.from(meetAtCheckboxes).map(cb => cb.value);
-                const meetAtString = meetAtValues.length > 0 ? meetAtValues.join(', ') : null;
+                let meetAtString;
+                let departureTime;
+                if (displayLeague === 'wednesday') {
+                    meetAtString = 'Pro Shop';
+                    departureTime = null;
+                } else {
+                    const meetAtCheckboxes = document.querySelectorAll('input[name="meetAt"]:checked');
+                    const meetAtValues = Array.from(meetAtCheckboxes).map(cb => cb.value);
+                    meetAtString = meetAtValues.length > 0 ? meetAtValues.join(', ') : null;
+                    departureTime = document.getElementById('departTime').value || null;
+                }
 
                 const playDateData = {
                     date: Timestamp.fromDate(dateObj),
                     courseId: courseId,
-                    departureTime: document.getElementById('departTime').value || null,
+                    departureTime: departureTime,
                     teeTime: document.getElementById('teeTime').value || null,
                     meetAt: meetAtString,
                     notes: document.getElementById('playNotes').value || null,
