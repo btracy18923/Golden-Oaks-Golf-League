@@ -1358,6 +1358,11 @@
                 // Get signup collection
                 const signupCollection = displayLeague === 'monday' ? 'M_Signups' : 'W_Signups';
 
+                // Get total player count once for Undecided calculation
+                const playerCollection = displayLeague === 'monday' ? 'M_player_profile' : 'W_player_profile';
+                const playerCountSnapshot = await getDocs(collection(db, playerCollection));
+                const totalPlayers = playerCountSnapshot.size;
+
                 // For Monday league, fetch all courses once and create a map by internal ID
                 let coursesMap = {};
                 if (displayLeague === 'monday' && courseCollection) {
@@ -1394,6 +1399,18 @@
                         }
                     }
 
+                    // Count signups for this play date
+                    const signupsQ = query(collection(db, signupCollection), where('playDateId', '==', playDate.id));
+                    const signupsSnapshot = await getDocs(signupsQ);
+                    let playingCount = 0;
+                    let notPlayingCount = 0;
+                    signupsSnapshot.docs.forEach(doc => {
+                        const d = doc.data();
+                        if (d.isPlaying === true) playingCount++;
+                        else if (d.isPlaying === false) notPlayingCount++;
+                    });
+                    const undecidedCount = totalPlayers - playingCount - notPlayingCount;
+
                     htmlContent += `
                         <div class="card">
                             <h3>${new Date(playDate.date.seconds * 1000).toLocaleDateString()} - ${courseName}</h3>
@@ -1404,7 +1421,14 @@
                                 ${playDate.meetAt ? `<p><strong>Meet At:</strong> ${playDate.meetAt}</p>` : ''}
                                 ${playDate.notes ? `<p><strong>Notes:</strong> ${playDate.notes}</p>` : ''}
                             </div>
-                            <button onclick="showPlayDateDetails('${playDate.id}', '${courseName.replace(/'/g, "\\'")}', ${playDate.date.seconds}, '${playDate.departureTime || ''}', '${playDate.teeTime || ''}', '${(playDate.meetAt || '').replace(/'/g, "\\'")}', '${(playDate.notes || '').replace(/'/g, "\\'")}')" style="width: 100%; margin-top: 15px; padding: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                            <p style="margin: 8px 0 0; font-size: 0.9em;">
+                                <span style="color: #276749; font-weight: 600;">✓ ${playingCount} Playing</span>
+                                &nbsp;|&nbsp;
+                                <span style="color: #c53030; font-weight: 600;">✗ ${notPlayingCount} Not Playing</span>
+                                &nbsp;|&nbsp;
+                                <span style="color: #718096; font-weight: 600;">? ${undecidedCount} Undecided</span>
+                            </p>
+                            <button onclick="showPlayDateDetails('${playDate.id}', '${courseName.replace(/'/g, "\\'")}', ${playDate.date.seconds}, '${playDate.departureTime || ''}', '${playDate.teeTime || ''}', '${(playDate.meetAt || '').replace(/'/g, "\\'")}', '${(playDate.notes || '').replace(/'/g, "\\'")}')" style="width: 100%; margin-top: 12px; padding: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
                                 Click to Play / Not Play →
                             </button>
                         </div>
