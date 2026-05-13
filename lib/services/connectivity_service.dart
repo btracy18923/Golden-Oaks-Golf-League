@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'firebase_upload_service.dart';
 import 'upload_queue_service.dart';
+import 'backend_email_service.dart';
+import 'pending_email_service.dart';
 
 class ConnectivityService {
   static final ConnectivityService _instance = ConnectivityService._internal();
@@ -105,12 +107,52 @@ class ConnectivityService {
       
       // Cleanup old completed uploads
       await _uploadQueueService.cleanupOldUploads();
-      
+
       await _uploadQueueService.getUploadStats();
 
-    } catch (e) {
+      // Send any pending results emails that were queued while offline
+      await _sendPendingEmail();
+
     } finally {
       _isProcessingUploads = false;
+    }
+  }
+
+  /// Sends any results emails that were saved while the device was offline.
+  Future<void> _sendPendingEmail() async {
+    final pendingEmailService = PendingEmailService();
+    final emailService = BackendEmailService();
+
+    // Monday
+    if (await pendingEmailService.hasPendingMondayEmail()) {
+      final emailData = await pendingEmailService.getPendingMondayEmail();
+      if (emailData != null) {
+        try {
+          final success = await emailService.sendMondayResultsEmail(
+            subject: emailData['subject']!,
+            body: emailData['body']!,
+          );
+          if (success) await pendingEmailService.clearPendingMondayEmail();
+        } catch (e) {
+          // Leave in place for next retry
+        }
+      }
+    }
+
+    // Wednesday
+    if (await pendingEmailService.hasPendingWednesdayEmail()) {
+      final emailData = await pendingEmailService.getPendingWednesdayEmail();
+      if (emailData != null) {
+        try {
+          final success = await emailService.sendWednesdayResultsEmail(
+            subject: emailData['subject']!,
+            body: emailData['body']!,
+          );
+          if (success) await pendingEmailService.clearPendingWednesdayEmail();
+        } catch (e) {
+          // Leave in place for next retry
+        }
+      }
     }
   }
   

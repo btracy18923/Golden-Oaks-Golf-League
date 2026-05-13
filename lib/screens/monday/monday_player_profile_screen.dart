@@ -5,6 +5,7 @@ import '../../models/league.dart';
 import '../../services/UI/player_profile_service.dart';
 import '../../services/UI/button_bar_UI_service.dart';
 import '../../services/firebase_upload_service.dart';
+import '../../config/app_config.dart';
 import '../../services/device_detection_service.dart';
 import '../../services/responsive_typography.dart';
 import '../../widgets/responsive_wrapper.dart';
@@ -485,7 +486,7 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Player Profile - ${_selectedLeague == League.monday ? 'Monday' : 'Wednesday'} League - ${DeviceDetectionService.getDeviceName(context)}',
+          'Player Profile - ${_selectedLeague == League.monday ? 'Monday' : 'Wednesday'} League - ${AppConfig.versionDate}',
           style: TextStyle(fontSize: ResponsiveTypography.getAppBarTitle(context)),
         ),
         centerTitle: true,

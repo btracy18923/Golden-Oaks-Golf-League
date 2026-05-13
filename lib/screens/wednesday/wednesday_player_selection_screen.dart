@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../services/database_helper.dart';
+import '../../config/app_config.dart';
 import '../../services/device_detection_service.dart';
 import '../../services/responsive_typography.dart';
 import '../../services/UI/button_bar_UI_service.dart';
@@ -109,7 +110,7 @@ class _WednesdayPlayerSelectionScreenState extends State<WednesdayPlayerSelectio
       backgroundColor: Colors.grey[300],
       appBar: AppBar(
         title: Text(
-          "Select Wednesday Players - ${DeviceDetectionService.getDeviceName(context)}",
+          "Select Wednesday Players - ${AppConfig.versionDate}",
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
         backgroundColor: Colors.orange[700],
@@ -171,7 +172,7 @@ class _WednesdayPlayerSelectionScreenState extends State<WednesdayPlayerSelectio
     return Scaffold(
       backgroundColor: Colors.grey[300],
       appBar: AppBar(
-        title: Text("Select Players for Wednesday's Match - ${DeviceDetectionService.getDeviceName(context)}"),
+        title: Text("Select Players for Wednesday's Match - ${AppConfig.versionDate}"),
         backgroundColor: Colors.orange[700],
         foregroundColor: Colors.white,
         centerTitle: true,

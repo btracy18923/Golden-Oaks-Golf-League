@@ -157,8 +157,12 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
       }
     }
     // Dispose controllers
-    grossControllers.values.forEach((c) => c.dispose());
-    grossFocusNodes.values.forEach((n) => n.dispose());
+    for (var c in grossControllers.values) {
+      c.dispose();
+    }
+    for (var n in grossFocusNodes.values) {
+      n.dispose();
+    }
     super.dispose();
   }
 

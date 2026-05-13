@@ -5,6 +5,7 @@ import 'wednesday_player_scores_screen.dart';
 import 'wednesday_player_profile_screen.dart';
 import 'wednesday_admin_screen.dart';
 import '../../models/league.dart';
+import '../../config/app_config.dart';
 import '../../services/shared/league_purse_service.dart';
 import '../../services/UI/custom_keypad_service.dart';
 import '../../services/UI/button_bar_UI_service.dart';
@@ -273,7 +274,7 @@ class _WednesdayParentScreenState extends State<WednesdayParentScreen> {
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
         title: Text(
-          'Wednesday League - ${DeviceDetectionService.getDeviceName(context)}',
+          'Wednesday League - ${AppConfig.versionDate}',
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         backgroundColor: Colors.orange[700],
@@ -327,7 +328,7 @@ class _WednesdayParentScreenState extends State<WednesdayParentScreen> {
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
         title: Text(
-          'Wednesday League - Golden Oaks Golf - ${DeviceDetectionService.getDeviceName(context)}',
+          'Wednesday League - Golden Oaks Golf - ${AppConfig.versionDate}',
           style: ResponsiveTypography.headingStyle(context, fontWeight: FontWeight.bold),
         ),
         backgroundColor: Colors.orange[700],

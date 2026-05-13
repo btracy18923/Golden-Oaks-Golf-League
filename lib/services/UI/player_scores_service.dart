@@ -432,7 +432,7 @@ class PlayerScoresUIService {
           border: Border.all(color: Colors.black, width: 0.5),
         ),
         child: DropdownButtonFormField<String>(
-          value: selectedGolfCourse,
+          initialValue: selectedGolfCourse,
           isExpanded: true,
           decoration: const InputDecoration(
             border: InputBorder.none,

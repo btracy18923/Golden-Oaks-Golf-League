@@ -7,6 +7,7 @@ import 'monday_golf_course_screen.dart';
 import 'monday_admin_screen.dart';
 import '../../models/league.dart';
 import '../../services/database_helper.dart';
+import '../../config/app_config.dart';
 import '../../services/shared/league_purse_service.dart';
 import '../../services/screen_data_retention_service.dart';
 import '../../services/UI/parent_screen_service.dart';
@@ -345,7 +346,7 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
       appBar: AppBar(
         toolbarHeight: 56,
         title: Text(
-          'Monday League - Golden Oaks Golf - ${DeviceDetectionService.getDeviceName(context)}',
+          'Monday League - Golden Oaks Golf - ${AppConfig.versionDate}',
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
         backgroundColor: Colors.green[700],
@@ -425,7 +426,7 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
       appBar: AppBar(
         toolbarHeight: 64,
         title: Text(
-          'Monday League - Golden Oaks Golf - ${DeviceDetectionService.getDeviceName(context)}',
+          'Monday League - Golden Oaks Golf - ${AppConfig.versionDate}',
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
         ),
         backgroundColor: Colors.green[700],

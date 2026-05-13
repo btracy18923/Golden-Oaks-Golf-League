@@ -16,7 +16,7 @@ service cloud.firestore {
     /*
     // Players collection - read by all, write restricted
     match /players/{playerId} {
-      allow read: if true;
+
       allow write: if false; // Only modified through Flutter app
     }
 

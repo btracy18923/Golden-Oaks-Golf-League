@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../../services/database_helper.dart';
 import '../../models/league.dart';
 import '../../services/responsive_typography.dart';
+import '../../config/app_config.dart';
 import '../../services/device_detection_service.dart';
 import '../../services/UI/button_bar_UI_service.dart';
 
@@ -743,7 +744,7 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
   Widget _buildPhoneLayout() {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Player Scores - ${_getLeagueDisplayName()} League- ${DeviceDetectionService.getDeviceName(context)}',
+        title: Text('Player Scores - ${_getLeagueDisplayName()} League- ${AppConfig.versionDate}',
           style: ResponsiveTypography.appBarTitleStyle(context, color: Colors.white)),
         centerTitle: true,
         backgroundColor: _selectedLeague == League.monday ? Colors.green[700] : Colors.orange[700],
@@ -770,7 +771,7 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
   Widget _buildTablet10Layout() {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Player Scores - ${_getLeagueDisplayName()} League- ${DeviceDetectionService.getDeviceName(context)}',
+        title: Text('Player Scores - ${_getLeagueDisplayName()} League- ${AppConfig.versionDate}',
           style: ResponsiveTypography.appBarTitleStyle(context, color: Colors.white)),
         centerTitle: true,
         backgroundColor: _selectedLeague == League.monday ? Colors.green[700] : Colors.orange[700],

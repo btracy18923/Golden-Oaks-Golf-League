@@ -222,7 +222,7 @@ class _FirebaseTestScreenState extends State<FirebaseTestScreen> {
             ),
             const SizedBox(height: 20),
             
-            Card(
+            const Card(
               child: Padding(
                 padding: EdgeInsets.all(16),
                 child: Column(

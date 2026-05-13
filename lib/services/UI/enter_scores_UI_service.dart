@@ -845,7 +845,7 @@ class EnterScoresUIService {
             isSelected: isSelected,
             selectedColor: selectedColor,
             onSkatsChanged: onSkatsChanged,
-            skatsFocusNode: skatsFocusNodes?[groupIndex]?[rowIndex],
+            skatsFocusNode: skatsFocusNodes?[groupIndex][rowIndex],
             showSkatsFocus: isPlayerFocused?.call(player) ?? false,
           );
         } else {

@@ -27,7 +27,11 @@
       "Bash(ls:*)",
       "Bash(cat:*)",
       "Bash(dart:*)",
-      "Bash(del \"C:\\Users\\Acer\\AndroidStudioProjects\\golf_app_v4\\handicap_comparison.dart\")"
+      "Bash(del \"C:\\Users\\Acer\\AndroidStudioProjects\\golf_app_v4\\handicap_comparison.dart\")",
+      "Bash(git config *)",
+      "Bash(git log *)",
+      "PowerShell(Copy-Item *)",
+      "Bash(git *)"
     ],
     "deny": []
   }

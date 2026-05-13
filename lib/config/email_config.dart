@@ -1,14 +1,17 @@
 /// Email configuration for the Golden Oaks Golf League app
 class EmailConfig {
+  /// Resend API key
+  static const String sendGridApiKey = 're_Ha5ovv4P_LDuiouUtRhRof2nfbVaXkh85';
+
   /// ProShop email address
-  static const String proShopEmail = 'PROSHOP@HIDEOUTGOLFCLUB.COM';
+  static const String proShopEmail = 'pro.shop@thehideout.us';
   //// "grohol@aol.com" - also change phone # '9083775851' in line 1453 in wednesday_enter_scores_screen
 
   /// Administrator email addresses
   static const List<String> adminEmails = [
-    'btracy18923@gmail.com', // TODO: Replace with actual admin email
-    'grohol@aol.com', // TODO: Replace with actual admin email
-    'ajfederico5@yahoo.com', // TODO: Replace with actual admin email
+    'btracy18923@gmail.com',
+    'grohol@aol.com',
+    'ajfederico5@yahoo.com',
   ];
 
   /// Default fallback email (used when player has no email)

@@ -162,10 +162,10 @@ class SwapService {
       
       // Ensure groups have enough player slots
       while (updatedGroups[pos1.groupIndex].length <= pos1.playerIndex) {
-        updatedGroups[pos1.groupIndex].add(PlayerData(name: '', skNumber: ''));
+        updatedGroups[pos1.groupIndex].add(const PlayerData(name: '', skNumber: ''));
       }
       while (updatedGroups[pos2.groupIndex].length <= pos2.playerIndex) {
-        updatedGroups[pos2.groupIndex].add(PlayerData(name: '', skNumber: ''));
+        updatedGroups[pos2.groupIndex].add(const PlayerData(name: '', skNumber: ''));
       }
       
       // Perform the swap

@@ -288,8 +288,8 @@ class ResultsUIService {
             if (calculation == calculation.truncate()) {
               skatValue = calculation;
               break;
-            } else if (fallbackValue == null) {
-              fallbackValue = calculation;
+            } else {
+              fallbackValue ??= calculation;
             }
           }
         } catch (e) {
@@ -348,7 +348,7 @@ class ResultsUIService {
                   isMoneyColumn: true,
                 ),
               ],
-            )).toList(),
+            )),
           ],
         ),
       ],
@@ -426,7 +426,7 @@ class ResultsUIService {
                 )),
               ],
             ),
-          )).toList(),
+          )),
         ],
       ),
     );

@@ -166,7 +166,7 @@ class FirebaseService {
           cleanPlayer.removeWhere((key, value) => value == null);
           
           String playerName = '${player['last'] ?? ''}'.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
-          String docId = '${player['league'] ?? 'unknown'}_${playerName}';
+          String docId = '${player['league'] ?? 'unknown'}_$playerName';
           await _firestore.collection('Player Profile').doc(docId).set({
             ...cleanPlayer,
             'uploaded_at': DateTime.now().toIso8601String(),
@@ -210,7 +210,7 @@ class FirebaseService {
             }
           }
           
-          String docId = '${playerName}_${dateStr}';
+          String docId = '${playerName}_$dateStr';
           await _firestore.collection('Player Scores').doc(docId).set({
             ...cleanScore,
             'uploaded_at': DateTime.now().toIso8601String(),
@@ -235,7 +235,7 @@ class FirebaseService {
           cleanCourse.removeWhere((key, value) => value == null);
           
           String courseName = (course['name'] ?? 'Unknown_Course').toString().replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
-          String docId = '${course['league'] ?? 'unknown'}_${courseName}';
+          String docId = '${course['league'] ?? 'unknown'}_$courseName';
           await _firestore.collection('Golf Courses').doc(docId).set({
             ...cleanCourse,
             'uploaded_at': DateTime.now().toIso8601String(),
@@ -254,7 +254,7 @@ class FirebaseService {
           cleanCourse.removeWhere((key, value) => value == null);
           
           String courseName = (course['name'] ?? 'Unknown_Course').toString().replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
-          String docId = '${courseName}';
+          String docId = courseName;
           await _firestore.collection('Golf Courses').doc(docId).set({
             ...cleanCourse,
             'uploaded_at': DateTime.now().toIso8601String(),
@@ -307,7 +307,7 @@ class FirebaseService {
       }
       
     } catch (e) {
-      throw e;
+      rethrow;
     }
   }
 
@@ -940,7 +940,7 @@ class FirebaseService {
     
     for (var player in allPlayers) {
       String docId = 'player_${player['league']}_${player['id']}';
-      DocumentReference docRef = _firestore.collection('backup_$backupId\_players').doc(docId);
+      DocumentReference docRef = _firestore.collection('backup_${backupId}_players').doc(docId);
       batch.set(docRef, player);
     }
     
@@ -950,7 +950,7 @@ class FirebaseService {
     
     for (var score in allScores) {
       String docId = 'score_${score['league']}_${score['player_id']}_${score['date']}';
-      DocumentReference docRef = _firestore.collection('backup_$backupId\_scores').doc(docId);
+      DocumentReference docRef = _firestore.collection('backup_${backupId}_scores').doc(docId);
       batch.set(docRef, score);
     }
     
@@ -960,7 +960,7 @@ class FirebaseService {
     
     for (var game in allGames) {
       String docId = 'game_${game['league']}_${game['id']}';
-      DocumentReference docRef = _firestore.collection('backup_$backupId\_games').doc(docId);
+      DocumentReference docRef = _firestore.collection('backup_${backupId}_games').doc(docId);
       batch.set(docRef, game);
     }
     
@@ -1001,14 +1001,14 @@ class FirebaseService {
       // await _dbHelper.clearAllData();
       
       // Restore players
-      QuerySnapshot playersSnapshot = await _firestore.collection('backup_$backupId\_players').get();
+      QuerySnapshot playersSnapshot = await _firestore.collection('backup_${backupId}_players').get();
       for (var doc in playersSnapshot.docs) {
         Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
         await _dbHelper.insertPlayer(data);
       }
       
       // Restore scores
-      QuerySnapshot scoresSnapshot = await _firestore.collection('backup_$backupId\_scores').get();
+      QuerySnapshot scoresSnapshot = await _firestore.collection('backup_${backupId}_scores').get();
       for (var doc in scoresSnapshot.docs) {
         Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
         String? leagueStr = data['league'];
@@ -1019,7 +1019,7 @@ class FirebaseService {
       }
       
       // Restore games
-      QuerySnapshot gamesSnapshot = await _firestore.collection('backup_$backupId\_games').get();
+      QuerySnapshot gamesSnapshot = await _firestore.collection('backup_${backupId}_games').get();
       for (var doc in gamesSnapshot.docs) {
         // Games will be restored through game recreation logic
       }

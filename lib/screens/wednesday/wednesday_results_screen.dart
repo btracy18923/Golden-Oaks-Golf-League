@@ -8,6 +8,9 @@ import '../../models/league.dart';
 import '../main_menu_screen.dart';
 import '../../services/firebase_upload_service.dart';
 import '../../services/handicap_calculation_service.dart';
+import '../../services/backend_email_service.dart';
+import '../../services/pending_email_service.dart';
+import '../../services/connectivity_service.dart';
 
 class WednesdayResultsScreen extends StatefulWidget {
   final double groupPurseAmount;
@@ -316,6 +319,9 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
         await _deleteScoresFromFirebase(allDeletedScores);
       }
 
+      // Send results email in background — don't block save on network call
+      _sendResultsEmail(consolidatedPlayerData, currentDate);
+
       // Show success message
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -423,6 +429,152 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
     }
 
     return newHandicaps;
+  }
+
+  /// Sends the Wednesday results email to admins.
+  /// If offline, saves to SharedPreferences for retry when WiFi reconnects.
+  Future<void> _sendResultsEmail(
+    Map<String, Map<String, dynamic>> consolidatedPlayerData,
+    String date,
+  ) async {
+    try {
+      final subject = 'Golden Oaks Wednesday League Results - $date';
+      final body = _buildResultsEmailBody(consolidatedPlayerData, date);
+
+      final isOnline = await ConnectivityService().isWiFiConnected();
+      if (isOnline) {
+        await BackendEmailService().sendWednesdayResultsEmail(subject: subject, body: body);
+        debugPrint('Wednesday results email sent successfully');
+      } else {
+        await PendingEmailService().savePendingWednesdayEmail(subject: subject, body: body);
+        debugPrint('Device offline — Wednesday results email queued for retry on WiFi reconnect');
+      }
+    } catch (e) {
+      debugPrint('Error sending Wednesday results email: $e');
+    }
+  }
+
+  /// Builds the plain-text email body from consolidated player data.
+  String _buildResultsEmailBody(
+    Map<String, Map<String, dynamic>> consolidatedPlayerData,
+    String date,
+  ) {
+    final buffer = StringBuffer();
+
+    buffer.writeln('GOLDEN OAKS WEDNESDAY LEAGUE RESULTS');
+    buffer.writeln('Date: $date');
+    buffer.writeln('Golf Course: ${_retentionService.selectedGolfCourse ?? 'The Hideout'}');
+    buffer.writeln('');
+
+    // Count non-wildcard players
+    int totalPlayers = 0;
+    for (var group in widget.groups) {
+      for (var player in group) {
+        if (player != null &&
+            player['last'] != null &&
+            player['last'].toString().isNotEmpty &&
+            player['is_wild_card'] != true) {
+          totalPlayers++;
+        }
+      }
+    }
+
+    final collectAmount =
+        (widget.playersAnte + widget.closestPinAmount + widget.mulliganAmount) * totalPlayers;
+
+    buffer.writeln('Players Ante: \$${widget.playersAnte.toStringAsFixed(2)}');
+    buffer.writeln('Closest Pin: \$${widget.closestPinAmount.toStringAsFixed(2)}');
+    buffer.writeln('Mulligan: \$${widget.mulliganAmount.toStringAsFixed(2)}');
+    buffer.writeln('Total Players: $totalPlayers');
+    buffer.writeln('Collect: \$${collectAmount.toStringAsFixed(2)}');
+    buffer.writeln('Party Fund: \$${widget.adjustedMulliganPurse.toStringAsFixed(2)}');
+    buffer.writeln('');
+
+    // Closest pin winners
+    final playerCounts = _retentionService.playerClosestPinCounts ?? {};
+    final playerWinnings = _retentionService.playerClosestPinWinnings ?? {};
+    final pinWinners = playerCounts.entries.where((e) => e.value > 0).toList();
+    if (pinWinners.isNotEmpty) {
+      buffer.writeln('CLOSEST PIN WINNERS');
+      buffer.writeln('-' * 40);
+      for (final entry in pinWinners) {
+        final winnings = playerWinnings[entry.key] ?? 0.0;
+        buffer.writeln('${entry.key}  Pins: ${entry.value}  \$${winnings.round()}');
+      }
+      buffer.writeln('');
+    }
+
+    // Build consolidated winners (individual + group)
+    Map<String, Map<String, dynamic>> allWinners = {};
+
+    for (var player in widget.individualWinners) {
+      if (player['prize_money'] != null && player['last'] != null) {
+        final raw = player['prize_money'].toString().replaceAll('\$', '').replaceAll(',', '');
+        try {
+          final amount = double.parse(raw);
+          if (amount > 0) {
+            final name = player['last'].toString();
+            allWinners[name] = {
+              'net_score': player['net_score'],
+              'individual': amount,
+              'group': 0.0,
+            };
+          }
+        } catch (_) {}
+      }
+    }
+
+    for (var group in widget.groups) {
+      for (var player in group) {
+        if (player != null && player['prize_money'] != null && player['manual_group'] != null && player['last'] != null) {
+          final raw = player['prize_money'].toString().replaceAll('\$', '').replaceAll(',', '');
+          try {
+            final amount = double.parse(raw);
+            if (amount > 0) {
+              final name = player['last'].toString();
+              if (allWinners.containsKey(name)) {
+                allWinners[name]!['group'] = (allWinners[name]!['group'] as double) + amount;
+              } else {
+                allWinners[name] = {
+                  'net_score': player['net_score'],
+                  'individual': 0.0,
+                  'group': amount,
+                };
+              }
+            }
+          } catch (_) {}
+        }
+      }
+    }
+
+    if (allWinners.isNotEmpty) {
+      final sorted = allWinners.entries.toList()
+        ..sort((a, b) {
+          final aNet = (a.value['net_score'] as num?)?.toDouble() ?? 999.0;
+          final bNet = (b.value['net_score'] as num?)?.toDouble() ?? 999.0;
+          return aNet.compareTo(bNet);
+        });
+
+      buffer.writeln('WINNERS');
+      buffer.writeln('-' * 52);
+      buffer.writeln('${'Player'.padRight(18)}${'Net'.padRight(6)}${'Ind \$\$\$'.padRight(10)}${'Group \$\$\$'.padRight(10)}Total \$\$\$');
+      buffer.writeln('-' * 52);
+
+      for (final entry in sorted) {
+        final name = entry.key.padRight(18);
+        final net = (entry.value['net_score'] != null)
+            ? (entry.value['net_score'] as num).toStringAsFixed(1).padRight(6)
+            : ''.padRight(6);
+        final ind = entry.value['individual'] as double;
+        final grp = entry.value['group'] as double;
+        final total = ind + grp;
+        final indStr = (ind > 0 ? '\$${ind.toStringAsFixed(2)}' : '').padRight(10);
+        final grpStr = (grp > 0 ? '\$${grp.toStringAsFixed(2)}' : '').padRight(10);
+        buffer.writeln('$name$net$indStr$grpStr\$${total.toStringAsFixed(2)}');
+      }
+    }
+
+    return buffer.toString();
   }
 
   /// Upload player scores and player profiles to Firebase after saving to database
@@ -567,7 +719,7 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
           onPressed: _isSaving ? null : _saveResultsAndReturnToMainMenu,
           flex: 10,
         ),
-        Expanded(
+        const Expanded(
           flex: 20,
           child: SizedBox(),
         ),

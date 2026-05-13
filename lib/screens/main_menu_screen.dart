@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../services/ante_manager.dart';
 import '../services/closest_pin_manager.dart';
 import '../services/mulligan_manager.dart';
+import '../config/app_config.dart';
 import '../services/device_detection_service.dart';
 import 'monday/monday_parent_screen.dart';
 import 'wednesday/wednesday_parent_screen.dart';
@@ -74,9 +75,9 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: Text(
-          'Golden Oaks Golf League - 5.6.26',
-          style: const TextStyle(
+        title: const Text(
+          'Golden Oaks Golf League - ${AppConfig.versionDate}',
+          style: TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 18,
           ),
@@ -110,9 +111,9 @@ class _UnifiedMainMenuScreenState extends State<UnifiedMainMenuScreen> {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: Text(
-          'Golden Oaks Golf League - 5.6.26',
-          style: const TextStyle(
+        title: const Text(
+          'Golden Oaks Golf League - ${AppConfig.versionDate}',
+          style: TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 20,
           ),

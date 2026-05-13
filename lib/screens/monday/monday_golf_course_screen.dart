@@ -5,6 +5,7 @@ import '../../services/database_helper.dart';
 import '../../models/league.dart';
 import '../../services/firebase_upload_service.dart';
 import '../../services/responsive_typography.dart';
+import '../../config/app_config.dart';
 import '../../services/device_detection_service.dart';
 import '../../services/UI/button_bar_UI_service.dart';
 
@@ -650,7 +651,7 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Golf Course Info - Monday League - ${DeviceDetectionService.getDeviceName(context)}',
+          'Golf Course Info - Monday League - ${AppConfig.versionDate}',
           style: ResponsiveTypography.appBarTitleStyle(context),
         ),
         centerTitle: true,
@@ -694,7 +695,7 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Golf Courses - Monday League - ${DeviceDetectionService.getDeviceName(context)}',
+          'Golf Courses - Monday League - ${AppConfig.versionDate}',
           style: ResponsiveTypography.appBarTitleStyle(context),
         ),
         centerTitle: true,

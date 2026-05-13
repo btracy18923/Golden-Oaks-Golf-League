@@ -11,6 +11,8 @@ import '../../services/firebase_upload_service.dart';
 import '../../widgets/responsive_wrapper.dart';
 import '../../services/skat_adjustment_service.dart';
 import '../../services/backend_email_service.dart';
+import '../../services/pending_email_service.dart';
+import '../../services/connectivity_service.dart';
 
 class MondayResultsScreen extends StatefulWidget {
   const MondayResultsScreen({super.key});
@@ -226,8 +228,8 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
         await _deleteScoresFromFirebase(allDeletedScores);
       }
 
-      // Send results email to admins
-      await _sendResultsEmail(allSelectedPlayers);
+      // Send results email in background — don't block save on network call
+      _sendResultsEmail(allSelectedPlayers);
 
       // Show success message
       if (!mounted) return;
@@ -260,14 +262,23 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
     }
   }
 
-  /// Builds and sends the Monday results email to admins
+  /// Builds and sends the Monday results email to admins.
+  /// If offline, saves the email to SharedPreferences for retry when WiFi reconnects.
   Future<void> _sendResultsEmail(List<PlayerData> allSelectedPlayers) async {
     try {
-      final emailService = BackendEmailService();
       final currentDate = DateTime.now().toIso8601String().split('T')[0];
       final subject = 'Golden Oaks Monday League Results - $currentDate';
       final body = _buildResultsEmailBody(allSelectedPlayers, currentDate);
-      await emailService.sendMondayResultsEmail(subject: subject, body: body);
+
+      final isOnline = await ConnectivityService().isWiFiConnected();
+      if (isOnline) {
+        await BackendEmailService().sendMondayResultsEmail(subject: subject, body: body);
+        debugPrint('Monday results email sent successfully');
+      } else {
+        // No WiFi — persist for retry when ConnectivityService detects reconnection
+        await PendingEmailService().savePendingMondayEmail(subject: subject, body: body);
+        debugPrint('Device offline — Monday results email queued for retry on WiFi reconnect');
+      }
     } catch (e) {
       debugPrint('Error sending Monday results email: $e');
     }

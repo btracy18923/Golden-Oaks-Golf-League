@@ -4,6 +4,7 @@ import '../../services/database_helper.dart';
 import '../../models/league.dart';
 import '../../services/screen_data_retention_service.dart';
 import '../../services/shared/league_purse_service.dart';
+import '../../config/app_config.dart';
 import '../../services/device_detection_service.dart';
 import '../../services/responsive_typography.dart';
 import '../../services/UI/button_bar_UI_service.dart';
@@ -394,7 +395,7 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
       backgroundColor: Colors.grey[300],
       appBar: AppBar(
         title: Text(
-          'Select Players for Monday\'s Match - ${DeviceDetectionService.getDeviceName(context)}',
+          'Select Players for Monday\'s Match - ${AppConfig.versionDate}',
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
         backgroundColor: Colors.green[700],
@@ -456,7 +457,7 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
     return Scaffold(
       backgroundColor: Colors.grey[300],
       appBar: AppBar(
-        title: Text("Select Players for Monday's Match - ${DeviceDetectionService.getDeviceName(context)}"),
+        title: Text("Select Players for Monday's Match - ${AppConfig.versionDate}"),
         backgroundColor: Colors.green[700],
         foregroundColor: Colors.white,
         centerTitle: true,

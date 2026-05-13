@@ -58,7 +58,7 @@ void main() {
       print('  Total Actual Payouts: \$${result.totalActualPayouts}');
       print('  Expected Purse: \$${result.expectedPurse}');
       print('  Difference: \$${result.difference}');
-      print('  Original Mulligan Purse: \$${currentMulliganPurse}');
+      print('  Original Mulligan Purse: \$$currentMulliganPurse');
       print('  Adjusted Mulligan Purse: \$${result.adjustedMulliganPurse}');
     });
 

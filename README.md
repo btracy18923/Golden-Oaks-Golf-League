@@ -1,6 +1,6 @@
 # golf_app_v3
 # Located at: "C:\Users\Acer\AndroidStudioProjecwts\golf_app_v3"
-
+# flutter build apk --release
 
 A new Flutter project.
 
