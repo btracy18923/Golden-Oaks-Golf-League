@@ -54,7 +54,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 23,
+      version: 24,
       onCreate: (db, version) {
         // DatabaseHelper: Creating new database with version $version
         return _createTables(db, version);
@@ -69,7 +69,6 @@ class DatabaseHelper {
   Future<void> _createTables(Database db, int version) async {
     // DatabaseHelper: Creating players table...
     // Players table - stores player information for both leagues
-    // Note: OHC (Starting Handicap) is now stored in Firebase W_starting_handicap collection
     await db.execute('''
       CREATE TABLE players (
         player_number INTEGER PRIMARY KEY,
@@ -77,6 +76,7 @@ class DatabaseHelper {
         last TEXT NOT NULL,
         skat_number INTEGER,
         HC REAL,
+        OHC REAL,
         cell TEXT,
         email TEXT,
         league TEXT NOT NULL
@@ -653,6 +653,13 @@ class DatabaseHelper {
       } catch (e) {
         // Silently fail - column will remain but is no longer used
         // This is expected on older SQLite versions
+      }
+    }
+    if (oldVersion < 24) {
+      // Re-add OHC column - needed as padding value in Wednesday handicap calculation
+      try {
+        await db.execute('ALTER TABLE players ADD COLUMN OHC REAL');
+      } catch (e) {
       }
     }
   }

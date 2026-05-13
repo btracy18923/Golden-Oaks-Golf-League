@@ -5,6 +5,7 @@ import '../../models/league.dart';
 import '../../services/UI/player_profile_service.dart';
 import '../../services/UI/button_bar_UI_service.dart';
 import '../../services/firebase_upload_service.dart';
+import '../../config/app_config.dart';
 import '../../services/device_detection_service.dart';
 import '../../services/responsive_typography.dart';
 import '../../widgets/responsive_wrapper.dart';
@@ -33,6 +34,7 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
   final TextEditingController _firstController = TextEditingController();
   final TextEditingController _lastController = TextEditingController();
   final TextEditingController _handicapController = TextEditingController();
+  final TextEditingController _ohcController = TextEditingController();
   final TextEditingController _cellController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
 
@@ -41,6 +43,7 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
   final FocusNode _firstFocus = FocusNode();
   final FocusNode _lastFocus = FocusNode();
   final FocusNode _handicapFocus = FocusNode();
+  final FocusNode _ohcFocus = FocusNode();
   final FocusNode _cellFocus = FocusNode();
   final FocusNode _emailFocus = FocusNode();
 
@@ -61,6 +64,7 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
     _firstController.dispose();
     _lastController.dispose();
     _handicapController.dispose();
+    _ohcController.dispose();
     _cellController.dispose();
     _emailController.dispose();
 
@@ -68,6 +72,7 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
     _firstFocus.dispose();
     _lastFocus.dispose();
     _handicapFocus.dispose();
+    _ohcFocus.dispose();
     _cellFocus.dispose();
     _emailFocus.dispose();
 
@@ -132,6 +137,7 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
     _firstController.clear();
     _lastController.clear();
     _handicapController.clear();
+    _ohcController.clear();
     _cellController.clear();
     _emailController.clear();
 
@@ -188,6 +194,7 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
       _firstController.text = player['first'] ?? '';
       _lastController.text = player['last'] ?? '';
       _handicapController.text = player['HC']?.toString() ?? '';
+      _ohcController.text = player['OHC']?.toString() ?? '';
       _cellController.text = player['cell'] ?? '';
       _emailController.text = player['email'] ?? '';
     });
@@ -509,7 +516,7 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Player Profile - ${_selectedLeague == League.monday ? 'Monday' : 'Wednesday'} League - ${DeviceDetectionService.getDeviceName(context)}',
+          'Player Profile - ${_selectedLeague == League.monday ? 'Monday' : 'Wednesday'} League - ${AppConfig.versionDate}',
           style: TextStyle(fontSize: ResponsiveTypography.getAppBarTitle(context)),
         ),
         centerTitle: true,
@@ -716,8 +723,21 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
               const SizedBox(height: 0),
               buildCompactFormField('Last Name', lastController, lastFocus, handicapFocus),
               const SizedBox(height: 0),
-              buildCompactFormField('HC', handicapController, handicapFocus, cellFocus,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true)),
+              Row(
+                children: [
+                  Expanded(
+                    child: buildCompactFormField('HC', handicapController, handicapFocus, cellFocus,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true)),
+                  ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: PlayerProfileService.buildCompactFormField(
+                      context, 'OHC', _ohcController, _ohcFocus, null, null,
+                      enabled: false,
+                    ),
+                  ),
+                ],
+              ),
               const SizedBox(height: 0),
               buildCompactFormField('Cell Phone', cellController, cellFocus, emailFocus,
                 keyboardType: const TextInputType.numberWithOptions(decimal: false)),
@@ -745,8 +765,21 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
               const SizedBox(height: 8),
               buildCompactFormField('Last Name', lastController, lastFocus, handicapFocus),
               const SizedBox(height: 8),
-              buildCompactFormField('HC', handicapController, handicapFocus, cellFocus,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true)),
+              Row(
+                children: [
+                  Expanded(
+                    child: buildCompactFormField('HC', handicapController, handicapFocus, cellFocus,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true)),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: PlayerProfileService.buildCompactFormField(
+                      context, 'OHC', _ohcController, _ohcFocus, null, null,
+                      enabled: false,
+                    ),
+                  ),
+                ],
+              ),
               const SizedBox(height: 8),
               buildCompactFormField('Cell Phone', cellController, cellFocus, emailFocus,
                 keyboardType: const TextInputType.numberWithOptions(decimal: false)),
