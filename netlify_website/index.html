@@ -649,8 +649,7 @@
     <div class="container" id="mainApp">
         <header>
             <div class="user-info" id="userInfo"></div>
-            <h1>⛳ Golf League Manager</h1>
-            <p id="leagueTitle">30 Team League</p>
+            <h1 id="leagueTitle">⛳ Golf League Manager</h1>
             <button class="logout-btn" onclick="logout()">Logout</button>
         </header>
         
@@ -799,9 +798,6 @@
                         <button class="primary" onclick="showAdminScreen('emailBlast')" style="padding: 20px; font-size: 1.1em; grid-column: 1 / -1;">
                             📧 Email Blast
                         </button>
-                        <button class="primary" onclick="showAdminScreen('textBlast')" style="padding: 20px; font-size: 1.1em; grid-column: 1 / -1;">
-                            💬 Text Blast
-                        </button>
                     </div>
                 </div>
                 
@@ -863,31 +859,6 @@
                     <div id="blastResult" style="margin-top: 20px;"></div>
                 </div>
 
-                <!-- Text Blast Screen -->
-                <div id="textBlastScreen" class="card" style="display: none;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                        <h3>💬 Text Blast</h3>
-                        <button onclick="showAdminTabSelection()" style="background: #718096; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">
-                            ← Back to Admin Menu
-                        </button>
-                    </div>
-                    <div class="form-group">
-                        <label>Message</label>
-                        <textarea id="textBlastMessage" rows="6" placeholder="Enter your text message to all league players..."></textarea>
-                    </div>
-                    <p style="color: #718096; font-size: 0.85em; margin-top: 6px;">
-                        ⚠️ Use this from your phone or tablet — clicking "Open SMS App" opens your messaging app with all recipients and the message pre-filled. Tap Send to deliver.
-                    </p>
-                    <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px;">
-                        <button type="button" onclick="previewTextBlast()" style="background: #718096; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer;">
-                            👥 Preview Recipients
-                        </button>
-                        <button type="button" onclick="sendTextBlast()" id="textBlastSendBtn" class="primary">💬 Open SMS App</button>
-                    </div>
-                    <div id="textBlastPreview" style="margin-top: 20px;"></div>
-                    <div id="textBlastResult" style="margin-top: 20px;"></div>
-                </div>
-
                 <!-- Schedule Play Date Screen -->
                 <div id="schedulePlayDateScreen" class="card" style="display: none;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
@@ -906,6 +877,10 @@
                             <select id="playCourse">
                                 <option value="">Select a course...</option>
                             </select>
+                        </div>
+                        <div class="form-group" id="openingsGroup">
+                            <label>Openings</label>
+                            <input type="number" id="playOpenings" min="0" placeholder="e.g. 12">
                         </div>
                         <div class="form-group" id="departTimeGroup">
                             <label>Departure Time</label>
@@ -1001,10 +976,14 @@
         const db = getFirestore(app);
 
         const ADMIN_PLAYER_NUMBERS = ['2561', '0819']; // Admin player numbers
+        const ADMIN_EMAILS = ['btracy18923@gmail.com', 'grohol@aol.com', 'ajfederico5@yahoo.com'];
 
         let currentUser = null;
         let isAdmin = false;
         let selectedLeague = null; // 'monday' or 'wednesday'
+        let viewingPlayDateDetail = false;
+        let cachedPlayers = null;       // cached player roster
+        let cachedPlayersCollection = null; // which collection the cache is for
         let adminSelectedLeague = null; // For admin league switching
 
         const storedSession = sessionStorage.getItem('golfLeagueSession');
@@ -1157,6 +1136,7 @@
             // Get the league to display (admin uses adminSelectedLeague, regular users use selectedLeague)
             const displayLeague = isAdmin && adminSelectedLeague ? adminSelectedLeague : selectedLeague;
             const leagueLabel = displayLeague === 'monday' ? 'Monday League' : 'Wednesday League';
+            document.getElementById('leagueTitle').textContent = `⛳ ${leagueLabel} Manager`;
 
             // Build user info with SKAT # for Monday league or Handicap for Wednesday league
             let userInfoHtml = `Logged in as: ${currentUser.name}${isAdmin ? '<span class="admin-badge">ADMIN</span>' : ''}`;
@@ -1244,6 +1224,8 @@
             console.log('Logging out...');
             sessionStorage.removeItem('golfLeagueSession');
             currentUser = null;
+            cachedPlayers = null;
+            cachedPlayersCollection = null;
             isAdmin = false;
             selectedLeague = null;
             adminSelectedLeague = null;
@@ -1331,6 +1313,7 @@
         }
         
         window.loadAllPlayDates = async function() {
+            viewingPlayDateDetail = false;
             try {
                 // Get the current league to display
                 const displayLeague = isAdmin && adminSelectedLeague ? adminSelectedLeague : selectedLeague;
@@ -1423,11 +1406,19 @@
                     });
                     const undecidedCount = totalPlayers - playingCount - notPlayingCount;
 
+                    // Calculate available openings for Monday
+                    const rawOpenings = (displayLeague === 'monday' && playDate.openings !== undefined)
+                        ? playDate.openings : null;
+                    const available = rawOpenings !== null ? Math.max(0, rawOpenings - playingCount) : null;
+                    const openingsColor = available === 0 ? '#c53030' : '#276749';
+                    const openingsDisplay = available === null ? '' : (available === 0 ? 'None' : String(available));
+
                     htmlContent += `
                         <div class="card">
                             <h3>${new Date(playDate.date.seconds * 1000).toLocaleDateString()} - ${courseName}</h3>
                             <div style="margin-bottom: 15px;">
                                 <p><strong>Course:</strong> ${courseName}</p>
+                                ${displayLeague === 'monday' && rawOpenings !== null ? `<p><strong>Openings:</strong> <span style="font-weight:600; color:${openingsColor};">${openingsDisplay}${available > 0 ? ' Left' : ''}</span></p>` : ''}
                                 <p><strong>Departure:</strong> ${playDate.departureTime || 'TBD'}</p>
                                 <p><strong>Tee Time:</strong> ${playDate.teeTime || 'TBD'}</p>
                                 ${playDate.meetAt ? `<p><strong>Meet At:</strong> ${playDate.meetAt}</p>` : ''}
@@ -1447,7 +1438,10 @@
                     `;
                 }
 
-                container.innerHTML = htmlContent;
+                // Don't overwrite the detail view if the user navigated into it while we were loading
+                if (!viewingPlayDateDetail) {
+                    container.innerHTML = htmlContent;
+                }
 
             } catch (err) {
                 document.getElementById('playDatesContainer').innerHTML =
@@ -1455,8 +1449,140 @@
             }
         };
 
+        window.editPlayDate = async function(playDateId) {
+            if (!isAdmin) return;
+            const container = document.getElementById('playDatesContainer');
+            container.innerHTML = '<div class="card"><div class="loading">Loading...</div></div>';
+            viewingPlayDateDetail = true;
+            try {
+                const displayLeague = isAdmin && adminSelectedLeague ? adminSelectedLeague : selectedLeague;
+                const collectionName = displayLeague === 'monday' ? 'M_playDates' : 'W_playDates';
+                const docSnap = await getDoc(doc(db, collectionName, playDateId));
+                if (!docSnap.exists()) { alert('Play date not found'); loadAllPlayDates(); return; }
+                const pd = { id: docSnap.id, ...docSnap.data() };
+
+                const dateObj = new Date(pd.date.seconds * 1000);
+                const dateStr = dateObj.toLocaleDateString();
+                const isMon = displayLeague === 'monday';
+
+                // Load courses for Monday dropdown
+                let coursesHtml = '';
+                if (isMon) {
+                    const coursesSnap = await getDocs(collection(db, 'M_golf_course'));
+                    coursesHtml = coursesSnap.docs.map(d => {
+                        const data = d.data();
+                        const selected = String(pd.courseId) === String(data.id) ? 'selected' : '';
+                        return `<option value="${data.id}" ${selected}>${data.name}</option>`;
+                    }).join('');
+                }
+
+                const meetAtValues = (pd.meetAt || '').split(',').map(s => s.trim());
+
+                container.innerHTML = `
+                    <div class="card">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:10px;">
+                            <h3>✏️ Edit Play Date — ${dateStr}</h3>
+                            <button onclick="loadAllPlayDates()" style="background:#718096; color:white; border:none; padding:8px 16px; border-radius:6px; cursor:pointer; font-weight:600;">✕ Cancel</button>
+                        </div>
+                        <p style="color:#718096; font-size:0.85em; margin-bottom:15px;">To change the date, delete this play date and schedule a new one.</p>
+                        ${isMon ? `
+                        <div class="form-group">
+                            <label>Course</label>
+                            <select id="editPlayCourse">
+                                <option value="">Select a course...</option>
+                                ${coursesHtml}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Openings</label>
+                            <input type="number" id="editOpenings" min="0" value="${pd.openings !== undefined ? pd.openings : ''}" placeholder="e.g. 12">
+                        </div>
+                        <div class="form-group">
+                            <label>Departure Time</label>
+                            <input type="text" id="editDepartTime" value="${pd.departureTime || ''}" placeholder="e.g. 8:00 AM">
+                        </div>` : ''}
+                        <div class="form-group">
+                            <label>Tee Time</label>
+                            <input type="text" id="editTeeTime" value="${pd.teeTime || ''}" placeholder="e.g. 8:30 AM">
+                        </div>
+                        ${isMon ? `
+                        <div class="form-group">
+                            <label>Meet At</label>
+                            <div style="display:flex; gap:20px; flex-wrap:wrap;">
+                                <label style="display:flex; align-items:center; gap:5px; cursor:pointer;"><input type="checkbox" name="editMeetAt" value="Marina" ${meetAtValues.includes('Marina') ? 'checked' : ''}> Marina</label>
+                                <label style="display:flex; align-items:center; gap:5px; cursor:pointer;"><input type="checkbox" name="editMeetAt" value="Northgate" ${meetAtValues.includes('Northgate') ? 'checked' : ''}> Northgate</label>
+                                <label style="display:flex; align-items:center; gap:5px; cursor:pointer;"><input type="checkbox" name="editMeetAt" value="Dump" ${meetAtValues.includes('Dump') ? 'checked' : ''}> Dump</label>
+                            </div>
+                        </div>` : ''}
+                        <div class="form-group">
+                            <label>Notes</label>
+                            <textarea id="editPlayNotes" rows="3">${pd.notes || ''}</textarea>
+                        </div>
+                        <div style="display:flex; gap:10px; margin-top:10px;">
+                            <button onclick="savePlayDateEdit('${playDateId}', '${collectionName}')" class="primary" style="flex:1;">💾 Save Changes</button>
+                            <button onclick="loadAllPlayDates()" style="flex:1; background:#718096; color:white; border:none; padding:10px; border-radius:6px; cursor:pointer; font-weight:600;">Cancel</button>
+                        </div>
+                        <div id="editPlayDateResult" style="margin-top:15px;"></div>
+                    </div>
+                `;
+            } catch (err) {
+                container.innerHTML = `<div class="card"><div class="error">Error loading play date: ${err.message}</div></div>`;
+            }
+        };
+
+        window.savePlayDateEdit = async function(playDateId, collectionName) {
+            const result = document.getElementById('editPlayDateResult');
+            try {
+                const displayLeague = isAdmin && adminSelectedLeague ? adminSelectedLeague : selectedLeague;
+                const isMon = displayLeague === 'monday';
+
+                let courseId = null, departureTime = null, meetAt = null;
+                let openings = undefined;
+
+                if (isMon) {
+                    courseId = document.getElementById('editPlayCourse').value;
+                    if (!courseId) { result.innerHTML = '<div class="error">Please select a course</div>'; return; }
+                    departureTime = document.getElementById('editDepartTime').value || null;
+                    const meetAtCbs = document.querySelectorAll('input[name="editMeetAt"]:checked');
+                    const meetAtVals = Array.from(meetAtCbs).map(cb => cb.value);
+                    meetAt = meetAtVals.length > 0 ? meetAtVals.join(', ') : null;
+                    const openingsVal = document.getElementById('editOpenings').value;
+                    if (openingsVal !== '') openings = parseInt(openingsVal);
+                }
+
+                const updateData = {
+                    courseId,
+                    departureTime,
+                    teeTime: document.getElementById('editTeeTime').value || null,
+                    meetAt,
+                    notes: document.getElementById('editPlayNotes').value || null,
+                };
+                if (openings !== undefined) updateData.openings = openings;
+
+                await updateDoc(doc(db, collectionName, playDateId), updateData);
+                result.innerHTML = '<div class="success">Play date updated!</div>';
+                setTimeout(() => loadAllPlayDates(), 1500);
+            } catch (err) {
+                result.innerHTML = `<div class="error">Error saving: ${err.message}</div>`;
+            }
+        };
+
+        window.updatePlayDateOpenings = async function(playDateId, value) {
+            try {
+                const openings = parseInt(value);
+                if (isNaN(openings) || openings < 0) return;
+                const displayLeague = isAdmin && adminSelectedLeague ? adminSelectedLeague : selectedLeague;
+                const collectionName = displayLeague === 'monday' ? 'M_playDates' : 'W_playDates';
+                await updateDoc(doc(db, collectionName, playDateId), { openings });
+                loadAllPlayDates();
+            } catch (err) {
+                alert('Error updating openings: ' + err.message);
+            }
+        };
+
         window.showPlayDateDetails = async function(playDateId, courseName, dateSeconds, departTime, teeTime, meetAt, notes) {
             const container = document.getElementById('playDatesContainer');
+            viewingPlayDateDetail = true;
 
             // Show loading state
             container.innerHTML = '<div class="card"><div class="loading">Loading...</div></div>';
@@ -1472,10 +1598,15 @@
                 let htmlContent = `
                     <div class="card">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
-                            <button onclick="loadAllPlayDates()" style="background: #718096; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">
+                            <button onclick="loadAllPlayDates()" style="background: #3182ce; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600;">
                                 ← Back to All Play Dates
                             </button>
-                            ${isAdmin ? `<button onclick="deletePlayDate('${playDateId}')" style="background: #f56565; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">🗑️ Delete Play Date</button>` : ''}
+                            ${isAdmin ? `
+                                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                        <button onclick="editPlayDate('${playDateId}')" style="background: #48bb78; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600;">✏️ Edit Play Date</button>
+                                    <button onclick="emailPlayDateList('${playDateId}', '${collectionName}', '${courseName.replace(/'/g, "\\'")}', '${formattedDate}')" style="background: #4299e1; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600;">📧 Email List to Admin</button>
+                                    <button onclick="deletePlayDate('${playDateId}')" style="background: #f56565; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600;">🗑️ Delete Play Date</button>
+                                </div>` : ''}
                         </div>
                         <h3>${formattedDate} - ${courseName}</h3>
                         <div style="margin-bottom: 20px;">
@@ -1627,12 +1758,20 @@
                 const displayLeague = isAdmin && adminSelectedLeague ? adminSelectedLeague : selectedLeague;
                 const signupCollection = displayLeague === 'monday' ? 'M_Signups' : 'W_Signups';
 
-                const playersRef = collection(db, collectionName);
-                const snapshot = await getDocs(playersRef);
-                const players = snapshot.docs.map(doc => {
-                    const data = doc.data();
-                    return { id: doc.id, ...data, name: `${data.first} ${data.last}` };
-                }).sort((a, b) => (a.last || '').localeCompare(b.last || ''));
+                // Use cached player list if available for this collection, otherwise fetch and cache
+                let players;
+                if (cachedPlayers && cachedPlayersCollection === collectionName) {
+                    players = cachedPlayers;
+                } else {
+                    const playersRef = collection(db, collectionName);
+                    const snapshot = await getDocs(playersRef);
+                    players = snapshot.docs.map(doc => {
+                        const data = doc.data();
+                        return { id: doc.id, ...data, name: `${data.first} ${data.last}` };
+                    }).sort((a, b) => (a.last || '').localeCompare(b.last || ''));
+                    cachedPlayers = players;
+                    cachedPlayersCollection = collectionName;
+                }
 
                 const signupRef = collection(db, signupCollection);
                 const sq = query(signupRef, where('playDateId', '==', playDateId));
@@ -1700,6 +1839,94 @@
                 document.getElementById('playersStatusList').innerHTML = `<div class="error">Error loading players: ${err.message}</div>`;
             }
         }
+
+        window.emailPlayDateList = async function(playDateId, collectionName, courseName, formattedDate) {
+            if (!confirm('Send play date list to admins?')) return;
+
+            try {
+                const displayLeague = isAdmin && adminSelectedLeague ? adminSelectedLeague : selectedLeague;
+                const signupCollection = displayLeague === 'monday' ? 'M_Signups' : 'W_Signups';
+                const leagueTitle = displayLeague === 'monday' ? 'Monday League Manager' : 'Wednesday League Manager';
+
+                // Use cached players or fetch
+                let players;
+                if (cachedPlayers && cachedPlayersCollection === collectionName) {
+                    players = cachedPlayers;
+                } else {
+                    const snap = await getDocs(collection(db, collectionName));
+                    players = snap.docs.map(doc => {
+                        const d = doc.data();
+                        return { id: doc.id, ...d, name: `${d.first} ${d.last}` };
+                    }).sort((a, b) => (a.last || '').localeCompare(b.last || ''));
+                }
+
+                // Fetch signups
+                const signupSnap = await getDocs(query(collection(db, signupCollection), where('playDateId', '==', playDateId)));
+                const statusMap = {};
+                signupSnap.docs.forEach(doc => {
+                    const d = doc.data();
+                    if (typeof d.isPlaying === 'boolean') {
+                        statusMap[String(d.playerId)] = d.isPlaying;
+                        if (d.player_number) statusMap[String(d.player_number)] = d.isPlaying;
+                    }
+                });
+
+                // Categorise players
+                const playing = [], notPlaying = [], undecided = [];
+                players.forEach(player => {
+                    const pn = String(player.player_number || '');
+                    const status = statusMap[pn] !== undefined ? statusMap[pn] : statusMap[String(player.id)];
+                    if (status === true) playing.push(player.name);
+                    else if (status === false) notPlaying.push(player.name);
+                    else undecided.push(player.name);
+                });
+
+                const subject = `${leagueTitle} — Play Date ${formattedDate} at ${courseName}`;
+
+                // HTML email body
+                const html = `
+                    <h2 style="color:#2d3748;">⛳ ${leagueTitle}</h2>
+                    <h3 style="color:#4a5568;">Play Date: ${formattedDate} — ${courseName}</h3>
+                    <hr>
+                    <h4 style="color:#276749;">✓ Playing (${playing.length})</h4>
+                    <ul>${playing.map(n => `<li>${n}</li>`).join('')}</ul>
+                    <h4 style="color:#c53030;">✗ NOT Playing (${notPlaying.length})</h4>
+                    <ul>${notPlaying.length ? notPlaying.map(n => `<li>${n}</li>`).join('') : '<li><em>None</em></li>'}</ul>
+                    <h4 style="color:#718096;">? Undecided (${undecided.length})</h4>
+                    <ul>${undecided.map(n => `<li>${n}</li>`).join('')}</ul>
+                `;
+
+                // Plain text fallback
+                const text = [
+                    `${leagueTitle}`,
+                    `Play Date: ${formattedDate} — ${courseName}`,
+                    '',
+                    `PLAYING (${playing.length}):`,
+                    ...playing.map(n => `  - ${n}`),
+                    '',
+                    `NOT PLAYING (${notPlaying.length}):`,
+                    ...(notPlaying.length ? notPlaying.map(n => `  - ${n}`) : ['  - None']),
+                    '',
+                    `UNDECIDED (${undecided.length}):`,
+                    ...undecided.map(n => `  - ${n}`),
+                ].join('\n');
+
+                const response = await fetch('/.netlify/functions/send-email', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ to: ADMIN_EMAILS, subject, html, text })
+                });
+
+                if (response.status === 200) {
+                    alert(`✓ Play date list emailed to admins!`);
+                } else {
+                    const err = await response.text();
+                    alert(`Email failed: ${err}`);
+                }
+            } catch (err) {
+                alert(`Error sending email: ${err.message}`);
+            }
+        };
 
         async function loadAvailability(playDateId, containerId = 'playersList') {
             try {
@@ -2516,7 +2743,7 @@ Your current HC is displayed when you log in.
         setInterval(() => {
             if (currentUser) {
                 loadAnnouncements();
-                loadAllPlayDates();
+                if (!viewingPlayDateDetail) loadAllPlayDates();
                 loadStats();
             }
         }, 30000);
@@ -2584,6 +2811,8 @@ Your current HC is displayed when you log in.
         // Admin league selection functions
         window.selectAdminLeague = async function(league) {
             adminSelectedLeague = league;
+            cachedPlayers = null;
+            cachedPlayersCollection = null;
 
             // Update session storage
             const session = JSON.parse(sessionStorage.getItem('golfLeagueSession'));
@@ -2592,7 +2821,7 @@ Your current HC is displayed when you log in.
 
             // Update league title in header
             const leagueLabel = league === 'monday' ? 'Monday League' : 'Wednesday League';
-            document.getElementById('leagueTitle').textContent = leagueLabel;
+            document.getElementById('leagueTitle').textContent = `⛳ ${leagueLabel} Manager`;
             document.getElementById('adminLeagueLabel').textContent = leagueLabel;
 
             // Fetch user's data from the new league to get correct SKAT#/HC
@@ -2668,7 +2897,6 @@ Your current HC is displayed when you log in.
             document.getElementById('postAnnouncementScreen').style.display = 'none';
             document.getElementById('schedulePlayDateScreen').style.display = 'none';
             document.getElementById('emailBlastScreen').style.display = 'none';
-            document.getElementById('textBlastScreen').style.display = 'none';
         };
 
         // Admin screen navigation functions
@@ -2677,7 +2905,6 @@ Your current HC is displayed when you log in.
             document.getElementById('postAnnouncementScreen').style.display = 'none';
             document.getElementById('schedulePlayDateScreen').style.display = 'none';
             document.getElementById('emailBlastScreen').style.display = 'none';
-            document.getElementById('textBlastScreen').style.display = 'none';
 
             if (screenType === 'postAnnouncement') {
                 document.getElementById('postAnnouncementScreen').style.display = 'block';
@@ -2703,10 +2930,6 @@ Your current HC is displayed when you log in.
                 document.getElementById('emailBlastScreen').style.display = 'block';
                 document.getElementById('blastPreview').innerHTML = '';
                 document.getElementById('blastResult').innerHTML = '';
-            } else if (screenType === 'textBlast') {
-                document.getElementById('textBlastScreen').style.display = 'block';
-                document.getElementById('textBlastPreview').innerHTML = '';
-                document.getElementById('textBlastResult').innerHTML = '';
             }
         };
 
@@ -2715,7 +2938,6 @@ Your current HC is displayed when you log in.
             document.getElementById('postAnnouncementScreen').style.display = 'none';
             document.getElementById('schedulePlayDateScreen').style.display = 'none';
             document.getElementById('emailBlastScreen').style.display = 'none';
-            document.getElementById('textBlastScreen').style.display = 'none';
         };
         
         window.deleteAnnouncement = async function(announcementId) {
@@ -2932,7 +3154,8 @@ Your current HC is displayed when you log in.
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        to: uniqueEmails,
+                        to: ['noreply@goldenoaks.golf'],
+                        bcc: uniqueEmails,
                         subject: subject,
                         text: message
                     })
@@ -2954,126 +3177,6 @@ Your current HC is displayed when you log in.
                 sendBtn.textContent = '📧 Send Email Blast';
             }
         });
-
-        // --- Text Blast ---
-
-        async function getPlayerPhoneNumbers() {
-            const displayLeague = adminSelectedLeague || selectedLeague;
-            const collectionName = displayLeague === 'monday' ? 'M_player_profile' : 'W_player_profile';
-            const snapshot = await getDocs(collection(db, collectionName));
-
-            const seen = new Set();
-            const recipients = [];
-            snapshot.docs.forEach(d => {
-                const data = d.data();
-                const raw = (data.cell || data.phone || '').toString().replace(/\D/g, '');
-                if (raw.length >= 10 && !seen.has(raw)) {
-                    seen.add(raw);
-                    recipients.push({ name: `${data.first || ''} ${data.last || ''}`.trim(), number: raw });
-                }
-            });
-            recipients.sort((a, b) => a.name.localeCompare(b.name));
-            return recipients;
-        }
-
-        window.previewTextBlast = async function() {
-            const preview = document.getElementById('textBlastPreview');
-            preview.innerHTML = '<div class="loading">Loading recipients...</div>';
-            try {
-                const recipients = await getPlayerPhoneNumbers();
-                if (recipients.length === 0) {
-                    preview.innerHTML = '<div class="error">No players with cell numbers found.</div>';
-                    return;
-                }
-                const displayLeague = adminSelectedLeague || selectedLeague;
-                const leagueLabel = displayLeague === 'monday' ? 'Monday' : 'Wednesday';
-
-                let html = `<div class="info-box">
-                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
-                        <strong id="textBlastCount">${recipients.length} ${leagueLabel} players selected</strong>
-                        <div style="display:flex; gap:8px;">
-                            <button type="button" onclick="toggleAllTextRecipients(true)" style="background:#48bb78; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer; font-size:0.85em;">Select All</button>
-                            <button type="button" onclick="toggleAllTextRecipients(false)" style="background:#fc8181; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer; font-size:0.85em;">Deselect All</button>
-                        </div>
-                    </div>
-                    <div style="columns:2; gap:16px;">`;
-
-                recipients.forEach((r, i) => {
-                    html += `<label style="display:flex; align-items:center; gap:6px; cursor:pointer; padding:3px 0; break-inside:avoid;">
-                        <input type="checkbox" class="text-recipient-cb" data-number="${r.number}" data-name="${r.name}" checked
-                               onchange="updateTextBlastCount()"
-                               style="width:16px; height:16px; cursor:pointer;">
-                        ${r.name}
-                    </label>`;
-                });
-
-                html += `</div></div>`;
-                preview.innerHTML = html;
-            } catch (err) {
-                preview.innerHTML = `<div class="error">Error loading recipients: ${err.message}</div>`;
-            }
-        };
-
-        window.toggleAllTextRecipients = function(checked) {
-            document.querySelectorAll('.text-recipient-cb').forEach(cb => cb.checked = checked);
-            updateTextBlastCount();
-        };
-
-        window.updateTextBlastCount = function() {
-            const total = document.querySelectorAll('.text-recipient-cb:checked').length;
-            const countEl = document.getElementById('textBlastCount');
-            if (countEl) {
-                const displayLeague = adminSelectedLeague || selectedLeague;
-                const leagueLabel = displayLeague === 'monday' ? 'Monday' : 'Wednesday';
-                countEl.textContent = `${total} ${leagueLabel} player${total !== 1 ? 's' : ''} selected`;
-            }
-        };
-
-        window.sendTextBlast = async function() {
-            if (!isAdmin) { alert('You must be an administrator to send text blasts'); return; }
-
-            const message = document.getElementById('textBlastMessage').value.trim();
-            const result = document.getElementById('textBlastResult');
-            const sendBtn = document.getElementById('textBlastSendBtn');
-
-            if (!message) {
-                result.innerHTML = '<div class="error">Please enter a message.</div>';
-                return;
-            }
-
-            try {
-                // If preview checkboxes exist, use them; otherwise fetch all
-                const checkboxes = document.querySelectorAll('.text-recipient-cb:checked');
-                let numbers;
-                if (checkboxes.length > 0) {
-                    numbers = Array.from(checkboxes).map(cb => cb.dataset.number);
-                } else {
-                    const recipients = await getPlayerPhoneNumbers();
-                    numbers = recipients.map(r => r.number);
-                }
-
-                if (numbers.length === 0) {
-                    result.innerHTML = '<div class="error">No recipients selected.</div>';
-                    return;
-                }
-
-                if (!confirm(`Open SMS app to text ${numbers.length} player${numbers.length !== 1 ? 's' : ''}?`)) return;
-
-                sendBtn.disabled = true;
-                sendBtn.textContent = 'Opening...';
-
-                const smsUri = `sms:${numbers.join(',')}?body=${encodeURIComponent(message)}`;
-                window.location.href = smsUri;
-
-                result.innerHTML = `<div class="success">SMS app opened with ${numbers.length} recipient${numbers.length !== 1 ? 's' : ''}. Tap Send in your messaging app.</div>`;
-                setTimeout(() => result.innerHTML = '', 8000);
-            } catch (err) {
-                result.innerHTML = `<div class="error">Error: ${err.message}</div>`;
-            } finally {
-                sendBtn.disabled = false;
-                sendBtn.textContent = '💬 Open SMS App';
-            }
-        };
 
         document.getElementById('playDateForm').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -3117,6 +3220,7 @@ Your current HC is displayed when you log in.
                     departureTime = document.getElementById('departTime').value || null;
                 }
 
+                const openingsVal = document.getElementById('playOpenings')?.value;
                 const playDateData = {
                     date: Timestamp.fromDate(dateObj),
                     courseId: courseId,
@@ -3124,6 +3228,7 @@ Your current HC is displayed when you log in.
                     teeTime: document.getElementById('teeTime').value || null,
                     meetAt: meetAtString,
                     notes: document.getElementById('playNotes').value || null,
+                    ...(displayLeague === 'monday' && openingsVal ? { openings: parseInt(openingsVal) } : {}),
                     createdAt: Timestamp.now()
                 };
 

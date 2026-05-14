@@ -14,7 +14,7 @@ exports.handler = async (event) => {
     }
 
     try {
-        const { to, subject, text } = JSON.parse(event.body);
+        const { to, bcc, subject, text, html } = JSON.parse(event.body);
 
         const response = await fetch('https://api.resend.com/emails', {
             method: 'POST',
@@ -25,8 +25,9 @@ exports.handler = async (event) => {
             body: JSON.stringify({
                 from: 'Golden Oaks Golf League <noreply@goldenoaks.golf>',
                 to,
+                ...(bcc ? { bcc } : {}),
                 subject,
-                text,
+                ...(html ? { html, text: text || '' } : { text }),
             }),
         });
 
