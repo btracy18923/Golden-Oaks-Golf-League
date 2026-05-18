@@ -74,52 +74,12 @@ class _WednesdayParentScreenState extends State<WednesdayParentScreen> {
     });
   }
 
-  /// Check if Wednesday league data exists locally, if not download from Firebase
+  /// Always download Wednesday league data from Firebase on screen load (background, silent)
   Future<void> _checkAndDownloadWednesdayData() async {
     try {
-      final downloadService = FirebaseDownloadService();
-
-      // Check if Wednesday data exists
-      final hasData = await downloadService.hasWednesdayData();
-
-      if (!hasData) {
-        // Show loading indicator
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Downloading Wednesday league data from Firebase...'),
-              duration: Duration(seconds: 2),
-            ),
-          );
-        }
-
-        // Download Wednesday league data from Firebase
-        final result = await downloadService.downloadWednesdayLeagueData();
-
-        if (mounted) {
-          if (result['success'] == true) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  'Downloaded ${result['players']} players and ${result['scores']} scores',
-                ),
-                duration: const Duration(seconds: 3),
-                backgroundColor: Colors.green,
-              ),
-            );
-          } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Error downloading Wednesday league data from Firebase'),
-                duration: Duration(seconds: 3),
-                backgroundColor: Colors.red,
-              ),
-            );
-          }
-        }
-      }
+      await FirebaseDownloadService().downloadWednesdayLeagueData();
     } catch (e) {
-      debugPrint('Error checking/downloading Wednesday data: $e');
+      debugPrint('Background Wednesday sync failed: $e');
     }
   }
 

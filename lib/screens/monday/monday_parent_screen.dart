@@ -80,55 +80,15 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
     });
   }
 
-  /// Check if Monday league data exists locally, if not download from Firebase
+  /// Always download Monday league data from Firebase on screen load (background, silent)
   Future<void> _checkAndDownloadMondayData() async {
     try {
-      final downloadService = FirebaseDownloadService();
-
-      // Check if Monday data exists
-      final hasData = await downloadService.hasMondayData();
-
-      if (!hasData) {
-        // Show loading indicator
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Downloading Monday league data from Firebase...'),
-              duration: Duration(seconds: 2),
-            ),
-          );
-        }
-
-        // Download Monday league data from Firebase
-        final result = await downloadService.downloadMondayLeagueData();
-
-        if (mounted) {
-          if (result['success'] == true) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  'Downloaded ${result['players']} players, ${result['scores']} scores, and ${result['courses']} golf courses',
-                ),
-                duration: const Duration(seconds: 3),
-                backgroundColor: Colors.green,
-              ),
-            );
-
-            // Reload golf courses after download
-            _loadGolfCourses();
-          } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Error downloading Monday league data from Firebase'),
-                duration: Duration(seconds: 3),
-                backgroundColor: Colors.red,
-              ),
-            );
-          }
-        }
+      final result = await FirebaseDownloadService().downloadMondayLeagueData();
+      if (result['success'] == true && mounted) {
+        _loadGolfCourses();
       }
     } catch (e) {
-      debugPrint('Error checking/downloading Monday data: $e');
+      debugPrint('Background Monday sync failed: $e');
     }
   }
 
