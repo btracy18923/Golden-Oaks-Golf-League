@@ -5,6 +5,7 @@ import 'services/device_detection_service.dart';
 import 'screens/main_menu_screen.dart';
 import 'firebase_options.dart';
 import 'services/connectivity_service.dart';
+import 'services/upload_queue_service.dart';
 
 //Version 4, November 16, 2025
 void main() async {
@@ -33,6 +34,12 @@ void main() async {
    // print('Database initialization failed: $e');
   }
   
+  // Clear any stale queued uploads from previous sessions before connecting
+  try {
+    await UploadQueueService().clearAllPendingUploads();
+  } catch (e) {
+  }
+
   // Initialize connectivity monitoring
   try {
     final connectivityService = ConnectivityService();

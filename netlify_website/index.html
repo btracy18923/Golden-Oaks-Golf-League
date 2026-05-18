@@ -630,7 +630,9 @@
             </div>
             <div class="form-group">
                 <label>Player Number (4 digits)</label>
-                <input type="text" id="loginPlayerNumber" required autocomplete="off" maxlength="4" pattern="[0-9]{4}" placeholder="Enter your 4-digit player number">
+                <input type="text" id="loginPlayerNumber" required autocomplete="off" maxlength="4" pattern="[0-9]{4}" placeholder="Enter your 4-digit player number"
+                    onkeydown="if((event.key==='Tab'||event.key==='Enter') && this.value.length===4){ event.preventDefault(); document.getElementById('loginForm').dispatchEvent(new Event('submit',{cancelable:true,bubbles:true})); }"
+                    oninput="if(this.value.length===4){ document.getElementById('loginForm').dispatchEvent(new Event('submit',{cancelable:true,bubbles:true})); }">
             </div>
             <div class="form-group" style="margin-bottom: 10px;">
                 <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: normal;">
@@ -795,8 +797,11 @@
                         <button class="primary" onclick="showAdminScreen('schedulePlayDate')" style="padding: 20px; font-size: 1.1em;">
                             📅 Schedule Play Date
                         </button>
-                        <button class="primary" onclick="showAdminScreen('emailBlast')" style="padding: 20px; font-size: 1.1em; grid-column: 1 / -1;">
+                        <button class="primary" onclick="showAdminScreen('emailBlast')" style="padding: 20px; font-size: 1.1em;">
                             📧 Email Blast
+                        </button>
+                        <button class="primary" onclick="showAdminScreen('emailRoster')" style="padding: 20px; font-size: 1.1em;">
+                            📋 Email Roster
                         </button>
                     </div>
                 </div>
@@ -857,6 +862,19 @@
                     </form>
                     <div id="blastPreview" style="margin-top: 20px;"></div>
                     <div id="blastResult" style="margin-top: 20px;"></div>
+                </div>
+
+                <!-- Email Roster Screen -->
+                <div id="emailRosterScreen" class="card" style="display: none;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3>📋 Email Roster to Admins</h3>
+                        <button onclick="showAdminTabSelection()" style="background: #718096; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">
+                            ← Back to Admin Menu
+                        </button>
+                    </div>
+                    <p style="color: #718096; margin-bottom: 20px;">Emails the full roster for both Monday and Wednesday leagues to all admins. Sorted by last name.</p>
+                    <button class="primary" id="emailRosterBtn" onclick="sendRosterEmail()" style="padding: 12px 30px; font-size: 1.1em;">📧 Send Roster Email</button>
+                    <div id="rosterResult" style="margin-top: 20px;"></div>
                 </div>
 
                 <!-- Schedule Play Date Screen -->
@@ -2788,18 +2806,6 @@ Your current HC is displayed when you log in.
                     }
                 }
 
-                // Clean up old announcements
-                const announcementsRef = collection(db, announcementsCollection);
-                const announcementsQuery = query(announcementsRef, where('createdAt', '<', todayTimestamp));
-                const announcementsSnapshot = await getDocs(announcementsQuery);
-
-                if (!announcementsSnapshot.empty) {
-                    const deleteAnnouncementsPromises = announcementsSnapshot.docs.map(doc => deleteDoc(doc.ref));
-                    await Promise.all(deleteAnnouncementsPromises);
-                    deletedCount += announcementsSnapshot.docs.length;
-                    console.log(`Deleted ${announcementsSnapshot.docs.length} old announcements from ${announcementsCollection}`);
-                }
-
                 if (deletedCount > 0) {
                     console.log(`Auto-cleanup complete for ${league} league: ${deletedCount} items deleted`);
                 }
@@ -2891,20 +2897,22 @@ Your current HC is displayed when you log in.
             loadCourses();
         };
 
-        window.backToAdminLeagueSelection = function() {
-            document.getElementById('adminLeagueSelection').style.display = 'block';
+        function hideAllAdminScreens() {
             document.getElementById('adminTabSelection').style.display = 'none';
             document.getElementById('postAnnouncementScreen').style.display = 'none';
             document.getElementById('schedulePlayDateScreen').style.display = 'none';
             document.getElementById('emailBlastScreen').style.display = 'none';
+            document.getElementById('emailRosterScreen').style.display = 'none';
+        }
+
+        window.backToAdminLeagueSelection = function() {
+            document.getElementById('adminLeagueSelection').style.display = 'block';
+            hideAllAdminScreens();
         };
 
         // Admin screen navigation functions
         window.showAdminScreen = function(screenType) {
-            document.getElementById('adminTabSelection').style.display = 'none';
-            document.getElementById('postAnnouncementScreen').style.display = 'none';
-            document.getElementById('schedulePlayDateScreen').style.display = 'none';
-            document.getElementById('emailBlastScreen').style.display = 'none';
+            hideAllAdminScreens();
 
             if (screenType === 'postAnnouncement') {
                 document.getElementById('postAnnouncementScreen').style.display = 'block';
@@ -2930,14 +2938,15 @@ Your current HC is displayed when you log in.
                 document.getElementById('emailBlastScreen').style.display = 'block';
                 document.getElementById('blastPreview').innerHTML = '';
                 document.getElementById('blastResult').innerHTML = '';
+            } else if (screenType === 'emailRoster') {
+                document.getElementById('emailRosterScreen').style.display = 'block';
+                document.getElementById('rosterResult').innerHTML = '';
             }
         };
 
         window.showAdminTabSelection = function() {
+            hideAllAdminScreens();
             document.getElementById('adminTabSelection').style.display = 'block';
-            document.getElementById('postAnnouncementScreen').style.display = 'none';
-            document.getElementById('schedulePlayDateScreen').style.display = 'none';
-            document.getElementById('emailBlastScreen').style.display = 'none';
         };
         
         window.deleteAnnouncement = async function(announcementId) {
@@ -3038,6 +3047,99 @@ Your current HC is displayed when you log in.
             } catch (err) {
                 console.error('Error deleting play date:', err);
                 alert('Error deleting play date: ' + err.message);
+            }
+        };
+
+        // --- Email Roster ---
+
+        window.sendRosterEmail = async function() {
+            const btn = document.getElementById('emailRosterBtn');
+            const result = document.getElementById('rosterResult');
+            btn.disabled = true;
+            btn.textContent = 'Sending...';
+            result.innerHTML = '';
+
+            try {
+                console.log('Roster: fetching player data from Firebase...');
+                const [mondaySnap, wednesdaySnap] = await Promise.all([
+                    getDocs(collection(db, 'M_player_profile')),
+                    getDocs(collection(db, 'W_player_profile')),
+                ]);
+                console.log(`Roster: Monday=${mondaySnap.docs.length}, Wednesday=${wednesdaySnap.docs.length}`);
+
+                const mondayPlayers = mondaySnap.docs
+                    .map(d => d.data())
+                    .sort((a, b) => (a.last || '').localeCompare(b.last || ''));
+
+                const wednesdayPlayers = wednesdaySnap.docs
+                    .map(d => d.data())
+                    .sort((a, b) => (a.last || '').localeCompare(b.last || ''));
+
+                const tableStyle = 'width:100%; border-collapse:collapse; margin-bottom:30px;';
+                const thStyle = 'background:#2d6a4f; color:white; padding:8px 12px; text-align:left; font-size:13px;';
+                const tdStyle = 'padding:3px 12px; border-bottom:1px solid #e2e8f0; font-size:13px;';
+                const trAlt = 'background:#f0fff4;';
+
+                const buildTable = (players, columns) => {
+                    const headers = columns.map(c => `<th style="${thStyle}">${c.label}</th>`).join('');
+                    const rows = players.map((p, i) => {
+                        const cells = columns.map(c => `<td style="${tdStyle}">${p[c.field] ?? ''}</td>`).join('');
+                        return `<tr style="${i % 2 === 1 ? trAlt : ''}">${cells}</tr>`;
+                    }).join('');
+                    return `<table style="${tableStyle}"><thead><tr>${headers}</tr></thead><tbody>${rows}</tbody></table>`;
+                };
+
+                const mondayTable = buildTable(mondayPlayers, [
+                    { label: 'Member #', field: 'player_number' },
+                    { label: 'First',    field: 'first' },
+                    { label: 'Last',     field: 'last' },
+                    { label: 'SKAT #',   field: 'skat_number' },
+                    { label: 'Phone',    field: 'cell' },
+                    { label: 'Email',    field: 'email' },
+                ]);
+
+                const wednesdayTable = buildTable(wednesdayPlayers, [
+                    { label: 'Member #', field: 'player_number' },
+                    { label: 'First',    field: 'first' },
+                    { label: 'Last',     field: 'last' },
+                    { label: 'HC',       field: 'HC' },
+                    { label: 'OHC',      field: 'OHC' },
+                    { label: 'Phone',    field: 'cell' },
+                    { label: 'Email',    field: 'email' },
+                ]);
+
+                const html = `
+                    <h2 style="color:#2d6a4f; margin-bottom:6px;">Monday League Roster (${mondayPlayers.length} players)</h2>
+                    ${mondayTable}
+                    <h2 style="color:#2d6a4f; margin-bottom:6px;">Wednesday League Roster (${wednesdayPlayers.length} players)</h2>
+                    ${wednesdayTable}
+                `;
+
+                const response = await fetch('/.netlify/functions/send-email', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        to: ['btracy18923@gmail.com'],
+                        subject: `Golden Oaks Roster — ${new Date().toLocaleDateString()}`,
+                        html,
+                        text: 'See HTML version for roster tables.',
+                    }),
+                });
+
+                console.log('Roster: sending email, status=', response.status);
+                if (response.ok) {
+                    result.innerHTML = '<div class="success">✅ Roster emailed to admins.</div>';
+                } else {
+                    const body = await response.text();
+                    console.error('Roster: email send failed:', body);
+                    result.innerHTML = `<div class="error">Error ${response.status}: ${body}</div>`;
+                }
+            } catch (err) {
+                console.error('Roster error:', err);
+                result.innerHTML = `<div class="error">Error: ${err.message}</div>`;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '📧 Send Roster Email';
             }
         };
 

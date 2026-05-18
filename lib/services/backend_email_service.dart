@@ -82,15 +82,16 @@ class BackendEmailService {
     return _send(to: recipients.toList(), subject: subject, body: body);
   }
 
-  /// Sends a player list email to the ProShop
+  /// Sends a player list email to the ProShop and admins
   Future<bool> sendProShopEmail({
     required String subject,
     required String body,
     String? recipientEmail,
   }) async {
     final recipient = recipientEmail ?? EmailConfig.proShopEmail;
-    debugPrint('Sending ProShop email to: $recipient');
-    return _send(to: [recipient], subject: subject, body: body);
+    final recipients = [recipient, ...EmailConfig.adminEmails];
+    debugPrint('Sending ProShop email to: $recipients');
+    return _send(to: recipients, subject: subject, body: body);
   }
 
   /// Sends a custom email to specified recipients

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:convert';
 import '../../services/database_helper.dart';
 import '../../config/app_config.dart';
 import '../../services/device_detection_service.dart';
@@ -31,6 +33,21 @@ class _WednesdayPlayerSelectionScreenState extends State<WednesdayPlayerSelectio
     super.initState();
     loadPlayers();
     _setOrientation();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkAndLoadSavedGroupings());
+  }
+
+  Future<void> _checkAndLoadSavedGroupings() async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('W_scheduled_groups')
+          .doc('pending')
+          .get();
+      if (doc.exists && mounted) {
+        _loadSavedGroupings();
+      }
+    } catch (e) {
+      // If check fails, proceed normally to player selection
+    }
   }
 
   void _setOrientation() {
@@ -232,6 +249,63 @@ class _WednesdayPlayerSelectionScreenState extends State<WednesdayPlayerSelectio
               ],
             ),
     );
+  }
+
+  Future<void> _loadSavedGroupings() async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('W_scheduled_groups')
+          .doc('pending')
+          .get();
+
+      if (!doc.exists) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No saved groupings found.'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+        return;
+      }
+
+      final data = doc.data()!;
+      final List<dynamic> rawGroups = jsonDecode(data['groups'] as String);
+      final List<dynamic> rawPlayers = jsonDecode(data['players'] as String);
+
+      final players = rawPlayers
+          .map((p) => Map<String, dynamic>.from(p as Map))
+          .toList();
+
+      final groups = rawGroups.map((group) {
+        final List<dynamic> groupList = group as List<dynamic>;
+        return groupList.map((p) =>
+            p != null ? Map<String, dynamic>.from(p as Map) : null
+        ).toList();
+      }).toList();
+
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => WednesdayEnterScoresScreen(
+              initialPlayers: players,
+              initialGroups: groups,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading saved groupings: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   Widget _buildPhonePlayerGrid() {
@@ -534,7 +608,7 @@ class _WednesdayPlayerSelectionScreenState extends State<WednesdayPlayerSelectio
       ],
     );
   }
-  
+
   Widget _buildTablet10Footer() {
     return ButtonBarUIService.buildButtonBar(
       context,

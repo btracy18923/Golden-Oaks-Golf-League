@@ -3,6 +3,7 @@ import 'package:path/path.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
 import '../models/league.dart';
+import '../config/app_config.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper _instance = DatabaseHelper._internal();
@@ -54,7 +55,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 24,
+      version: AppConfig.dbVersion,
       onCreate: (db, version) {
         // DatabaseHelper: Creating new database with version $version
         return _createTables(db, version);

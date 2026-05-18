@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/screen_data_retention_service.dart';
 import '../../services/database_helper.dart';
 import '../../services/device_detection_service.dart';
@@ -623,6 +624,15 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
 
     try {
       await _saveResultsToDatabase();
+      // Delete saved groupings now that results are final
+      try {
+        await FirebaseFirestore.instance
+            .collection('W_scheduled_groups')
+            .doc('pending')
+            .delete();
+      } catch (e) {
+        debugPrint('Could not delete saved groupings: $e');
+      }
       _retentionService.clearAllData();
 
       SystemChrome.setPreferredOrientations([

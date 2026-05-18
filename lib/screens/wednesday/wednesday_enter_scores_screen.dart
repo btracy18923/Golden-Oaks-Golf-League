@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:convert';
 import 'dart:math';
 import '../popup_utils.dart';
 import '../../services/shared/league_purse_service.dart';
@@ -1498,6 +1500,24 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
     );
   }
 
+  /// Saves current groupings to Firebase so they can be restored on game day
+  Future<void> _saveGroupingsToFirebase() async {
+    try {
+      final groupsJson = jsonEncode(groups.map((group) =>
+          group.map((p) => p != null ? Map<String, dynamic>.from(p) : null).toList()
+      ).toList());
+      final playersJson = jsonEncode(selectedPlayers.map((p) => Map<String, dynamic>.from(p)).toList());
+
+      await FirebaseFirestore.instance.collection('W_scheduled_groups').doc('pending').set({
+        'groups': groupsJson,
+        'players': playersJson,
+        'saved_at': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      debugPrint('Failed to save groupings to Firebase: $e');
+    }
+  }
+
   /// Handler for Email ProShop - sends via backend service
   Future<void> _handleEmailProShop() async {
     final backendEmailService = BackendEmailService();
@@ -1515,16 +1535,20 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
       body: body,
     );
 
+    if (success) {
+      await _saveGroupingsToFirebase();
+    }
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             success
-                ? 'Player list emailed successfully to ProShop!'
-                : 'Failed to send email to ProShop',
+                ? 'Player list emailed to ProShop and groupings saved.'
+                : 'Email failed — groupings NOT saved. Check your connection and try again.',
           ),
           backgroundColor: success ? Colors.green : Colors.red,
-          duration: const Duration(seconds: 2),
+          duration: const Duration(seconds: 4),
         ),
       );
     }

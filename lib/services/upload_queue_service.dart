@@ -245,6 +245,15 @@ class UploadQueueService {
     
   }
 
+  /// Remove pending and failed uploads older than 48 hours (called on app startup to prevent stale uploads)
+  Future<void> clearAllPendingUploads() async {
+    final db = await database;
+    final cutoff = DateTime.now().subtract(const Duration(hours: 48)).toIso8601String();
+    await db.delete('pending_uploads',
+        where: 'status IN (?, ?) AND timestamp < ?',
+        whereArgs: ['pending', 'failed', cutoff]);
+  }
+
   /// Remove completed uploads older than specified days
   Future<void> cleanupOldUploads({int daysOld = 7}) async {
     final db = await database;
