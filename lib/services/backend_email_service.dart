@@ -3,9 +3,10 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../config/email_config.dart';
 
-/// Sends emails directly via the Resend REST API.
+/// Sends emails via the Netlify serverless function (which holds the API key securely).
 class BackendEmailService {
-  static const String _resendUrl = 'https://api.resend.com/emails';
+  static const String _netlifyFunctionUrl =
+      'https://goldenoaks.golf/.netlify/functions/send-email';
 
   Future<bool> _send({
     required List<String> to,
@@ -15,7 +16,6 @@ class BackendEmailService {
   }) async {
     try {
       final Map<String, dynamic> payload = {
-        'from': '${EmailConfig.senderName} <${EmailConfig.senderEmail}>',
         'to': to,
         'subject': subject,
         'text': body,
@@ -25,20 +25,16 @@ class BackendEmailService {
       }
 
       final response = await http.post(
-        Uri.parse(_resendUrl),
-        headers: {
-          'Authorization': 'Bearer ${EmailConfig.sendGridApiKey}',
-          'Content-Type': 'application/json',
-        },
+        Uri.parse(_netlifyFunctionUrl),
+        headers: {'Content-Type': 'application/json'},
         body: jsonEncode(payload),
       ).timeout(const Duration(seconds: 15));
 
-      // Resend returns 200 on success
       if (response.statusCode == 200) {
         debugPrint('Email sent successfully to ${to.length} recipients');
         return true;
       } else {
-        debugPrint('Resend error ${response.statusCode}: ${response.body}');
+        debugPrint('Email function error ${response.statusCode}: ${response.body}');
         return false;
       }
     } catch (e) {
