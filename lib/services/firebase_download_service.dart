@@ -168,12 +168,12 @@ class FirebaseDownloadService {
           Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
 
           // Map Firebase fields to local database fields
-          // Note: OHC (Starting Handicap) is stored separately in W_starting_handicap collection
           Map<String, dynamic> playerData = {
             'player_number': data['player_number'],
             'first': data['first'] ?? '',
             'last': data['last'] ?? '',
             'HC': data['HC'],
+            'OHC': data['OHC'],
             'cell': data['cell'],
             'email': data['email'],
             'league': 'wednesday',
@@ -234,10 +234,15 @@ class FirebaseDownloadService {
           // Remove null values
           scoreData.removeWhere((key, value) => value == null);
 
-          // Insert into monday_scores table
+          // Insert only if no existing record for this player+date
           final db = await _dbHelper.database;
-          await db.insert('monday_scores', scoreData);
-          count++;
+          final existing = await db.query('monday_scores',
+              where: 'player_id = ? AND date_played = ?',
+              whereArgs: [scoreData['player_id'], scoreData['date_played']]);
+          if (existing.isEmpty) {
+            await db.insert('monday_scores', scoreData);
+            count++;
+          }
         } catch (e) {
           errors.add('Error importing score ${doc.id}: $e');
         }
@@ -282,10 +287,15 @@ class FirebaseDownloadService {
           // Remove null values
           scoreData.removeWhere((key, value) => value == null);
 
-          // Insert into wednesday_scores table
+          // Insert only if no existing record for this player+date
           final db = await _dbHelper.database;
-          await db.insert('wednesday_scores', scoreData);
-          count++;
+          final existing = await db.query('wednesday_scores',
+              where: 'player_id = ? AND date_played = ?',
+              whereArgs: [scoreData['player_id'], scoreData['date_played']]);
+          if (existing.isEmpty) {
+            await db.insert('wednesday_scores', scoreData);
+            count++;
+          }
         } catch (e) {
           errors.add('Error importing score ${doc.id}: $e');
         }

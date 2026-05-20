@@ -312,8 +312,11 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
         }
       }
 
-      // Upload NEW scores to Firebase FIRST
+      // Upload scores to Firebase
       await _uploadScoresToFirebase();
+
+      // Upload only the updated HC values to Firebase (not full player profiles)
+      await _uploadHandicapsToFirebase(newHandicaps);
 
       // Then delete old scores from Firebase if any were removed locally
       if (allDeletedScores.isNotEmpty) {
@@ -578,24 +581,32 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
     return buffer.toString();
   }
 
-  /// Upload player scores and player profiles to Firebase after saving to database
-  /// This ensures updated HC values are synced to Firebase
+  /// Upload player scores to Firebase after saving to database
   Future<void> _uploadScoresToFirebase() async {
     try {
-      // Upload scores
       final scoresSuccess = await _firebaseUploadService.uploadPlayerScoresTableWithQueue(League.wednesday);
       if (!scoresSuccess) {
         debugPrint('Failed to upload scores to Firebase');
       }
+    } catch (e) {
+      debugPrint('Error uploading scores to Firebase: $e');
+    }
+  }
 
-      // Upload player profiles to sync updated HC values
-      final profilesSuccess = await _firebaseUploadService.uploadPlayerTableWithQueue(League.wednesday);
-      if (!profilesSuccess) {
-        debugPrint('Failed to upload player profiles to Firebase');
+  /// Update only the HC field in Firebase for players who played today
+  Future<void> _uploadHandicapsToFirebase(Map<String, double> newHandicaps) async {
+    try {
+      final firestore = FirebaseFirestore.instance;
+      for (final entry in newHandicaps.entries) {
+        final cleanedLastName = entry.key.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
+        await firestore
+            .collection('W_player_profile')
+            .doc(cleanedLastName)
+            .update({'HC': entry.value});
+        debugPrint('Updated HC for $cleanedLastName: ${entry.value}');
       }
     } catch (e) {
-      // Log error but don't show to user
-      debugPrint('Error uploading to Firebase: $e');
+      debugPrint('Error uploading handicaps to Firebase: $e');
     }
   }
 
