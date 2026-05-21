@@ -280,7 +280,8 @@ class FirebaseDownloadService {
             'close_pin_winnings': data['close_pin_winnings'] ?? 0.0,
             'single_winnings': data['single_winnings'] ?? 0.0,
             'group_winnings': data['group_winnings'] ?? 0.0,
-            'pos': data['pos'],
+            'ind_pos': data['ind_pos'],
+            'grp_pos': data['grp_pos'],
             'prize_money': data['prize_money'],
           };
 

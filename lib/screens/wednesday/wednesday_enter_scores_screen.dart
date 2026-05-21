@@ -1030,10 +1030,10 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
         player['winnings'] = result.winnings;
 
         if (result.winnings > 0) {
-          player['pos'] = result.isTied ? 'T${result.place}' : '${result.place}';
+          player['ind_pos'] = result.isTied ? 'T${result.place}' : '${result.place}';
           player['prize_money'] = '\$${result.winnings.round()}';
         } else {
-          player['pos'] = '';
+          player['ind_pos'] = '';
           player['prize_money'] = '';
         }
       }
@@ -1052,7 +1052,7 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
           if (player != null &&
               player['first'] == updatedPlayer['first'] &&
               player['last'] == updatedPlayer['last']) {
-            player['pos'] = updatedPlayer['pos'];
+            player['ind_pos'] = updatedPlayer['ind_pos'];
             player['prize_money'] = updatedPlayer['prize_money'];
             break;
           }

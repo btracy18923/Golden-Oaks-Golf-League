@@ -115,7 +115,8 @@ class DatabaseHelper {
         close_pin_winnings REAL DEFAULT 0.0,
         single_winnings REAL DEFAULT 0.0,
         group_winnings REAL DEFAULT 0.0,
-        pos TEXT,
+        ind_pos TEXT,
+        grp_pos TEXT,
         prize_money TEXT,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (player_id) REFERENCES players (player_number)
@@ -660,6 +661,22 @@ class DatabaseHelper {
       // Re-add OHC column - needed as padding value in Wednesday handicap calculation
       try {
         await db.execute('ALTER TABLE players ADD COLUMN OHC REAL');
+      } catch (e) {
+      }
+    }
+    if (oldVersion < 25) {
+      // Rename pos to ind_pos and add grp_pos in wednesday_scores
+      try {
+        await db.execute('ALTER TABLE wednesday_scores RENAME COLUMN pos TO ind_pos');
+      } catch (e) {
+        // RENAME COLUMN requires SQLite 3.25.0+; if unsupported, add ind_pos as new column
+        try {
+          await db.execute('ALTER TABLE wednesday_scores ADD COLUMN ind_pos TEXT');
+        } catch (e2) {
+        }
+      }
+      try {
+        await db.execute('ALTER TABLE wednesday_scores ADD COLUMN grp_pos TEXT');
       } catch (e) {
       }
     }

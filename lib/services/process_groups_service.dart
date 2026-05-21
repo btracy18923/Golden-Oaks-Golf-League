@@ -285,7 +285,7 @@ class ProcessGroupsService {
         // Assign place and prize money to all players in the group
         // Each player in the winning group receives the full prize amount
         for (var player in players) {
-          player['pos'] = place.toString();
+          player['grp_pos'] = place.toString();
           player['prize_money'] = '\$$roundedAmount';
           // Add each player's prize to total payout sum
           totalPrizeMoney += roundedAmount;

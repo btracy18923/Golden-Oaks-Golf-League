@@ -1658,7 +1658,7 @@ class EnterScoresUIService {
         netScoreDisplay = netScoreValue.toStringAsFixed(1);
       }
     }
-    String position = player['pos'] ?? '';
+    String position = player['ind_pos'] ?? '';
     String prizeMoney = player['prize_money'] ?? '';
     int? manualGroup = player['manual_group'] as int?;
     String avgNet = player['avg_net'] ?? '';

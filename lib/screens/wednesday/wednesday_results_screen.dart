@@ -156,7 +156,8 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
             'individual_winnings': 0.0,
             'group_winnings': 0.0,
             'close_pin_winnings': 0.0,
-            'pos': null,
+            'ind_pos': null,
+            'grp_pos': null,
             'manual_group': null,
           };
         }
@@ -168,8 +169,11 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
         if (player['manual_group'] != null) {
           consolidatedPlayerData[playerName]!['manual_group'] = player['manual_group'];
         }
-        if (player['pos'] != null && player['pos'].toString().isNotEmpty) {
-          consolidatedPlayerData[playerName]!['pos'] = player['pos'].toString();
+        if (player['ind_pos'] != null && player['ind_pos'].toString().isNotEmpty) {
+          consolidatedPlayerData[playerName]!['ind_pos'] = player['ind_pos'].toString();
+        }
+        if (player['grp_pos'] != null && player['grp_pos'].toString().isNotEmpty) {
+          consolidatedPlayerData[playerName]!['grp_pos'] = player['grp_pos'].toString();
         }
       }
 
@@ -275,7 +279,8 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
             'golf_course': selectedGolfCourse,
             'gross_score': playerData['gross_score'],
             'handicap': dbPlayer['HC'] ?? 0.0,
-            'pos': playerData['pos'],
+            'ind_pos': playerData['ind_pos'],
+            'grp_pos': playerData['grp_pos'],
             'single_winnings': playerData['individual_winnings'] ?? 0.0,
             'group_winnings': playerData['group_winnings'] ?? 0.0,
             'close_pin_winnings': playerData['close_pin_winnings'] ?? 0.0,
