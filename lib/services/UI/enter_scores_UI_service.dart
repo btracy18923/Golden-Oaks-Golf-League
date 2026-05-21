@@ -1089,35 +1089,41 @@ class EnterScoresUIService {
 
     return Expanded(
       flex: flex,
-      child: Container(
-        decoration: BoxDecoration(
-          border: Border(
-            right: showFocus ? const BorderSide(color: Colors.blue, width: 3) : const BorderSide(color: Colors.black, width: 1),
-            top: showFocus ? const BorderSide(color: Colors.blue, width: 3) : BorderSide.none,
-            bottom: showFocus ? const BorderSide(color: Colors.blue, width: 3) : BorderSide.none,
-            left: showFocus ? const BorderSide(color: Colors.blue, width: 3) : BorderSide.none,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => focusNode?.requestFocus(),
+        child: Container(
+          decoration: BoxDecoration(
+            border: Border(
+              right: showFocus ? const BorderSide(color: Colors.blue, width: 3) : const BorderSide(color: Colors.black, width: 1),
+              top: showFocus ? const BorderSide(color: Colors.blue, width: 3) : BorderSide.none,
+              bottom: showFocus ? const BorderSide(color: Colors.blue, width: 3) : BorderSide.none,
+              left: showFocus ? const BorderSide(color: Colors.blue, width: 3) : BorderSide.none,
+            ),
+            color: backgroundColor,
           ),
-          color: backgroundColor,
-        ),
-        child: Center(
-          child: TextFormField(
-            key: keyValue != null ? Key('${keyValue}_$value') : null,
-            initialValue: value,
-            focusNode: focusNode,
-            readOnly: true, // Disable system keyboard
-            enableInteractiveSelection: false, // Disable text selection
-            textAlign: TextAlign.center,
-            textAlignVertical: TextAlignVertical.center,
-            style: TextStyle(
-              fontSize: tableDataFontSize,
-              fontWeight: FontWeight.bold,
+          child: Center(
+            child: IgnorePointer(
+              child: TextFormField(
+                key: keyValue != null ? Key('${keyValue}_$value') : null,
+                initialValue: value,
+                focusNode: focusNode,
+                readOnly: true,
+                enableInteractiveSelection: false,
+                textAlign: TextAlign.center,
+                textAlignVertical: TextAlignVertical.center,
+                style: TextStyle(
+                  fontSize: tableDataFontSize,
+                  fontWeight: FontWeight.bold,
+                ),
+                decoration: const InputDecoration(
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.zero,
+                  isDense: true,
+                ),
+                onChanged: onChanged,
+              ),
             ),
-            decoration: const InputDecoration(
-              border: InputBorder.none,
-              contentPadding: EdgeInsets.zero,
-              isDense: true,
-            ),
-            onChanged: onChanged,
           ),
         ),
       ),
@@ -1871,35 +1877,41 @@ class EnterScoresUIService {
 
     return Expanded(
       flex: flex,
-      child: Container(
-        decoration: BoxDecoration(
-          border: Border(
-            right: BorderSide(color: showFocus ? Colors.blue : Colors.black, width: showFocus ? 3 : 1),
-            top: showFocus ? const BorderSide(color: Colors.blue, width: 3) : BorderSide.none,
-            bottom: showFocus ? const BorderSide(color: Colors.blue, width: 3) : BorderSide.none,
-            left: showFocus ? const BorderSide(color: Colors.blue, width: 3) : BorderSide.none,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => focusNode?.requestFocus(),
+        child: Container(
+          decoration: BoxDecoration(
+            border: Border(
+              right: BorderSide(color: showFocus ? Colors.blue : Colors.black, width: showFocus ? 3 : 1),
+              top: showFocus ? const BorderSide(color: Colors.blue, width: 3) : BorderSide.none,
+              bottom: showFocus ? const BorderSide(color: Colors.blue, width: 3) : BorderSide.none,
+              left: showFocus ? const BorderSide(color: Colors.blue, width: 3) : BorderSide.none,
+            ),
+            color: Colors.yellow[300],
           ),
-          color: Colors.yellow[300],
-        ),
-        child: Center(
-          child: TextFormField(
-            key: ValueKey('${playerName}_gross_${grossScore ?? 0}'), // Force rebuild when gross score changes
-            initialValue: grossScore?.toString() ?? '',
-            focusNode: focusNode,
-            readOnly: true,
-            enableInteractiveSelection: false,
-            textAlign: TextAlign.center,
-            textAlignVertical: TextAlignVertical.center,
-            style: TextStyle(
-              fontSize: getTableDataFontSize(context),
-              fontWeight: FontWeight.bold,
+          child: Center(
+            child: IgnorePointer(
+              child: TextFormField(
+                key: ValueKey('${playerName}_gross_${grossScore ?? 0}'),
+                initialValue: grossScore?.toString() ?? '',
+                focusNode: focusNode,
+                readOnly: true,
+                enableInteractiveSelection: false,
+                textAlign: TextAlign.center,
+                textAlignVertical: TextAlignVertical.center,
+                style: TextStyle(
+                  fontSize: getTableDataFontSize(context),
+                  fontWeight: FontWeight.bold,
+                ),
+                decoration: const InputDecoration(
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.zero,
+                  isDense: true,
+                ),
+                onChanged: onChanged != null ? (value) => onChanged(player, value) : null,
+              ),
             ),
-            decoration:  const InputDecoration(
-              border: InputBorder.none,
-              contentPadding: EdgeInsets.zero,
-              isDense: true,
-            ),
-            onChanged: onChanged != null ? (value) => onChanged(player, value) : null,
           ),
         ),
       ),

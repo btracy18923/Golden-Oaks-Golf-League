@@ -80,11 +80,11 @@ class WednesdayPlayerData {
     return WednesdayPlayerData(
       name: map['last'] ?? map['name'] ?? '',
       handicap: (map['handicap'] ?? 0.0).toDouble(),
-      grossScore: map['gross_score'] as int?,
-      netScore: map['net_score'] as int?,
+      grossScore: map['gross_score'] != null ? (map['gross_score'] as num).toInt() : null,
+      netScore: map['net_score'] != null ? (map['net_score'] as num).toInt() : null,
       position: map['ind_pos'] ?? '',
       prizeMoney: map['prize_money'] ?? '',
-      manualGroup: map['manual_group'] as int?,
+      manualGroup: map['manual_group'] != null ? (map['manual_group'] as num).toInt() : null,
       isWildCard: map['is_wild_card'] == true,
     );
   }
