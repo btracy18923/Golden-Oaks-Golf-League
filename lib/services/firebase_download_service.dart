@@ -275,7 +275,7 @@ class FirebaseDownloadService {
             'name': data['name'],
             'date_played': data['date_played'],
             'golf_course': data['golf_course'] ?? 'The Hideout',
-            'handicap': data['HC'],
+            'handicap': data['handicap'],
             'gross_score': data['gross_score'],
             'close_pin_winnings': data['close_pin_winnings'] ?? 0.0,
             'single_winnings': data['single_winnings'] ?? 0.0,

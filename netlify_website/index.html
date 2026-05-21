@@ -2544,11 +2544,11 @@ Your current HC is displayed when you log in.
                         htmlContent += `
                             <tr>
                                 <td>${dateFormatted}</td>
-                                <td>${score.handicap || 'N/A'}</td>
-                                <td>${score.gross || 'N/A'}</td>
-                                <td>$${score.close_pin_money || '0.00'}</td>
-                                <td>$${score.individual_money || '0.00'}</td>
-                                <td>$${score.group_money || '0.00'}</td>
+                                <td>${score.handicap ?? 'N/A'}</td>
+                                <td>${score.gross_score ?? 'N/A'}</td>
+                                <td>$${(score.close_pin_winnings || 0).toFixed(2)}</td>
+                                <td>$${(score.single_winnings || 0).toFixed(2)}</td>
+                                <td>$${(score.group_winnings || 0).toFixed(2)}</td>
                             </tr>
                         `;
                     }
@@ -3256,7 +3256,7 @@ Your current HC is displayed when you log in.
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        to: ['noreply@goldenoaks.golf'],
+                        to: ['btracy18923@gmail.com'],
                         bcc: uniqueEmails,
                         subject: subject,
                         text: message

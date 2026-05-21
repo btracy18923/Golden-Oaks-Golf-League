@@ -112,4 +112,30 @@ send_email(
     text      = "Confirming the Resend API key and domain are still working.",
 )
 
+# ── Test 3: Call the Netlify function directly (same path the Flutter app uses) ──
+print("\n>>> TEST 3: Netlify function endpoint (same path as Flutter app)")
+NETLIFY_URL = "https://goldenoaks.golf/.netlify/functions/send-email"
+payload = {
+    "to": [TO_ADDRESS],
+    "subject": "TEST 3 — Netlify function test",
+    "text": "Confirming the Netlify function endpoint is working.",
+}
+response = requests.post(
+    NETLIFY_URL,
+    headers={"Content-Type": "application/json"},
+    data=json.dumps(payload),
+    timeout=15,
+)
+print(f"HTTP status : {response.status_code}")
+try:
+    body = response.json()
+    print(f"Response    : {json.dumps(body, indent=2)}")
+except Exception:
+    print(f"Response    : {response.text}")
+
+if response.status_code == 200:
+    print("\n✅  SUCCESS — Netlify function is working correctly.")
+else:
+    print(f"\n❌  FAILED — Netlify function returned {response.status_code}")
+
 print("\nDone.")
