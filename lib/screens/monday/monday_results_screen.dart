@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/screen_data_retention_service.dart';
 import '../../services/UI/enter_scores_UI_service.dart';
 import '../../services/UI/button_bar_UI_service.dart';
@@ -228,6 +229,9 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
         await _deleteScoresFromFirebase(allDeletedScores);
       }
 
+      // Save results summary to Firebase for website display
+      _saveResultsSummaryToFirebase(allSelectedPlayers, currentDate);
+
       // Send results email in background — don't block save on network call
       _sendResultsEmail(allSelectedPlayers);
 
@@ -259,6 +263,71 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
       await _firebaseUploadService.uploadPlayerScoresTableWithQueue(League.monday);
     } catch (e) {
       // Error uploading/queuing player scores - will retry on next sync
+    }
+  }
+
+  /// Saves the results summary to Firebase for website display
+  Future<void> _saveResultsSummaryToFirebase(List<PlayerData> allSelectedPlayers, String date) async {
+    try {
+      final playersAnte = _retentionService.playersAnte ?? 0.0;
+      final closestPin = _retentionService.closestPinAmount ?? 0.0;
+      final mulligan = _retentionService.mulliganAmount ?? 0.0;
+      final totalPlayers = allSelectedPlayers.length;
+      final collectAmount = (playersAnte + closestPin + mulligan) * totalPlayers;
+      final partyFund = LeaguePurseService.mulliganPurse;
+
+      final playerCounts = _retentionService.playerClosestPinCounts ?? {};
+      final playerWinnings = _retentionService.playerClosestPinWinnings ?? {};
+      final closestPinWinners = playerCounts.entries
+          .where((e) => e.value > 0)
+          .map((e) => {
+                'name': e.key,
+                'pins': e.value,
+                'amount': (playerWinnings[e.key] ?? 0.0).round(),
+              })
+          .toList();
+
+      final playerGroups = _retentionService.playerGroups ?? [];
+      double totalDiff = 0.0;
+      final List<PlayerData> skatWinners = [];
+      for (var group in playerGroups) {
+        for (var player in group) {
+          try {
+            final diffValue = double.parse(player.diff.replaceAll('+', ''));
+            if (diffValue > 0) {
+              skatWinners.add(player);
+              totalDiff += diffValue;
+            }
+          } catch (_) {}
+        }
+      }
+      final skatPurse = totalPlayers * playersAnte;
+      final skatValue = totalDiff > 0 ? skatPurse / totalDiff : 0.0;
+
+      final skatWinnersData = skatWinners.map((p) => {
+            'name': p.name,
+            'skat_number': p.skNumber,
+            'skats': p.skats,
+            'diff': p.diff,
+            'amount': p.money,
+          }).toList();
+
+      await FirebaseFirestore.instance.collection('M_results').doc(date).set({
+        'date': date,
+        'golf_course': _retentionService.selectedGolfCourse ?? '',
+        'players_ante': playersAnte,
+        'closest_pin': closestPin,
+        'mulligan': mulligan,
+        'total_players': totalPlayers,
+        'collect': collectAmount,
+        'party_fund': partyFund,
+        'skat_value': skatValue,
+        'closest_pin_winners': closestPinWinners,
+        'skat_winners': skatWinnersData,
+        'saved_at': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      debugPrint('Failed to save Monday results summary: $e');
     }
   }
 

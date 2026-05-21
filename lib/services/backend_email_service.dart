@@ -13,6 +13,7 @@ class BackendEmailService {
     required String subject,
     required String body,
     String? htmlBody,
+    List<String>? bcc,
   }) async {
     try {
       final Map<String, dynamic> payload = {
@@ -22,6 +23,9 @@ class BackendEmailService {
       };
       if (htmlBody != null && htmlBody.isNotEmpty) {
         payload['html'] = htmlBody;
+      }
+      if (bcc != null && bcc.isNotEmpty) {
+        payload['bcc'] = bcc;
       }
 
       final response = await http.post(
@@ -96,12 +100,13 @@ class BackendEmailService {
     required String subject,
     required String body,
     String? htmlBody,
+    List<String>? bcc,
   }) async {
     if (to.isEmpty) {
       debugPrint('Error: No recipients specified');
       return false;
     }
     debugPrint('Sending custom email to ${to.length} recipients');
-    return _send(to: to, subject: subject, body: body, htmlBody: htmlBody);
+    return _send(to: to, subject: subject, body: body, htmlBody: htmlBody, bcc: bcc);
   }
 }

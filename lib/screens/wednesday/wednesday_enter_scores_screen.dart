@@ -14,6 +14,7 @@ import '../../services/responsive_typography.dart';
 import '../../services/wednesday_winnings_service.dart';
 import '../../services/process_groups_service.dart';
 import '../../services/backend_email_service.dart';
+import '../../config/email_config.dart';
 import '../../models/league.dart';
 import '../../models/wednesday_player_data.dart';
 import 'wednesday_closest_pin_screen.dart';
@@ -1404,10 +1405,10 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
       onPressed: selectedForSwap.length == 2 ? _handleSwap : null,
     ));
 
-    // Email and Texts button
+    // Email button
     buttons.add(ButtonBarUIService.buildActionButton(
       context,
-      text: 'Email and Texts',
+      text: 'Email',
       color: Colors.orange[200]!,
       onPressed: _handleEmailAndTexts,
     ));
@@ -1464,7 +1465,7 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
     });
   }
 
-  /// Handler for Email and Texts button - shows dialog with options
+  /// Handler for Email button - shows dialog with options
   void _handleEmailAndTexts() {
     // Dismiss any open keyboard before showing dialog
     FocusScope.of(context).unfocus();
@@ -1473,7 +1474,7 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Email and Texts'),
+          title: const Text('Email'),
           content: const Text('Choose an action:'),
           actions: [
             TextButton(
@@ -1481,14 +1482,7 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
                 Navigator.of(context).pop();
                 _handleEmailProShop();
               },
-              child: const Text('Email Proshop'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                _handleTextPlayers();
-              },
-              child: const Text('Text Players'),
+              child: const Text('Email ProShop and Groups'),
             ),
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
@@ -1537,6 +1531,7 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
 
     if (success) {
       await _saveGroupingsToFirebase();
+      await _handleEmailGroups();
     }
 
     if (mounted) {
@@ -1690,6 +1685,81 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
     }
 
     buffer.writeln('Total: $totalPlayers players');
+
+    return buffer.toString();
+  }
+
+  /// Emails the group assignments to all selected players
+  Future<void> _handleEmailGroups() async {
+    final backendEmailService = BackendEmailService();
+    final currentDate = DateTime.now().toString().split(' ')[0];
+    final subject = 'Golden Oaks Wed. Groups - $currentDate';
+    final body = _buildGroupsEmailBody();
+
+    // Collect emails from all players in the groups
+    final emails = <String>{};
+    for (var group in groups) {
+      for (var player in group) {
+        if (player != null) {
+          final email = player['email']?.toString() ?? '';
+          if (email.contains('@')) emails.add(email);
+        }
+      }
+    }
+
+    if (emails.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No player emails found.'), backgroundColor: Colors.orange),
+        );
+      }
+      return;
+    }
+
+    final success = await backendEmailService.sendCustomEmail(
+      to: [EmailConfig.fallbackEmail],
+      bcc: emails.toList(),
+      subject: subject,
+      body: body,
+    );
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(success
+              ? 'Groups emailed to ${emails.length} players.'
+              : 'Failed to send group email. Check connection.'),
+          backgroundColor: success ? Colors.green : Colors.red,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    }
+  }
+
+  /// Builds a simple group listing email body (no member numbers)
+  String _buildGroupsEmailBody() {
+    final buffer = StringBuffer();
+    buffer.writeln('Golden Oaks Wednesday League - Group Assignments');
+    buffer.writeln('Date: ${DateTime.now().toString().split(' ')[0]}');
+    buffer.writeln();
+
+    final validGroups = <List<Map<String, dynamic>>>[];
+    for (var group in groups) {
+      final validPlayers = group
+          .where((p) => p != null && (p['last']?.toString() ?? '').isNotEmpty)
+          .cast<Map<String, dynamic>>()
+          .toList();
+      if (validPlayers.isNotEmpty) validGroups.add(validPlayers);
+    }
+
+    for (int i = 0; i < validGroups.length; i++) {
+      final playerNames = validGroups[i].map((p) {
+        final first = p['first']?.toString() ?? '';
+        final last = p['last']?.toString() ?? '';
+        return '$first $last'.trim();
+      }).join(', ');
+      buffer.writeln('Group ${i + 1}: $playerNames');
+    }
 
     return buffer.toString();
   }

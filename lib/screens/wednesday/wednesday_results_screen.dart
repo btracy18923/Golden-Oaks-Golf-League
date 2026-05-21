@@ -328,6 +328,9 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
         await _deleteScoresFromFirebase(allDeletedScores);
       }
 
+      // Save results summary to Firebase for website display
+      _saveResultsSummaryToFirebase(consolidatedPlayerData, currentDate);
+
       // Send results email in background — don't block save on network call
       _sendResultsEmail(consolidatedPlayerData, currentDate);
 
@@ -438,6 +441,86 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
     }
 
     return newHandicaps;
+  }
+
+  /// Saves the results summary to Firebase for website display
+  Future<void> _saveResultsSummaryToFirebase(
+    Map<String, Map<String, dynamic>> consolidatedPlayerData,
+    String date,
+  ) async {
+    try {
+      int totalPlayers = 0;
+      for (var group in widget.groups) {
+        for (var player in group) {
+          if (player != null && player['last'] != null &&
+              player['last'].toString().isNotEmpty &&
+              player['is_wild_card'] != true) totalPlayers++;
+        }
+      }
+
+      final collectAmount =
+          (widget.playersAnte + widget.closestPinAmount + widget.mulliganAmount) * totalPlayers;
+
+      final playerCounts = _retentionService.playerClosestPinCounts ?? {};
+      final playerWinnings = _retentionService.playerClosestPinWinnings ?? {};
+      final closestPinWinners = playerCounts.entries
+          .where((e) => e.value > 0)
+          .map((e) => {
+                'name': e.key,
+                'pins': e.value,
+                'amount': (playerWinnings[e.key] ?? 0.0).round(),
+              })
+          .toList();
+
+      // Individual results
+      final individualResults = widget.individualWinners.map((p) => {
+            'name': p['last'] ?? '',
+            'gross': p['gross_score'],
+            'handicap': p['handicap'],
+            'net_score': p['net_score'],
+            'ind_pos': p['ind_pos'] ?? '',
+            'individual_winnings': p['individual_winnings'] ?? 0.0,
+            'prize_money': p['prize_money'] ?? '',
+          }).toList();
+
+      // Group results — one entry per group
+      final Map<int, Map<String, dynamic>> groupMap = {};
+      for (var group in widget.groups) {
+        for (var player in group) {
+          if (player == null || player['manual_group'] == null) continue;
+          final grpNum = player['manual_group'] as int;
+          if (!groupMap.containsKey(grpNum)) {
+            groupMap[grpNum] = {
+              'group_number': grpNum,
+              'players': <String>[],
+              'avg_net': player['avg_net'] ?? '',
+              'grp_pos': player['grp_pos'] ?? '',
+              'group_winnings': player['group_winnings'] ?? 0.0,
+            };
+          }
+          (groupMap[grpNum]!['players'] as List<String>).add(player['last']?.toString() ?? '');
+        }
+      }
+      final groupResults = groupMap.values.toList()
+        ..sort((a, b) => (a['group_number'] as int).compareTo(b['group_number'] as int));
+
+      await FirebaseFirestore.instance.collection('W_results').doc(date).set({
+        'date': date,
+        'golf_course': _retentionService.selectedGolfCourse ?? 'The Hideout',
+        'players_ante': widget.playersAnte,
+        'closest_pin': widget.closestPinAmount,
+        'mulligan': widget.mulliganAmount,
+        'total_players': totalPlayers,
+        'collect': collectAmount,
+        'party_fund': widget.adjustedMulliganPurse,
+        'closest_pin_winners': closestPinWinners,
+        'individual_results': individualResults,
+        'group_results': groupResults,
+        'saved_at': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      debugPrint('Failed to save Wednesday results summary: $e');
+    }
   }
 
   /// Sends the Wednesday results email to admins.

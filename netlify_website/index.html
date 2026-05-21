@@ -659,6 +659,7 @@
             <button class="nav-btn active" data-section="announcements">📢 Announcements</button>
             <button class="nav-btn" data-section="availability">📅 Upcoming Play Dates</button>
             <button class="nav-btn" data-section="stats">📊 Past Scores</button>
+            <button class="nav-btn" data-section="pastResults">🏆 Past Results</button>
             <button class="nav-btn hidden" id="rulesNavBtn" data-section="rules">📋 RULES</button>
             <button class="nav-btn hidden" id="skatsCalcNavBtn" data-section="skatsCalc">🧮 SKATS Calc</button>
             <button class="nav-btn hidden" id="hcCalcNavBtn" data-section="hcCalc">🧮 HC Calc</button>
@@ -687,6 +688,20 @@
                     <div id="statsTable">
                         <div class="loading">Loading stats...</div>
                     </div>
+                </div>
+            </div>
+
+            <div id="pastResults" class="section">
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+                        <h3>🏆 Past Results</h3>
+                        <div id="pastResultsLeagueSelector" style="display: none; gap: 8px; display: flex;">
+                            <button onclick="loadPastResults('monday')" id="prMondayBtn" style="background: #276749; color: white; border: none; padding: 6px 16px; border-radius: 6px; cursor: pointer; font-weight: 600;">Monday</button>
+                            <button onclick="loadPastResults('wednesday')" id="prWednesdayBtn" style="background: #718096; color: white; border: none; padding: 6px 16px; border-radius: 6px; cursor: pointer; font-weight: 600;">Wednesday</button>
+                        </div>
+                    </div>
+                    <div id="pastResultsDateList" style="margin-bottom: 20px;"></div>
+                    <div id="pastResultsDetail"></div>
                 </div>
             </div>
 
@@ -1282,6 +1297,10 @@
                 btn.classList.add('active');
                 const sectionId = btn.getAttribute('data-section');
                 document.getElementById(sectionId).classList.add('active');
+
+                if (sectionId === 'pastResults') {
+                    initPastResults();
+                }
             });
         });
         
@@ -2434,7 +2453,7 @@ Your current HC is displayed when you log in.
                     return;
                 }
 
-                // Sort by date (newest first) - show all scores
+                // Sort by date (newest first) - show last 20
                 const scores = scoresSnapshot.docs
                     .map(doc => ({ id: doc.id, ...doc.data() }))
                     .sort((a, b) => {
@@ -2452,9 +2471,9 @@ Your current HC is displayed when you log in.
                         const dateA = parseLocalDate(a.date_played);
                         const dateB = parseLocalDate(b.date_played);
                         return dateB - dateA; // Descending order (newest first)
-                    });
+                    }).slice(0, 20);
 
-                // Display all scores in a table
+                // Display most recent 20 scores in a table
                 let htmlContent = `
                     <div style="text-align: center; margin-bottom: 20px;">
                         <h3>${currentUser.name} - Score History</h3>
@@ -3140,6 +3159,163 @@ Your current HC is displayed when you log in.
             } finally {
                 btn.disabled = false;
                 btn.textContent = '📧 Send Roster Email';
+            }
+        };
+
+        // --- Past Results ---
+
+        let pastResultsLeague = null;
+
+        async function initPastResults() {
+            const displayLeague = isAdmin ? null : selectedLeague;
+            const leagueSelector = document.getElementById('pastResultsLeagueSelector');
+
+            if (isAdmin) {
+                leagueSelector.style.display = 'flex';
+                // Default to league they logged into
+                pastResultsLeague = adminSelectedLeague || selectedLeague;
+            } else {
+                leagueSelector.style.display = 'none';
+                pastResultsLeague = selectedLeague;
+            }
+            await loadPastResults(pastResultsLeague);
+        }
+
+        window.loadPastResults = async function(league) {
+            pastResultsLeague = league;
+            // Highlight active button
+            document.getElementById('prMondayBtn').style.background = league === 'monday' ? '#276749' : '#718096';
+            document.getElementById('prWednesdayBtn').style.background = league === 'wednesday' ? '#276749' : '#718096';
+
+            const dateList = document.getElementById('pastResultsDateList');
+            const detail = document.getElementById('pastResultsDetail');
+            dateList.innerHTML = '<div class="loading">Loading...</div>';
+            detail.innerHTML = '';
+
+            try {
+                const collectionName = league === 'monday' ? 'M_results' : 'W_results';
+                const snapshot = await getDocs(collection(db, collectionName));
+
+                if (snapshot.empty) {
+                    dateList.innerHTML = '<p style="color:#718096;">No results posted yet.</p>';
+                    return;
+                }
+
+                const results = snapshot.docs
+                    .map(d => ({ id: d.id, ...d.data() }))
+                    .sort((a, b) => b.date.localeCompare(a.date))
+                    .slice(0, 20);
+
+                dateList.innerHTML = results.map(r => {
+                    const d = new Date(r.date + 'T12:00:00');
+                    const label = d.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+                    return `<button onclick="showPastResult('${r.id}', '${league}')"
+                        style="display:block; width:100%; text-align:left; padding:10px 16px; margin-bottom:6px;
+                               background:#f0fff4; border:1px solid #c6f6d5; border-radius:6px; cursor:pointer;
+                               font-size:1em; color:#276749; font-weight:600;">
+                        📅 ${label} — ${r.golf_course || 'The Hideout'}
+                    </button>`;
+                }).join('');
+            } catch (err) {
+                dateList.innerHTML = `<div class="error">Error: ${err.message}</div>`;
+            }
+        };
+
+        window.showPastResult = async function(date, league) {
+            const detail = document.getElementById('pastResultsDetail');
+            detail.innerHTML = '<div class="loading">Loading...</div>';
+
+            try {
+                const collectionName = league === 'monday' ? 'M_results' : 'W_results';
+                const docSnap = await getDoc(doc(db, collectionName, date));
+                if (!docSnap.exists()) { detail.innerHTML = '<p>Result not found.</p>'; return; }
+
+                const r = docSnap.data();
+                const d = new Date(r.date + 'T12:00:00');
+                const dateLabel = d.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+                const th = 'style="background:#2d6a4f;color:white;padding:6px 10px;text-align:left;font-size:13px;"';
+                const td = 'style="padding:5px 10px;border-bottom:1px solid #e2e8f0;font-size:13px;"';
+                const tbl = 'style="width:100%;border-collapse:collapse;margin-bottom:16px;"';
+
+                let html = `<div style="border-top:2px solid #c6f6d5;padding-top:16px;margin-top:8px;">
+                    <h4 style="color:#276749;margin-bottom:12px;">${dateLabel}</h4>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-bottom:16px;">
+                        <div style="background:#f0fff4;padding:10px;border-radius:6px;text-align:center;">
+                            <div style="font-size:11px;color:#718096;">Players</div>
+                            <div style="font-size:1.3em;font-weight:700;color:#276749;">${r.total_players}</div>
+                        </div>
+                        <div style="background:#f0fff4;padding:10px;border-radius:6px;text-align:center;">
+                            <div style="font-size:11px;color:#718096;">Collect</div>
+                            <div style="font-size:1.3em;font-weight:700;color:#276749;">$${(r.collect||0).toFixed(2)}</div>
+                        </div>
+                        <div style="background:#f0fff4;padding:10px;border-radius:6px;text-align:center;">
+                            <div style="font-size:11px;color:#718096;">Party Fund</div>
+                            <div style="font-size:1.3em;font-weight:700;color:#276749;">$${(r.party_fund||0).toFixed(2)}</div>
+                        </div>
+                    </div>`;
+
+                // Closest pin winners
+                if (r.closest_pin_winners && r.closest_pin_winners.length > 0) {
+                    html += `<h5 style="color:#276749;margin-bottom:6px;">📍 Closest Pin Winners</h5>
+                    <table ${tbl}><thead><tr>
+                        <th ${th}>Player</th><th ${th}>Pins</th><th ${th}>Winnings</th>
+                    </tr></thead><tbody>`;
+                    r.closest_pin_winners.forEach(w => {
+                        html += `<tr><td ${td}>${w.name}</td><td ${td}>${w.pins}</td><td ${td}>$${w.amount}</td></tr>`;
+                    });
+                    html += '</tbody></table>';
+                }
+
+                if (league === 'monday') {
+                    // SKAT winners
+                    if (r.skat_winners && r.skat_winners.length > 0) {
+                        html += `<h5 style="color:#276749;margin-bottom:6px;">🏌️ SKAT Winners <span style="font-weight:normal;font-size:0.9em;">(Skat Value: $${(r.skat_value||0).toFixed(2)})</span></h5>
+                        <table ${tbl}><thead><tr>
+                            <th ${th}>Player</th><th ${th}>SK#</th><th ${th}>Skats</th><th ${th}>Diff</th><th ${th}>Winnings</th>
+                        </tr></thead><tbody>`;
+                        r.skat_winners.forEach(w => {
+                            html += `<tr><td ${td}>${w.name}</td><td ${td}>${w.skat_number}</td><td ${td}>${w.skats}</td><td ${td}>${w.diff}</td><td ${td}>${w.amount}</td></tr>`;
+                        });
+                        html += '</tbody></table>';
+                    }
+                } else {
+                    // Individual results
+                    if (r.individual_results && r.individual_results.length > 0) {
+                        const indWinners = r.individual_results.filter(p => p.ind_pos && p.ind_pos !== '');
+                        if (indWinners.length > 0) {
+                            html += `<h5 style="color:#276749;margin-bottom:6px;">🥇 Individual Results</h5>
+                            <table ${tbl}><thead><tr>
+                                <th ${th}>Pos</th><th ${th}>Player</th><th ${th}>Gross</th><th ${th}>HC</th><th ${th}>Net</th><th ${th}>Winnings</th>
+                            </tr></thead><tbody>`;
+                            indWinners.sort((a,b) => (a.ind_pos||'').localeCompare(b.ind_pos||''));
+                            indWinners.forEach(p => {
+                                html += `<tr><td ${td}>${p.ind_pos}</td><td ${td}>${p.name}</td><td ${td}>${p.gross??''}</td><td ${td}>${p.handicap??''}</td><td ${td}>${p.net_score??''}</td><td ${td}>${p.prize_money||''}</td></tr>`;
+                            });
+                            html += '</tbody></table>';
+                        }
+                    }
+
+                    // Group results
+                    if (r.group_results && r.group_results.length > 0) {
+                        html += `<h5 style="color:#276749;margin-bottom:6px;">👥 Group Results</h5>
+                        <table ${tbl}><thead><tr>
+                            <th ${th}>Pos</th><th ${th}>Group</th><th ${th}>Players</th><th ${th}>Avg Net</th><th ${th}>Winnings</th>
+                        </tr></thead><tbody>`;
+                        r.group_results.sort((a,b) => (a.grp_pos||'99').localeCompare(b.grp_pos||'99'));
+                        r.group_results.forEach(g => {
+                            const players = Array.isArray(g.players) ? g.players.join(', ') : '';
+                            const winnings = g.group_winnings > 0 ? `$${(g.group_winnings).toFixed(2)}` : '';
+                            html += `<tr><td ${td}>${g.grp_pos||''}</td><td ${td}>Group ${g.group_number}</td><td ${td}>${players}</td><td ${td}>${g.avg_net||''}</td><td ${td}>${winnings}</td></tr>`;
+                        });
+                        html += '</tbody></table>';
+                    }
+                }
+
+                html += '</div>';
+                detail.innerHTML = html;
+            } catch (err) {
+                detail.innerHTML = `<div class="error">Error: ${err.message}</div>`;
             }
         };
 
