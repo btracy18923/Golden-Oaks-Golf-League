@@ -6,6 +6,7 @@ import '../../services/screen_data_retention_service.dart';
 import '../../services/device_detection_service.dart';
 import '../../services/responsive_typography.dart';
 import 'monday_results_screen.dart';
+import '../../services/firebase_upload_service.dart';
 
 class MondayClosestPinScreen extends StatefulWidget {
   final List<Map<String, dynamic>> selectedPlayers;
@@ -335,7 +336,7 @@ class _MondayClosestPinScreenState extends State<MondayClosestPinScreen> {
 
     return Container(
       width: double.infinity,
-      color: Colors.green,
+      color: FirebaseUploadService.uploadsEnabled ? Colors.green : Colors.red[700],
       padding: increasedPadding,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,

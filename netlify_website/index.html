@@ -1298,7 +1298,9 @@
                 const sectionId = btn.getAttribute('data-section');
                 document.getElementById(sectionId).classList.add('active');
 
-                if (sectionId === 'pastResults') {
+                if (sectionId === 'availability') {
+                    loadAllPlayDates();
+                } else if (sectionId === 'pastResults') {
                     initPastResults();
                 }
             });
@@ -2078,7 +2080,8 @@
                     loadAdminPlayersForDate(playDateId, collectionName);
                 } else if (containerId === 'playersStatusList') {
                     const collectionName = displayLeague === 'monday' ? 'M_player_profile' : 'W_player_profile';
-                    loadPlayersStatusList(playDateId, collectionName);
+                    await loadPlayersStatusList(playDateId, collectionName);
+                    setTimeout(() => loadAllPlayDates(), 2000);
                 } else {
                     loadAvailability(playDateId, containerId);
                 }
@@ -2780,7 +2783,6 @@ Your current HC is displayed when you log in.
         setInterval(() => {
             if (currentUser) {
                 loadAnnouncements();
-                if (!viewingPlayDateDetail) loadAllPlayDates();
                 loadStats();
             }
         }, 30000);
@@ -3284,11 +3286,14 @@ Your current HC is displayed when you log in.
                     if (r.individual_results && r.individual_results.length > 0) {
                         const indWinners = r.individual_results.filter(p => p.ind_pos && p.ind_pos !== '');
                         if (indWinners.length > 0) {
-                            html += `<h5 style="color:#276749;margin-bottom:6px;">🥇 Individual Results</h5>
+                            const indPool = r.individual_pool != null
+                                ? Math.round(r.individual_pool)
+                                : Math.round(r.individual_results.reduce((s,p) => s+(p.individual_winnings||0), 0));
+                            html += `<h5 style="color:#276749;margin-bottom:6px;">🥇 Individual Results Pool = $${indPool}</h5>
                             <table ${tbl}><thead><tr>
                                 <th ${th}>Pos</th><th ${th}>Player</th><th ${th}>Gross</th><th ${th}>HC</th><th ${th}>Net</th><th ${th}>Winnings</th>
                             </tr></thead><tbody>`;
-                            indWinners.sort((a,b) => (a.ind_pos||'').localeCompare(b.ind_pos||''));
+                            indWinners.sort((a,b) => (a.net_score??999) - (b.net_score??999));
                             indWinners.forEach(p => {
                                 html += `<tr><td ${td}>${p.ind_pos}</td><td ${td}>${p.name}</td><td ${td}>${p.gross??''}</td><td ${td}>${p.handicap??''}</td><td ${td}>${p.net_score??''}</td><td ${td}>${p.prize_money||''}</td></tr>`;
                             });
@@ -3298,15 +3303,29 @@ Your current HC is displayed when you log in.
 
                     // Group results
                     if (r.group_results && r.group_results.length > 0) {
-                        html += `<h5 style="color:#276749;margin-bottom:6px;">👥 Group Results</h5>
+                        const wildcardSet = new Set(r.wildcards || []);
+                        const grpPool = r.group_pool != null
+                            ? Math.round(r.group_pool)
+                            : Math.round(r.group_results.reduce((s,g) => s+(g.group_winnings||0), 0));
+                        const wildcardHeaderNames = (r.wildcards && r.wildcards.length > 0)
+                            ? r.wildcards.map(n => `<span style="color:darkorange;font-weight:600;">${n}</span>`).join(', ')
+                            : '';
+                        const wildcardStr = wildcardHeaderNames
+                            ? `&nbsp;&nbsp;Wildcards = ${wildcardHeaderNames}`
+                            : '';
+                        html += `<h5 style="color:#276749;margin-bottom:6px;">👥 Group Results Pool = $${grpPool}${wildcardStr}</h5>
                         <table ${tbl}><thead><tr>
                             <th ${th}>Pos</th><th ${th}>Group</th><th ${th}>Players</th><th ${th}>Avg Net</th><th ${th}>Winnings</th>
                         </tr></thead><tbody>`;
                         r.group_results.sort((a,b) => (a.grp_pos||'99').localeCompare(b.grp_pos||'99'));
                         r.group_results.forEach(g => {
-                            const players = Array.isArray(g.players) ? g.players.join(', ') : '';
-                            const winnings = g.group_winnings > 0 ? `$${(g.group_winnings).toFixed(2)}` : '';
-                            html += `<tr><td ${td}>${g.grp_pos||''}</td><td ${td}>Group ${g.group_number}</td><td ${td}>${players}</td><td ${td}>${g.avg_net||''}</td><td ${td}>${winnings}</td></tr>`;
+                            const playerNames = Array.isArray(g.players)
+                                ? g.players.map(n => wildcardSet.has(n)
+                                    ? `<span style="color:darkorange;font-weight:600;">${n}</span>`
+                                    : n).join(', ')
+                                : '';
+                            const winnings = g.group_winnings > 0 ? `$${Math.round(g.group_winnings)}` : '';
+                            html += `<tr><td ${td}>${g.grp_pos||''}</td><td ${td}>Group ${g.group_number}</td><td ${td}>${playerNames}</td><td ${td}>${g.avg_net||''}</td><td ${td}>${winnings}</td></tr>`;
                         });
                         html += '</tbody></table>';
                     }

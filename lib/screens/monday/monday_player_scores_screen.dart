@@ -6,6 +6,7 @@ import '../../services/responsive_typography.dart';
 import '../../config/app_config.dart';
 import '../../services/device_detection_service.dart';
 import '../../services/UI/button_bar_UI_service.dart';
+import '../../services/firebase_upload_service.dart';
 
 class MondayPlayerScoresScreen extends StatefulWidget {
   final League? league;
@@ -747,7 +748,7 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
         title: Text('Player Scores - ${_getLeagueDisplayName()} League- ${AppConfig.versionDate}',
           style: ResponsiveTypography.appBarTitleStyle(context, color: Colors.white)),
         centerTitle: true,
-        backgroundColor: _selectedLeague == League.monday ? Colors.green[700] : Colors.orange[700],
+        backgroundColor: FirebaseUploadService.uploadsEnabled ? (_selectedLeague == League.monday ? Colors.green[700] : Colors.orange[700]) : Colors.red[700],
         foregroundColor: Colors.white,
       ),
       resizeToAvoidBottomInset: false,
@@ -774,7 +775,7 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
         title: Text('Player Scores - ${_getLeagueDisplayName()} League- ${AppConfig.versionDate}',
           style: ResponsiveTypography.appBarTitleStyle(context, color: Colors.white)),
         centerTitle: true,
-        backgroundColor: _selectedLeague == League.monday ? Colors.green[700] : Colors.orange[700],
+        backgroundColor: FirebaseUploadService.uploadsEnabled ? (_selectedLeague == League.monday ? Colors.green[700] : Colors.orange[700]) : Colors.red[700],
         foregroundColor: Colors.white,
       ),
       resizeToAvoidBottomInset: false,

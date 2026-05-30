@@ -490,7 +490,7 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
           style: TextStyle(fontSize: ResponsiveTypography.getAppBarTitle(context)),
         ),
         centerTitle: true,
-        backgroundColor: _selectedLeague == League.monday ? Colors.green[700] : Colors.orange[700],
+        backgroundColor: _selectedLeague == League.monday ? (FirebaseUploadService.uploadsEnabled ? Colors.green[700] : Colors.red[700]) : Colors.orange[700],
         foregroundColor: Colors.white,
       ),
       body: SafeArea(

@@ -5,6 +5,7 @@ import '../shared/league_purse_service.dart';
 import '../responsive_typography.dart';
 import '../device_detection_service.dart';
 import 'button_bar_UI_service.dart';
+import '../firebase_upload_service.dart';
 
 /// Device type enumeration for responsive design
 enum DeviceType { phone6_5, tablet10 }
@@ -180,7 +181,7 @@ class EnterScoresUIService {
         vertical: padding.top / 2, 
         horizontal: padding.left
       ),
-      color: Colors.green[300],
+      color: FirebaseUploadService.uploadsEnabled ? Colors.green[300] : Colors.red[700],
       child: Row(
         children: [
 
@@ -1213,7 +1214,7 @@ class EnterScoresUIService {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
-      color: config.headerColor,
+      color: FirebaseUploadService.uploadsEnabled ? config.headerColor : Colors.red[700],
       child: Row(
         children: [
           // Return button

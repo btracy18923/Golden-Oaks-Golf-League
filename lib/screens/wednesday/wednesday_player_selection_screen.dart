@@ -10,6 +10,7 @@ import '../../services/UI/button_bar_UI_service.dart';
 import '../../models/league.dart';
 import 'wednesday_enter_scores_screen.dart';
 import '../../widgets/responsive_wrapper.dart';
+import '../../services/firebase_upload_service.dart';
 
 class WednesdayPlayerSelectionScreen extends StatefulWidget {
   const WednesdayPlayerSelectionScreen({super.key});
@@ -130,7 +131,7 @@ class _WednesdayPlayerSelectionScreenState extends State<WednesdayPlayerSelectio
           "Select Wednesday Players - ${AppConfig.versionDate}",
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
-        backgroundColor: Colors.orange[700],
+        backgroundColor: FirebaseUploadService.uploadsEnabled ? Colors.orange[700] : Colors.red[700],
         foregroundColor: Colors.white,
         centerTitle: true,
       ),
@@ -190,7 +191,7 @@ class _WednesdayPlayerSelectionScreenState extends State<WednesdayPlayerSelectio
       backgroundColor: Colors.grey[300],
       appBar: AppBar(
         title: Text("Select Players for Wednesday's Match - ${AppConfig.versionDate}"),
-        backgroundColor: Colors.orange[700],
+        backgroundColor: FirebaseUploadService.uploadsEnabled ? Colors.orange[700] : Colors.red[700],
         foregroundColor: Colors.white,
         centerTitle: true,
       ),

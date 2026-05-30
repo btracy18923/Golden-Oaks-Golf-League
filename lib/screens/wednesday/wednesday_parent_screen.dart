@@ -12,6 +12,7 @@ import '../../services/UI/button_bar_UI_service.dart';
 import '../../services/responsive_typography.dart';
 import '../../services/device_detection_service.dart';
 import '../../services/firebase_download_service.dart';
+import '../../services/firebase_upload_service.dart';
 import '../../widgets/responsive_wrapper.dart';
 
 class WednesdayParentScreen extends StatefulWidget {
@@ -237,18 +238,21 @@ class _WednesdayParentScreenState extends State<WednesdayParentScreen> {
           'Wednesday League - ${AppConfig.versionDate}',
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
-        backgroundColor: Colors.orange[700],
+        backgroundColor: FirebaseUploadService.uploadsEnabled ? Colors.orange[700] : Colors.red[700],
         foregroundColor: Colors.white,
         centerTitle: true,
         actions: [
           IconButton(
             icon: const Icon(Icons.storage),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const WednesdayAdminScreen(currentLeague: League.wednesday),
-              ),
-            ),
+            onPressed: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const WednesdayAdminScreen(currentLeague: League.wednesday),
+                ),
+              );
+              if (mounted) setState(() {});
+            },
             tooltip: 'Administration',
           ),
         ],
@@ -291,18 +295,21 @@ class _WednesdayParentScreenState extends State<WednesdayParentScreen> {
           'Wednesday League - Golden Oaks Golf - ${AppConfig.versionDate}',
           style: ResponsiveTypography.headingStyle(context, fontWeight: FontWeight.bold),
         ),
-        backgroundColor: Colors.orange[700],
+        backgroundColor: FirebaseUploadService.uploadsEnabled ? Colors.orange[700] : Colors.red[700],
         foregroundColor: Colors.white,
         centerTitle: true,
         actions: [
           IconButton(
             icon: const Icon(Icons.storage),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const WednesdayAdminScreen(currentLeague: League.wednesday),
-              ),
-            ),
+            onPressed: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const WednesdayAdminScreen(currentLeague: League.wednesday),
+                ),
+              );
+              if (mounted) setState(() {});
+            },
             tooltip: 'Administration',
           ),
         ],

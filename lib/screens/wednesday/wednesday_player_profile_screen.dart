@@ -520,7 +520,7 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
           style: TextStyle(fontSize: ResponsiveTypography.getAppBarTitle(context)),
         ),
         centerTitle: true,
-        backgroundColor: _selectedLeague == League.monday ? Colors.green[700] : Colors.orange[700],
+        backgroundColor: FirebaseUploadService.uploadsEnabled ? (_selectedLeague == League.monday ? Colors.green[700] : Colors.orange[700]) : Colors.red[700],
         foregroundColor: Colors.white,
       ),
       body: SafeArea(

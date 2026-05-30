@@ -70,7 +70,7 @@ class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Wednesday Administration'),
-        backgroundColor: Colors.orange[800],
+        backgroundColor: FirebaseUploadService.uploadsEnabled ? Colors.orange[800] : Colors.red[700],
         foregroundColor: Colors.white,
       ),
       body: SafeArea(
@@ -111,6 +111,7 @@ class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
                           final newState = !(value ?? false);
                           setState(() {
                             _firebaseUploadsEnabled = newState;
+                            FirebaseUploadService.uploadsEnabled = newState;
                           });
 
                           // Save the state to SharedPreferences

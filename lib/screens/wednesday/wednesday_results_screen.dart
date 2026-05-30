@@ -483,19 +483,27 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
             'prize_money': p['prize_money'] ?? '',
           }).toList();
 
-      // Group results — one entry per group
+      // Total individual pool = sum of individual winnings across all winners
+      final double individualPool = widget.individualWinners.fold(
+        0.0, (sum, p) => sum + ((p['individual_winnings'] as double?) ?? 0.0));
+
+      // Group results — one entry per group; parse prize_money string for numeric winnings
       final Map<int, Map<String, dynamic>> groupMap = {};
       for (var group in widget.groups) {
         for (var player in group) {
           if (player == null || player['manual_group'] == null) continue;
           final grpNum = player['manual_group'] as int;
           if (!groupMap.containsKey(grpNum)) {
+            final pmStr = player['prize_money']?.toString() ?? '';
+            final pmNum = double.tryParse(
+                    pmStr.replaceAll('\$', '').replaceAll(',', '').trim()) ??
+                0.0;
             groupMap[grpNum] = {
               'group_number': grpNum,
               'players': <String>[],
               'avg_net': player['avg_net'] ?? '',
               'grp_pos': player['grp_pos'] ?? '',
-              'group_winnings': player['group_winnings'] ?? 0.0,
+              'group_winnings': pmNum,
             };
           }
           (groupMap[grpNum]!['players'] as List<String>).add(player['last']?.toString() ?? '');
@@ -503,6 +511,17 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
       }
       final groupResults = groupMap.values.toList()
         ..sort((a, b) => (a['group_number'] as int).compareTo(b['group_number'] as int));
+
+      // Collect wildcard player names
+      final wildcards = <String>{};
+      for (var group in widget.groups) {
+        for (var player in group) {
+          if (player != null && player['is_wild_card'] == true) {
+            final name = player['last']?.toString() ?? '';
+            if (name.isNotEmpty) wildcards.add(name);
+          }
+        }
+      }
 
       await FirebaseFirestore.instance.collection('W_results').doc(date).set({
         'date': date,
@@ -515,7 +534,10 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
         'party_fund': widget.adjustedMulliganPurse,
         'closest_pin_winners': closestPinWinners,
         'individual_results': individualResults,
+        'individual_pool': individualPool,
         'group_results': groupResults,
+        'group_pool': widget.groupPayoutAmount,
+        'wildcards': wildcards.toList(),
         'saved_at': FieldValue.serverTimestamp(),
       });
     } catch (e) {
@@ -778,7 +800,7 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
             fontSize: 24,
           ),
         ),
-        backgroundColor: Colors.orange[300],
+        backgroundColor: FirebaseUploadService.uploadsEnabled ? Colors.orange[300] : Colors.red[700],
         foregroundColor: Colors.black,
         centerTitle: true,
         automaticallyImplyLeading: false,

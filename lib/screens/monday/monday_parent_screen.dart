@@ -15,6 +15,7 @@ import '../../services/UI/custom_keypad_service.dart';
 import '../../services/UI/button_bar_UI_service.dart';
 import '../../services/device_detection_service.dart';
 import '../../services/firebase_download_service.dart';
+import '../../services/firebase_upload_service.dart';
 import '../../widgets/responsive_wrapper.dart';
 
 class MondayParentScreen extends StatefulWidget {
@@ -309,18 +310,21 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
           'Monday League - Golden Oaks Golf - ${AppConfig.versionDate}',
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
-        backgroundColor: Colors.green[700],
+        backgroundColor: FirebaseUploadService.uploadsEnabled ? Colors.green[700] : Colors.red[700],
         foregroundColor: Colors.white,
         centerTitle: true,
         actions: [
           IconButton(
             icon: const Icon(Icons.storage),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const MondayAdminScreen(currentLeague: League.monday),
-              ),
-            ),
+            onPressed: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const MondayAdminScreen(currentLeague: League.monday),
+                ),
+              );
+              if (mounted) setState(() {});
+            },
             tooltip: 'Administration',
           ),
         ],
@@ -389,18 +393,21 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
           'Monday League - Golden Oaks Golf - ${AppConfig.versionDate}',
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
         ),
-        backgroundColor: Colors.green[700],
+        backgroundColor: FirebaseUploadService.uploadsEnabled ? Colors.green[700] : Colors.red[700],
         foregroundColor: Colors.white,
         centerTitle: true,
         actions: [
           IconButton(
             icon: const Icon(Icons.storage),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const MondayAdminScreen(currentLeague: League.monday),
-              ),
-            ),
+            onPressed: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const MondayAdminScreen(currentLeague: League.monday),
+                ),
+              );
+              if (mounted) setState(() {});
+            },
             tooltip: 'Administration',
           ),
         ],

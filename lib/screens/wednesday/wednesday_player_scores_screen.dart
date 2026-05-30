@@ -6,6 +6,7 @@ import '../../services/responsive_typography.dart';
 import '../../config/app_config.dart';
 import '../../services/device_detection_service.dart';
 import '../../services/UI/button_bar_UI_service.dart';
+import '../../services/firebase_upload_service.dart';
 
 class WednesdayPlayerScoresScreen extends StatefulWidget {
   final League? league;
@@ -522,7 +523,7 @@ class _WednesdayPlayerScoresScreenState extends State<WednesdayPlayerScoresScree
         title: Text('Player Scores - ${_getLeagueDisplayName()} League- ${AppConfig.versionDate}',
           style: ResponsiveTypography.appBarTitleStyle(context, color: Colors.white)),
         centerTitle: true,
-        backgroundColor: Colors.orange[700],
+        backgroundColor: FirebaseUploadService.uploadsEnabled ? Colors.orange[700] : Colors.red[700],
         foregroundColor: Colors.white,
       ),
       resizeToAvoidBottomInset: false,
@@ -549,7 +550,7 @@ class _WednesdayPlayerScoresScreenState extends State<WednesdayPlayerScoresScree
         title: Text('Player Scores - ${_getLeagueDisplayName()} League- ${AppConfig.versionDate}',
           style: ResponsiveTypography.appBarTitleStyle(context, color: Colors.white)),
         centerTitle: true,
-        backgroundColor: Colors.orange[700],
+        backgroundColor: FirebaseUploadService.uploadsEnabled ? Colors.orange[700] : Colors.red[700],
         foregroundColor: Colors.white,
       ),
       resizeToAvoidBottomInset: false,
