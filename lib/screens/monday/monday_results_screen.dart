@@ -138,10 +138,9 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
             'name': player.name,
             'date_played': currentDate,
             'golf_course': selectedGolfCourse,
-            'skats_score': null, // Will be updated in Step A4
+            'S_SK': dbPlayer['skat_number'],
             'close_pin_winnings': 0.0, // Will be updated in Step A2
             'skat_winnings': 0.0, // Will be updated in Step A3
-            'skat_number': dbPlayer['skat_number'],
           };
 
           // Insert record and get the record ID and any deleted scores
@@ -192,30 +191,38 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
         }
       }
       
-      // STEP A4: Update SKAT data field with SKAT # from player profiles
+      // STEP A4: Save SKATS entered and DIFF for each player
       for (var player in allSelectedPlayers) {
-        if (playerToRecordId.containsKey(player.name)) {
-          // Find player's SKAT # from database
-          final dbPlayer = allDbPlayers.firstWhere(
-            (p) => p['last'] == player.name,
-            orElse: () => <String, dynamic>{}
-          );
-
-          if (dbPlayer.isNotEmpty && dbPlayer['skat_number'] != null) {
-            int recordId = playerToRecordId[player.name]!;
+        if (playerToRecordId.containsKey(player.name) && player.skats.isNotEmpty) {
+          int recordId = playerToRecordId[player.name]!;
+          try {
             await _databaseHelper.updateScoreField(
-              recordId,
-              'skats_score',
-              dbPlayer['skat_number'],
-              League.monday
-            );
+                recordId, 'SKATS', int.parse(player.skats), League.monday);
+          } catch (e) {}
+          if (player.diff.isNotEmpty) {
+            await _databaseHelper.updateScoreField(
+                recordId, 'DIFF', player.diff, League.monday);
           }
         }
       }
 
-      // STEP A5: Apply SKAT # adjustments based on DIFF values
-      // This updates the player's SKAT # in the players table for next time
+      // STEP A5: Apply SKAT # adjustments — updates player profile with new SK#
       await _skatAdjustmentService.applySkatAdjustments(playerGroups);
+
+      // STEP A6: Save New_SK for each player (S_SK + adjustment from DIFF)
+      for (var player in allSelectedPlayers) {
+        if (playerToRecordId.containsKey(player.name) && player.diff.isNotEmpty) {
+          try {
+            int sSk = int.parse(player.skNumber);
+            int diffVal = int.parse(player.diff.replaceAll('+', ''));
+            int adjustment = _skatAdjustmentService.calculateSkatAdjustment(diffVal);
+            int newSk = sSk + adjustment;
+            int recordId = playerToRecordId[player.name]!;
+            await _databaseHelper.updateScoreField(
+                recordId, 'New_SK', newSk, League.monday);
+          } catch (e) {}
+        }
+      }
 
       // Upload player profile data to Firebase (includes updated SKAT #)
       await _firebaseUploadService.uploadPlayerTableWithQueue(League.monday);

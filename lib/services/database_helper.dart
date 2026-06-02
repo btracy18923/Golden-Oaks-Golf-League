@@ -93,9 +93,10 @@ class DatabaseHelper {
         name TEXT NOT NULL,
         date_played TEXT NOT NULL,
         golf_course TEXT NOT NULL,
-        skat_number INTEGER,
-        gross_score INTEGER,
-        skats_score INTEGER,
+        S_SK INTEGER,
+        SKATS INTEGER,
+        DIFF TEXT,
+        New_SK INTEGER,
         close_pin_winnings REAL DEFAULT 0.0,
         skat_winnings REAL DEFAULT 0.0,
         FOREIGN KEY (player_id) REFERENCES players (player_number)
@@ -669,7 +670,6 @@ class DatabaseHelper {
       try {
         await db.execute('ALTER TABLE wednesday_scores RENAME COLUMN pos TO ind_pos');
       } catch (e) {
-        // RENAME COLUMN requires SQLite 3.25.0+; if unsupported, add ind_pos as new column
         try {
           await db.execute('ALTER TABLE wednesday_scores ADD COLUMN ind_pos TEXT');
         } catch (e2) {
@@ -677,6 +677,38 @@ class DatabaseHelper {
       }
       try {
         await db.execute('ALTER TABLE wednesday_scores ADD COLUMN grp_pos TEXT');
+      } catch (e) {
+      }
+    }
+    if (oldVersion < 26) {
+      // Rebuild monday_scores: rename skat_number→S_SK, skats_score→SKATS,
+      // drop gross_score, add DIFF and New_SK
+      try {
+        await db.execute('''
+          CREATE TABLE monday_scores_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            player_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            date_played TEXT NOT NULL,
+            golf_course TEXT NOT NULL,
+            S_SK INTEGER,
+            SKATS INTEGER,
+            DIFF TEXT,
+            New_SK INTEGER,
+            close_pin_winnings REAL DEFAULT 0.0,
+            skat_winnings REAL DEFAULT 0.0,
+            FOREIGN KEY (player_id) REFERENCES players (player_number)
+          )
+        ''');
+        await db.execute('''
+          INSERT INTO monday_scores_new
+            (id, player_id, name, date_played, golf_course, S_SK, SKATS, close_pin_winnings, skat_winnings)
+          SELECT
+            id, player_id, name, date_played, golf_course, skat_number, skats_score, close_pin_winnings, skat_winnings
+          FROM monday_scores
+        ''');
+        await db.execute('DROP TABLE monday_scores');
+        await db.execute('ALTER TABLE monday_scores_new RENAME TO monday_scores');
       } catch (e) {
       }
     }

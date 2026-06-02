@@ -256,84 +256,27 @@ class FirebaseUploadService {
         // Create document ID in format: MM-DD-YY_PlayerName_ID
         String docId;
         String? wednesdayFormattedDate; // For Wednesday league date formatting
-        if (league == League.monday) {
-          // For Monday (M_player_scores): use LastName_MM-DD-YY format
-          final dateStr = score['date_played'] ?? '';
-
-          // Extract last name from full name (format: "First Last")
-          String lastName = 'Unknown';
-          if (score['name'] != null && score['name'].toString().isNotEmpty) {
-            final fullName = score['name'].toString().trim();
-            final nameParts = fullName.split(' ');
-            if (nameParts.length > 1) {
-              lastName = nameParts.last; // Get the last word as last name
-            } else {
-              lastName = fullName; // Use the whole name if no space found
+        // Build docId as PlayerID_MM-DD-YY — unique per player per date, prevents duplicates
+        final dateStr = score['date_played']?.toString() ?? '';
+        String formattedDate = 'unknown-date';
+        try {
+          if (dateStr.contains('-')) {
+            final date = DateTime.parse(dateStr);
+            final month = date.month.toString().padLeft(2, '0');
+            final day = date.day.toString().padLeft(2, '0');
+            final year = (date.year % 100).toString().padLeft(2, '0');
+            formattedDate = '$month-$day-$year';
+          } else if (dateStr.contains('/')) {
+            final parts = dateStr.split('/');
+            if (parts.length == 3) {
+              formattedDate = '${parts[0].padLeft(2,'0')}-${parts[1].padLeft(2,'0')}-${parts[2].padLeft(2,'0')}';
             }
           }
-
-          // Convert date from YYYY-MM-DD to MM-DD-YY format
-          String formattedDate = '';
-          if (dateStr.isNotEmpty) {
-            try {
-              final date = DateTime.parse(dateStr);
-              final month = date.month.toString().padLeft(2, '0');
-              final day = date.day.toString().padLeft(2, '0');
-              final year = (date.year % 100).toString().padLeft(2, '0');
-              formattedDate = '$month-$day-$year';
-            } catch (e) {
-              formattedDate = 'unknown-date';
-            }
-          } else {
-            formattedDate = 'unknown-date';
-          }
-
-          // Use record ID to make each document unique and allow duplicate dates
-          final recordId = score['id'] ?? 'unknown';
-          docId = '${lastName}_${formattedDate}_$recordId';
-        } else {
-          // For Wednesday: use LastName_MM-DD-YY_RecordID format
-          // Note: Cannot use slashes (/) in Firebase document IDs as they're interpreted as path separators
-          String formattedDate = 'unknown-date';
-          if (score['date_played'] != null && score['date_played'].toString().isNotEmpty) {
-            final dateStr = score['date_played'].toString();
-
-            // Handle both YYYY-MM-DD and MM/DD/YY formats
-            try {
-              if (dateStr.contains('-')) {
-                // YYYY-MM-DD format (e.g., "2026-01-08")
-                final date = DateTime.parse(dateStr);
-                final month = date.month.toString().padLeft(2, '0');
-                final day = date.day.toString().padLeft(2, '0');
-                final year = (date.year % 100).toString().padLeft(2, '0');
-                formattedDate = '$month-$day-$year';
-              } else if (dateStr.contains('/')) {
-                // MM/DD/YY format (e.g., "01/08/26")
-                final parts = dateStr.split('/');
-                if (parts.length == 3) {
-                  final month = parts[0].padLeft(2, '0');
-                  final day = parts[1].padLeft(2, '0');
-                  final year = parts[2].padLeft(2, '0');
-                  formattedDate = '$month-$day-$year';
-                }
-              }
-            } catch (e) {
-              debugPrint('Error parsing Wednesday date: $dateStr - $e');
-              formattedDate = 'unknown-date';
-            }
-          }
-
-          // Extract last name from the 'name' field
-          // The 'name' field in wednesday_scores is already just the last name (set by seed service)
-          String lastName = 'Unknown';
-          if (score['name'] != null && score['name'].toString().isNotEmpty) {
-            lastName = score['name'].toString().trim();
-          }
-
-          // Use record ID to make each document unique and allow duplicate dates
-          final recordId = score['id'] ?? 'unknown';
-          docId = '${lastName}_${formattedDate}_$recordId';
+        } catch (e) {
+          debugPrint('Error parsing date for docId: $dateStr - $e');
         }
+        final playerId = (score['player_id'] ?? 'unknown').toString().replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
+        docId = '${playerId}_$formattedDate';
 
         final docRef = collection.doc(docId);
         
@@ -357,14 +300,15 @@ class FirebaseUploadService {
             'name': score['name'],
             'date_played': score['date_played'],
             'golf_course': score['golf_course'],
-            'SKAT #': score['skat_number'], // Add SKAT # field
-            'Close Pin Winnings': formatCurrency(score['close_pin_winnings']), // Format as currency
-            'SKAT Winnings': formatCurrency(score['skat_winnings']), // Format as currency
-            'league': score['league'],
+            'S_SK': score['S_SK'],
+            'SKATS': score['SKATS'],
+            'DIFF': score['DIFF'],
+            'New_SK': score['New_SK'],
+            'Close Pin Winnings': formatCurrency(score['close_pin_winnings']),
+            'SKAT Winnings': formatCurrency(score['skat_winnings']),
             'upload_timestamp': FieldValue.serverTimestamp(),
           };
 
-          // Note: No duplicate check needed - record ID makes each document unique and allows duplicate dates
         } else {
           // For Wednesday: include all fields as before
           firebaseData = Map<String, dynamic>.from(score);
@@ -373,7 +317,6 @@ class FirebaseUploadService {
           // Wednesday league always plays at "The Hideout"
           firebaseData['golf_course'] = 'The Hideout';
 
-          // Note: No duplicate check for Wednesday - using merge mode to update existing documents
         }
 
         // Remove any null values
@@ -421,81 +364,27 @@ class FirebaseUploadService {
         // Create document ID using the same format as upload
         String docId;
 
-        if (league == League.monday) {
-          // For Monday: use LastName_MM-DD-YY format (matching upload format)
-          final dateStr = score['date_played'] ?? '';
-
-          // Extract last name from full name (format: "First Last")
-          String lastName = 'Unknown';
-          if (score['name'] != null && score['name'].toString().isNotEmpty) {
-            final fullName = score['name'].toString().trim();
-            final nameParts = fullName.split(' ');
-            if (nameParts.length > 1) {
-              lastName = nameParts.last; // Get the last word as last name
-            } else {
-              lastName = fullName; // Use the whole name if no space found
+        // Build docId using same format as upload: PlayerID_MM-DD-YY
+        final dateStr = score['date_played']?.toString() ?? '';
+        String formattedDate = 'unknown-date';
+        try {
+          if (dateStr.contains('-')) {
+            final date = DateTime.parse(dateStr);
+            final month = date.month.toString().padLeft(2, '0');
+            final day = date.day.toString().padLeft(2, '0');
+            final year = (date.year % 100).toString().padLeft(2, '0');
+            formattedDate = '$month-$day-$year';
+          } else if (dateStr.contains('/')) {
+            final parts = dateStr.split('/');
+            if (parts.length == 3) {
+              formattedDate = '${parts[0].padLeft(2,'0')}-${parts[1].padLeft(2,'0')}-${parts[2].padLeft(2,'0')}';
             }
           }
-
-          String formattedDate = '';
-          if (dateStr.isNotEmpty) {
-            try {
-              final date = DateTime.parse(dateStr);
-              final month = date.month.toString().padLeft(2, '0');
-              final day = date.day.toString().padLeft(2, '0');
-              final year = (date.year % 100).toString().padLeft(2, '0');
-              formattedDate = '$month-$day-$year';
-            } catch (e) {
-              formattedDate = 'unknown-date';
-            }
-          } else {
-            formattedDate = 'unknown-date';
-          }
-
-          // Use record ID to match upload format and ensure correct deletion
-          final recordId = score['id'] ?? 'unknown';
-          docId = '${lastName}_${formattedDate}_$recordId';
-        } else {
-          // For Wednesday: use LastName_MM-DD-YY_RecordID format (matching upload format)
-          String formattedDate = 'unknown-date';
-          if (score['date_played'] != null && score['date_played'].toString().isNotEmpty) {
-            final dateStr = score['date_played'].toString();
-
-            // Handle both YYYY-MM-DD and MM/DD/YY formats
-            try {
-              if (dateStr.contains('-')) {
-                // YYYY-MM-DD format (e.g., "2026-01-08")
-                final date = DateTime.parse(dateStr);
-                final month = date.month.toString().padLeft(2, '0');
-                final day = date.day.toString().padLeft(2, '0');
-                final year = (date.year % 100).toString().padLeft(2, '0');
-                formattedDate = '$month-$day-$year';
-              } else if (dateStr.contains('/')) {
-                // MM/DD/YY format (e.g., "01/08/26")
-                final parts = dateStr.split('/');
-                if (parts.length == 3) {
-                  final month = parts[0].padLeft(2, '0');
-                  final day = parts[1].padLeft(2, '0');
-                  final year = parts[2].padLeft(2, '0');
-                  formattedDate = '$month-$day-$year';
-                }
-              }
-            } catch (e) {
-              debugPrint('Error parsing Wednesday date for delete: $dateStr - $e');
-              formattedDate = 'unknown-date';
-            }
-          }
-
-          // Extract last name
-          String lastName = 'Unknown';
-          if (score['name'] != null && score['name'].toString().isNotEmpty) {
-            lastName = score['name'].toString().trim();
-          }
-
-          // Use record ID to match upload format and ensure correct deletion
-          final recordId = score['id'] ?? 'unknown';
-          docId = '${lastName}_${formattedDate}_$recordId';
+        } catch (e) {
+          debugPrint('Error parsing date for delete docId: $dateStr - $e');
         }
+        final playerId = (score['player_id'] ?? 'unknown').toString().replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
+        docId = '${playerId}_$formattedDate';
 
         final docRef = collection.doc(docId);
         batch.delete(docRef);

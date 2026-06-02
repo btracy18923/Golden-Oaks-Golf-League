@@ -138,23 +138,12 @@ class _MondayClosestPinScreenState extends State<MondayClosestPinScreen> {
     if (canSelectPlayer) {
       setState(() {
         if (_tiedMode) {
-          // When entering tied mode, first check if we need to rebuild the tied list
-          // by finding all players who are currently in a tie (have fractional counts)
-          if (_tiedPlayers.isEmpty) {
-            for (var entry in _playerClosestPinCounts.entries) {
-              if (entry.value > 0 && entry.value <= 1.0) {
-                // Add all players with any count > 0
-                _tiedPlayers.add(entry.key);
-              }
-            }
-          }
-
-          // Add the newly tapped player if not already in the list
+          // Add the tapped player to the tie if not already included
           if (!_tiedPlayers.contains(lastName)) {
             _tiedPlayers.add(lastName);
           }
 
-          // Calculate split amount among all tied players
+          // Calculate split amount among all tied players so far
           double splitAmount = _closestPinValue / _tiedPlayers.length;
           double fractionalCount = 1.0 / _tiedPlayers.length;
 
@@ -164,15 +153,13 @@ class _MondayClosestPinScreenState extends State<MondayClosestPinScreen> {
             _playerWinnings[playerName] = splitAmount;
           }
 
-          // Only decrease remaining pins and purse when going from 0 to 1 player
+          // Decrement the pin counter only when the FIRST tied player is added
           if (_tiedPlayers.length == 1 && _remainingClosestPins > 0) {
             _remainingClosestPins--;
             _remainingPurseAmount -= _closestPinValue;
           }
 
-          // Turn off TIED mode after selecting a player and clear the list
-          _tiedMode = false;
-          _tiedPlayers.clear();
+          // Stay in tied mode — user taps TIE button again to finalize
         } else {
           // Normal mode - single winner gets full amount
           _playerClosestPinCounts[lastName] = _playerClosestPinCounts[lastName]! + 1.0;

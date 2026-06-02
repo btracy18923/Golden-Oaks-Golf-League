@@ -2492,7 +2492,10 @@ Your current HC is displayed when you log in.
                                 <tr>
                                     <th>Date Played</th>
                                     <th>Golf Course</th>
-                                    <th>SKAT #</th>
+                                    <th>S_SK#</th>
+                                    <th>SKATS</th>
+                                    <th>DIFF</th>
+                                    <th>New SK#</th>
                                     <th>Close Pin $$$</th>
                                     <th>SKAT $$$</th>
                                 </tr>
@@ -2514,7 +2517,10 @@ Your current HC is displayed when you log in.
                         }
 
                         const courseName = score.golf_course || 'TBD';
-                        const skatNumber = score['SKAT #'] || 'N/A';
+                        const sSk = score['S_SK'] ?? score['SKAT #'] ?? 'N/A';
+                        const skats = score['SKATS'] ?? 'N/A';
+                        const diff = score['DIFF'] ?? 'N/A';
+                        const newSk = score['New_SK'] ?? 'N/A';
                         const closePinWinnings = score['Close Pin Winnings'] || '$0.00';
                         const skatWinnings = score['SKAT Winnings'] || '$0.00';
 
@@ -2522,7 +2528,10 @@ Your current HC is displayed when you log in.
                             <tr>
                                 <td>${dateFormatted}</td>
                                 <td>${courseName}</td>
-                                <td>${skatNumber}</td>
+                                <td>${sSk}</td>
+                                <td>${skats}</td>
+                                <td>${diff}</td>
+                                <td>${newSk}</td>
                                 <td>${closePinWinnings}</td>
                                 <td>${skatWinnings}</td>
                             </tr>
@@ -3451,8 +3460,7 @@ Your current HC is displayed when you log in.
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        to: ['btracy18923@gmail.com'],
-                        bcc: uniqueEmails,
+                        recipients: uniqueEmails,
                         subject: subject,
                         text: message
                     })

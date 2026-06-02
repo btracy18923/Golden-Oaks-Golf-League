@@ -14,8 +14,36 @@ exports.handler = async (event) => {
     }
 
     try {
-        const { to, bcc, subject, text, html } = JSON.parse(event.body);
+        const { to, bcc, subject, text, html, recipients } = JSON.parse(event.body);
 
+        // Individual send mode: send one email per address so each recipient
+        // sees their own address in the To field (used for Email Blast)
+        if (recipients && Array.isArray(recipients) && recipients.length > 0) {
+            let sent = 0, failed = 0;
+            for (const address of recipients) {
+                const resp = await fetch('https://api.resend.com/emails', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        from: 'Golden Oaks Golf League <noreply@goldenoaks.golf>',
+                        to: [address],
+                        subject,
+                        ...(html ? { html, text: text || '' } : { text }),
+                    }),
+                });
+                if (resp.ok) { sent++; } else { failed++; }
+            }
+            return {
+                statusCode: 200,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sent, failed }),
+            };
+        }
+
+        // Standard single-send mode (ProShop, group emails, results, etc.)
         const response = await fetch('https://api.resend.com/emails', {
             method: 'POST',
             headers: {
