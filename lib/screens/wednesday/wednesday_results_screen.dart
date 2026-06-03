@@ -271,14 +271,25 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
         );
 
         if (dbPlayer.isNotEmpty) {
+          // Get HC from entry-time player data (not DB) so Start HC matches
+          // what was used for net score calculation, even if HC was updated since
+          final entryPlayer = allSelectedPlayers.firstWhere(
+            (p) => p['last']?.toString().trim() == playerName,
+            orElse: () => <String, dynamic>{},
+          );
+          final startHC = entryPlayer.isNotEmpty
+              ? (entryPlayer['handicap'] as num?)?.toDouble() ?? (dbPlayer['HC'] as num?)?.toDouble() ?? 0.0
+              : (dbPlayer['HC'] as num?)?.toDouble() ?? 0.0;
+
           // Create complete score record with ALL data
           Map<String, dynamic> scoreData = {
             'player_id': dbPlayer['player_number'],
             'name': playerName,
             'date_played': currentDate,
             'golf_course': selectedGolfCourse,
+            'OHC': (dbPlayer['OHC'] as num?)?.toDouble() ?? 0.0,
+            'handicap': startHC,
             'gross_score': playerData['gross_score'],
-            'handicap': dbPlayer['HC'] ?? 0.0,
             'ind_pos': playerData['ind_pos'],
             'grp_pos': playerData['grp_pos'],
             'single_winnings': playerData['individual_winnings'] ?? 0.0,
@@ -303,15 +314,18 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
       }
 
       // Calculate and update handicaps for selected players only
-      Map<String, double> newHandicaps = await _updateSelectedPlayerHandicaps(allSelectedPlayers, allDbPlayers);
+      // Returns map of playerName → {'new_hc', 'pad_count'}
+      Map<String, Map<String, dynamic>> handicapResults =
+          await _updateSelectedPlayerHandicaps(allSelectedPlayers, allDbPlayers);
 
-      // Update the score records with the new HC values (using record ID for precision)
-      for (var playerName in newHandicaps.keys) {
-        final newHC = newHandicaps[playerName]!;
+      // Save new_hc and pad_count to score records; keep handicap as Start HC
+      for (var playerName in handicapResults.keys) {
         final recordId = insertedRecordIds[playerName];
         if (recordId != null) {
-          // Update the handicap field using the specific record ID (not date)
-          await _databaseHelper.updateWednesdayScoreHandicapById(recordId, newHC);
+          final newHC = handicapResults[playerName]!['new_hc'] as double;
+          final padCount = handicapResults[playerName]!['pad_count'] as int;
+          await _databaseHelper.updateScoreField(recordId, 'new_hc', newHC, League.wednesday);
+          await _databaseHelper.updateScoreField(recordId, 'pad_count', padCount, League.wednesday);
         } else {
           debugPrint('WARNING: No record ID found for $playerName - skipping HC update');
         }
@@ -321,7 +335,8 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
       await _uploadScoresToFirebase();
 
       // Upload only the updated HC values to Firebase (not full player profiles)
-      await _uploadHandicapsToFirebase(newHandicaps);
+      final newHCValues = handicapResults.map((k, v) => MapEntry(k, v['new_hc'] as double));
+      await _uploadHandicapsToFirebase(newHCValues);
 
       // Then delete old scores from Firebase if any were removed locally
       if (allDeletedScores.isNotEmpty) {
@@ -371,16 +386,16 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
   /// - 5 scores: Add 1 (OHC + 35) as the 6th score, drop 2 highest, HC = (Avg of 4 remaining) - 35
   /// - 6+ scores: Drop 2 highest, HC = (Avg of 4 remaining) - 35
   /// Returns a map of player names to their new handicap values
-  Future<Map<String, double>> _updateSelectedPlayerHandicaps(
+  Future<Map<String, Map<String, dynamic>>> _updateSelectedPlayerHandicaps(
     List<Map<String, dynamic>> selectedPlayers,
     List<Map<String, dynamic>> allDbPlayers,
   ) async {
-    Map<String, double> newHandicaps = {};
+    // Returns map of playerName → {'new_hc': double, 'pad_count': int}
+    Map<String, Map<String, dynamic>> results = {};
 
     try {
       final handicapService = HandicapCalculationService();
 
-      // Create a set of unique player names from selected players
       Set<String> selectedPlayerNames = {};
       for (var player in selectedPlayers) {
         if (player['last'] != null && player['last'].toString().isNotEmpty) {
@@ -388,9 +403,7 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
         }
       }
 
-      int updatedCount = 0;
       for (var playerName in selectedPlayerNames) {
-        // Find the player in the database
         final dbPlayer = allDbPlayers.firstWhere(
           (p) => p['last'] == playerName,
           orElse: () => <String, dynamic>{}
@@ -400,47 +413,42 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
           final playerId = dbPlayer['player_number'];
           final originalHandicap = (dbPlayer['OHC'] as num?)?.toDouble() ?? 0.0;
 
-          // Get the last 6 gross scores for this player (most recent first)
           final scores = await _databaseHelper.getPlayerRecentScores(
             playerId,
             League.wednesday,
             limit: 6,
           );
 
-          // Extract gross scores only (filter out nulls)
           List<int> grossScores = scores
               .where((score) => score['gross_score'] != null)
               .map((score) => score['gross_score'] as int)
               .toList();
 
           if (grossScores.isNotEmpty) {
-            // Calculate handicap using Wednesday league's OHC padding algorithm
+            final padCount = (6 - grossScores.length.clamp(0, 6));
+
             double newHandicap = handicapService.calculateWednesdayHandicap(
               grossScores: grossScores,
               originalHandicap: originalHandicap,
             );
 
-            // Update the player's HC field in the players table
             await _databaseHelper.updatePlayerHandicap(
               playerId,
               newHandicap,
               League.wednesday,
             );
 
-            // Store the new handicap for updating score records
-            newHandicaps[playerName] = newHandicap;
-            updatedCount++;
+            results[playerName] = {'new_hc': newHandicap, 'pad_count': padCount};
           }
         } else {
           debugPrint('WARNING: No database player found for $playerName during handicap update');
         }
       }
     } catch (e) {
-      // Log error but don't stop the save process
       debugPrint('Error updating handicaps: $e');
     }
 
-    return newHandicaps;
+    return results;
   }
 
   /// Saves the results summary to Firebase for website display

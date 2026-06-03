@@ -347,15 +347,15 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
     final isPhone = DeviceDetectionService.is6Point5Phone(context);
     
     if (_selectedLeague == League.monday) {
-      // Monday League: Name, Date, Golf Course, SKATS, Close Pin, SKAT Winnings
+      // Monday League: Name, Date, Start/SK#, Match/SKATS, DIFF, New/SK#
       return Row(
         children: [
-          _buildFlexDataCellWithIcon(score['name'] ?? '', isUnlocked, isCompact ? 22 : 24, isCompact: isCompact),
-          _buildFlexDataCell(_formatDateToMMDDYY(score['date_played']), isCompact ? 14 : 14, isCompact: isCompact),
-          _buildFlexDataCellLeftAligned(score['golf_course'] ?? '', isCompact ? 20 : 18, isCompact: isCompact),
-          _buildFlexDataCell('${score['skats_score'] ?? ''}', isCompact ? 10 : isMedium ? 10 : 9, isCompact: isCompact),
-          _buildFlexDataCell(isPhone ? _formatWinningsWithCents(score['close_pin_winnings']) : _formatWinningsSimple(score['close_pin_winnings']), isCompact ? 16 : isMedium ? 15 : 15, isCompact: isCompact),
-          _buildFlexDataCell(isPhone ? _formatWinningsWithCents(score['skat_winnings']) : _formatWinningsSimple(score['skat_winnings']), isCompact ? 18 : isMedium ? 18 : 20, isCompact: isCompact),
+          _buildFlexDataCellWithIcon(score['name'] ?? '', isUnlocked, 22, isCompact: isCompact),
+          _buildFlexDataCell(_formatDateToMMDDYY(score['date_played']), 14, isCompact: isCompact),
+          _buildFlexDataCell('${score['S_SK'] ?? ''}', 14, isCompact: isCompact),
+          _buildFlexDataCell('${score['SKATS'] ?? ''}', 14, isCompact: isCompact),
+          _buildFlexDataCell('${score['DIFF'] ?? ''}', 12, isCompact: isCompact),
+          _buildFlexDataCell('${score['New_SK'] ?? ''}', 24, isCompact: isCompact),
         ],
       );
     } else {
@@ -389,17 +389,15 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
     final isPhone = DeviceDetectionService.is6Point5Phone(context);
     
     if (_selectedLeague == League.monday) {
-      // Monday League: Name, Date, Golf Course, SKATS, Close Pin, SKAT Winnings
+      // Monday League: Name, Date, Start/SK#, Match/SKATS, DIFF, New/SK#
       return Row(
         children: [
-          _buildFlexDataCell(_selectedPlayer ?? '', isCompact ? 22 : isMedium ? 22 : 24, isCompact: isCompact),
-          _buildFlexDataCell(_getCurrentDateMMDDYY(), isCompact ? 14 : isMedium ? 14 : 14, isCompact: isCompact),
-          _buildFlexGolfCourseCell(isCompact: isCompact), // Golf Course - editable dropdown for Monday
-          _buildFlexEditableCellWithBorder(_skatsController, _skatsFocus, isCompact ? 10 : isMedium ? 10 : 9, TextInputType.number, isCompact: isCompact),
-          isPhone 
-            ? _buildFlexEditableCellWithBorder(_closePinController, _closePinFocus, isCompact ? 16 : 15, TextInputType.number, isCompact: isCompact) // Close Pin - editable for phones
-            : _buildFlexDataCell('\$0.00', isCompact ? 16 : isMedium ? 15 : 15, isCompact: isCompact), // Close pin winnings - static for tablets
-          _buildFlexEditableCellWithBorder(_winningsController, _winningsFocus, isCompact ? 18 : isMedium ? 18 : 20, TextInputType.number, isCompact: isCompact), // SKAT Winnings
+          _buildFlexDataCell(_selectedPlayer ?? '', 22, isCompact: isCompact),
+          _buildFlexDataCell(_getCurrentDateMMDDYY(), 14, isCompact: isCompact),
+          _buildFlexDataCell('', 14, isCompact: isCompact), // Start SK# — populated on save
+          _buildFlexEditableCellWithBorder(_skatsController, _skatsFocus, 14, TextInputType.number, isCompact: isCompact),
+          _buildFlexDataCell('', 12, isCompact: isCompact), // DIFF — calculated on save
+          _buildFlexDataCell('', 24, isCompact: isCompact), // New SK# — calculated on save
         ],
       );
     } else {
@@ -424,18 +422,17 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
     final isPhone = DeviceDetectionService.is6Point5Phone(context);
     
     if (_selectedLeague == League.monday) {
-      // Monday League: Name, Date, Golf Course, SKATS, Close Pin, SKAT Winnings
+      // Monday League: Name, Date, Start/SK#, Match/SKATS, DIFF, New/SK#
       return Column(
         children: [
-          // First header line
           Row(
             children: [
-              _buildFlexHeaderCell('Name', isCompact ? 22 : isMedium ? 22 : 24, isCompact: isCompact),
-              _buildFlexHeaderCell('Date', isCompact ? 14 : isMedium ? 14 : 14, isCompact: isCompact),
-              _buildFlexHeaderCell('Golf Course', isCompact ? 20 : isMedium ? 18 : 18, isCompact: isCompact),
-              _buildFlexHeaderCell('SKAT#', isCompact ? 10 : isMedium ? 10 : 9, isCompact: isCompact),
-              _buildFlexHeaderCell(isPhone ? 'Close Pin\n\$\$\$' : 'Close Pin', isCompact ? 16 : isMedium ? 15 : 15, isCompact: isCompact),
-              _buildFlexHeaderCell('SKAT\n\$\$\$', isCompact ? 18 : isMedium ? 18 : 20, isCompact: isCompact),
+              _buildFlexHeaderCell('Name', 22, isCompact: isCompact),
+              _buildFlexHeaderCell('Date', 14, isCompact: isCompact),
+              _buildFlexHeaderCell('Start\nSK#', 14, isCompact: isCompact),
+              _buildFlexHeaderCell('Match\nSKATS', 14, isCompact: isCompact),
+              _buildFlexHeaderCell('DIFF', 12, isCompact: isCompact),
+              _buildFlexHeaderCell('New\nSK#', 24, isCompact: isCompact),
             ],
           ),
         ],

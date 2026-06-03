@@ -283,13 +283,13 @@ class _WednesdayPlayerScoresScreenState extends State<WednesdayPlayerScoresScree
   Widget _buildScoreRow(Map<String, dynamic> score, bool isUnlocked, {bool isCompact = false, bool isMedium = false}) {
     return Row(
       children: [
-        _buildFlexDataCellWithIcon(score['name'] ?? '', isUnlocked, isCompact ? 12 : 12, isCompact: isCompact),
-        _buildFlexDataCell(_formatDateToMMDDYY(score['date_played']), isCompact ? 14 : 14, isCompact: isCompact),
-        _buildFlexDataCell('${score['handicap'] ?? 0}', isCompact ? 12 : 12, isCompact: isCompact),
-        _buildFlexDataCell('${score['gross_score'] ?? ''}', isCompact ? 10 : 9, isCompact: isCompact),
-        _buildFlexDataCell(_formatWinningsSimple(score['close_pin_winnings']), isCompact ? 16 : 15, isCompact: isCompact),
-        _buildFlexDataCell(_formatWinningsSimple(score['single_winnings']), isCompact ? 16 : 15, isCompact: isCompact),
-        _buildFlexDataCell(_formatWinningsSimple(score['group_winnings']), isCompact ? 16 : 15, isCompact: isCompact),
+        _buildFlexDataCellWithIcon(score['name'] ?? '', isUnlocked, 16, isCompact: isCompact),
+        _buildFlexDataCell(_formatDateToMMDDYY(score['date_played']), 12, isCompact: isCompact),
+        _buildFlexDataCell('${score['OHC'] ?? ''}', 11, isCompact: isCompact),
+        _buildFlexDataCell('${score['pad_count'] ?? ''}', 10, isCompact: isCompact),
+        _buildFlexDataCell('${score['handicap'] ?? ''}', 12, isCompact: isCompact),
+        _buildFlexDataCell('${score['gross_score'] ?? ''}', 12, isCompact: isCompact),
+        _buildFlexDataCell('${score['new_hc'] ?? ''}', 15, isCompact: isCompact),
       ],
     );
   }
@@ -307,13 +307,13 @@ class _WednesdayPlayerScoresScreenState extends State<WednesdayPlayerScoresScree
   Widget _buildAddScoreRowContent({bool isCompact = false, bool isMedium = false}) {
     return Row(
       children: [
-        _buildFlexDataCell(_selectedPlayer ?? '', isCompact ? 12 : isMedium ? 12 : 12, isCompact: isCompact),
-        _buildFlexDataCell(_getCurrentDateMMDDYY(), isCompact ? 14 : isMedium ? 14 : 14, isCompact: isCompact),
-        _buildFlexEditableCellWithBorder(_handicapController, _handicapFocus, isCompact ? 12 : isMedium ? 12 : 12, TextInputType.number, isCompact: isCompact),
-        _buildFlexEditableCellWithBorder(_grossScoreController, _grossScoreFocus, isCompact ? 10 : isMedium ? 10 : 9, TextInputType.number, isCompact: isCompact),
-        _buildFlexDataCell('\$0.00', isCompact ? 16 : isMedium ? 15 : 15, isCompact: isCompact),
-        _buildFlexEditableCellWithBorder(_indWinningsController, _indWinningsFocus, isCompact ? 16 : isMedium ? 15 : 15, TextInputType.number, isCompact: isCompact),
-        _buildFlexDataCell('\$0.00', isCompact ? 16 : isMedium ? 15 : 15, isCompact: isCompact),
+        _buildFlexDataCell(_selectedPlayer ?? '', 16, isCompact: isCompact),
+        _buildFlexDataCell(_getCurrentDateMMDDYY(), 12, isCompact: isCompact),
+        _buildFlexDataCell('', 11, isCompact: isCompact), // OHC — populated on save
+        _buildFlexDataCell('', 10, isCompact: isCompact), // Pad# — calculated on save
+        _buildFlexEditableCellWithBorder(_handicapController, _handicapFocus, 12, TextInputType.number, isCompact: isCompact),
+        _buildFlexEditableCellWithBorder(_grossScoreController, _grossScoreFocus, 12, TextInputType.number, isCompact: isCompact),
+        _buildFlexDataCell('', 15, isCompact: isCompact), // New HC — calculated on save
       ],
     );
   }
@@ -325,13 +325,13 @@ class _WednesdayPlayerScoresScreenState extends State<WednesdayPlayerScoresScree
       children: [
         Row(
           children: [
-            _buildFlexHeaderCell('Name', isCompact ? 12 : isMedium ? 12 : 12, isCompact: isCompact),
-            _buildFlexHeaderCell('Date', isCompact ? 14 : isMedium ? 14 : 14, isCompact: isCompact),
-            _buildFlexHeaderCell('HC', isCompact ? 12 : isMedium ? 12 : 12, isCompact: isCompact),
-            _buildFlexHeaderCell('Gross', isCompact ? 10 : isMedium ? 10 : 9, isCompact: isCompact),
-            _buildFlexHeaderCell(isPhone ? 'Close Pin\n\$\$\$' : 'Close Pin', isCompact ? 16 : isMedium ? 15 : 15, isCompact: isCompact),
-            _buildFlexHeaderCell('IND\n\$\$\$', isCompact ? 16 : isMedium ? 15 : 15, isCompact: isCompact),
-            _buildFlexHeaderCell('Group\n\$\$\$', isCompact ? 16 : isMedium ? 15 : 15, isCompact: isCompact),
+            _buildFlexHeaderCell('Name', 16, isCompact: isCompact),
+            _buildFlexHeaderCell('Date', 12, isCompact: isCompact),
+            _buildFlexHeaderCell('OHC', 11, isCompact: isCompact),
+            _buildFlexHeaderCell('Pad#', 10, isCompact: isCompact),
+            _buildFlexHeaderCell('Start\nHC', 12, isCompact: isCompact),
+            _buildFlexHeaderCell('Match\nGross', 12, isCompact: isCompact),
+            _buildFlexHeaderCell('New\nHC', 15, isCompact: isCompact),
           ],
         ),
       ],

@@ -14,6 +14,7 @@ import '../../services/responsive_typography.dart';
 import '../../services/wednesday_winnings_service.dart';
 import '../../services/process_groups_service.dart';
 import '../../services/backend_email_service.dart';
+import '../../services/database_helper.dart';
 import '../../config/email_config.dart';
 import '../../models/league.dart';
 import '../../models/wednesday_player_data.dart';
@@ -85,6 +86,10 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
   // Triple-click delete functionality
   String? _deleteTargetPlayerName;
   int _deleteTargetTapCount = 0;
+
+  // Triple-click add functionality for empty slots
+  String? _addTargetSlotKey; // "groupIndex_playerIndex"
+  int _addTargetTapCount = 0;
 
   // State
   List<List<Map<String, dynamic>?>> groups = [];
@@ -388,13 +393,12 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
 
   // ============== SHUFFLE FUNCTIONALITY ==============
 
-  /// Handles the Shuffle button press to randomize player order
-  /// Ensures each group has at least 3 players
+  /// Handles the Shuffle button press using handicap-seeded distribution.
+  /// Each group of 4 gets 2 high-HC and 2 low-HC players.
+  /// Each group of 3 gets 1 high-HC and 2 low-HC players.
+  /// The last group may not match if pools run dry.
   void _handleShuffle() {
-    // Collect all players from all groups
     List<Map<String, dynamic>> allPlayers = [];
-
-    // Collect all players
     for (int groupIndex = 0; groupIndex < groups.length; groupIndex++) {
       for (var player in groups[groupIndex]) {
         if (player != null) {
@@ -415,9 +419,7 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
 
     final totalPlayers = allPlayers.length;
 
-    // Handle edge cases
     if (totalPlayers < 4) {
-      // If less than 4 players, put all in Group 1
       setState(() {
         for (int i = 0; i < groups.length; i++) {
           groups[i].clear();
@@ -431,37 +433,24 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
       return;
     }
 
-    if (totalPlayers == 5) {
-      // Special case: 5 players - put 3 in first group, 2 in second group
-      final random = Random();
-      allPlayers.shuffle(random);
+    // Sort by HC descending so top half = high handicap players
+    allPlayers.sort((a, b) {
+      double hcA = ((a['HC'] ?? a['handicap']) as num? ?? 0).toDouble();
+      double hcB = ((b['HC'] ?? b['handicap']) as num? ?? 0).toDouble();
+      return hcB.compareTo(hcA);
+    });
 
-      setState(() {
-        for (int i = 0; i < groups.length; i++) {
-          groups[i].clear();
-          groups[i] = [null, null, null, null];
-        }
+    // Split into high HC (top half) and low HC (bottom half)
+    int splitPoint = (totalPlayers / 2).ceil();
+    List<Map<String, dynamic>> highHC = List.from(allPlayers.sublist(0, splitPoint));
+    List<Map<String, dynamic>> lowHC = List.from(allPlayers.sublist(splitPoint));
 
-        // Add first 3 players to Group 1
-        for (int i = 0; i < 3; i++) {
-          groups[0][i] = allPlayers[i];
-        }
-
-        // Add remaining 2 players to Group 2
-        for (int i = 3; i < 5; i++) {
-          groups[1][i - 3] = allPlayers[i];
-        }
-
-      });
-      _createControllersForPlayers();
-      return;
-    }
-
-    // Shuffle all players randomly
+    // Shuffle each pool independently so seeding is random within each tier
     final random = Random();
-    allPlayers.shuffle(random);
+    highHC.shuffle(random);
+    lowHC.shuffle(random);
 
-    // Calculate optimal group distribution ensuring 3+ players per group
+    // Calculate number of groups
     int numGroups;
     if (totalPlayers <= 4) {
       numGroups = 1;
@@ -485,38 +474,62 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
       numGroups = 10;
     }
 
-    // Distribute players evenly across calculated number of groups
     int playersPerGroup = totalPlayers ~/ numGroups;
     int remainingPlayers = totalPlayers % numGroups;
 
+    int highIdx = 0;
+    int lowIdx = 0;
+
     setState(() {
-      // Clear all groups
       for (int i = 0; i < groups.length; i++) {
         groups[i].clear();
-        // Keep 4 slots per group
         groups[i] = [null, null, null, null];
       }
 
-      // Redistribute shuffled players
-      int playerIndex = 0;
       for (int groupIndex = 0; groupIndex < numGroups; groupIndex++) {
-        int playersInThisGroup = playersPerGroup;
+        int groupSize = playersPerGroup + (groupIndex < remainingPlayers ? 1 : 0);
+        int slot = 0;
 
-        // Distribute remaining players to first groups
-        if (groupIndex < remainingPlayers) {
-          playersInThisGroup++;
-        }
-
-        // Add players to this group
-        for (int i = 0; i < playersInThisGroup; i++) {
-          if (playerIndex < allPlayers.length) {
-            groups[groupIndex][i] = allPlayers[playerIndex];
-            playerIndex++;
+        if (groupSize >= 4) {
+          // 2 high HC + 2 low HC; fill any leftover slots from whichever pool remains
+          for (int i = 0; i < 2 && highIdx < highHC.length && slot < 4; i++) {
+            groups[groupIndex][slot++] = highHC[highIdx++];
+          }
+          for (int i = 0; i < 2 && lowIdx < lowHC.length && slot < 4; i++) {
+            groups[groupIndex][slot++] = lowHC[lowIdx++];
+          }
+          while (slot < groupSize && slot < 4) {
+            if (highIdx < highHC.length) {
+              groups[groupIndex][slot++] = highHC[highIdx++];
+            } else if (lowIdx < lowHC.length) {
+              groups[groupIndex][slot++] = lowHC[lowIdx++];
+            } else break;
+          }
+        } else if (groupSize == 3) {
+          // 1 high HC + 2 low HC; fall back to opposite pool if one runs dry
+          if (highIdx < highHC.length) {
+            groups[groupIndex][slot++] = highHC[highIdx++];
+          } else if (lowIdx < lowHC.length) {
+            groups[groupIndex][slot++] = lowHC[lowIdx++];
+          }
+          for (int i = 0; i < 2 && slot < 4; i++) {
+            if (lowIdx < lowHC.length) {
+              groups[groupIndex][slot++] = lowHC[lowIdx++];
+            } else if (highIdx < highHC.length) {
+              groups[groupIndex][slot++] = highHC[highIdx++];
+            }
+          }
+        } else {
+          // Group of 2 or fewer — fill from whichever pool has players
+          while (slot < groupSize && slot < 4) {
+            if (highIdx < highHC.length) {
+              groups[groupIndex][slot++] = highHC[highIdx++];
+            } else if (lowIdx < lowHC.length) {
+              groups[groupIndex][slot++] = lowHC[lowIdx++];
+            } else break;
           }
         }
       }
-
-      // Mark that shuffling occurred in this session
     });
 
     _createControllersForPlayers();
@@ -553,6 +566,79 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
   void _resetDeleteMode() {
     _deleteTargetPlayerName = null;
     _deleteTargetTapCount = 0;
+  }
+
+  /// Resets add mode
+  void _resetAddMode() {
+    _addTargetSlotKey = null;
+    _addTargetTapCount = 0;
+  }
+
+  /// Shows a dialog listing all Wednesday league players not currently in any group slot.
+  /// Covers both players not selected today and players deleted during this session.
+  Future<void> _showAddPlayerDialog(int groupIndex, int playerIndex) async {
+    // Build set of last names already placed in groups
+    final Set<String> inGroups = {};
+    for (var group in groups) {
+      for (var player in group) {
+        if (player != null) inGroups.add(player['last'] ?? '');
+      }
+    }
+
+    // Load the full Wednesday roster from the database
+    final allPlayers = await DatabaseHelper().getPlayersByLeague(League.wednesday);
+    final unassigned = allPlayers
+        .where((p) => !inGroups.contains(p['last'] ?? ''))
+        .toList()
+      ..sort((a, b) => (a['last'] ?? '').compareTo(b['last'] ?? ''));
+
+    if (!mounted) return;
+
+    if (unassigned.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No unassigned players available'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Add Player'),
+        content: SizedBox(
+          width: 240,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: unassigned.length,
+            itemBuilder: (_, i) {
+              final player = unassigned[i];
+              final hc = ((player['HC'] ?? player['handicap']) as num? ?? 0).toDouble();
+              return ListTile(
+                title: Text(player['last'] ?? ''),
+                trailing: Text('HC ${hc.toStringAsFixed(1)}',
+                    style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  setState(() {
+                    groups[groupIndex][playerIndex] = player;
+                  });
+                  _createControllersForPlayers();
+                },
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
   }
 
   /// Gets the text for the shuffle/delete button
@@ -645,6 +731,32 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
   void _onEmptySlotTap(int groupIndex, int playerIndex) {
     if (_hasAnyScoreData() || groupsProcessed) return;
 
+    // In adjust players overlay: triple-tap opens the add-player picker
+    if (_showAdjustPlayersOverlay) {
+      final slotKey = '${groupIndex}_$playerIndex';
+      bool showPicker = false;
+      setState(() {
+        if (_addTargetSlotKey == slotKey) {
+          if (_addTargetTapCount >= 3) {
+            _resetAddMode(); // 4th tap cancels
+          } else {
+            _addTargetTapCount++;
+            if (_addTargetTapCount >= 3) showPicker = true;
+          }
+        } else {
+          _resetAddMode();
+          _addTargetSlotKey = slotKey;
+          _addTargetTapCount = 1;
+        }
+      });
+      if (showPicker) {
+        _showAddPlayerDialog(groupIndex, playerIndex);
+        setState(() => _resetAddMode());
+      }
+      return;
+    }
+
+    // Outside adjust overlay: existing swap-selection behavior
     String slotKey = 'empty_${groupIndex + 1}_$playerIndex';
     setState(() {
       if (selectedForSwap.contains(slotKey)) {
@@ -680,8 +792,11 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
 
   bool _isEmptySlotSelected(int groupIndex, int playerIndex) {
     if (_hasAnyScoreData() || groupsProcessed) return false;
-    String slotKey = 'empty_${groupIndex + 1}_$playerIndex';
-    return selectedForSwap.contains(slotKey);
+    String swapKey = 'empty_${groupIndex + 1}_$playerIndex';
+    if (selectedForSwap.contains(swapKey)) return true;
+    // Highlight during add tap progression
+    if (_showAdjustPlayersOverlay && _addTargetSlotKey == '${groupIndex}_$playerIndex') return true;
+    return false;
   }
 
   void _handleSwap() {

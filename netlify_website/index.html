@@ -1323,18 +1323,9 @@
                     return;
                 }
 
-                // Filter out announcements older than today
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-
+                // Show all announcements — admin uses the Delete button to remove them manually
                 const announcements = querySnapshot.docs
-                    .map(doc => ({ id: doc.id, ...doc.data() }))
-                    .filter(ann => {
-                        if (!ann.createdAt) return true; // Keep announcements without dates
-                        const annDate = new Date(ann.createdAt.seconds * 1000);
-                        annDate.setHours(0, 0, 0, 0);
-                        return annDate >= today;
-                    });
+                    .map(doc => ({ id: doc.id, ...doc.data() }));
 
                 container.innerHTML = announcements.map(ann => `
                     <div class="announcement ${ann.priority === 'important' || ann.priority === 'urgent' ? 'important' : ''}">
@@ -2549,18 +2540,17 @@ Your current HC is displayed when you log in.
                             <thead>
                                 <tr>
                                     <th>Date Played</th>
-                                    <th>HC</th>
-                                    <th>Gross</th>
-                                    <th>Close Pin $$$</th>
-                                    <th>Individual $$$</th>
-                                    <th>Group $$$</th>
+                                    <th>OHC</th>
+                                    <th>Pad#</th>
+                                    <th>Start HC</th>
+                                    <th>Match Gross</th>
+                                    <th>New HC</th>
                                 </tr>
                             </thead>
                             <tbody>
                     `;
 
                     for (const score of scores) {
-                        // Parse date_played to avoid timezone issues
                         let dateFormatted = 'N/A';
                         if (score.date_played) {
                             const parts = score.date_played.split('-');
@@ -2575,11 +2565,11 @@ Your current HC is displayed when you log in.
                         htmlContent += `
                             <tr>
                                 <td>${dateFormatted}</td>
+                                <td>${score.OHC ?? 'N/A'}</td>
+                                <td>${score.pad_count ?? 'N/A'}</td>
                                 <td>${score.handicap ?? 'N/A'}</td>
                                 <td>${score.gross_score ?? 'N/A'}</td>
-                                <td>$${(score.close_pin_winnings || 0).toFixed(2)}</td>
-                                <td>$${(score.single_winnings || 0).toFixed(2)}</td>
-                                <td>$${(score.group_winnings || 0).toFixed(2)}</td>
+                                <td>${score.new_hc ?? 'N/A'}</td>
                             </tr>
                         `;
                     }
@@ -3003,29 +2993,7 @@ Your current HC is displayed when you log in.
 
         // Auto-cleanup old announcements (admin only)
         async function cleanupOldAnnouncements() {
-            if (!isAdmin) return;
-
-            try {
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-
-                // Get the current league for admin
-                const displayLeague = adminSelectedLeague || selectedLeague;
-                const collectionName = displayLeague === 'monday' ? 'M_announcements' : 'W_announcements';
-
-                const announcementsRef = collection(db, collectionName);
-                const q = query(announcementsRef, where('createdAt', '<', Timestamp.fromDate(today)));
-                const querySnapshot = await getDocs(q);
-
-                const deletePromises = querySnapshot.docs.map(doc => deleteDoc(doc.ref));
-                await Promise.all(deletePromises);
-
-                if (querySnapshot.docs.length > 0) {
-                    console.log(`Cleaned up ${querySnapshot.docs.length} old announcements from ${displayLeague} league`);
-                }
-            } catch (err) {
-                console.error('Error cleaning up announcements:', err);
-            }
+            // Auto-cleanup disabled — announcements persist until admin manually deletes them
         }
 
         // Cleanup old play dates and availability records

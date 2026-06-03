@@ -256,7 +256,7 @@ class FirebaseUploadService {
         // Create document ID in format: MM-DD-YY_PlayerName_ID
         String docId;
         String? wednesdayFormattedDate; // For Wednesday league date formatting
-        // Build docId as PlayerID_MM-DD-YY — unique per player per date, prevents duplicates
+        // Build docId as LastName_MM-DD-YY — readable and unique per player per date
         final dateStr = score['date_played']?.toString() ?? '';
         String formattedDate = 'unknown-date';
         try {
@@ -275,8 +275,8 @@ class FirebaseUploadService {
         } catch (e) {
           debugPrint('Error parsing date for docId: $dateStr - $e');
         }
-        final playerId = (score['player_id'] ?? 'unknown').toString().replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
-        docId = '${playerId}_$formattedDate';
+        final lastName = (score['name'] ?? 'unknown').toString().replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
+        docId = '${lastName}_$formattedDate';
 
         final docRef = collection.doc(docId);
         
@@ -364,7 +364,7 @@ class FirebaseUploadService {
         // Create document ID using the same format as upload
         String docId;
 
-        // Build docId using same format as upload: PlayerID_MM-DD-YY
+        // Build docId using same format as upload: LastName_MM-DD-YY
         final dateStr = score['date_played']?.toString() ?? '';
         String formattedDate = 'unknown-date';
         try {
@@ -383,8 +383,8 @@ class FirebaseUploadService {
         } catch (e) {
           debugPrint('Error parsing date for delete docId: $dateStr - $e');
         }
-        final playerId = (score['player_id'] ?? 'unknown').toString().replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
-        docId = '${playerId}_$formattedDate';
+        final lastName = (score['name'] ?? 'unknown').toString().replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
+        docId = '${lastName}_$formattedDate';
 
         final docRef = collection.doc(docId);
         batch.delete(docRef);

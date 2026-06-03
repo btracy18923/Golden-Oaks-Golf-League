@@ -111,8 +111,11 @@ class DatabaseHelper {
         name TEXT NOT NULL,
         date_played TEXT NOT NULL,
         golf_course TEXT NOT NULL,
+        OHC REAL,
+        pad_count INTEGER,
         handicap REAL,
         gross_score INTEGER,
+        new_hc REAL,
         close_pin_winnings REAL DEFAULT 0.0,
         single_winnings REAL DEFAULT 0.0,
         group_winnings REAL DEFAULT 0.0,
@@ -679,6 +682,12 @@ class DatabaseHelper {
         await db.execute('ALTER TABLE wednesday_scores ADD COLUMN grp_pos TEXT');
       } catch (e) {
       }
+    }
+    if (oldVersion < 27) {
+      // Add OHC, pad_count, new_hc columns to wednesday_scores
+      try { await db.execute('ALTER TABLE wednesday_scores ADD COLUMN OHC REAL'); } catch (e) {}
+      try { await db.execute('ALTER TABLE wednesday_scores ADD COLUMN pad_count INTEGER'); } catch (e) {}
+      try { await db.execute('ALTER TABLE wednesday_scores ADD COLUMN new_hc REAL'); } catch (e) {}
     }
     if (oldVersion < 26) {
       // Rebuild monday_scores: rename skat_number→S_SK, skats_score→SKATS,

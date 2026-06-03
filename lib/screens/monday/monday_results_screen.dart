@@ -138,7 +138,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
             'name': player.name,
             'date_played': currentDate,
             'golf_course': selectedGolfCourse,
-            'S_SK': dbPlayer['skat_number'],
+            'S_SK': int.tryParse(player.skNumber) ?? dbPlayer['skat_number'],
             'close_pin_winnings': 0.0, // Will be updated in Step A2
             'skat_winnings': 0.0, // Will be updated in Step A3
           };

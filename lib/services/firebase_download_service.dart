@@ -14,7 +14,7 @@ class FirebaseDownloadService {
   final DatabaseHelper _dbHelper = DatabaseHelper();
 
   /// Download all Monday league data from Firebase
-  /// This includes players, scores, and golf courses
+  /// This includes players (only if local DB is empty), scores, and golf courses
   Future<Map<String, dynamic>> downloadMondayLeagueData() async {
     debugPrint('=== DOWNLOADING MONDAY LEAGUE DATA FROM FIREBASE ===');
 
@@ -24,11 +24,22 @@ class FirebaseDownloadService {
     List<String> errors = [];
 
     try {
-      // Download Monday players from M_player_profile
-      final playersResult = await _downloadMondayPlayers();
-      playersDownloaded = playersResult['count'] as int;
-      if (playersResult['errors'] != null) {
-        errors.addAll(playersResult['errors'] as List<String>);
+      // Only download player profiles on a fresh install (no players in local DB).
+      // On existing installs, local SK# values are authoritative — downloading would
+      // overwrite them with potentially stale Firebase data.
+      final db = await _dbHelper.database;
+      final existingPlayers = await db.query('players',
+          where: 'league = ? OR league = ?',
+          whereArgs: ['monday', 'both'],
+          limit: 1);
+      if (existingPlayers.isEmpty) {
+        final playersResult = await _downloadMondayPlayers();
+        playersDownloaded = playersResult['count'] as int;
+        if (playersResult['errors'] != null) {
+          errors.addAll(playersResult['errors'] as List<String>);
+        }
+      } else {
+        debugPrint('Monday players already in local DB — skipping player profile download');
       }
 
       // Download Monday scores from M_player_scores
@@ -68,7 +79,7 @@ class FirebaseDownloadService {
   }
 
   /// Download all Wednesday league data from Firebase
-  /// This includes players and scores
+  /// This includes players (only if local DB is empty) and scores
   Future<Map<String, dynamic>> downloadWednesdayLeagueData() async {
     debugPrint('=== DOWNLOADING WEDNESDAY LEAGUE DATA FROM FIREBASE ===');
 
@@ -77,11 +88,22 @@ class FirebaseDownloadService {
     List<String> errors = [];
 
     try {
-      // Download Wednesday players from W_player_profile
-      final playersResult = await _downloadWednesdayPlayers();
-      playersDownloaded = playersResult['count'] as int;
-      if (playersResult['errors'] != null) {
-        errors.addAll(playersResult['errors'] as List<String>);
+      // Only download player profiles on a fresh install (no players in local DB).
+      // On existing installs, local HC values are authoritative — downloading would
+      // overwrite them with potentially stale Firebase data.
+      final db = await _dbHelper.database;
+      final existingPlayers = await db.query('players',
+          where: 'league = ? OR league = ?',
+          whereArgs: ['wednesday', 'both'],
+          limit: 1);
+      if (existingPlayers.isEmpty) {
+        final playersResult = await _downloadWednesdayPlayers();
+        playersDownloaded = playersResult['count'] as int;
+        if (playersResult['errors'] != null) {
+          errors.addAll(playersResult['errors'] as List<String>);
+        }
+      } else {
+        debugPrint('Wednesday players already in local DB — skipping player profile download');
       }
 
       // Download Wednesday scores from W_player_scores
