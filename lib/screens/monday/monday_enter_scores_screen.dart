@@ -1331,7 +1331,11 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
           // Main content
           Column(
             children: [
-              EnterScoresUIService.buildPurseHeader(context, League.monday, onReturn: _handleReturn, onAutoFill: _handleAutoFill, payoutAmount: _payoutAmount),
+              EnterScoresUIService.buildPurseHeader(context, League.monday, onReturn: _handleReturn, onAutoFill: _handleAutoFill, payoutAmount: _payoutAmount, collectAmount: () {
+                int count = 0;
+                for (var g in groups) { count += g.where((p) => p.name.isNotEmpty).length; }
+                return (LeaguePurseService.getPlayersAnte(league: League.monday) + LeaguePurseService.getClosestPinAmount(league: League.monday) + LeaguePurseService.getMulliganAmount(league: League.monday)) * count;
+              }()),
               EnterScoresUIService.buildGroupsGrid(
                 context,
                 groups,

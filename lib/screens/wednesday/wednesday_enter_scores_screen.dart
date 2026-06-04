@@ -107,6 +107,7 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
   String _playersPurseDisplayText = "\$0.00";
   String _mulliganPurseDisplayText = "\$0.00";
   double _adjustedMulliganPurse = 0.0;
+  double _totalPurseAmount = 0.0; // (ante + closestPin + mulligan) × playerCount
   double _totalPayoutSum = 0.0;
   double _groupPurseAmount = 0.0;
   double _groupPayoutAmount = 0.0;
@@ -341,7 +342,7 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
   Future<void> updateTitleInformation() async {
     try {
       double anteAmount = LeaguePurseService.getPlayersAnte(league: League.wednesday);
-      LeaguePurseService.getClosestPinAmount(league: League.wednesday);
+      double closestPinAmount = LeaguePurseService.getClosestPinAmount(league: League.wednesday);
       double mulliganAmount = LeaguePurseService.getMulliganAmount(league: League.wednesday);
 
       int playerCount = 0;
@@ -353,6 +354,7 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
 
       totalPurse = anteAmount * playerCount;
       double mulliganPurse = mulliganAmount * playerCount;
+      _totalPurseAmount = (anteAmount + closestPinAmount + mulliganAmount) * playerCount;
 
       // Get individual purse from CSV for initial display
       double displayPurse = totalPurse;
@@ -1411,13 +1413,13 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
   @override
   Widget build(BuildContext context) {
     // First purse position:
-    // - Before groups processing: shows "Ind Purse" with individual purse amount
+    // - Before groups processing: shows "Total Purse" = (ante + closestPin + mulligan) × players
     // - After groups processing: shows "Group Purse" with team_total from CSV
     double playersPurse;
     if (groupsProcessed) {
       playersPurse = _groupPurseAmount;
     } else {
-      playersPurse = double.tryParse(_playersPurseDisplayText.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0.0;
+      playersPurse = _totalPurseAmount;
     }
 
     // For the second purse position (now "Payout"):
@@ -1631,18 +1633,23 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
   Future<void> _handleEmailProShop() async {
     final backendEmailService = BackendEmailService();
 
-    // Build email subject
     final currentDate = DateTime.now().toString().split(' ')[0];
     final subject = 'Golden Oaks Wed. Players - $currentDate';
-
-    // Build email body with groups
     final body = _buildProShopEmailBody();
 
-    // Send email via backend service
-    final success = await backendEmailService.sendProShopEmail(
-      subject: subject,
-      body: body,
-    );
+    final bool success;
+    if (EmailConfig.testEmailMode) {
+      success = await backendEmailService.sendCustomEmail(
+        to: [EmailConfig.fallbackEmail],
+        subject: '[TEST] $subject',
+        body: body,
+      );
+    } else {
+      success = await backendEmailService.sendProShopEmail(
+        subject: subject,
+        body: body,
+      );
+    }
 
     if (success) {
       await _saveGroupingsToFirebase();
@@ -1831,12 +1838,21 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
       return;
     }
 
-    final success = await backendEmailService.sendCustomEmail(
-      to: [EmailConfig.fallbackEmail],
-      bcc: emails.toList(),
-      subject: subject,
-      body: body,
-    );
+    final bool success;
+    if (EmailConfig.testEmailMode) {
+      success = await backendEmailService.sendCustomEmail(
+        to: [EmailConfig.fallbackEmail],
+        subject: '[TEST] $subject',
+        body: body,
+      );
+    } else {
+      success = await backendEmailService.sendCustomEmail(
+        to: [EmailConfig.fallbackEmail],
+        bcc: emails.toList(),
+        subject: subject,
+        body: body,
+      );
+    }
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1851,10 +1867,12 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
     }
   }
 
-  /// Builds a simple group listing email body (no member numbers)
+  /// Builds the individual player email body — same layout as ProShop but with
+  /// Hole/chip labels instead of "Group X" and no member numbers.
+  /// Listed descending: last hole (RED) first, Hole 1 last.
   String _buildGroupsEmailBody() {
     final buffer = StringBuffer();
-    buffer.writeln('Golden Oaks Wednesday League - Group Assignments');
+    buffer.writeln('Golden Oaks Wednesday League - Starting Holes');
     buffer.writeln('Date: ${DateTime.now().toString().split(' ')[0]}');
     buffer.writeln();
 
@@ -1867,14 +1885,37 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
       if (validPlayers.isNotEmpty) validGroups.add(validPlayers);
     }
 
-    for (int i = 0; i < validGroups.length; i++) {
-      final playerNames = validGroups[i].map((p) {
+    const chipColors = ['RED', 'WHITE', 'BLUE', 'BLACK', 'GREEN'];
+    final totalGroups = validGroups.length;
+    int totalPlayers = 0;
+
+    // Descending: last hole (RED) first, Hole 1 last
+    for (int i = totalGroups - 1; i >= 0; i--) {
+      String holeLabel;
+      if (i == 0) {
+        holeLabel = 'Hole 1 - Pick up Poker Chip on #6 Par 3';
+      } else {
+        final reverseIndex = totalGroups - 1 - i;
+        if (reverseIndex < chipColors.length) {
+          holeLabel = 'Hole ${i + 1} - ${chipColors[reverseIndex]} Poker Chip';
+        } else {
+          holeLabel = 'Hole ${i + 1}';
+        }
+      }
+
+      buffer.writeln('$holeLabel:');
+      for (final p in validGroups[i]) {
         final first = p['first']?.toString() ?? '';
         final last = p['last']?.toString() ?? '';
-        return '$first $last'.trim();
-      }).join(', ');
-      buffer.writeln('Group ${i + 1}: $playerNames');
+        buffer.writeln('  ${('$first $last').trim()}');
+        totalPlayers++;
+      }
+      buffer.writeln();
     }
+
+    buffer.writeln('Total Players: $totalPlayers');
+    buffer.writeln();
+    buffer.writeln('Generated on: ${DateTime.now().toString().split(' ')[0]}');
 
     return buffer.toString();
   }

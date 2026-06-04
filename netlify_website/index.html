@@ -3263,9 +3263,13 @@ Your current HC is displayed when you log in.
                     if (r.individual_results && r.individual_results.length > 0) {
                         const indWinners = r.individual_results.filter(p => p.ind_pos && p.ind_pos !== '');
                         if (indWinners.length > 0) {
-                            const indPool = r.individual_pool != null
+                            const indPool = (r.individual_pool != null && r.individual_pool > 0)
                                 ? Math.round(r.individual_pool)
-                                : Math.round(r.individual_results.reduce((s,p) => s+(p.individual_winnings||0), 0));
+                                : Math.round(r.individual_results.reduce((s,p) => {
+                                    const pm = p.prize_money || p.individual_winnings || 0;
+                                    const val = typeof pm === 'string' ? parseFloat(pm.replace(/[^0-9.]/g,'')) || 0 : (pm || 0);
+                                    return s + val;
+                                }, 0));
                             html += `<h5 style="color:#276749;margin-bottom:6px;">🥇 Individual Results Pool = $${indPool}</h5>
                             <table ${tbl}><thead><tr>
                                 <th ${th}>Pos</th><th ${th}>Player</th><th ${th}>Gross</th><th ${th}>HC</th><th ${th}>Net</th><th ${th}>Winnings</th>
@@ -3295,13 +3299,15 @@ Your current HC is displayed when you log in.
                             <th ${th}>Pos</th><th ${th}>Group</th><th ${th}>Players</th><th ${th}>Avg Net</th><th ${th}>Winnings</th>
                         </tr></thead><tbody>`;
                         r.group_results.sort((a,b) => (a.grp_pos||'99').localeCompare(b.grp_pos||'99'));
+                        const lastGrpPos = r.group_results[r.group_results.length - 1]?.grp_pos;
                         r.group_results.forEach(g => {
+                            const isLastGroup = g.grp_pos === lastGrpPos;
                             const playerNames = Array.isArray(g.players)
-                                ? g.players.map(n => wildcardSet.has(n)
+                                ? g.players.map(n => (isLastGroup && wildcardSet.has(n))
                                     ? `<span style="color:darkorange;font-weight:600;">${n}</span>`
                                     : n).join(', ')
                                 : '';
-                            const winnings = g.group_winnings > 0 ? `$${Math.round(g.group_winnings)}` : '';
+                            const winnings = g.group_winnings > 0 ? `$${Math.round(g.group_winnings)} each` : '';
                             html += `<tr><td ${td}>${g.grp_pos||''}</td><td ${td}>Group ${g.group_number}</td><td ${td}>${playerNames}</td><td ${td}>${g.avg_net||''}</td><td ${td}>${winnings}</td></tr>`;
                         });
                         html += '</tbody></table>';

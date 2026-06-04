@@ -4,6 +4,7 @@ import '../../models/league.dart';
 import '../../services/database_helper.dart';
 import '../../services/device_detection_service.dart';
 import '../../services/firebase_upload_service.dart';
+import '../../config/email_config.dart';
 
 class WednesdayAdminScreen extends StatefulWidget {
   final League? currentLeague;
@@ -21,6 +22,7 @@ class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
   bool _isDownloading = false;
   bool _firebaseUploadsEnabled = true;
   bool _allowDuplicateDates = true;
+  bool _testEmailMode = false;
 
   @override
   void initState() {
@@ -28,6 +30,16 @@ class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
     _initializeFirestore();
     _loadFirebaseUploadsState();
     _loadAllowDuplicateDatesState();
+    _loadTestEmailModeState();
+  }
+
+  Future<void> _loadTestEmailModeState() async {
+    await EmailConfig.loadTestEmailModeState();
+    if (mounted) {
+      setState(() {
+        _testEmailMode = EmailConfig.testEmailMode;
+      });
+    }
   }
 
   /// Load the Firebase uploads enabled state from SharedPreferences
@@ -182,6 +194,59 @@ class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
                                     : 'Duplicate dates BLOCKED',
                                 ),
                                 backgroundColor: _allowDuplicateDates ? Colors.blue : Colors.orange,
+                                duration: const Duration(seconds: 2),
+                              ),
+                            );
+                          }
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                // Test Email Mode Checkbox
+                Center(
+                  child: SizedBox(
+                    width: MediaQuery.of(context).size.width * 0.7,
+                    child: Card(
+                      elevation: 4,
+                      color: _testEmailMode ? Colors.amber[50] : Colors.grey[50],
+                      child: CheckboxListTile(
+                        title: Text(
+                          'Test Email Mode',
+                          style: TextStyle(
+                            fontSize: 20 * DeviceDetectionService.getFontScale(context),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        subtitle: Text(
+                          _testEmailMode
+                            ? 'Emails go only to btracy18923@gmail.com'
+                            : 'Emails go to all intended recipients',
+                          style: TextStyle(
+                            fontSize: 16 * DeviceDetectionService.getFontScale(context),
+                            color: _testEmailMode ? Colors.amber[800] : Colors.grey[700],
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        value: _testEmailMode,
+                        onChanged: (bool? value) async {
+                          final newState = value ?? false;
+                          setState(() {
+                            _testEmailMode = newState;
+                          });
+                          await EmailConfig.saveTestEmailModeState(newState);
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  newState
+                                    ? 'Test Email Mode ON — emails go only to you'
+                                    : 'Test Email Mode OFF — emails go to all recipients',
+                                ),
+                                backgroundColor: newState ? Colors.amber[700] : Colors.grey[700],
                                 duration: const Duration(seconds: 2),
                               ),
                             );

@@ -165,7 +165,7 @@ class EnterScoresUIService {
   /// [onReturn] - Optional callback for left arrow return functionality
   /// [onAutoFill] - Optional callback for storage icon auto-fill functionality
   /// [payoutAmount] - Optional payout amount to display instead of closest pin purse
-  static Widget buildPurseHeader(BuildContext context, League league, {VoidCallback? onReturn, VoidCallback? onAutoFill, double? payoutAmount}) {
+  static Widget buildPurseHeader(BuildContext context, League league, {VoidCallback? onReturn, VoidCallback? onAutoFill, double? payoutAmount, double? collectAmount}) {
     //print("Using UI Service for ${league.name} league");
     final deviceType = getDeviceType(context);
     final fontSize = getResponsiveFontSize(deviceType, isHeader: true);
@@ -199,7 +199,7 @@ class EnterScoresUIService {
                 children: [
                   Flexible(
                     child: Text(
-                      '${LeaguePurseService.getPrimaryPurseLabel(league)} = ',
+                      collectAmount != null ? 'Collect = ' : '${LeaguePurseService.getPrimaryPurseLabel(league)} = ',
                       style: TextStyle(
                         fontSize: headerFontSize,
                         fontWeight: FontWeight.bold,
@@ -216,7 +216,9 @@ class EnterScoresUIService {
                         borderRadius: BorderRadius.circular(4.0),
                       ),
                       child: Text(
-                        LeaguePurseService.formatPurseAmount(LeaguePurseService.getPrimaryPurse(league)),
+                        collectAmount != null
+                            ? LeaguePurseService.formatPurseAmount(collectAmount)
+                            : LeaguePurseService.formatPurseAmount(LeaguePurseService.getPrimaryPurse(league)),
                         style: TextStyle(
                           fontSize: headerFontSize,
                           fontWeight: FontWeight.bold,
@@ -1206,7 +1208,7 @@ class EnterScoresUIService {
       firstPurseLabel = "Group Purse";
       secondPurseLabel = "Group Payout";
     } else {
-      firstPurseLabel = "Ind Purse";
+      firstPurseLabel = "Collect";
       // Default to "Payout" for initial state and after individuals processing
       secondPurseLabel = "Payout";
     }
