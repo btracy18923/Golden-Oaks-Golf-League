@@ -892,13 +892,10 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
             const SizedBox(height: 16),
           ],
 
-          // Consolidated Payout Summary Section
-          _buildConsolidatedPayoutSummary(),
-
+          // Individual and Group results tables
+          _buildIndividualResultsSection(),
           const SizedBox(height: 16),
-
-          // Consolidated Payout Details Table
-          _buildConsolidatedPayoutTable(),
+          _buildGroupResultsSection(),
         ],
       ),
     );
@@ -912,8 +909,6 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
         _buildParentScreenDataRow(),
         // Second row: Total Players, Collect, Party Fund
         _buildPlayersAndCollectRow(),
-        // Third row: Golf Course
-        _buildGolfCourseRow(),
       ],
     );
   }
@@ -1028,122 +1023,6 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  /// Builds third row with Golf Course
-  Widget _buildGolfCourseRow() {
-    final screenSize = MediaQuery.of(context).size;
-    final is6InchPhone = screenSize.width <= 900;
-    final double fontSize = is6InchPhone ? 22 : 24;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Text(
-        'Golf Course: ${_retentionService.selectedGolfCourse ?? 'The Hideout'}',
-        style: TextStyle(
-          fontWeight: FontWeight.w600,
-          color: Colors.black87,
-          fontSize: fontSize - 10,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildConsolidatedPayoutSummary() {
-    final screenSize = MediaQuery.of(context).size;
-    final is6InchPhone = screenSize.width <= 900;
-    final double fontSize = is6InchPhone ? 14 : 24;
-
-    // Get individual payout data from the saved individual winners (only count those with positive prize money)
-    int individualWinnersCount = 0;
-    double totalIndividualPayout = 0.0;
-
-    for (var player in widget.individualWinners) {
-      if (player['prize_money'] != null) {
-        String prizeMoney = player['prize_money'].toString();
-        if (prizeMoney.contains('\$')) {
-          try {
-            double amount = double.parse(prizeMoney.replaceAll('\$', '').replaceAll(',', ''));
-            if (amount > 0) {
-              individualWinnersCount++;
-              totalIndividualPayout += amount;
-            }
-          } catch (e) {
-            // Skip if parsing fails
-          }
-        }
-      }
-    }
-
-    // Count unique group winners (players can appear in multiple groups as wildcards, count each player once)
-    Set<String> groupWinnerNames = {};
-    for (var group in widget.groups) {
-      for (var player in group) {
-        if (player != null &&
-            player['prize_money'] != null &&
-            player['manual_group'] != null &&
-            player['last'] != null) {
-          // Check if prize money is positive
-          String prizeMoney = player['prize_money'].toString();
-          if (prizeMoney.contains('\$')) {
-            try {
-              double amount = double.parse(prizeMoney.replaceAll('\$', '').replaceAll(',', ''));
-              if (amount > 0) {
-                groupWinnerNames.add(player['last'].toString());
-              }
-            } catch (e) {
-              // Skip if parsing fails
-            }
-          }
-        }
-      }
-    }
-    int groupWinnersCount = groupWinnerNames.length;
-
-    // Only show if there are winners
-    if (individualWinnersCount == 0 && groupWinnersCount == 0) {
-      return const SizedBox.shrink();
-    }
-
-    return Center(
-      child: IntrinsicWidth(
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.purple[50],
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.purple[200]!),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              if (individualWinnersCount > 0)
-                Text(
-                  'Individual Payout Summary:  Winners: $individualWinnersCount  Total Payout: \$${totalIndividualPayout.toStringAsFixed(2)}',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: fontSize,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.blue[900],
-                  ),
-                ),
-              if (individualWinnersCount > 0 && groupWinnersCount > 0)
-                const SizedBox(height: 8),
-              if (groupWinnersCount > 0)
-                Text(
-                  'Group Payout Summary:  Winners: $groupWinnersCount  Total Payout: \$${widget.groupPayoutAmount.toStringAsFixed(2)}',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: fontSize,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.blue[900],
-                  ),
-                ),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -1294,171 +1173,222 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
     );
   }
 
-  Widget _buildConsolidatedPayoutTable() {
-    // Collect all players with winnings from both individual and group
-    Map<String, Map<String, dynamic>> allWinners = {};
+  Widget _buildIndividualResultsSection() {
+    final screenSize = MediaQuery.of(context).size;
+    final is6InchPhone = screenSize.width <= 900;
+    final double fontSize = is6InchPhone ? 13.0 : 18.0;
+    const headerColor = Color(0xFF1B5E20);
 
-    // Add individual winners
+    double pool = 0.0;
+    final winners = <Map<String, dynamic>>[];
     for (var player in widget.individualWinners) {
-      if (player['prize_money'] != null && player['last'] != null) {
-        String prizeMoney = player['prize_money'].toString();
-        if (prizeMoney.contains('\$')) {
-          try {
-            double amount = double.parse(prizeMoney.replaceAll('\$', '').replaceAll(',', ''));
-            if (amount > 0) {
-              String playerName = player['last'].toString();
-              double? netScore = player['net_score'] != null ? (player['net_score'] as num).toDouble() : null;
-              allWinners[playerName] = {
-                'name': playerName,
-                'net_score': netScore,
-                'individual_winnings': amount,
-                'group_number': null,
-                'group_winnings': 0.0,
-              };
-            }
-          } catch (e) {
-            // Skip if parsing fails
-          }
-        }
+      final pm = double.tryParse((player['prize_money']?.toString() ?? '')
+              .replaceAll('\$', '').replaceAll(',', '').trim()) ?? 0.0;
+      if (pm > 0) {
+        pool += pm;
+        winners.add(player);
       }
     }
+    if (winners.isEmpty) return const SizedBox.shrink();
 
-    // Add group winners (include wildcards - they can win in multiple groups)
-    for (var group in widget.groups) {
-      for (var player in group) {
-        if (player != null &&
-            player['prize_money'] != null &&
-            player['manual_group'] != null &&
-            player['last'] != null) {
-          String prizeMoney = player['prize_money'].toString();
-          if (prizeMoney.contains('\$')) {
-            try {
-              double amount = double.parse(prizeMoney.replaceAll('\$', '').replaceAll(',', ''));
-              if (amount > 0) {
-                String playerName = player['last'].toString();
-                double? netScore = player['net_score'] != null ? (player['net_score'] as num).toDouble() : null;
-                if (allWinners.containsKey(playerName)) {
-                  // Player already exists, accumulate group winnings (can win in primary + wildcard group)
-                  double currentGroupWinnings = (allWinners[playerName]!['group_winnings'] as double?) ?? 0.0;
-                  allWinners[playerName]!['group_winnings'] = currentGroupWinnings + amount;
-                  // Update group number only if not already set (primary group takes precedence)
-                  if (allWinners[playerName]!['group_number'] == null) {
-                    allWinners[playerName]!['group_number'] = player['manual_group'];
-                  }
-                  // Update net_score if not already set
-                  if (allWinners[playerName]!['net_score'] == null && netScore != null) {
-                    allWinners[playerName]!['net_score'] = netScore;
-                  }
-                } else {
-                  // New player with only group winnings
-                  allWinners[playerName] = {
-                    'name': playerName,
-                    'net_score': netScore,
-                    'individual_winnings': 0.0,
-                    'group_number': player['manual_group'],
-                    'group_winnings': amount,
-                  };
-                }
-              }
-            } catch (e) {
-              // Skip if parsing fails
-            }
-          }
-        }
-      }
-    }
-
-    if (allWinners.isEmpty) return const SizedBox.shrink();
-
-    // Sort by Net score (lowest first)
-    List<Map<String, dynamic>> sortedWinners = allWinners.values.toList();
-    sortedWinners.sort((a, b) {
-      // Get net scores, use high value for null to push them to the end
-      double aNet = (a['net_score'] as double?) ?? 999.0;
-      double bNet = (b['net_score'] as double?) ?? 999.0;
-
-      // Sort by net score ascending (lowest first)
-      int netComparison = aNet.compareTo(bNet);
-      if (netComparison != 0) return netComparison;
-
-      // If net scores are the same, sort alphabetically by name
-      return (a['name'] as String).compareTo(b['name'] as String);
+    winners.sort((a, b) {
+      final aPos = int.tryParse(a['ind_pos']?.toString() ?? '') ?? 999;
+      final bPos = int.tryParse(b['ind_pos']?.toString() ?? '') ?? 999;
+      return aPos.compareTo(bPos);
     });
 
-    return Table(
-      border: TableBorder.all(color: Colors.grey[400]!, width: 1),
-      columnWidths: const {
-        0: FlexColumnWidth(2),
-        1: FlexColumnWidth(1),
-        2: FlexColumnWidth(1),
-        3: FlexColumnWidth(1),
-        4: FlexColumnWidth(1),
-      },
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        TableRow(
-          decoration: BoxDecoration(color: Colors.blue[300]),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Text(
+            '🥇  Individual Results Pool = \$${pool.round()}',
+            style: TextStyle(fontSize: fontSize + 2, fontWeight: FontWeight.bold, color: Colors.teal[900]),
+          ),
+        ),
+        Table(
+          border: TableBorder.all(color: Colors.grey[300]!, width: 1),
+          columnWidths: const {
+            0: FlexColumnWidth(1),
+            1: FlexColumnWidth(3),
+            2: FlexColumnWidth(2),
+            3: FlexColumnWidth(2),
+            4: FlexColumnWidth(2),
+            5: FlexColumnWidth(2),
+          },
           children: [
-            _buildTableCell('Player', isHeader: true),
-            _buildTableCell('Net', isHeader: true),
-            _buildTableCell('Ind \$\$\$', isHeader: true),
-            _buildTableCell('Group \$\$\$', isHeader: true),
-            _buildTableCell('Total \$\$\$', isHeader: true),
+            TableRow(
+              decoration: const BoxDecoration(color: headerColor),
+              children: [
+                _buildTCell('Pos', fontSize, isHeader: true),
+                _buildTCell('Player', fontSize, isHeader: true),
+                _buildTCell('Gross', fontSize, isHeader: true),
+                _buildTCell('HC', fontSize, isHeader: true),
+                _buildTCell('Net', fontSize, isHeader: true),
+                _buildTCell('Winnings', fontSize, isHeader: true),
+              ],
+            ),
+            ...winners.map((p) => TableRow(children: [
+              _buildTCell(p['ind_pos']?.toString() ?? '', fontSize),
+              _buildTCell(p['last']?.toString() ?? '', fontSize),
+              _buildTCell(p['gross_score']?.toString() ?? '', fontSize),
+              _buildTCell(_fmtNum(p['handicap']), fontSize),
+              _buildTCell(_fmtNum(p['net_score']), fontSize),
+              _buildTCell(p['prize_money']?.toString() ?? '', fontSize),
+            ])),
           ],
         ),
-        ...sortedWinners.map((player) {
-          double individualWinnings = player['individual_winnings'] as double;
-          double groupWinnings = player['group_winnings'] as double;
-          double totalWinnings = individualWinnings + groupWinnings;
-          double? netScore = player['net_score'] as double?;
-
-          return TableRow(
-            children: [
-              _buildTableCell(player['name'] as String),
-              _buildTableCell(
-                netScore != null ? netScore.toStringAsFixed(1) : '',
-              ),
-              _buildTableCell(
-                individualWinnings > 0
-                  ? '\$${individualWinnings.toStringAsFixed(2)}'
-                  : '',
-              ),
-              _buildTableCell(
-                groupWinnings > 0
-                  ? '\$${groupWinnings.toStringAsFixed(2)}'
-                  : '',
-              ),
-              _buildTableCell(
-                '\$${totalWinnings.toStringAsFixed(2)}',
-                isMoneyColumn: true,
-              ),
-            ],
-          );
-        }),
       ],
     );
   }
 
-  Widget _buildTableCell(String text, {bool isHeader = false, bool isMoneyColumn = false}) {
+  Widget _buildGroupResultsSection() {
     final screenSize = MediaQuery.of(context).size;
     final is6InchPhone = screenSize.width <= 900;
-    final double fontSize = is6InchPhone ? 14 : 22;
-    final double cellPadding = is6InchPhone ? 2 : 8;
+    final double fontSize = is6InchPhone ? 13.0 : 18.0;
+    const headerColor = Color(0xFF1B5E20);
 
-    return Container(
-      color: isMoneyColumn ? Colors.blue[100] : null,
-      padding: EdgeInsets.all(cellPadding),
+    final wildcards = <String>{};
+    for (var group in widget.groups) {
+      for (var player in group) {
+        if (player != null && player['is_wild_card'] == true) {
+          final name = player['last']?.toString() ?? '';
+          if (name.isNotEmpty) wildcards.add(name);
+        }
+      }
+    }
+
+    final groupMap = <int, Map<String, dynamic>>{};
+    for (var group in widget.groups) {
+      for (var player in group) {
+        if (player == null || player['manual_group'] == null) continue;
+        final grpNum = player['manual_group'] as int;
+        if (!groupMap.containsKey(grpNum)) {
+          final pm = double.tryParse((player['prize_money']?.toString() ?? '')
+                  .replaceAll('\$', '').replaceAll(',', '').trim()) ?? 0.0;
+          groupMap[grpNum] = {
+            'group_number': grpNum,
+            'players': <String>[],
+            'wildcards': <String>{},
+            'avg_net': player['avg_net']?.toString() ?? '',
+            'grp_pos': player['grp_pos']?.toString() ?? '',
+            'group_winnings': pm,
+          };
+        }
+        final name = player['last']?.toString() ?? '';
+        (groupMap[grpNum]!['players'] as List<String>).add(name);
+        if (player['is_wild_card'] == true && name.isNotEmpty) {
+          (groupMap[grpNum]!['wildcards'] as Set<String>).add(name);
+        }
+      }
+    }
+    if (groupMap.isEmpty) return const SizedBox.shrink();
+
+    final sortedGroups = groupMap.values.toList()
+      ..sort((a, b) {
+        final aPos = int.tryParse(a['grp_pos'].toString()) ?? 999;
+        final bPos = int.tryParse(b['grp_pos'].toString()) ?? 999;
+        return aPos.compareTo(bPos);
+      });
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Text.rich(
+            TextSpan(
+              style: TextStyle(fontSize: fontSize + 2, fontWeight: FontWeight.bold, color: Colors.teal[900]),
+              children: [
+                TextSpan(text: '👥  Group Results Pool = \$${widget.groupPayoutAmount.round()}'),
+                if (wildcards.isNotEmpty) ...[
+                  const TextSpan(text: '   Wildcards = '),
+                  TextSpan(
+                    text: wildcards.join(', '),
+                    style: TextStyle(color: Colors.orange[700]),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+        Table(
+          border: TableBorder.all(color: Colors.grey[300]!, width: 1),
+          columnWidths: const {
+            0: FlexColumnWidth(1),
+            1: FlexColumnWidth(2),
+            2: FlexColumnWidth(5),
+            3: FlexColumnWidth(2),
+            4: FlexColumnWidth(2),
+          },
+          children: [
+            TableRow(
+              decoration: const BoxDecoration(color: headerColor),
+              children: [
+                _buildTCell('Pos', fontSize, isHeader: true),
+                _buildTCell('Group', fontSize, isHeader: true),
+                _buildTCell('Players', fontSize, isHeader: true),
+                _buildTCell('Avg Net', fontSize, isHeader: true),
+                _buildTCell('Winnings', fontSize, isHeader: true),
+              ],
+            ),
+            ...sortedGroups.map((grp) {
+              final players = grp['players'] as List<String>;
+              final winnings = (grp['group_winnings'] as double) > 0
+                  ? '\$${(grp['group_winnings'] as double).round()} each'
+                  : '';
+              return TableRow(children: [
+                _buildTCell(grp['grp_pos'].toString(), fontSize),
+                _buildTCell('Group ${grp['group_number']}', fontSize),
+                _buildPlayersCell(players, grp['wildcards'] as Set<String>, fontSize),
+                _buildTCell(grp['avg_net'].toString(), fontSize),
+                _buildTCell(winnings, fontSize),
+              ]);
+            }),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTCell(String text, double fontSize, {bool isHeader = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       child: Text(
         text,
         style: TextStyle(
           fontSize: fontSize,
           fontWeight: isHeader ? FontWeight.bold : FontWeight.normal,
-          color: isMoneyColumn && text.contains('\$') ? Colors.black :
-                 isHeader ? Colors.black87 : Colors.black,
+          color: isHeader ? Colors.white : Colors.black87,
         ),
-        textAlign: isHeader || isMoneyColumn ? TextAlign.center : TextAlign.center,
         overflow: TextOverflow.ellipsis,
-        maxLines: isHeader ? 2 : 1,
+        maxLines: isHeader ? 2 : 2,
       ),
     );
+  }
+
+  Widget _buildPlayersCell(List<String> players, Set<String> wildcards, double fontSize) {
+    final spans = <InlineSpan>[];
+    for (int i = 0; i < players.length; i++) {
+      final name = players[i];
+      spans.add(TextSpan(
+        text: i < players.length - 1 ? '$name, ' : name,
+        style: TextStyle(
+          fontSize: fontSize,
+          color: wildcards.contains(name) ? Colors.orange[700] : Colors.black87,
+        ),
+      ));
+    }
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      child: Text.rich(TextSpan(children: spans), maxLines: 2, overflow: TextOverflow.ellipsis),
+    );
+  }
+
+  String _fmtNum(dynamic value) {
+    if (value == null) return '';
+    final d = (value as num).toDouble();
+    return d == d.roundToDouble() ? d.toInt().toString() : d.toStringAsFixed(1);
   }
 }
