@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../models/league.dart';
 import '../shared/league_purse_service.dart';
@@ -163,9 +163,8 @@ class EnterScoresUIService {
   /// Responsive design adapts to different screen sizes
   /// Uses LeaguePurseService for dynamic purse management
   /// [onReturn] - Optional callback for left arrow return functionality
-  /// [onAutoFill] - Optional callback for storage icon auto-fill functionality
   /// [payoutAmount] - Optional payout amount to display instead of closest pin purse
-  static Widget buildPurseHeader(BuildContext context, League league, {VoidCallback? onReturn, VoidCallback? onAutoFill, double? payoutAmount, double? collectAmount}) {
+  static Widget buildPurseHeader(BuildContext context, League league, {VoidCallback? onReturn, double? payoutAmount, double? collectAmount}) {
     //print("Using UI Service for ${league.name} league");
     final deviceType = getDeviceType(context);
     final fontSize = getResponsiveFontSize(deviceType, isHeader: true);
@@ -181,7 +180,7 @@ class EnterScoresUIService {
         vertical: padding.top / 2, 
         horizontal: padding.left
       ),
-      color: FirebaseUploadService.uploadsEnabled ? Colors.green[300] : Colors.red[700],
+      color: FirebaseUploadService.anyAdminOverrideActive ? Colors.red[700] : Colors.green[300],
       child: Row(
         children: [
 
@@ -295,27 +294,6 @@ class EnterScoresUIService {
             ),
           ),
               ],
-            ),
-          ),
-          // Storage icon button for Auto Fill
-          if (onAutoFill != null)
-            GestureDetector(
-              onTap: onAutoFill,
-            child: Container(
-              width: fontSize * 3.0,
-              height: fontSize * 3.5,
-              margin: EdgeInsets.only(left: padding.left / 2),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.black, width: 1),
-                borderRadius: BorderRadius.circular(4.0),
-              ),
-              child: Center(
-                child: Icon(
-                  Icons.arrow_downward,
-                  color: Colors.black,
-                  size: fontSize * 2.0,
-                ),
-              ),
             ),
           ),
         ],
@@ -1138,7 +1116,6 @@ class EnterScoresUIService {
   static Widget buildBottomButtons(BuildContext context, {
     VoidCallback? onReturn,
     VoidCallback? onClosestPin,
-    VoidCallback? onAutoFill,
     VoidCallback? onSwapPlayers,
   }) {
     final deviceType = getDeviceType(context);
@@ -1169,12 +1146,6 @@ class EnterScoresUIService {
         ),
         ButtonBarUIService.buildActionButton(
           context,
-          text: 'Auto Fill',
-          color: Colors.orange[200]!,
-          onPressed: onAutoFill ?? () {},
-        ),
-        ButtonBarUIService.buildActionButton(
-          context,
           text: swapText,
           color: Colors.grey[400]!,
           onPressed: onSwapPlayers ?? () {},
@@ -1194,7 +1165,6 @@ class EnterScoresUIService {
     required bool groupsProcessed,
     bool individualsProcessingComplete = false,
     VoidCallback? onReturn,
-    VoidCallback? onAutoFill,
   }) {
     final isPhone = DeviceDetectionService.isPhone(context);
     final headerFontSize = getPurseHeaderFontSize(context);
@@ -1216,7 +1186,7 @@ class EnterScoresUIService {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
-      color: FirebaseUploadService.uploadsEnabled ? config.headerColor : Colors.red[700],
+      color: FirebaseUploadService.anyAdminOverrideActive ? Colors.red[700] : config.headerColor,
       child: Row(
         children: [
           // Return button
@@ -1295,24 +1265,6 @@ class EnterScoresUIService {
               ),
             ),
           ),
-          // Auto fill button
-          if (onAutoFill != null)
-            GestureDetector(
-              onTap: onAutoFill,
-              child: Container(
-                width: isPhone ? 36 : 48,
-                height: isPhone ? 28 : 36,
-                margin: EdgeInsets.only(left: isPhone ? 8 : 16),
-                decoration: BoxDecoration(
-                  //border: Border.all(color: Colors.black, width: 1),
-                  //borderRadius: BorderRadius.circular(4.0),
-                  color: Colors.orange[200],
-                ),
-                child: Center(
-                  child: Icon(Icons.arrow_downward, color: Colors.black, size: isPhone ? 22 : 24),
-                ),
-              ),
-            ),
         ],
       ),
     );
@@ -1929,7 +1881,6 @@ class EnterScoresUIService {
     required Color swapButtonColor,
     required bool individualsComplete,
     bool groupsProcessed = false,
-    VoidCallback? onAutoFill,
     VoidCallback? onMainMenu,
     VoidCallback? onShuffle,
     Color? shuffleButtonColor,
@@ -1941,7 +1892,7 @@ class EnterScoresUIService {
     const config = LeagueUIConfig.wednesday;
 
     // Determine button text and callback based on groups processing state
-    String processButtonText = groupsProcessed ? 'Close Pin Winner ---➤' : 'Process Groups ---➤';
+    String processButtonText = groupsProcessed ? 'Close Pin Winner --->' : 'Process Groups --->';
     VoidCallback? processButtonCallback = groupsProcessed
         ? onClosestPin
         : (individualsComplete ? onProcessGroups : null);
@@ -1958,17 +1909,9 @@ class EnterScoresUIService {
 
     if (!groupsProcessed) {
       // Show all buttons when not processed
-      if (onAutoFill != null) {
-        buttons.add(ButtonBarUIService.buildActionButton(
-          context,
-          text: 'Auto Fill',
-          color: Colors.orange[200]!,
-          onPressed: onAutoFill,
-        ));
-      }
       buttons.add(ButtonBarUIService.buildActionButton(
         context,
-        text: '◄---- Back     ',
+        text: '<---- Back     ',
         color: finalBackButtonColor,
         onPressed: backButtonCallback,
       ));

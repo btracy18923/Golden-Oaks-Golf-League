@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/screen_data_retention_service.dart';
@@ -206,7 +206,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
         }
       }
 
-      // STEP A5: Apply SKAT # adjustments — updates player profile with new SK#
+      // STEP A5: Apply SKAT # adjustments â€” updates player profile with new SK#
       await _skatAdjustmentService.applySkatAdjustments(playerGroups);
 
       // STEP A6: Save New_SK for each player (S_SK + adjustment from DIFF)
@@ -239,7 +239,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
       // Save results summary to Firebase for website display
       _saveResultsSummaryToFirebase(allSelectedPlayers, currentDate);
 
-      // Send results email in background — don't block save on network call
+      // Send results email in background â€” don't block save on network call
       _sendResultsEmail(allSelectedPlayers);
 
       // Show success message
@@ -351,9 +351,9 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
         await BackendEmailService().sendMondayResultsEmail(subject: subject, body: body);
         debugPrint('Monday results email sent successfully');
       } else {
-        // No WiFi — persist for retry when ConnectivityService detects reconnection
+        // No WiFi â€” persist for retry when ConnectivityService detects reconnection
         await PendingEmailService().savePendingMondayEmail(subject: subject, body: body);
-        debugPrint('Device offline — Monday results email queued for retry on WiFi reconnect');
+        debugPrint('Device offline â€” Monday results email queued for retry on WiFi reconnect');
       }
     } catch (e) {
       debugPrint('Error sending Monday results email: $e');
@@ -537,7 +537,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
             fontSize: 24,
           ),
         ),
-        backgroundColor: FirebaseUploadService.uploadsEnabled ? Colors.blue[300] : Colors.red[700],
+        backgroundColor: FirebaseUploadService.anyAdminOverrideActive ? Colors.red[700] : Colors.blue[300],
         foregroundColor: Colors.black,
         centerTitle: true,
         automaticallyImplyLeading: false,
@@ -594,7 +594,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
             fontSize: 24,
           ),
         ),
-        backgroundColor: FirebaseUploadService.uploadsEnabled ? Colors.green[700] : Colors.red[700],
+        backgroundColor: FirebaseUploadService.anyAdminOverrideActive ? Colors.red[700] : Colors.green[700],
         foregroundColor: Colors.white,
         centerTitle: true,
         automaticallyImplyLeading: false,
@@ -993,7 +993,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
       }
     }
 
-    // Calculate Skat Purse: total players × players ante
+    // Calculate Skat Purse: total players Ã— players ante
     final playerGroupsForSkat = _retentionService.playerGroups ?? [];
     int actualPlayerCount = 0;
     for (var group in playerGroupsForSkat) {

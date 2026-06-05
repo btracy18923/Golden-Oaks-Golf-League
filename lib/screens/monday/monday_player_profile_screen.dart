@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../services/database_helper.dart';
 import '../../models/league.dart';
@@ -490,7 +490,7 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
           style: TextStyle(fontSize: ResponsiveTypography.getAppBarTitle(context)),
         ),
         centerTitle: true,
-        backgroundColor: _selectedLeague == League.monday ? (FirebaseUploadService.uploadsEnabled ? Colors.green[700] : Colors.red[700]) : Colors.orange[700],
+        backgroundColor: FirebaseUploadService.anyAdminOverrideActive ? Colors.red[700] : (_selectedLeague == League.monday ? Colors.green[700] : Colors.orange[700]),
         foregroundColor: Colors.white,
       ),
       body: SafeArea(
@@ -626,7 +626,7 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
         children: [
           ButtonBarUIService.buildActionButton(
             context,
-            text: '◄---- Back',
+            text: '<---- Back',
             color: Colors.blue[300]!,
             onPressed: () => Navigator.of(context).pop(),
           ),

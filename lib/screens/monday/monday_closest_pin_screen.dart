@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../services/UI/closest_pin_UI_service.dart' as closest_pin_ui;
 import '../../services/shared/league_purse_service.dart';
@@ -159,7 +159,7 @@ class _MondayClosestPinScreenState extends State<MondayClosestPinScreen> {
             _remainingPurseAmount -= _closestPinValue;
           }
 
-          // Stay in tied mode — user taps TIE button again to finalize
+          // Stay in tied mode â€” user taps TIE button again to finalize
         } else {
           // Normal mode - single winner gets full amount
           _playerClosestPinCounts[lastName] = _playerClosestPinCounts[lastName]! + 1.0;
@@ -323,7 +323,7 @@ class _MondayClosestPinScreenState extends State<MondayClosestPinScreen> {
 
     return Container(
       width: double.infinity,
-      color: FirebaseUploadService.uploadsEnabled ? Colors.green : Colors.red[700],
+      color: FirebaseUploadService.anyAdminOverrideActive ? Colors.red[700] : Colors.green,
       padding: increasedPadding,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,

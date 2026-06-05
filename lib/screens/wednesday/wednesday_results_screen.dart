@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/screen_data_retention_service.dart';
@@ -314,7 +314,7 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
       }
 
       // Calculate and update handicaps for selected players only
-      // Returns map of playerName → {'new_hc', 'pad_count'}
+      // Returns map of playerName â†’ {'new_hc', 'pad_count'}
       Map<String, Map<String, dynamic>> handicapResults =
           await _updateSelectedPlayerHandicaps(allSelectedPlayers, allDbPlayers);
 
@@ -346,7 +346,7 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
       // Save results summary to Firebase for website display
       _saveResultsSummaryToFirebase(consolidatedPlayerData, currentDate);
 
-      // Send results email in background — don't block save on network call
+      // Send results email in background â€” don't block save on network call
       _sendResultsEmail(consolidatedPlayerData, currentDate);
 
       // Show success message
@@ -390,7 +390,7 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
     List<Map<String, dynamic>> selectedPlayers,
     List<Map<String, dynamic>> allDbPlayers,
   ) async {
-    // Returns map of playerName → {'new_hc': double, 'pad_count': int}
+    // Returns map of playerName â†’ {'new_hc': double, 'pad_count': int}
     Map<String, Map<String, dynamic>> results = {};
 
     try {
@@ -495,7 +495,7 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
       final double individualPool = widget.individualWinners.fold(
         0.0, (sum, p) => sum + ((p['individual_winnings'] as double?) ?? 0.0));
 
-      // Group results — one entry per group; parse prize_money string for numeric winnings
+      // Group results â€” one entry per group; parse prize_money string for numeric winnings
       final Map<int, Map<String, dynamic>> groupMap = {};
       for (var group in widget.groups) {
         for (var player in group) {
@@ -569,7 +569,7 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
         debugPrint('Wednesday results email sent successfully');
       } else {
         await PendingEmailService().savePendingWednesdayEmail(subject: subject, body: body);
-        debugPrint('Device offline — Wednesday results email queued for retry on WiFi reconnect');
+        debugPrint('Device offline â€” Wednesday results email queued for retry on WiFi reconnect');
       }
     } catch (e) {
       debugPrint('Error sending Wednesday results email: $e');
@@ -808,7 +808,7 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
             fontSize: 24,
           ),
         ),
-        backgroundColor: FirebaseUploadService.uploadsEnabled ? Colors.orange[300] : Colors.red[700],
+        backgroundColor: FirebaseUploadService.anyAdminOverrideActive ? Colors.red[700] : Colors.orange[300],
         foregroundColor: Colors.black,
         centerTitle: true,
         automaticallyImplyLeading: false,

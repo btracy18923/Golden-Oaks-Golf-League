@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../services/database_helper.dart';
 import '../../models/league.dart';
@@ -394,10 +394,10 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
         children: [
           _buildFlexDataCell(_selectedPlayer ?? '', 22, isCompact: isCompact),
           _buildFlexDataCell(_getCurrentDateMMDDYY(), 14, isCompact: isCompact),
-          _buildFlexDataCell('', 14, isCompact: isCompact), // Start SK# — populated on save
+          _buildFlexDataCell('', 14, isCompact: isCompact), // Start SK# â€” populated on save
           _buildFlexEditableCellWithBorder(_skatsController, _skatsFocus, 14, TextInputType.number, isCompact: isCompact),
-          _buildFlexDataCell('', 12, isCompact: isCompact), // DIFF — calculated on save
-          _buildFlexDataCell('', 24, isCompact: isCompact), // New SK# — calculated on save
+          _buildFlexDataCell('', 12, isCompact: isCompact), // DIFF â€” calculated on save
+          _buildFlexDataCell('', 24, isCompact: isCompact), // New SK# â€” calculated on save
         ],
       );
     } else {
@@ -745,7 +745,7 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
         title: Text('Player Scores - ${_getLeagueDisplayName()} League- ${AppConfig.versionDate}',
           style: ResponsiveTypography.appBarTitleStyle(context, color: Colors.white)),
         centerTitle: true,
-        backgroundColor: FirebaseUploadService.uploadsEnabled ? (_selectedLeague == League.monday ? Colors.green[700] : Colors.orange[700]) : Colors.red[700],
+        backgroundColor: FirebaseUploadService.anyAdminOverrideActive ? Colors.red[700] : (_selectedLeague == League.monday ? Colors.green[700] : Colors.orange[700]),
         foregroundColor: Colors.white,
       ),
       resizeToAvoidBottomInset: false,
@@ -772,7 +772,7 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
         title: Text('Player Scores - ${_getLeagueDisplayName()} League- ${AppConfig.versionDate}',
           style: ResponsiveTypography.appBarTitleStyle(context, color: Colors.white)),
         centerTitle: true,
-        backgroundColor: FirebaseUploadService.uploadsEnabled ? (_selectedLeague == League.monday ? Colors.green[700] : Colors.orange[700]) : Colors.red[700],
+        backgroundColor: FirebaseUploadService.anyAdminOverrideActive ? Colors.red[700] : (_selectedLeague == League.monday ? Colors.green[700] : Colors.orange[700]),
         foregroundColor: Colors.white,
       ),
       resizeToAvoidBottomInset: false,
@@ -904,7 +904,7 @@ class _MondayPlayerScoresScreenState extends State<MondayPlayerScoresScreen> {
       children: [
         ButtonBarUIService.buildActionButton(
           context,
-          text: '◄---- Back',
+          text: '<---- Back',
           color: Colors.blue[300]!,
           onPressed: () => Navigator.of(context).pop(),
           flex: 5, // 25% of screen width (5 out of 20 total flex units)

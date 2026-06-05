@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
 import '../../services/database_helper.dart';
@@ -655,11 +655,11 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
           style: ResponsiveTypography.appBarTitleStyle(context),
         ),
         centerTitle: true,
-        backgroundColor: FirebaseUploadService.uploadsEnabled
-                        ? (widget.league == League.monday ? Colors.green[700] :
+        backgroundColor: FirebaseUploadService.anyAdminOverrideActive
+                        ? Colors.red[700]
+                        : (widget.league == League.monday ? Colors.green[700] :
                            widget.league == League.wednesday ? Colors.orange[700] :
-                           Colors.cyan[700])
-                        : Colors.red[700],
+                           Colors.cyan[700]),
         foregroundColor: Colors.white,
       ),
       resizeToAvoidBottomInset: false,
@@ -701,11 +701,11 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
           style: ResponsiveTypography.appBarTitleStyle(context),
         ),
         centerTitle: true,
-        backgroundColor: FirebaseUploadService.uploadsEnabled
-                        ? (widget.league == League.monday ? Colors.green[700] :
+        backgroundColor: FirebaseUploadService.anyAdminOverrideActive
+                        ? Colors.red[700]
+                        : (widget.league == League.monday ? Colors.green[700] :
                            widget.league == League.wednesday ? Colors.orange[700] :
-                           Colors.cyan[700])
-                        : Colors.red[700],
+                           Colors.cyan[700]),
         foregroundColor: Colors.white,
       ),
       resizeToAvoidBottomInset: true,
@@ -782,7 +782,7 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
       children: [
         ButtonBarUIService.buildActionButton(
           context,
-          text: '◄---- Back',
+          text: '<---- Back',
           color: Colors.blue[300]!,
           onPressed: () => Navigator.of(context).pop(),
         ),

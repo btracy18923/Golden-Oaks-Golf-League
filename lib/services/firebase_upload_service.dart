@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../config/email_config.dart';
 import '../models/league.dart';
 import 'database_helper.dart';
 import 'upload_queue_service.dart';
@@ -13,6 +14,10 @@ class FirebaseUploadService {
 
   /// Global flag to disable all Firebase uploads
   static bool uploadsEnabled = true;
+
+  /// Returns true if any admin checkbox is in a non-normal state (any screen should show red app bar)
+  static bool get anyAdminOverrideActive =>
+      !uploadsEnabled || DatabaseHelper.allowDuplicateDates || EmailConfig.testEmailMode;
 
   /// SharedPreferences key for storing the uploads enabled state
   static const String _uploadsEnabledKey = 'firebase_uploads_enabled';

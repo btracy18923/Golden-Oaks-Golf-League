@@ -70,7 +70,7 @@ class _MondayAdminScreenState extends State<MondayAdminScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Monday Administration'),
-        backgroundColor: FirebaseUploadService.uploadsEnabled ? Colors.green[800] : Colors.red[700],
+        backgroundColor: FirebaseUploadService.anyAdminOverrideActive ? Colors.red[700] : Colors.green[800],
         foregroundColor: Colors.white,
       ),
       body: SafeArea(

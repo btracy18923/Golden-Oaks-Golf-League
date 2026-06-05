@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../services/UI/closest_pin_UI_service.dart' as closest_pin_ui;
 import '../../services/shared/league_purse_service.dart';
@@ -374,7 +374,7 @@ class _WednesdayClosestPinScreenState extends State<WednesdayClosestPinScreen> {
 
     return Container(
       width: double.infinity,
-      color: FirebaseUploadService.uploadsEnabled ? Colors.orange[300] : Colors.red[700],
+      color: FirebaseUploadService.anyAdminOverrideActive ? Colors.red[700] : Colors.orange[300],
       padding: increasedPadding,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,

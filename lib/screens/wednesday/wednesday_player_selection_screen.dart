@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:convert';
@@ -131,7 +131,7 @@ class _WednesdayPlayerSelectionScreenState extends State<WednesdayPlayerSelectio
           "Select Wednesday Players - ${AppConfig.versionDate}",
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
-        backgroundColor: FirebaseUploadService.uploadsEnabled ? Colors.orange[700] : Colors.red[700],
+        backgroundColor: FirebaseUploadService.anyAdminOverrideActive ? Colors.red[700] : Colors.orange[700],
         foregroundColor: Colors.white,
         centerTitle: true,
       ),
@@ -191,7 +191,7 @@ class _WednesdayPlayerSelectionScreenState extends State<WednesdayPlayerSelectio
       backgroundColor: Colors.grey[300],
       appBar: AppBar(
         title: Text("Select Players for Wednesday's Match - ${AppConfig.versionDate}"),
-        backgroundColor: FirebaseUploadService.uploadsEnabled ? Colors.orange[700] : Colors.red[700],
+        backgroundColor: FirebaseUploadService.anyAdminOverrideActive ? Colors.red[700] : Colors.orange[700],
         foregroundColor: Colors.white,
         centerTitle: true,
       ),
@@ -590,7 +590,7 @@ class _WednesdayPlayerSelectionScreenState extends State<WednesdayPlayerSelectio
       children: [
         ButtonBarUIService.buildActionButton(
           context,
-          text: '◄---- MainMenu',
+          text: '<---- MainMenu',
           color: Colors.blue[300]!,
           onPressed: () => Navigator.of(context).pop(),
         ),
@@ -602,7 +602,7 @@ class _WednesdayPlayerSelectionScreenState extends State<WednesdayPlayerSelectio
         ),
         ButtonBarUIService.buildActionButton(
           context,
-          text: "Enter Gross ---➤",
+          text: "Enter Gross --->",
           color: Colors.orange[300]!,
           onPressed: selectedPlayerIds.isEmpty ? null : _navigateToEnterScores,
         ),
@@ -617,7 +617,7 @@ class _WednesdayPlayerSelectionScreenState extends State<WednesdayPlayerSelectio
       children: [
         ButtonBarUIService.buildActionButton(
           context,
-          text: '◄---- Back',
+          text: '<---- Back',
           color: Colors.orange[300]!,
           onPressed: () => Navigator.of(context).pop(),
         ),
@@ -629,7 +629,7 @@ class _WednesdayPlayerSelectionScreenState extends State<WednesdayPlayerSelectio
         ),
         ButtonBarUIService.buildActionButton(
           context,
-          text: "Enter Player's Scores ---➤",
+          text: "Enter Player's Scores --->",
           color: _leagueColor,
           onPressed: selectedPlayerIds.isEmpty ? null : _navigateToEnterScores,
         ),

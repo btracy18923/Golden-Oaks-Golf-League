@@ -1043,70 +1043,6 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
     }
   }
 
-  // ============== AUTO FILL ==============
-
-  void _handleAutoFill() {
-    // Prevent Auto Fill when Adjust Players overlay is visible
-    if (_showAdjustPlayersOverlay) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Cannot use Auto Fill while adjusting players'),
-          duration: Duration(seconds: 2),
-        ),
-      );
-      return;
-    }
-
-    final random = Random();
-
-    // Create a new groups list to force rebuild
-    List<List<Map<String, dynamic>?>> newGroups = [];
-
-    for (var group in groups) {
-      List<Map<String, dynamic>?> newGroup = [];
-      for (var player in group) {
-        if (player != null) {
-          // Create a new player map with updated scores
-          Map<String, dynamic> newPlayer = Map<String, dynamic>.from(player);
-
-          // Get HC (Handicap) value for score calculation
-          double hc = (newPlayer['HC'] ?? 0.0).toDouble();
-          int hcValue = hc.round();
-
-          // Calculate gross score: HC + 35 ± random(-2 to +3)
-          int baseScore = hcValue + 35;
-          int randomAdjustment = random.nextInt(6) - 2; // -2 to +3
-          int grossScore = baseScore + randomAdjustment;
-
-          // For net score calculation, use the regular handicap (HC)
-          double handicap = (newPlayer['handicap'] ?? 0.0).toDouble();
-
-          newPlayer['gross_score'] = grossScore;
-          newPlayer['net_score'] = (grossScore - handicap).toDouble();
-          newGroup.add(newPlayer);
-
-          String key = '${player['last']}_gross';
-          grossControllers[key]?.text = grossScore.toString();
-        } else {
-          newGroup.add(null);
-        }
-      }
-      newGroups.add(newGroup);
-    }
-
-    setState(() {
-      groups = newGroups;
-      winnersCalculated = false; // Reset winners flag so auto-calculate will run
-      individualsProcessingComplete = false;
-    });
-
-    // Hide keypad after auto-fill is complete
-    _hideKeypad();
-
-    // Trigger auto-calculate to process individual payouts
-    Future.microtask(() => _checkAndAutoCalculate());
-  }
-
   // ============== COLLECT PLAYER SCORES ==============
 
   List<Map<String, dynamic>> _collectPlayerScores() {
@@ -1450,7 +1386,6 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
                 groupsProcessed: groupsProcessed,
                 individualsProcessingComplete: individualsProcessingComplete,
                 onReturn: _returnToMainMenu,
-                onAutoFill: _handleAutoFill,
               ),
               EnterScoresUIService.buildWednesdayGroupsGrid(
                 context,
@@ -1611,8 +1546,10 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
     );
   }
 
-  /// Saves current groupings to Firebase so they can be restored on game day
+  /// Saves current groupings to Firebase so they can be restored on game day.
+  /// Skipped when Test Email Mode is on — test runs should not overwrite real groupings.
   Future<void> _saveGroupingsToFirebase() async {
+    if (EmailConfig.testEmailMode) return;
     try {
       final groupsJson = jsonEncode(groups.map((group) =>
           group.map((p) => p != null ? Map<String, dynamic>.from(p) : null).toList()
@@ -1885,7 +1822,7 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
       if (validPlayers.isNotEmpty) validGroups.add(validPlayers);
     }
 
-    const chipColors = ['RED', 'WHITE', 'BLUE', 'BLACK', 'GREEN'];
+    const chipColors = ['RED', 'WHITE', 'BLUE', 'GREEN', 'BLACK'];
     final totalGroups = validGroups.length;
     int totalPlayers = 0;
 

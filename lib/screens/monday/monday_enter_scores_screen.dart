@@ -4,7 +4,6 @@ import 'package:flutter/services.dart';
 import '../../services/UI/enter_scores_UI_service.dart';
 import '../../services/UI/custom_keypad_service.dart';
 import '../../services/UI/button_bar_UI_service.dart';
-import '../../services/factories/auto_fill_factory.dart';
 import '../../services/shared/swap_service.dart';
 import '../../services/shared/league_purse_service.dart';
 import '../../services/payout_validation_service.dart';
@@ -482,56 +481,6 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     
     // If we reach here, we're at the end - hide keypad
     _hideKeypad();
-  }
-
-  /// Auto fills SKATS data with random values between 30-40 for all players
-  void _handleAutoFill() async {
-    // Prevent Auto Fill when Adjust Players overlay is visible
-    if (_showAdjustPlayersOverlay) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Cannot use Auto Fill while adjusting players'),
-          duration: Duration(seconds: 2),
-        ),
-      );
-      return;
-    }
-
-    // Hide keypad before auto-fill
-    _hideKeypad();
-
-    // Restore Skat Purse and Mulligan Purse before recalculating (in case this is a re-autofill)
-    // Count actual players from groups (accounts for any deleted players)
-    int currentPlayerCount = 0;
-    for (var group in groups) {
-      currentPlayerCount += group.length;
-    }
-
-    if (widget.playersAnte != null) {
-      double freshSkatPurse = currentPlayerCount * widget.playersAnte!;
-      LeaguePurseService.setSkatPurse(freshSkatPurse);
-
-      // Restore Mulligan Purse to original value
-      double freshMulliganPurse = LeaguePurseService.mulliganAmount * currentPlayerCount;
-      LeaguePurseService.setMulliganPurse(freshMulliganPurse, isExplicit: false);
-    } else {
-      LeaguePurseService.calculateSkatPurseFromCount(currentPlayerCount);
-
-      // Restore Mulligan Purse to original value
-      double freshMulliganPurse = LeaguePurseService.mulliganAmount * currentPlayerCount;
-      LeaguePurseService.setMulliganPurse(freshMulliganPurse, isExplicit: false);
-    }
-
-    // Perform autofill and update groups
-    setState(() {
-      final autoFillService = AutoFillFactory.create(League.monday);
-      groups = autoFillService.autoFillData(groups);
-    });
-
-    // Automatically calculate money after auto-fill completes all SKATS
-    if (_areAllSkatsFieldsComplete()) {
-      await _handleSkatMoney();
-    }
   }
 
   /// Calculates Skat money payouts for players with positive DIFF values
@@ -1331,7 +1280,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
           // Main content
           Column(
             children: [
-              EnterScoresUIService.buildPurseHeader(context, League.monday, onReturn: _handleReturn, onAutoFill: _handleAutoFill, payoutAmount: _payoutAmount, collectAmount: () {
+              EnterScoresUIService.buildPurseHeader(context, League.monday, onReturn: _handleReturn, payoutAmount: _payoutAmount, collectAmount: () {
                 int count = 0;
                 for (var g in groups) { count += g.where((p) => p.name.isNotEmpty).length; }
                 return (LeaguePurseService.getPlayersAnte(league: League.monday) + LeaguePurseService.getClosestPinAmount(league: League.monday) + LeaguePurseService.getMulliganAmount(league: League.monday)) * count;

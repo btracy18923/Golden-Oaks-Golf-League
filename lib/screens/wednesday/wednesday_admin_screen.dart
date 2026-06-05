@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/league.dart';
 import '../../services/database_helper.dart';
@@ -82,7 +82,7 @@ class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Wednesday Administration'),
-        backgroundColor: FirebaseUploadService.uploadsEnabled ? Colors.orange[800] : Colors.red[700],
+        backgroundColor: FirebaseUploadService.anyAdminOverrideActive ? Colors.red[700] : Colors.orange[800],
         foregroundColor: Colors.white,
       ),
       body: SafeArea(
@@ -215,7 +215,7 @@ class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
                       color: _testEmailMode ? Colors.amber[50] : Colors.grey[50],
                       child: CheckboxListTile(
                         title: Text(
-                          'Test Email Mode',
+                          'Test Email Mode / Delete Saved Groupings',
                           style: TextStyle(
                             fontSize: 20 * DeviceDetectionService.getFontScale(context),
                             fontWeight: FontWeight.bold,
@@ -238,13 +238,26 @@ class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
                             _testEmailMode = newState;
                           });
                           await EmailConfig.saveTestEmailModeState(newState);
+
+                          if (newState) {
+                            // Clear any saved groupings from Firebase when entering test mode
+                            try {
+                              await FirebaseFirestore.instance
+                                  .collection('W_scheduled_groups')
+                                  .doc('pending')
+                                  .delete();
+                            } catch (e) {
+                              debugPrint('Could not clear saved groupings: $e');
+                            }
+                          }
+
                           if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Text(
                                   newState
-                                    ? 'Test Email Mode ON — emails go only to you'
-                                    : 'Test Email Mode OFF — emails go to all recipients',
+                                    ? 'Test Email Mode ON - emails go only to you'
+                                    : 'Test Email Mode OFF - emails go to all recipients',
                                 ),
                                 backgroundColor: newState ? Colors.amber[700] : Colors.grey[700],
                                 duration: const Duration(seconds: 2),

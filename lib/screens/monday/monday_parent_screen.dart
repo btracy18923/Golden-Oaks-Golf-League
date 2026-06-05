@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'monday_player_selection_screen.dart';
 import 'monday_player_scores_screen.dart';
@@ -310,7 +310,7 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
           'Monday League - Golden Oaks Golf - ${AppConfig.versionDate}',
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
-        backgroundColor: FirebaseUploadService.uploadsEnabled ? Colors.green[700] : Colors.red[700],
+        backgroundColor: FirebaseUploadService.anyAdminOverrideActive ? Colors.red[700] : Colors.green[700],
         foregroundColor: Colors.white,
         centerTitle: true,
         actions: [
@@ -393,7 +393,7 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
           'Monday League - Golden Oaks Golf - ${AppConfig.versionDate}',
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
         ),
-        backgroundColor: FirebaseUploadService.uploadsEnabled ? Colors.green[700] : Colors.red[700],
+        backgroundColor: FirebaseUploadService.anyAdminOverrideActive ? Colors.red[700] : Colors.green[700],
         foregroundColor: Colors.white,
         centerTitle: true,
         actions: [
