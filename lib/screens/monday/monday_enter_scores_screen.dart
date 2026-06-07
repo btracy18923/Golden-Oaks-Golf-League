@@ -66,6 +66,10 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
   String? _deleteTargetPlayerName;
   int _deleteTargetTapCount = 0;
 
+  // Triple-tap add-player functionality for empty slots
+  String? _addTargetSlotKey;
+  int _addTargetTapCount = 0;
+
   // Focus nodes for SKATS input fields - organized by group and player index
   final List<List<FocusNode?>> _skatsFocusNodes = [
     [null, null, null, null], // Group 0 (Group 1)
@@ -592,18 +596,130 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     });
   }
 
-  /// Handles empty slot tap for swap selection
+  /// Handles empty slot tap — triple-tap in Adjust Players overlay adds a player,
+  /// otherwise handles swap selection.
   void _onEmptySlotTap(int groupIndex, int playerIndex) {
-    String slotKey = 'empty_${groupIndex + 1}_$playerIndex';
-    
-    // Prevent any swap functionality if SKATS data exists
-    if (_hasAnySkatsData()) {
+    if (_hasAnySkatsData()) return;
+
+    if (_showAdjustPlayersOverlay) {
+      // If a player is already selected for swap, select this slot for swap
+      if (_swapService.selectionCount > 0 && _swapService.selectionCount < 2) {
+        final swapKey = 'empty_${groupIndex + 1}_$playerIndex';
+        setState(() {
+          _resetAddMode();
+          _swapService.handleEmptySlotSelection(swapKey);
+        });
+        return;
+      }
+
+      // Otherwise triple-tap opens the add-player picker
+      final slotKey = '${groupIndex}_$playerIndex';
+      bool showPicker = false;
+      setState(() {
+        if (_addTargetSlotKey == slotKey) {
+          if (_addTargetTapCount >= 3) {
+            _resetAddMode();
+          } else {
+            _addTargetTapCount++;
+            if (_addTargetTapCount >= 3) showPicker = true;
+          }
+        } else {
+          _resetAddMode();
+          _addTargetSlotKey = slotKey;
+          _addTargetTapCount = 1;
+        }
+      });
+      if (showPicker) {
+        _showAddPlayerDialog(groupIndex, playerIndex);
+        setState(() => _resetAddMode());
+      }
       return;
     }
-    
+
+    String slotKey = 'empty_${groupIndex + 1}_$playerIndex';
     setState(() {
       _swapService.handleEmptySlotSelection(slotKey);
     });
+  }
+
+  void _resetAddMode() {
+    _addTargetSlotKey = null;
+    _addTargetTapCount = 0;
+  }
+
+  Future<void> _showAddPlayerDialog(int groupIndex, int playerIndex) async {
+    final Set<String> inGroups = {};
+    for (var group in groups) {
+      for (var player in group) {
+        if (player != null) inGroups.add(player.name);
+      }
+    }
+
+    final allPlayers = await DatabaseHelper().getPlayersByLeague(League.monday);
+    final unassigned = allPlayers
+        .where((p) => !inGroups.contains(p['last'] ?? ''))
+        .toList()
+      ..sort((a, b) => (a['last'] ?? '').compareTo(b['last'] ?? ''));
+
+    if (!mounted) return;
+
+    if (unassigned.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No unassigned players available'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Add Player'),
+        content: SizedBox(
+          width: 240,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: unassigned.length,
+            itemBuilder: (_, i) {
+              final player = unassigned[i];
+              final skatNum = player['skat_number']?.toString() ?? '';
+              return ListTile(
+                title: Text(player['last'] ?? ''),
+                trailing: skatNum.isNotEmpty
+                    ? Text('SKAT $skatNum',
+                        style: const TextStyle(fontSize: 12, color: Colors.grey))
+                    : null,
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  setState(() {
+                    groups[groupIndex].add(PlayerData(
+                      name: player['last'] ?? '',
+                      skNumber: player['skat_number']?.toString() ?? '',
+                    ));
+                    int newPlayerCount = 0;
+                    for (var group in groups) {
+                      newPlayerCount += group.length;
+                    }
+                    final ante = LeaguePurseService.playersAnte;
+                    LeaguePurseService.setSkatPurse(ante * newPlayerCount);
+                    LeaguePurseService.setClosestPinPurse(LeaguePurseService.closestPinAmount * newPlayerCount, isExplicit: false);
+                    LeaguePurseService.setMulliganPurse(LeaguePurseService.mulliganAmount * newPlayerCount, isExplicit: false);
+                  });
+                },
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
   }
 
   /// Checks if a player is selected for swapping or delete
@@ -628,12 +744,11 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     return null; // Use default color (blue[100] for swap selection)
   }
 
-  /// Checks if an empty slot is selected for swapping
+  /// Checks if an empty slot is selected for swapping or add-player progression
   bool _isEmptySlotSelected(int groupIndex, int playerIndex) {
-    // Prevent highlighting if SKATS data exists
-    if (_hasAnySkatsData()) {
-      return false;
-    }
+    if (_hasAnySkatsData()) return false;
+    if (_showAdjustPlayersOverlay &&
+        _addTargetSlotKey == '${groupIndex}_$playerIndex') return true;
     String slotKey = 'empty_${groupIndex + 1}_$playerIndex';
     return _swapService.isEmptySlotSelected(slotKey);
   }

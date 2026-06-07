@@ -172,10 +172,15 @@ class SwapService {
       PlayerData temp = updatedGroups[pos1.groupIndex][pos1.playerIndex];
       updatedGroups[pos1.groupIndex][pos1.playerIndex] = updatedGroups[pos2.groupIndex][pos2.playerIndex];
       updatedGroups[pos2.groupIndex][pos2.playerIndex] = temp;
-      
+
+      // Remove any empty-named placeholders left behind by swapping with an empty slot
+      for (int i = 0; i < updatedGroups.length; i++) {
+        updatedGroups[i].removeWhere((p) => p.name.isEmpty);
+      }
+
       // Clear selection after successful swap
       selectedForSwap.clear();
-      
+
       return updatedGroups;
       
     } catch (e) {

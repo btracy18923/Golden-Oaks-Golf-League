@@ -624,10 +624,15 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
                     style: const TextStyle(fontSize: 12, color: Colors.grey)),
                 onTap: () {
                   Navigator.of(ctx).pop();
+                  final hcValue = ((player['HC'] ?? player['handicap']) as num? ?? 0).toDouble();
                   setState(() {
-                    groups[groupIndex][playerIndex] = player;
+                    groups[groupIndex][playerIndex] = {
+                      ...player,
+                      'handicap': hcValue,
+                    };
                   });
                   _createControllersForPlayers();
+                  updateTitleInformation();
                 },
               );
             },
@@ -733,8 +738,19 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
   void _onEmptySlotTap(int groupIndex, int playerIndex) {
     if (_hasAnyScoreData() || groupsProcessed) return;
 
-    // In adjust players overlay: triple-tap opens the add-player picker
+    // In adjust players overlay
     if (_showAdjustPlayersOverlay) {
+      // If a player is already selected for swap, select this slot for swap
+      if (selectedForSwap.isNotEmpty && selectedForSwap.length < 2) {
+        final swapKey = 'empty_${groupIndex + 1}_$playerIndex';
+        setState(() {
+          _resetAddMode();
+          selectedForSwap.add(swapKey);
+        });
+        return;
+      }
+
+      // Otherwise triple-tap opens the add-player picker
       final slotKey = '${groupIndex}_$playerIndex';
       bool showPicker = false;
       setState(() {
@@ -847,10 +863,33 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
 
       if (g1 >= 0 && p1 >= 0 && g2 >= 0 && p2 >= 0) {
         setState(() {
-          // Swap the players
-          var temp = groups[g1][p1];
-          groups[g1][p1] = groups[g2][p2];
-          groups[g2][p2] = temp;
+          final item1IsEmpty = item1.startsWith('empty_');
+          final item2IsEmpty = item2.startsWith('empty_');
+
+          if (!item1IsEmpty && item2IsEmpty) {
+            // Move player from (g1,p1) into group g2
+            final player = groups[g1][p1];
+            groups[g1][p1] = null;
+            if (p2 < groups[g2].length) {
+              groups[g2][p2] = player;
+            } else {
+              groups[g2] = List<Map<String, dynamic>?>.from(groups[g2])..add(player);
+            }
+          } else if (item1IsEmpty && !item2IsEmpty) {
+            // Move player from (g2,p2) into group g1
+            final player = groups[g2][p2];
+            groups[g2][p2] = null;
+            if (p1 < groups[g1].length) {
+              groups[g1][p1] = player;
+            } else {
+              groups[g1] = List<Map<String, dynamic>?>.from(groups[g1])..add(player);
+            }
+          } else {
+            // Both players — direct swap
+            final temp = groups[g1][p1];
+            groups[g1][p1] = groups[g2][p2];
+            groups[g2][p2] = temp;
+          }
           selectedForSwap.clear();
         });
         _createControllersForPlayers();
