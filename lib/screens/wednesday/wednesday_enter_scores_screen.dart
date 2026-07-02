@@ -395,10 +395,7 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
 
   // ============== SHUFFLE FUNCTIONALITY ==============
 
-  /// Handles the Shuffle button press using handicap-seeded distribution.
-  /// Each group of 4 gets 2 high-HC and 2 low-HC players.
-  /// Each group of 3 gets 1 high-HC and 2 low-HC players.
-  /// The last group may not match if pools run dry.
+  /// Handles the Shuffle button press — completely random grouping.
   void _handleShuffle() {
     List<Map<String, dynamic>> allPlayers = [];
     for (int groupIndex = 0; groupIndex < groups.length; groupIndex++) {
@@ -435,22 +432,8 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
       return;
     }
 
-    // Sort by HC descending so top half = high handicap players
-    allPlayers.sort((a, b) {
-      double hcA = ((a['HC'] ?? a['handicap']) as num? ?? 0).toDouble();
-      double hcB = ((b['HC'] ?? b['handicap']) as num? ?? 0).toDouble();
-      return hcB.compareTo(hcA);
-    });
-
-    // Split into high HC (top half) and low HC (bottom half)
-    int splitPoint = (totalPlayers / 2).ceil();
-    List<Map<String, dynamic>> highHC = List.from(allPlayers.sublist(0, splitPoint));
-    List<Map<String, dynamic>> lowHC = List.from(allPlayers.sublist(splitPoint));
-
-    // Shuffle each pool independently so seeding is random within each tier
-    final random = Random();
-    highHC.shuffle(random);
-    lowHC.shuffle(random);
+    // Completely random shuffle
+    allPlayers.shuffle(Random());
 
     // Calculate number of groups
     int numGroups;
@@ -478,9 +461,7 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
 
     int playersPerGroup = totalPlayers ~/ numGroups;
     int remainingPlayers = totalPlayers % numGroups;
-
-    int highIdx = 0;
-    int lowIdx = 0;
+    int playerIdx = 0;
 
     setState(() {
       for (int i = 0; i < groups.length; i++) {
@@ -490,46 +471,8 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
 
       for (int groupIndex = 0; groupIndex < numGroups; groupIndex++) {
         int groupSize = playersPerGroup + (groupIndex < remainingPlayers ? 1 : 0);
-        int slot = 0;
-
-        if (groupSize >= 4) {
-          // 2 high HC + 2 low HC; fill any leftover slots from whichever pool remains
-          for (int i = 0; i < 2 && highIdx < highHC.length && slot < 4; i++) {
-            groups[groupIndex][slot++] = highHC[highIdx++];
-          }
-          for (int i = 0; i < 2 && lowIdx < lowHC.length && slot < 4; i++) {
-            groups[groupIndex][slot++] = lowHC[lowIdx++];
-          }
-          while (slot < groupSize && slot < 4) {
-            if (highIdx < highHC.length) {
-              groups[groupIndex][slot++] = highHC[highIdx++];
-            } else if (lowIdx < lowHC.length) {
-              groups[groupIndex][slot++] = lowHC[lowIdx++];
-            } else break;
-          }
-        } else if (groupSize == 3) {
-          // 1 high HC + 2 low HC; fall back to opposite pool if one runs dry
-          if (highIdx < highHC.length) {
-            groups[groupIndex][slot++] = highHC[highIdx++];
-          } else if (lowIdx < lowHC.length) {
-            groups[groupIndex][slot++] = lowHC[lowIdx++];
-          }
-          for (int i = 0; i < 2 && slot < 4; i++) {
-            if (lowIdx < lowHC.length) {
-              groups[groupIndex][slot++] = lowHC[lowIdx++];
-            } else if (highIdx < highHC.length) {
-              groups[groupIndex][slot++] = highHC[highIdx++];
-            }
-          }
-        } else {
-          // Group of 2 or fewer — fill from whichever pool has players
-          while (slot < groupSize && slot < 4) {
-            if (highIdx < highHC.length) {
-              groups[groupIndex][slot++] = highHC[highIdx++];
-            } else if (lowIdx < lowHC.length) {
-              groups[groupIndex][slot++] = lowHC[lowIdx++];
-            } else break;
-          }
+        for (int slot = 0; slot < groupSize && slot < 4; slot++) {
+          groups[groupIndex][slot] = allPlayers[playerIdx++];
         }
       }
     });
@@ -1823,7 +1766,7 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
       );
     } else {
       success = await backendEmailService.sendCustomEmail(
-        to: [EmailConfig.fallbackEmail],
+        to: [EmailConfig.senderEmail],
         bcc: emails.toList(),
         subject: subject,
         body: body,

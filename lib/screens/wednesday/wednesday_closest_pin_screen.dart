@@ -48,31 +48,42 @@ class _WednesdayClosestPinScreenState extends State<WednesdayClosestPinScreen> {
   final Map<String, double> _playerWinnings = {};
   bool _tiedMode = false; // Track if tied mode is active
   final List<String> _tiedPlayers = []; // Track players in the tie
+  bool _tiedIsRedo = false; // True when rebuilding a tie over an already-used pin
   @override
   void initState() {
     super.initState();
 
     // Calculate Closest Pin Purse based on number of selected players
-    // Wednesday league has only 1 closest pin (not 4 like Monday)
-    // Each player contributes $1.00 to the single closest pin purse
+    // Wednesday league has 2 closest pins; each player contributes $1.00
     double closestPinAmount = LeaguePurseService.getClosestPinAmount(league: League.wednesday);
-    double calculatedPurse = closestPinAmount * widget.selectedPlayers.length;
+    double totalPurse = closestPinAmount * widget.selectedPlayers.length;
+
+    // Round down to even so the purse splits equally between 2 winners.
+    // Any remainder (odd player count) rolls into the mulligan purse.
+    double effectivePurse = (totalPurse / 2).floorToDouble() * 2;
+    double overage = totalPurse - effectivePurse;
+    if (overage > 0) {
+      LeaguePurseService.setMulliganPurse(
+        LeaguePurseService.mulliganPurse + overage,
+        isExplicit: true,
+      );
+    }
 
     // Set the purse explicitly
-    LeaguePurseService.setClosestPinPurse(calculatedPurse, isExplicit: false);
+    LeaguePurseService.setClosestPinPurse(effectivePurse, isExplicit: false);
 
-    // Store the initial purse amount for Clear button resets
-    _initialPurseAmount = calculatedPurse;
+    // Store the effective purse for Clear button resets
+    _initialPurseAmount = effectivePurse;
 
-    // Wednesday has only 1 closest pin to award (not 4 like Monday)
-    _totalClosestPins = 1;
+    // Wednesday has 2 closest pins to award
+    _totalClosestPins = 2;
     _remainingClosestPins = _totalClosestPins;
 
-    // Calculate the value per closest pin (entire purse goes to the single winner)
-    _closestPinValue = _initialPurseAmount;
+    // Each winner receives half the effective purse
+    _closestPinValue = effectivePurse / 2;
 
     // Initialize remaining purse amount to track decreases
-    _remainingPurseAmount = _initialPurseAmount;
+    _remainingPurseAmount = effectivePurse;
 
     // Initialize player closest pin counts and winnings
     for (var player in widget.selectedPlayers) {
@@ -97,10 +108,10 @@ class _WednesdayClosestPinScreenState extends State<WednesdayClosestPinScreen> {
   void _handleClear() {
     setState(() {
       // Reset to initial state values
-      // Wednesday has only 1 closest pin to award
-      _totalClosestPins = 1;
+      // Wednesday has 2 closest pins to award
+      _totalClosestPins = 2;
       _remainingClosestPins = _totalClosestPins;
-      _closestPinValue = _initialPurseAmount;
+      _closestPinValue = _initialPurseAmount / 2;
       _remainingPurseAmount = _initialPurseAmount;
 
       // Reset all player counts and winnings to 0
@@ -112,6 +123,7 @@ class _WednesdayClosestPinScreenState extends State<WednesdayClosestPinScreen> {
 
       // Reset tied mode and tied players list
       _tiedMode = false;
+      _tiedIsRedo = false;
       _tiedPlayers.clear();
     });
   }
@@ -162,10 +174,26 @@ class _WednesdayClosestPinScreenState extends State<WednesdayClosestPinScreen> {
 
   void _handleTied() {
     setState(() {
-      _tiedMode = !_tiedMode;
-      if (!_tiedMode) {
-        // Exiting tied mode - clear tied players list
+      if (_tiedMode) {
+        // Second press of Tied = confirm/resolve the tie
+        if (_tiedPlayers.isNotEmpty && !_tiedIsRedo) {
+          // Fresh tie: consume one pin slot now
+          _remainingClosestPins--;
+          _remainingPurseAmount -= _closestPinValue;
+        }
+        _tiedMode = false;
+        _tiedIsRedo = false;
         _tiedPlayers.clear();
+      } else {
+        // First press of Tied = enter tied mode
+        // Rebuild list from any player already assigned a pin (redo scenario)
+        for (var entry in _playerClosestPinCounts.entries) {
+          if (entry.value > 0 && entry.value <= 1.0) {
+            _tiedPlayers.add(entry.key);
+          }
+        }
+        _tiedIsRedo = _tiedPlayers.isNotEmpty;
+        _tiedMode = true;
       }
     });
   }
@@ -178,41 +206,23 @@ class _WednesdayClosestPinScreenState extends State<WednesdayClosestPinScreen> {
     if (canSelectPlayer) {
       setState(() {
         if (_tiedMode) {
-          // When entering tied mode, first check if we need to rebuild the tied list
-          // by finding all players who are currently in a tie (have fractional counts)
-          if (_tiedPlayers.isEmpty) {
-            for (var entry in _playerClosestPinCounts.entries) {
-              if (entry.value > 0 && entry.value <= 1.0) {
-                // Add all players with any count > 0
-                _tiedPlayers.add(entry.key);
-              }
-            }
-          }
-
-          // Add the newly tapped player if not already in the list
-          if (!_tiedPlayers.contains(lastName)) {
+          // Add player to tied list (toggle off if already there)
+          if (_tiedPlayers.contains(lastName)) {
+            _tiedPlayers.remove(lastName);
+          } else {
             _tiedPlayers.add(lastName);
           }
 
-          // Calculate split amount among all tied players
-          double splitAmount = _closestPinValue / _tiedPlayers.length;
-          double fractionalCount = 1.0 / _tiedPlayers.length;
-
-          // Update winnings and counts for all tied players
-          for (String playerName in _tiedPlayers) {
-            _playerClosestPinCounts[playerName] = fractionalCount;
-            _playerWinnings[playerName] = splitAmount;
+          // Show live split across all tied players (no pin consumed yet)
+          if (_tiedPlayers.isNotEmpty) {
+            double splitAmount = _closestPinValue / _tiedPlayers.length;
+            double fractionalCount = 1.0 / _tiedPlayers.length;
+            for (String playerName in _tiedPlayers) {
+              _playerClosestPinCounts[playerName] = fractionalCount;
+              _playerWinnings[playerName] = splitAmount;
+            }
           }
-
-          // Only decrease remaining pins and purse when going from 0 to 1 player
-          if (_tiedPlayers.length == 1 && _remainingClosestPins > 0) {
-            _remainingClosestPins--;
-            _remainingPurseAmount -= _closestPinValue;
-          }
-
-          // Turn off TIED mode after selecting a player and clear the list
-          _tiedMode = false;
-          _tiedPlayers.clear();
+          // Pin is consumed when Tied button is pressed again to confirm
         } else {
           // Normal mode - single winner gets full amount
           _playerClosestPinCounts[lastName] = _playerClosestPinCounts[lastName]! + 1.0;
@@ -419,7 +429,7 @@ class _WednesdayClosestPinScreenState extends State<WednesdayClosestPinScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             decoration: BoxDecoration(
-              color: _remainingClosestPins > 0 ? Colors.orange[200] : Colors.orange[200],
+              color: Colors.orange[200],
               borderRadius: BorderRadius.circular(6),
               border: Border.all(color: Colors.black54),
             ),

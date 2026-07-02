@@ -916,7 +916,7 @@
                             <input type="number" id="playOpenings" min="0" placeholder="e.g. 12">
                         </div>
                         <div class="form-group" id="departTimeGroup">
-                            <label>Departure Time</label>
+                            <label id="departTimeLabel">Departure Time</label>
                             <input type="text" id="departTime" list="timeOptions" placeholder="Select or type time" onblur="if(this.value && !this.value.toUpperCase().includes('AM') && !this.value.toUpperCase().includes('PM')) this.value += ' AM'">
                             <datalist id="timeOptions">
                                 <option value="7:00 AM">
@@ -1019,14 +1019,18 @@
         let cachedPlayersCollection = null; // which collection the cache is for
         let adminSelectedLeague = null; // For admin league switching
 
-        const storedSession = sessionStorage.getItem('golfLeagueSession');
+        window.addEventListener('pageshow', function(event) {
+            if (event.persisted) window.location.reload();
+        });
+
+        const storedSession = localStorage.getItem('golfLeagueSession_v2');
         if (storedSession) {
             const session = JSON.parse(storedSession);
             currentUser = session.user;
             isAdmin = session.isAdmin;
             selectedLeague = session.league;
             adminSelectedLeague = session.adminLeague;
-            showMainApp();
+            setTimeout(() => showMainApp(), 0);
         }
 
         // League selection functions
@@ -1146,7 +1150,7 @@
                     adminSelectedLeague = selectedLeague;
                 }
 
-                sessionStorage.setItem('golfLeagueSession', JSON.stringify({
+                localStorage.setItem('golfLeagueSession_v2', JSON.stringify({
                     user: player,
                     isAdmin: isAdmin,
                     league: selectedLeague,
@@ -1255,7 +1259,7 @@
         
         window.logout = function() {
             console.log('Logging out...');
-            sessionStorage.removeItem('golfLeagueSession');
+            localStorage.removeItem('golfLeagueSession_v2');
             currentUser = null;
             cachedPlayers = null;
             cachedPlayersCollection = null;
@@ -1449,7 +1453,7 @@
                             <div style="margin-bottom: 15px;">
                                 <p><strong>Course:</strong> ${courseName}</p>
                                 ${displayLeague === 'monday' && rawOpenings !== null ? `<p><strong>Openings:</strong> <span style="font-weight:600; color:${openingsColor};">${openingsDisplay}${available > 0 ? ' Left' : ''}</span></p>` : ''}
-                                <p><strong>Departure:</strong> ${playDate.departureTime || 'TBD'}</p>
+                                <p><strong>${displayLeague === 'wednesday' ? 'Meeting' : 'Departure'}:</strong> ${playDate.departureTime || 'TBD'}</p>
                                 <p><strong>Tee Time:</strong> ${playDate.teeTime || 'TBD'}</p>
                                 ${playDate.meetAt ? `<p><strong>Meet At:</strong> ${playDate.meetAt}</p>` : ''}
                                 ${playDate.notes ? `<p><strong>Notes:</strong> ${playDate.notes}</p>` : ''}
@@ -1461,7 +1465,8 @@
                                 &nbsp;|&nbsp;
                                 <span style="color: #718096; font-weight: 600;">? ${undecidedCount} Undecided</span>
                             </p>
-                            <button onclick="showPlayDateDetails('${playDate.id}', '${courseName.replace(/'/g, "\\'")}', ${playDate.date.seconds}, '${playDate.departureTime || ''}', '${playDate.teeTime || ''}', '${(playDate.meetAt || '').replace(/'/g, "\\'")}', '${(playDate.notes || '').replace(/'/g, "\\'")}')" style="width: 100%; margin-top: 12px; padding: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                            ${isAdmin ? `<button onclick="editPlayDate('${playDate.id}')" style="width: 100%; margin-top: 12px; padding: 10px; background: #48bb78; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">✏️ Edit Play Date</button>` : ''}
+                            <button onclick="showPlayDateDetails('${playDate.id}', '${courseName.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, "\\'")}', ${playDate.date.seconds}, '${playDate.departureTime || ''}', '${playDate.teeTime || ''}', '${(playDate.meetAt || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, "\\'").replace(/[\r\n]/g, ' ')}', '${(playDate.notes || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, "\\'").replace(/[\r\n]/g, ' ')}')" style="width: 100%; margin-top: 8px; padding: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
                                 Click to Play / Not Play →
                             </button>
                         </div>
@@ -1526,14 +1531,14 @@
                         <div class="form-group">
                             <label>Openings</label>
                             <input type="number" id="editOpenings" min="0" value="${pd.openings !== undefined ? pd.openings : ''}" placeholder="e.g. 12">
-                        </div>
-                        <div class="form-group">
-                            <label>Departure Time</label>
-                            <input type="text" id="editDepartTime" value="${pd.departureTime || ''}" placeholder="e.g. 8:00 AM">
                         </div>` : ''}
                         <div class="form-group">
+                            <label>${isMon ? 'Departure Time' : 'Meeting Time'}</label>
+                            <input type="text" id="editDepartTime" value="${pd.departureTime || ''}" placeholder="e.g. 12:30 PM">
+                        </div>
+                        <div class="form-group">
                             <label>Tee Time</label>
-                            <input type="text" id="editTeeTime" value="${pd.teeTime || ''}" placeholder="e.g. 8:30 AM">
+                            <input type="text" id="editTeeTime" value="${pd.teeTime || ''}" placeholder="e.g. 1:00 PM">
                         </div>
                         ${isMon ? `
                         <div class="form-group">
@@ -1566,13 +1571,14 @@
                 const displayLeague = isAdmin && adminSelectedLeague ? adminSelectedLeague : selectedLeague;
                 const isMon = displayLeague === 'monday';
 
-                let courseId = null, departureTime = null, meetAt = null;
+                let courseId = null, meetAt = null;
                 let openings = undefined;
+
+                const departureTime = document.getElementById('editDepartTime').value || null;
 
                 if (isMon) {
                     courseId = document.getElementById('editPlayCourse').value;
                     if (!courseId) { result.innerHTML = '<div class="error">Please select a course</div>'; return; }
-                    departureTime = document.getElementById('editDepartTime').value || null;
                     const meetAtCbs = document.querySelectorAll('input[name="editMeetAt"]:checked');
                     const meetAtVals = Array.from(meetAtCbs).map(cb => cb.value);
                     meetAt = meetAtVals.length > 0 ? meetAtVals.join(', ') : null;
@@ -1633,7 +1639,6 @@
                             </button>
                             ${isAdmin ? `
                                 <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                                        <button onclick="editPlayDate('${playDateId}')" style="background: #48bb78; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600;">✏️ Edit Play Date</button>
                                     <button onclick="emailPlayDateList('${playDateId}', '${collectionName}', '${courseName.replace(/'/g, "\\'")}', '${formattedDate}')" style="background: #4299e1; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600;">📧 Email List to Admin</button>
                                     <button onclick="deletePlayDate('${playDateId}')" style="background: #f56565; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600;">🗑️ Delete Play Date</button>
                                 </div>` : ''}
@@ -1641,7 +1646,7 @@
                         <h3>${formattedDate} - ${courseName}</h3>
                         <div style="margin-bottom: 20px;">
                             <p><strong>Course:</strong> ${courseName}</p>
-                            <p><strong>Departure:</strong> ${departTime || 'TBD'}</p>
+                            <p><strong>${displayLeague === 'wednesday' ? 'Meeting' : 'Departure'}:</strong> ${departTime || 'TBD'}</p>
                             <p><strong>Tee Time:</strong> ${teeTime || 'TBD'}</p>
                             ${meetAt ? `<p><strong>Meet At:</strong> ${meetAt}</p>` : ''}
                             ${notes ? `<p><strong>Notes:</strong> ${notes}</p>` : ''}
@@ -2841,9 +2846,9 @@ Your current HC is displayed when you log in.
             cachedPlayersCollection = null;
 
             // Update session storage
-            const session = JSON.parse(sessionStorage.getItem('golfLeagueSession'));
+            const session = JSON.parse(localStorage.getItem('golfLeagueSession_v2'));
             session.adminLeague = adminSelectedLeague;
-            sessionStorage.setItem('golfLeagueSession', JSON.stringify(session));
+            localStorage.setItem('golfLeagueSession_v2', JSON.stringify(session));
 
             // Update league title in header
             const leagueLabel = league === 'monday' ? 'Monday League' : 'Wednesday League';
@@ -2944,12 +2949,15 @@ Your current HC is displayed when you log in.
                 const teeTimeInput = document.getElementById('teeTime');
                 const marinaCheckbox = document.querySelector('input[name="meetAt"][value="Marina"]');
                 if (league === 'wednesday') {
-                    departTimeGroup.style.display = 'none';
+                    departTimeGroup.style.display = '';
                     meetAtGroup.style.display = 'none';
+                    document.getElementById('departTimeLabel').textContent = 'Meeting Time';
+                    document.getElementById('departTime').value = '12:30 PM';
                     teeTimeInput.value = '1:00 PM';
                 } else {
                     departTimeGroup.style.display = '';
                     meetAtGroup.style.display = '';
+                    document.getElementById('departTimeLabel').textContent = 'Departure Time';
                     teeTimeInput.value = '';
                     document.querySelectorAll('input[name="meetAt"]').forEach(cb => cb.checked = false);
                     if (marinaCheckbox) marinaCheckbox.checked = true;
@@ -3241,7 +3249,8 @@ Your current HC is displayed when you log in.
                         <th ${th}>Player</th><th ${th}>Pins</th><th ${th}>Winnings</th>
                     </tr></thead><tbody>`;
                     r.closest_pin_winners.forEach(w => {
-                        html += `<tr><td ${td}>${w.name}</td><td ${td}>${w.pins}</td><td ${td}>$${w.amount}</td></tr>`;
+                        const pinsDisplay = Number.isInteger(w.pins) ? w.pins : parseFloat(w.pins).toFixed(2);
+                        html += `<tr><td ${td}>${w.name}</td><td ${td}>${pinsDisplay}</td><td ${td}>$${w.amount}</td></tr>`;
                     });
                     html += '</tbody></table>';
                 }
@@ -3253,7 +3262,12 @@ Your current HC is displayed when you log in.
                         <table ${tbl}><thead><tr>
                             <th ${th}>Player</th><th ${th}>SK#</th><th ${th}>Skats</th><th ${th}>Diff</th><th ${th}>Winnings</th>
                         </tr></thead><tbody>`;
-                        r.skat_winners.forEach(w => {
+                        const sortedSkatWinners = [...r.skat_winners].sort((a, b) => {
+                            const da = parseFloat((a.diff||'0').toString().replace(/[^0-9.\-]/g,'')) || 0;
+                            const db = parseFloat((b.diff||'0').toString().replace(/[^0-9.\-]/g,'')) || 0;
+                            return db - da;
+                        });
+                        sortedSkatWinners.forEach(w => {
                             html += `<tr><td ${td}>${w.name}</td><td ${td}>${w.skat_number}</td><td ${td}>${w.skats}</td><td ${td}>${w.diff}</td><td ${td}>${w.amount}</td></tr>`;
                         });
                         html += '</tbody></table>';
@@ -3491,7 +3505,7 @@ Your current HC is displayed when you log in.
                 let departureTime;
                 if (displayLeague === 'wednesday') {
                     meetAtString = 'Pro Shop';
-                    departureTime = null;
+                    departureTime = document.getElementById('departTime').value || null;
                 } else {
                     const meetAtCheckboxes = document.querySelectorAll('input[name="meetAt"]:checked');
                     const meetAtValues = Array.from(meetAtCheckboxes).map(cb => cb.value);

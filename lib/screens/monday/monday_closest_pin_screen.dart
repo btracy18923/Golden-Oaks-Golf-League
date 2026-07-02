@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../services/UI/closest_pin_UI_service.dart' as closest_pin_ui;
 import '../../services/shared/league_purse_service.dart';
@@ -7,6 +7,7 @@ import '../../services/device_detection_service.dart';
 import '../../services/responsive_typography.dart';
 import 'monday_results_screen.dart';
 import '../../services/firebase_upload_service.dart';
+import '../../models/league.dart';
 
 class MondayClosestPinScreen extends StatefulWidget {
   final List<Map<String, dynamic>> selectedPlayers;
@@ -32,22 +33,23 @@ class _MondayClosestPinScreenState extends State<MondayClosestPinScreen> {
   void initState() {
     super.initState();
 
-    // Don't recalculate Closest Pin Purse - use the value already set in LeaguePurseService
-    // The Enter Scores Screen already calculated this in its initState
+    // Calculate purse directly from player count: $1.00/pin/player × 4 pins × playerCount
+    double closestPinAmount = LeaguePurseService.getClosestPinAmount(league: League.monday);
+    double calculatedPurse = closestPinAmount * widget.selectedPlayers.length;
 
-    // Store the initial purse amount for Clear button resets
-    _initialPurseAmount = LeaguePurseService.closestPinPurse;
+    LeaguePurseService.setClosestPinPurse(calculatedPurse, isExplicit: true);
 
-    // Calculate total closest pins to process (closestPinAmount / $1.00)
-    double closestPinAmount = LeaguePurseService.closestPinAmount;
-    _totalClosestPins = (closestPinAmount / 1.0).round();
+    _initialPurseAmount = calculatedPurse;
+
+    // Number of pins = per-player amount (4 for Monday)
+    _totalClosestPins = closestPinAmount.round();
     _remainingClosestPins = _totalClosestPins;
 
-    // Calculate the value per closest pin (Closest Pin Purse / initial remaining amount)
-    _closestPinValue = _initialPurseAmount / _totalClosestPins;
+    // Value per pin, rounded to nearest dollar
+    _closestPinValue = (calculatedPurse / _totalClosestPins).roundToDouble();
 
     // Initialize remaining purse amount to track decreases
-    _remainingPurseAmount = _initialPurseAmount;
+    _remainingPurseAmount = calculatedPurse;
     
     // Initialize player closest pin counts and winnings
     for (var player in widget.selectedPlayers) {
@@ -76,10 +78,10 @@ class _MondayClosestPinScreenState extends State<MondayClosestPinScreen> {
   void _handleClear() {
     setState(() {
       // Reset to initial state values
-      double closestPinAmount = LeaguePurseService.closestPinAmount;
-      _totalClosestPins = (closestPinAmount / 1.0).round();
+      double closestPinAmount = LeaguePurseService.getClosestPinAmount(league: League.monday);
+      _totalClosestPins = closestPinAmount.round();
       _remainingClosestPins = _totalClosestPins;
-      _closestPinValue = _initialPurseAmount / _totalClosestPins;
+      _closestPinValue = (_initialPurseAmount / _totalClosestPins).roundToDouble();
       _remainingPurseAmount = _initialPurseAmount;
 
       // Sync the reset Closest Pin Purse back to LeaguePurseService

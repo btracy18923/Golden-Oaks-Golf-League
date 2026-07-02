@@ -105,90 +105,130 @@ class ProcessGroupsService {
   }
 
   /// Redistributes players into new groups
-  /// Creates 10 groups with 4 slots each
-  /// Assigns group numbers to each player
+  /// Creates groups of 4 real players (full groups) and groups of 3 real players
+  /// (partial groups), so each partial group needs only 1 wildcard.
+  ///
+  /// Distribution rules (N = total players, r = N % 4):
+  ///   r == 0: all full groups, no wildcards
+  ///   r == 3: (N÷4) full groups + 1 partial group of 3
+  ///   r == 2, N≥6: (N-6)÷4 full groups + 2 partial groups of 3
+  ///   r == 1, N≥9: (N-9)÷4 full groups + 3 partial groups of 3
+  ///   edge cases (N<9 with r=1, N<6 with r=2): fallback to original behaviour
   List<List<Map<String, dynamic>?>> _redistributePlayersIntoGroups(List<Map<String, dynamic>> allPlayers) {
+    int n = allPlayers.length;
+    if (n == 0) return [];
+
+    int r = n % 4;
+    int numFullGroups;
+    int numPartialGroups;
+
+    if (r == 0) {
+      numFullGroups = n ~/ 4;
+      numPartialGroups = 0;
+    } else if (r == 3) {
+      numFullGroups = n ~/ 4;
+      numPartialGroups = 1;
+    } else if (r == 2) {
+      if (n >= 6) {
+        numPartialGroups = 2;
+        numFullGroups = (n - 6) ~/ 4;
+      } else {
+        numFullGroups = 0;
+        numPartialGroups = 1;
+      }
+    } else { // r == 1
+      if (n >= 9) {
+        numPartialGroups = 3;
+        numFullGroups = (n - 9) ~/ 4;
+      } else {
+        numFullGroups = n ~/ 4;
+        numPartialGroups = 1;
+      }
+    }
+
     List<List<Map<String, dynamic>?>> newGroups = [];
     int playerIndex = 0;
 
-    for (int groupIndex = 0; groupIndex < 10; groupIndex++) {
+    // Full groups: 4 real players each
+    for (int gi = 0; gi < numFullGroups; gi++) {
       List<Map<String, dynamic>?> group = [];
-
-      for (int slotIndex = 0; slotIndex < 4; slotIndex++) {
-        if (playerIndex < allPlayers.length) {
-          // Assign group number to player (1-based)
-          allPlayers[playerIndex]['manual_group'] = groupIndex + 1;
-          group.add(allPlayers[playerIndex]);
-          playerIndex++;
-        } else {
-          // Empty slot
-          group.add(null);
-        }
+      for (int slot = 0; slot < 4; slot++) {
+        allPlayers[playerIndex]['manual_group'] = gi + 1;
+        group.add(allPlayers[playerIndex]);
+        playerIndex++;
       }
-
       newGroups.add(group);
+    }
+
+    // Partial groups: remaining players distributed as evenly as possible
+    // (each partial group gets 3 players when N satisfies the constraints above)
+    if (numPartialGroups > 0) {
+      int remaining = n - playerIndex;
+      int base = remaining ~/ numPartialGroups;
+      int extra = remaining % numPartialGroups;
+
+      for (int p = 0; p < numPartialGroups; p++) {
+        int groupIndex = numFullGroups + p;
+        int realCount = base + (p < extra ? 1 : 0);
+        List<Map<String, dynamic>?> group = [];
+
+        for (int slot = 0; slot < 4; slot++) {
+          if (slot < realCount) {
+            allPlayers[playerIndex]['manual_group'] = groupIndex + 1;
+            group.add(allPlayers[playerIndex]);
+            playerIndex++;
+          } else {
+            group.add(null);
+          }
+        }
+        newGroups.add(group);
+      }
     }
 
     return newGroups;
   }
 
-  /// Fills incomplete groups with wildcard copies of existing players
-  /// Ensures all groups with at least 1 player have exactly 4 players
-  /// Prevents duplicate players within the same group
+  /// Fills every incomplete group with wildcard copies of existing players
+  /// so that each such group reaches exactly 4 players.
+  /// With the smart distribution from _redistributePlayersIntoGroups, each
+  /// partial group has 3 real players and receives exactly 1 wildcard.
+  /// Prevents duplicate players within the same group.
   void _fillIncompleteGroupsWithWildcards(List<List<Map<String, dynamic>?>> groups, List<Map<String, dynamic>> allPlayers) {
-    // Find the last group with players
-    int lastGroupIndex = -1;
-    for (int i = groups.length - 1; i >= 0; i--) {
-      if (groups[i].any((player) => player != null)) {
-        lastGroupIndex = i;
-        break;
+    for (int groupIndex = 0; groupIndex < groups.length; groupIndex++) {
+      var group = groups[groupIndex];
+
+      int realCount = group.where((p) => p != null).length;
+      if (realCount == 0 || realCount >= 4) continue;
+
+      int wildcardsNeeded = 4 - realCount;
+
+      // Build set of players already in this group to avoid duplicates
+      Set<String> playersInGroup = {};
+      for (var player in group) {
+        if (player != null) {
+          playersInGroup.add('${player['first']}_${player['last']}');
+        }
       }
-    }
 
-    if (lastGroupIndex == -1) return; // No groups with players
+      // Shuffle all players and pick from those not already in this group
+      List<Map<String, dynamic>> shuffledPlayers = List.from(allPlayers);
+      shuffledPlayers.shuffle(Random());
+      List<Map<String, dynamic>> available = shuffledPlayers.where((p) {
+        return !playersInGroup.contains('${p['first']}_${p['last']}');
+      }).toList();
 
-    // Count players in the last group
-    int playersInLastGroup = groups[lastGroupIndex].where((player) => player != null).length;
+      if (available.length < wildcardsNeeded) continue;
 
-    if (playersInLastGroup >= 4) return; // Last group is already full
-
-    // Calculate how many wildcards are needed
-    int playersNeeded = 4 - playersInLastGroup;
-
-    // Get the list of players already in the last group (to avoid duplicates)
-    Set<String> playersInGroup = {};
-    for (var player in groups[lastGroupIndex]) {
-      if (player != null) {
-        String playerKey = '${player['first']}_${player['last']}';
-        playersInGroup.add(playerKey);
-      }
-    }
-
-    // Shuffle available players and filter out those already in the group
-    List<Map<String, dynamic>> shuffledPlayers = List.from(allPlayers);
-    shuffledPlayers.shuffle(Random());
-
-    List<Map<String, dynamic>> availableWildcards = shuffledPlayers.where((player) {
-      String playerKey = '${player['first']}_${player['last']}';
-      return !playersInGroup.contains(playerKey);
-    }).toList();
-
-    if (availableWildcards.length < playersNeeded) {
-      // Not enough unique players available for wildcards
-      return;
-    }
-
-    // Fill empty slots in the last group with wildcard copies
-    int wildcardIndex = 0;
-    for (int slotIndex = 0; slotIndex < groups[lastGroupIndex].length && wildcardIndex < playersNeeded; slotIndex++) {
-      if (groups[lastGroupIndex][slotIndex] == null) {
-        // Create a wildcard copy of a player not already in the group
-        Map<String, dynamic> wildcardPlayer = Map<String, dynamic>.from(availableWildcards[wildcardIndex]);
-        wildcardPlayer['is_wild_card'] = true;
-        wildcardPlayer['manual_group'] = lastGroupIndex + 1; // Assign to last group (1-based)
-
-        groups[lastGroupIndex][slotIndex] = wildcardPlayer;
-        wildcardIndex++;
+      // Fill null slots with wildcard copies
+      int wi = 0;
+      for (int si = 0; si < group.length && wi < wildcardsNeeded; si++) {
+        if (group[si] == null) {
+          Map<String, dynamic> wildcardPlayer = Map<String, dynamic>.from(available[wi]);
+          wildcardPlayer['is_wild_card'] = true;
+          wildcardPlayer['manual_group'] = groupIndex + 1;
+          group[si] = wildcardPlayer;
+          wi++;
+        }
       }
     }
   }

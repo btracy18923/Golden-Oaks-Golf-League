@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:convert';
@@ -127,9 +127,9 @@ class _WednesdayPlayerSelectionScreenState extends State<WednesdayPlayerSelectio
     return Scaffold(
       backgroundColor: Colors.grey[300],
       appBar: AppBar(
-        title: Text(
+        title: const Text(
           "Select Wednesday Players - ${AppConfig.versionDate}",
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
         backgroundColor: FirebaseUploadService.anyAdminOverrideActive ? Colors.red[700] : Colors.orange[700],
         foregroundColor: Colors.white,
@@ -190,7 +190,7 @@ class _WednesdayPlayerSelectionScreenState extends State<WednesdayPlayerSelectio
     return Scaffold(
       backgroundColor: Colors.grey[300],
       appBar: AppBar(
-        title: Text("Select Players for Wednesday's Match - ${AppConfig.versionDate}"),
+        title: const Text("Select Players for Wednesday's Match - ${AppConfig.versionDate}"),
         backgroundColor: FirebaseUploadService.anyAdminOverrideActive ? Colors.red[700] : Colors.orange[700],
         foregroundColor: Colors.white,
         centerTitle: true,

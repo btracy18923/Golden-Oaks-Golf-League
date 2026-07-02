@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/UI/enter_scores_UI_service.dart';
 import '../../services/UI/custom_keypad_service.dart';
 import '../../services/UI/button_bar_UI_service.dart';
@@ -8,6 +10,7 @@ import '../../services/shared/swap_service.dart';
 import '../../services/shared/league_purse_service.dart';
 import '../../services/payout_validation_service.dart';
 import '../../services/database_helper.dart';
+import '../../services/firebase_upload_service.dart';
 import '../../services/screen_data_retention_service.dart';
 import '../../services/skat_adjustment_service.dart';
 import '../../models/league.dart';
@@ -70,6 +73,9 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
   String? _addTargetSlotKey;
   int _addTargetTapCount = 0;
 
+  // Firebase groupings state
+  bool _hasFirebaseGroupings = false;
+
   // Focus nodes for SKATS input fields - organized by group and player index
   final List<List<FocusNode?>> _skatsFocusNodes = [
     [null, null, null, null], // Group 0 (Group 1)
@@ -90,6 +96,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     super.initState();
     _keypadController = CustomKeypadService.createController();
     _initializeFocusNodes();
+    _checkFirebaseGroupings();
     
     // Reset distribution state for fresh calculations
     LeaguePurseService.resetDistributionState();
@@ -544,12 +551,6 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
       LeaguePurseService.setMulliganPurse(adjustedMulligan);
     });
     
-    // Apply Skat # adjustments based on DIFF values
-    final skatAdjustmentService = SkatAdjustmentService();
-    await skatAdjustmentService.applySkatAdjustments(groups);
-    
-    // Skat # adjustments applied silently without popup message
-
   }
 
 
@@ -651,7 +652,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     final Set<String> inGroups = {};
     for (var group in groups) {
       for (var player in group) {
-        if (player != null) inGroups.add(player.name);
+        inGroups.add(player.name);
       }
     }
 
@@ -748,7 +749,9 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
   bool _isEmptySlotSelected(int groupIndex, int playerIndex) {
     if (_hasAnySkatsData()) return false;
     if (_showAdjustPlayersOverlay &&
-        _addTargetSlotKey == '${groupIndex}_$playerIndex') return true;
+        _addTargetSlotKey == '${groupIndex}_$playerIndex') {
+      return true;
+    }
     String slotKey = 'empty_${groupIndex + 1}_$playerIndex';
     return _swapService.isEmptySlotSelected(slotKey);
   }
@@ -1495,12 +1498,20 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
       playersShuffled: _shuffledInCurrentSession || _hasBeenShuffled,
     );
 
+    // Build player list from current groups so added/deleted players are reflected
+    List<Map<String, dynamic>> allPlayersFromGroups = [];
+    for (var group in groups) {
+      for (var player in group) {
+        allPlayersFromGroups.add({'last': player.name});
+      }
+    }
+
     // Navigate to Monday Closest Pin Screen
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => MondayClosestPinScreen(
-          selectedPlayers: widget.selectedPlayers ?? [],
+          selectedPlayers: allPlayersFromGroups,
           playersAnte: widget.playersAnte,
         ),
       ),
@@ -1559,12 +1570,12 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
       onPressed: _getSwapButtonHandler(),
     ));
 
-    // Email Players button
+    // Save Groups / Recall Groups button
     buttons.add(ButtonBarUIService.buildActionButton(
       context,
-      text: 'Email Players',
-      color: Colors.orange[200]!,
-      onPressed: _handleEmailPlayers,
+      text: _hasFirebaseGroupings ? 'Recall Groups' : 'Save Groups',
+      color: Colors.purple[200]!,
+      onPressed: _handleGroupingsButton,
     ));
 
     return ButtonBarUIService.buildButtonBar(
@@ -1587,9 +1598,157 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
   void _handleCloseAdjustPlayersOverlay() {
     setState(() {
       _showAdjustPlayersOverlay = false;
-      _swapService.clearSelection(); // Clear any swap selections when closing
-      _resetDeleteMode(); // Clear any delete selection when closing
+      _swapService.clearSelection();
+      _resetDeleteMode();
     });
+  }
+
+  /// Checks Firebase for saved Monday groupings and updates the button label.
+  Future<void> _checkFirebaseGroupings() async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('M_scheduled_groups')
+          .doc('pending')
+          .get();
+      if (mounted) {
+        setState(() {
+          _hasFirebaseGroupings = doc.exists;
+        });
+      }
+    } catch (e) {
+      debugPrint('Could not check Firebase groupings: $e');
+    }
+  }
+
+  /// Dispatches to save or recall based on whether groupings exist in Firebase.
+  Future<void> _handleGroupingsButton() async {
+    if (_hasFirebaseGroupings) {
+      await _recallGroupingsFromFirebase();
+    } else {
+      await _saveGroupingsToFirebase();
+    }
+  }
+
+  /// Saves current Monday groupings to Firebase so they can be restored on restart.
+  /// Skipped when Firebase uploads are disabled.
+  Future<void> _saveGroupingsToFirebase() async {
+    if (!FirebaseUploadService.uploadsEnabled) return;
+    try {
+      final groupsJson = jsonEncode(groups.map((group) =>
+          group.map((p) => {
+            'name': p.name,
+            'skNumber': p.skNumber,
+            'skats': p.skats,
+            'diff': p.diff,
+            'money': p.money,
+          }).toList()
+      ).toList());
+
+      final playersJson = widget.selectedPlayers != null
+          ? jsonEncode(widget.selectedPlayers!.map((p) => Map<String, dynamic>.from(p)).toList())
+          : jsonEncode([]);
+
+      await FirebaseFirestore.instance.collection('M_scheduled_groups').doc('pending').set({
+        'groups': groupsJson,
+        'players': playersJson,
+        'saved_at': FieldValue.serverTimestamp(),
+      });
+      if (mounted) {
+        setState(() => _hasFirebaseGroupings = true);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Groupings saved to Firebase'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Failed to save Monday groupings to Firebase: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to save groupings'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
+
+  /// Recalls saved Monday groupings from Firebase and reloads them into the screen.
+  Future<void> _recallGroupingsFromFirebase() async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('M_scheduled_groups')
+          .doc('pending')
+          .get();
+
+      if (!doc.exists) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No saved groupings found'),
+              backgroundColor: Colors.orange,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+        return;
+      }
+
+      final data = doc.data()!;
+      final groupsJson = data['groups'] as String? ?? '[]';
+      final decoded = jsonDecode(groupsJson) as List<dynamic>;
+
+      final recalled = <List<PlayerData>>[];
+      for (final group in decoded) {
+        final playerList = <PlayerData>[];
+        for (final p in (group as List<dynamic>)) {
+          final m = p as Map<String, dynamic>;
+          playerList.add(PlayerData(
+            name: m['name'] as String? ?? '',
+            skNumber: m['skNumber'] as String? ?? '',
+            skats: m['skats'] as String? ?? '',
+            diff: m['diff'] as String? ?? '',
+            money: m['money'] as String? ?? '',
+          ));
+        }
+        recalled.add(playerList);
+      }
+
+      setState(() {
+        // Restore only the non-empty groups from the saved data
+        for (int i = 0; i < groups.length; i++) {
+          groups[i] = i < recalled.length ? recalled[i] : [];
+        }
+        _showAdjustPlayersOverlay = false;
+        _swapService.clearSelection();
+        _resetDeleteMode();
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Groupings recalled from Firebase'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Failed to recall Monday groupings: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to recall groupings'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    }
   }
 
   /// Gets the color for the Adjust Players button
@@ -1606,64 +1765,6 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
       return null;
     }
     return _handleAdjustPlayers;
-  }
-
-  /// Handler for Email Players button - sends player list via email
-  Future<void> _handleEmailPlayers() async {
-    // Dismiss any open keyboard before sending email
-    FocusScope.of(context).unfocus();
-
-    // TODO: Implement email sending using appropriate email service
-    // Build email subject: 'Golden Oaks Monday Players - $currentDate'
-    // Build email body: _buildPlayersEmailBody()
-
-    // For now, show a placeholder message
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Email functionality will be implemented'),
-          backgroundColor: Colors.blue,
-          duration: Duration(seconds: 2),
-        ),
-      );
-    }
-  }
-
-  /// Builds the email body for player list
-  // ignore: unused_element
-  String _buildPlayersEmailBody() {
-    final buffer = StringBuffer();
-
-    // Filter out empty groups
-    final validGroups = <List<PlayerData>>[];
-    for (var group in groups) {
-      if (group.isNotEmpty) {
-        validGroups.add(group);
-      }
-    }
-
-    int totalPlayers = 0;
-    for (int groupIndex = 0; groupIndex < validGroups.length; groupIndex++) {
-      final group = validGroups[groupIndex];
-      buffer.writeln('Group ${groupIndex + 1}:');
-
-      for (int playerIndex = 0; playerIndex < group.length; playerIndex++) {
-        final player = group[playerIndex];
-        final skNumber = player.skNumber.isEmpty ? 'N/A' : player.skNumber.padLeft(4, '0');
-        final playerName = player.name;
-
-        buffer.writeln('  $skNumber - $playerName');
-        totalPlayers++;
-      }
-
-      buffer.writeln(); // Empty line between groups
-    }
-
-    buffer.writeln('Total Players: $totalPlayers');
-    buffer.writeln();
-    buffer.writeln('Generated on: ${DateTime.now()}');
-
-    return buffer.toString();
   }
 
 }

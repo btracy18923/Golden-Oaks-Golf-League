@@ -57,14 +57,13 @@ class BackendEmailService {
     return _send(to: recipients, subject: subject, body: body);
   }
 
-  /// Sends Wednesday league results to ProShop, administrators, and players
+  /// Sends Wednesday league results to administrators and players
   Future<bool> sendWednesdayResultsEmail({
     required String subject,
     required String body,
     List<String>? playerEmails,
   }) async {
     final recipients = <String>{
-      EmailConfig.proShopEmail,
       ...EmailConfig.adminEmails,
     };
 

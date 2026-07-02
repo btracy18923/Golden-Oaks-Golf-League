@@ -18,24 +18,26 @@ exports.handler = async (event) => {
 
         // Individual send mode: send one email per address so each recipient
         // sees their own address in the To field (used for Email Blast)
+        // Uses Resend batch API to send all emails in one request, avoiding Netlify's 10s timeout
         if (recipients && Array.isArray(recipients) && recipients.length > 0) {
-            let sent = 0, failed = 0;
-            for (const address of recipients) {
-                const resp = await fetch('https://api.resend.com/emails', {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        from: 'Golden Oaks Golf League <noreply@goldenoaks.golf>',
-                        to: [address],
-                        subject,
-                        ...(html ? { html, text: text || '' } : { text }),
-                    }),
-                });
-                if (resp.ok) { sent++; } else { failed++; }
-            }
+            const batch = recipients.map(address => ({
+                from: 'Golden Oaks Golf League <noreply@goldenoaks.golf>',
+                to: [address],
+                subject,
+                ...(html ? { html, text: text || '' } : { text }),
+            }));
+
+            const resp = await fetch('https://api.resend.com/emails/batch', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(batch),
+            });
+
+            const sent = resp.ok ? recipients.length : 0;
+            const failed = resp.ok ? 0 : recipients.length;
             return {
                 statusCode: 200,
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },

@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/screen_data_retention_service.dart';
@@ -346,8 +346,12 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
       // Save results summary to Firebase for website display
       _saveResultsSummaryToFirebase(consolidatedPlayerData, currentDate);
 
-      // Send results email in background â€” don't block save on network call
-      _sendResultsEmail(consolidatedPlayerData, currentDate);
+      // Build full email body (including roster) here while still in the awaited save,
+      // then fire the send unawaited so it doesn't block navigation.
+      final emailSubject = 'Golden Oaks Wednesday League Results - $currentDate';
+      final emailBody = _buildResultsEmailBody(consolidatedPlayerData, currentDate)
+          + await _buildHandicapRoster();
+      _sendResultsEmail(emailSubject, emailBody);
 
       // Show success message
       if (mounted) {
@@ -462,7 +466,9 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
         for (var player in group) {
           if (player != null && player['last'] != null &&
               player['last'].toString().isNotEmpty &&
-              player['is_wild_card'] != true) totalPlayers++;
+              player['is_wild_card'] != true) {
+            totalPlayers++;
+          }
         }
       }
 
@@ -554,25 +560,51 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
   }
 
   /// Sends the Wednesday results email to admins.
+  /// Subject and body (including roster) are pre-built by the caller.
   /// If offline, saves to SharedPreferences for retry when WiFi reconnects.
-  Future<void> _sendResultsEmail(
-    Map<String, Map<String, dynamic>> consolidatedPlayerData,
-    String date,
-  ) async {
+  Future<void> _sendResultsEmail(String subject, String body) async {
     try {
-      final subject = 'Golden Oaks Wednesday League Results - $date';
-      final body = _buildResultsEmailBody(consolidatedPlayerData, date);
-
       final isOnline = await ConnectivityService().isWiFiConnected();
       if (isOnline) {
         await BackendEmailService().sendWednesdayResultsEmail(subject: subject, body: body);
         debugPrint('Wednesday results email sent successfully');
       } else {
         await PendingEmailService().savePendingWednesdayEmail(subject: subject, body: body);
-        debugPrint('Device offline â€” Wednesday results email queued for retry on WiFi reconnect');
+        debugPrint('Device offline — Wednesday results email queued for retry on WiFi reconnect');
       }
     } catch (e) {
       debugPrint('Error sending Wednesday results email: $e');
+    }
+  }
+
+  /// Returns a plain-text HC roster for all Wednesday players, sorted by last name.
+  Future<String> _buildHandicapRoster() async {
+    try {
+      final rawPlayers = await DatabaseHelper().getPlayersByLeague(League.wednesday);
+      final allPlayers = List<Map<String, dynamic>>.from(rawPlayers);
+      allPlayers.sort((a, b) =>
+          (a['last'] ?? '').toString().compareTo((b['last'] ?? '').toString()));
+      final buffer = StringBuffer();
+      buffer.writeln('');
+      buffer.writeln('HANDICAP ROSTER');
+      buffer.writeln('-' * 30);
+      for (final player in allPlayers) {
+        final last = player['last']?.toString() ?? '';
+        final hcRaw = player['HC'];
+        final hcStr = hcRaw != null
+            ? (hcRaw is num
+                ? hcRaw.toDouble()
+                : double.tryParse(hcRaw.toString()) ?? 0.0)
+              .toStringAsFixed(1)
+            : '0.0';
+        if (last.isNotEmpty) {
+          buffer.writeln('$last - $hcStr');
+        }
+      }
+      return buffer.toString();
+    } catch (e) {
+      debugPrint('Failed to build handicap roster: $e');
+      return '\n\nHANDICAP ROSTER\n[Error loading roster: $e]\n';
     }
   }
 
@@ -1192,8 +1224,8 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
     if (winners.isEmpty) return const SizedBox.shrink();
 
     winners.sort((a, b) {
-      final aPos = int.tryParse(a['ind_pos']?.toString() ?? '') ?? 999;
-      final bPos = int.tryParse(b['ind_pos']?.toString() ?? '') ?? 999;
+      final aPos = int.tryParse((a['ind_pos']?.toString() ?? '').replaceAll('T', '')) ?? 999;
+      final bPos = int.tryParse((b['ind_pos']?.toString() ?? '').replaceAll('T', '')) ?? 999;
       return aPos.compareTo(bPos);
     });
 

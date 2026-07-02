@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'wednesday_player_selection_screen.dart';
 import 'wednesday_player_scores_screen.dart';
@@ -234,9 +234,9 @@ class _WednesdayParentScreenState extends State<WednesdayParentScreen> {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: Text(
+        title: const Text(
           'Wednesday League - ${AppConfig.versionDate}',
-          style: const TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(fontWeight: FontWeight.bold),
         ),
         backgroundColor: FirebaseUploadService.anyAdminOverrideActive ? Colors.red[700] : Colors.orange[700],
         foregroundColor: Colors.white,

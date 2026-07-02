@@ -239,8 +239,12 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
       // Save results summary to Firebase for website display
       _saveResultsSummaryToFirebase(allSelectedPlayers, currentDate);
 
-      // Send results email in background â€” don't block save on network call
-      _sendResultsEmail(allSelectedPlayers);
+      // Build full email body (including roster) here while still in the awaited save,
+      // then fire the send unawaited so it doesn't block navigation.
+      final emailSubject = 'Golden Oaks Monday League Results - $currentDate';
+      final emailBody = _buildResultsEmailBody(allSelectedPlayers, currentDate)
+          + await _buildSkatRoster();
+      _sendResultsEmail(emailSubject, emailBody);
 
       // Show success message
       if (!mounted) return;
@@ -338,25 +342,47 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
     }
   }
 
-  /// Builds and sends the Monday results email to admins.
+  /// Sends the Monday results email to admins.
+  /// Subject and body (including roster) are pre-built by the caller.
   /// If offline, saves the email to SharedPreferences for retry when WiFi reconnects.
-  Future<void> _sendResultsEmail(List<PlayerData> allSelectedPlayers) async {
+  Future<void> _sendResultsEmail(String subject, String body) async {
     try {
-      final currentDate = DateTime.now().toIso8601String().split('T')[0];
-      final subject = 'Golden Oaks Monday League Results - $currentDate';
-      final body = _buildResultsEmailBody(allSelectedPlayers, currentDate);
-
       final isOnline = await ConnectivityService().isWiFiConnected();
       if (isOnline) {
         await BackendEmailService().sendMondayResultsEmail(subject: subject, body: body);
         debugPrint('Monday results email sent successfully');
       } else {
-        // No WiFi â€” persist for retry when ConnectivityService detects reconnection
         await PendingEmailService().savePendingMondayEmail(subject: subject, body: body);
-        debugPrint('Device offline â€” Monday results email queued for retry on WiFi reconnect');
+        debugPrint('Device offline — Monday results email queued for retry on WiFi reconnect');
       }
     } catch (e) {
       debugPrint('Error sending Monday results email: $e');
+    }
+  }
+
+  /// Returns a plain-text SKAT roster for all Monday players, sorted by last name.
+  Future<String> _buildSkatRoster() async {
+    try {
+      final rawPlayers = await DatabaseHelper().getPlayersByLeague(League.monday);
+      final allPlayers = List<Map<String, dynamic>>.from(rawPlayers);
+      allPlayers.sort((a, b) =>
+          (a['last'] ?? '').toString().compareTo((b['last'] ?? '').toString()));
+      final buffer = StringBuffer();
+      buffer.writeln('');
+      buffer.writeln('SKAT ROSTER');
+      buffer.writeln('-' * 30);
+      for (final player in allPlayers) {
+        final last = player['last']?.toString() ?? '';
+        final skatRaw = player['skat_number'];
+        final skatStr = skatRaw?.toString() ?? '';
+        if (last.isNotEmpty) {
+          buffer.writeln('$last - $skatStr');
+        }
+      }
+      return buffer.toString();
+    } catch (e) {
+      debugPrint('Failed to build skat roster: $e');
+      return '\n\nSKAT ROSTER\n[Error loading roster: $e]\n';
     }
   }
 

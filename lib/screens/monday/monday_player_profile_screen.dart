@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../services/database_helper.dart';
 import '../../models/league.dart';
@@ -6,7 +6,6 @@ import '../../services/UI/player_profile_service.dart';
 import '../../services/UI/button_bar_UI_service.dart';
 import '../../services/firebase_upload_service.dart';
 import '../../config/app_config.dart';
-import '../../services/device_detection_service.dart';
 import '../../services/responsive_typography.dart';
 import '../../widgets/responsive_wrapper.dart';
 

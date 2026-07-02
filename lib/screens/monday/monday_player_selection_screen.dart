@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../services/database_helper.dart';
 import '../../models/league.dart';
@@ -395,9 +395,9 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
     return Scaffold(
       backgroundColor: Colors.grey[300],
       appBar: AppBar(
-        title: Text(
+        title: const Text(
           'Select Players for Monday\'s Match - ${AppConfig.versionDate}',
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
         backgroundColor: FirebaseUploadService.anyAdminOverrideActive ? Colors.red[700] : Colors.green[700],
         foregroundColor: Colors.white,
@@ -458,7 +458,7 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
     return Scaffold(
       backgroundColor: Colors.grey[300],
       appBar: AppBar(
-        title: Text("Select Players for Monday's Match - ${AppConfig.versionDate}"),
+        title: const Text("Select Players for Monday's Match - ${AppConfig.versionDate}"),
         backgroundColor: FirebaseUploadService.anyAdminOverrideActive ? Colors.red[700] : Colors.green[700],
         foregroundColor: Colors.white,
         centerTitle: true,

@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'monday_player_selection_screen.dart';
 import 'monday_player_scores_screen.dart';
@@ -13,7 +13,6 @@ import '../../services/screen_data_retention_service.dart';
 import '../../services/UI/parent_screen_service.dart';
 import '../../services/UI/custom_keypad_service.dart';
 import '../../services/UI/button_bar_UI_service.dart';
-import '../../services/device_detection_service.dart';
 import '../../services/firebase_download_service.dart';
 import '../../services/firebase_upload_service.dart';
 import '../../widgets/responsive_wrapper.dart';
@@ -306,9 +305,9 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
         toolbarHeight: 56,
-        title: Text(
+        title: const Text(
           'Monday League - Golden Oaks Golf - ${AppConfig.versionDate}',
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
         backgroundColor: FirebaseUploadService.anyAdminOverrideActive ? Colors.red[700] : Colors.green[700],
         foregroundColor: Colors.white,
@@ -389,9 +388,9 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
         toolbarHeight: 64,
-        title: Text(
+        title: const Text(
           'Monday League - Golden Oaks Golf - ${AppConfig.versionDate}',
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
         ),
         backgroundColor: FirebaseUploadService.anyAdminOverrideActive ? Colors.red[700] : Colors.green[700],
         foregroundColor: Colors.white,
