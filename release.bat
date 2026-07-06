@@ -43,7 +43,7 @@ echo.
 :: Step 2: Create GitHub release and upload APK
 echo Creating GitHub Release %VERSION% and uploading APK...
 echo.
-gh release create %VERSION% "build/app/outputs/flutter-apk/app-release.apk#golden_oaks_golf_league.apk" --title "Golden Oaks Golf League %VERSION%" --notes "Release %VERSION%"
+gh release create %VERSION% "build/app/outputs/flutter-apk/app-release.apk" --title "Golden Oaks Golf League %VERSION%" --notes "Release %VERSION%"
 if errorlevel 1 (
     echo.
     echo ERROR: GitHub release failed. Check that version %VERSION% does not already exist.
