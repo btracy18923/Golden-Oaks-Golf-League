@@ -1812,7 +1812,7 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
     for (int i = totalGroups - 1; i >= 0; i--) {
       String holeLabel;
       if (i == 0) {
-        holeLabel = 'Hole 1 - Pick up Poker Chip on #6 Par 3';
+        holeLabel = 'Hole 1 - Pick up Poker Chip on #6 Par 3\n         Pick up Tee Marker on #8 after Teeing off';
       } else {
         final reverseIndex = totalGroups - 1 - i;
         if (reverseIndex < chipColors.length) {

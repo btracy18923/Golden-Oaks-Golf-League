@@ -818,6 +818,9 @@
                         <button class="primary" onclick="showAdminScreen('emailRoster')" style="padding: 20px; font-size: 1.1em;">
                             📋 Email Roster
                         </button>
+                        <button class="primary" onclick="showAdminScreen('recovery')" style="padding: 20px; font-size: 1.1em; background: #744210; grid-column: 1 / -1;">
+                            🔑 Recovery &amp; Backup Info
+                        </button>
                     </div>
                 </div>
                 
@@ -988,6 +991,96 @@
                     </form>
                     <div id="playDateResult"></div>
                 </div>
+
+                <!-- Recovery & Backup Info Screen -->
+                <div id="recoveryScreen" class="card" style="display: none;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3 style="color: #744210;">🔑 Recovery &amp; Backup Info</h3>
+                        <button onclick="showAdminTabSelection()" style="background: #718096; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">
+                            ← Back to Admin Menu
+                        </button>
+                    </div>
+
+                    <!-- Phone App Recovery -->
+                    <div style="background: #f0fff4; border: 1px solid #9ae6b4; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+                        <h4 style="color: #276749; margin: 0 0 12px 0;">📱 Phone App Recovery (Tablet Stops Working)</h4>
+                        <ol style="margin: 0; padding-left: 20px; line-height: 1.8;">
+                            <li>Download the latest APK: <a href="https://github.com/btracy18923/Golden-Oaks-Golf-League/releases/latest/download/golden_oaks_golf_league.apk" style="color: #276749; font-weight: bold;">Click here to download golden_oaks_golf_league.apk</a></li>
+                            <li>Copy the APK file to the replacement tablet (USB cable, email, or Google Drive)</li>
+                            <li>On the tablet go to <strong>Settings → Apps → Special App Access → Install Unknown Apps</strong> and allow it</li>
+                            <li>Tap the APK file and follow the on-screen prompts to install</li>
+                            <li>Open the app — all player data will sync automatically from the cloud</li>
+                        </ol>
+                        <p style="margin: 12px 0 0 0; color: #718096; font-size: 0.9em;">⚠️ All data is stored in Firebase (cloud) — a broken tablet does not mean lost data.</p>
+                    </div>
+
+                    <!-- Website Recovery -->
+                    <div style="background: #fffff0; border: 1px solid #f6e05e; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+                        <h4 style="color: #744210; margin: 0 0 12px 0;">🌐 Website Recovery (goldenoaks.golf Goes Down)</h4>
+                        <ol style="margin: 0; padding-left: 20px; line-height: 1.8;">
+                            <li>Go to <strong>netlify.com</strong> and log in (see Account List in Google Drive)</li>
+                            <li>Click on the <strong>Golden Oaks Golf League</strong> site</li>
+                            <li>Click <strong>"Trigger deploy"</strong></li>
+                            <li>Wait about 2 minutes and check goldenoaks.golf</li>
+                        </ol>
+                        <p style="margin: 12px 0 0 0; color: #718096; font-size: 0.9em;">⚠️ If Netlify deploy does not fix it, contact someone familiar with the deploy.bat script in the GitHub repo.</p>
+                    </div>
+
+                    <!-- Accounts -->
+                    <div style="background: #fff5f5; border: 1px solid #feb2b2; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+                        <h4 style="color: #c53030; margin: 0 0 12px 0;">🔐 Important Accounts (passwords stored separately)</h4>
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="background: #fed7d7;">
+                                    <th style="padding: 8px 12px; text-align: left; border-radius: 4px 0 0 4px;">Account</th>
+                                    <th style="padding: 8px 12px; text-align: left;">What It Does</th>
+                                    <th style="padding: 8px 12px; text-align: left; border-radius: 0 4px 4px 0;">URL</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr style="border-bottom: 1px solid #fed7d7;">
+                                    <td style="padding: 8px 12px;"><strong>Firebase</strong></td>
+                                    <td style="padding: 8px 12px;">Stores ALL player data, scores, results</td>
+                                    <td style="padding: 8px 12px;">console.firebase.google.com</td>
+                                </tr>
+                                <tr style="border-bottom: 1px solid #fed7d7;">
+                                    <td style="padding: 8px 12px;"><strong>Netlify</strong></td>
+                                    <td style="padding: 8px 12px;">Hosts this website</td>
+                                    <td style="padding: 8px 12px;">netlify.com</td>
+                                </tr>
+                                <tr style="border-bottom: 1px solid #fed7d7;">
+                                    <td style="padding: 8px 12px;"><strong>Resend</strong></td>
+                                    <td style="padding: 8px 12px;">Sends emails from the website</td>
+                                    <td style="padding: 8px 12px;">resend.com</td>
+                                </tr>
+                                <tr style="border-bottom: 1px solid #fed7d7;">
+                                    <td style="padding: 8px 12px;"><strong>Domain</strong></td>
+                                    <td style="padding: 8px 12px;">Keeps goldenoaks.golf active</td>
+                                    <td style="padding: 8px 12px;">Check domain registrar</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 8px 12px;"><strong>GitHub</strong></td>
+                                    <td style="padding: 8px 12px;">Stores all source code</td>
+                                    <td style="padding: 8px 12px;">github.com/btracy18923</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <p style="margin: 12px 0 0 0; color: #c53030; font-size: 0.9em;">⚠️ Make sure all accounts are set to <strong>auto-renew</strong> with a valid credit card.</p>
+                    </div>
+
+                    <!-- For a Programmer -->
+                    <div style="background: #ebf8ff; border: 1px solid #90cdf4; border-radius: 8px; padding: 20px;">
+                        <h4 style="color: #2b6cb0; margin: 0 0 12px 0;">💻 For a Future Programmer</h4>
+                        <ul style="margin: 0; padding-left: 20px; line-height: 1.8;">
+                            <li><strong>GitHub Repo:</strong> github.com/btracy18923/Golden-Oaks-Golf-League</li>
+                            <li><strong>Tech Stack:</strong> Flutter (Dart) Android app · Plain HTML/JS website · Firebase database · Netlify hosting · Resend email</li>
+                            <li><strong>Deploy website:</strong> Run <code style="background:#e2e8f0; padding: 2px 6px; border-radius: 3px;">.\deploy.bat</code> from the project folder</li>
+                            <li><strong>Build APK:</strong> Run <code style="background:#e2e8f0; padding: 2px 6px; border-radius: 3px;">flutter build apk --release</code></li>
+                            <li><strong>AI Assistance:</strong> This project was built with <strong>Claude Code</strong> (claude.ai/code). A future programmer can open the project folder and pick up where we left off — the full history is in the git log.</li>
+                        </ul>
+                    </div>
+                </div>
+
             </div>
         </div>
     </div>
@@ -2928,6 +3021,7 @@ Your current HC is displayed when you log in.
             document.getElementById('schedulePlayDateScreen').style.display = 'none';
             document.getElementById('emailBlastScreen').style.display = 'none';
             document.getElementById('emailRosterScreen').style.display = 'none';
+            document.getElementById('recoveryScreen').style.display = 'none';
         }
 
         window.backToAdminLeagueSelection = function() {
@@ -2969,6 +3063,8 @@ Your current HC is displayed when you log in.
             } else if (screenType === 'emailRoster') {
                 document.getElementById('emailRosterScreen').style.display = 'block';
                 document.getElementById('rosterResult').innerHTML = '';
+            } else if (screenType === 'recovery') {
+                document.getElementById('recoveryScreen').style.display = 'block';
             }
         };
 
