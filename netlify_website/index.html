@@ -996,88 +996,105 @@
                 <div id="recoveryScreen" class="card" style="display: none;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                         <h3 style="color: #744210;">🔑 Recovery &amp; Backup Info</h3>
-                        <button onclick="showAdminTabSelection()" style="background: #718096; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">
-                            ← Back to Admin Menu
-                        </button>
+                        <div style="display: flex; gap: 10px;">
+                            <button id="editRecoveryBtn" onclick="showEditRecovery()" style="background: #4299e1; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">✏️ Edit</button>
+                            <button onclick="showAdminTabSelection()" style="background: #718096; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">← Back to Admin Menu</button>
+                        </div>
                     </div>
 
-                    <!-- Phone App Recovery -->
-                    <div style="background: #f0fff4; border: 1px solid #9ae6b4; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
-                        <h4 style="color: #276749; margin: 0 0 12px 0;">📱 Phone App Recovery (Tablet Stops Working)</h4>
-                        <ol style="margin: 0; padding-left: 20px; line-height: 1.8;">
-                            <li>Download the latest APK: <a href="https://github.com/btracy18923/Golden-Oaks-Golf-League/releases/latest/download/app-release.apk" style="color: #276749; font-weight: bold;">Click here to download app-release.apk</a></li>
-                            <li>Copy the APK file to the replacement phone (USB cable, email, or Google Drive)</li>
-                            <li>On the tablet go to <strong>Settings → Apps → Special App Access → Install Unknown Apps</strong> and allow it</li>
-                            <li>Tap the APK file and follow the on-screen prompts to install</li>
-                            <li>Open the app — all player data will sync automatically from the cloud</li>
-                        </ol>
-                        <p style="margin: 12px 0 0 0; color: #718096; font-size: 0.9em;">⚠️ All data is stored in Firebase (cloud) — a broken tablet does not mean lost data.</p>
+                    <!-- Display view -->
+                    <div id="recoveryDisplay">
+                        <!-- Phone App Recovery -->
+                        <div style="background: #f0fff4; border: 1px solid #9ae6b4; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+                            <h4 style="color: #276749; margin: 0 0 12px 0;">📱 Phone App Recovery (Phone Stops Working)</h4>
+                            <div id="recoveryApkLink" style="margin-bottom: 10px;"></div>
+                            <ol id="recoveryPhoneSteps" style="margin: 0; padding-left: 20px; line-height: 1.8;"></ol>
+                            <p id="recoveryPhoneNote" style="margin: 12px 0 0 0; color: #718096; font-size: 0.9em;"></p>
+                        </div>
+
+                        <!-- Website Recovery -->
+                        <div style="background: #fffff0; border: 1px solid #f6e05e; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+                            <h4 style="color: #744210; margin: 0 0 12px 0;">🌐 Website Recovery (goldenoaks.golf Goes Down)</h4>
+                            <ol id="recoveryWebsiteSteps" style="margin: 0; padding-left: 20px; line-height: 1.8;"></ol>
+                            <p id="recoveryWebsiteNote" style="margin: 12px 0 0 0; color: #718096; font-size: 0.9em;"></p>
+                        </div>
+
+                        <!-- Accounts (fixed structure) -->
+                        <div style="background: #fff5f5; border: 1px solid #feb2b2; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+                            <h4 style="color: #c53030; margin: 0 0 12px 0;">🔐 Important Accounts (passwords stored separately)</h4>
+                            <table style="width: 100%; border-collapse: collapse;">
+                                <thead>
+                                    <tr style="background: #fed7d7;">
+                                        <th style="padding: 8px 12px; text-align: left; border-radius: 4px 0 0 4px;">Account</th>
+                                        <th style="padding: 8px 12px; text-align: left;">What It Does</th>
+                                        <th style="padding: 8px 12px; text-align: left; border-radius: 0 4px 4px 0;">URL</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr style="border-bottom: 1px solid #fed7d7;">
+                                        <td style="padding: 8px 12px;"><strong>Firebase</strong></td>
+                                        <td style="padding: 8px 12px;">Stores ALL player data, scores, results</td>
+                                        <td style="padding: 8px 12px;">console.firebase.google.com</td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #fed7d7;">
+                                        <td style="padding: 8px 12px;"><strong>Netlify</strong></td>
+                                        <td style="padding: 8px 12px;">Hosts this website</td>
+                                        <td style="padding: 8px 12px;">netlify.com</td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #fed7d7;">
+                                        <td style="padding: 8px 12px;"><strong>Resend</strong></td>
+                                        <td style="padding: 8px 12px;">Sends emails from the website</td>
+                                        <td style="padding: 8px 12px;">resend.com</td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #fed7d7;">
+                                        <td style="padding: 8px 12px;"><strong>Domain</strong></td>
+                                        <td style="padding: 8px 12px;">Keeps goldenoaks.golf active</td>
+                                        <td style="padding: 8px 12px;">Check domain registrar</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 8px 12px;"><strong>GitHub</strong></td>
+                                        <td style="padding: 8px 12px;">Stores all source code</td>
+                                        <td style="padding: 8px 12px;">github.com/btracy18923</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <p style="margin: 12px 0 0 0; color: #c53030; font-size: 0.9em;">⚠️ Make sure all accounts are set to <strong>auto-renew</strong> with a valid credit card.</p>
+                        </div>
+
+                        <!-- For a Programmer -->
+                        <div style="background: #ebf8ff; border: 1px solid #90cdf4; border-radius: 8px; padding: 20px;">
+                            <h4 style="color: #2b6cb0; margin: 0 0 12px 0;">💻 For a Future Programmer</h4>
+                            <ul id="recoveryProgrammerNotes" style="margin: 0; padding-left: 20px; line-height: 1.8;"></ul>
+                        </div>
                     </div>
 
-                    <!-- Website Recovery -->
-                    <div style="background: #fffff0; border: 1px solid #f6e05e; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
-                        <h4 style="color: #744210; margin: 0 0 12px 0;">🌐 Website Recovery (goldenoaks.golf Goes Down)</h4>
-                        <ol style="margin: 0; padding-left: 20px; line-height: 1.8;">
-                            <li>Go to <strong>netlify.com</strong> and log in (see Account List in Google Drive)</li>
-                            <li>Click on the <strong>Golden Oaks Golf League</strong> site</li>
-                            <li>Click <strong>"Trigger deploy"</strong></li>
-                            <li>Wait about 2 minutes and check goldenoaks.golf</li>
-                        </ol>
-                        <p style="margin: 12px 0 0 0; color: #718096; font-size: 0.9em;">⚠️ If Netlify deploy does not fix it, contact someone familiar with the deploy.bat script in the GitHub repo.</p>
-                    </div>
-
-                    <!-- Accounts -->
-                    <div style="background: #fff5f5; border: 1px solid #feb2b2; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
-                        <h4 style="color: #c53030; margin: 0 0 12px 0;">🔐 Important Accounts (passwords stored separately)</h4>
-                        <table style="width: 100%; border-collapse: collapse;">
-                            <thead>
-                                <tr style="background: #fed7d7;">
-                                    <th style="padding: 8px 12px; text-align: left; border-radius: 4px 0 0 4px;">Account</th>
-                                    <th style="padding: 8px 12px; text-align: left;">What It Does</th>
-                                    <th style="padding: 8px 12px; text-align: left; border-radius: 0 4px 4px 0;">URL</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr style="border-bottom: 1px solid #fed7d7;">
-                                    <td style="padding: 8px 12px;"><strong>Firebase</strong></td>
-                                    <td style="padding: 8px 12px;">Stores ALL player data, scores, results</td>
-                                    <td style="padding: 8px 12px;">console.firebase.google.com</td>
-                                </tr>
-                                <tr style="border-bottom: 1px solid #fed7d7;">
-                                    <td style="padding: 8px 12px;"><strong>Netlify</strong></td>
-                                    <td style="padding: 8px 12px;">Hosts this website</td>
-                                    <td style="padding: 8px 12px;">netlify.com</td>
-                                </tr>
-                                <tr style="border-bottom: 1px solid #fed7d7;">
-                                    <td style="padding: 8px 12px;"><strong>Resend</strong></td>
-                                    <td style="padding: 8px 12px;">Sends emails from the website</td>
-                                    <td style="padding: 8px 12px;">resend.com</td>
-                                </tr>
-                                <tr style="border-bottom: 1px solid #fed7d7;">
-                                    <td style="padding: 8px 12px;"><strong>Domain</strong></td>
-                                    <td style="padding: 8px 12px;">Keeps goldenoaks.golf active</td>
-                                    <td style="padding: 8px 12px;">Check domain registrar</td>
-                                </tr>
-                                <tr>
-                                    <td style="padding: 8px 12px;"><strong>GitHub</strong></td>
-                                    <td style="padding: 8px 12px;">Stores all source code</td>
-                                    <td style="padding: 8px 12px;">github.com/btracy18923</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                        <p style="margin: 12px 0 0 0; color: #c53030; font-size: 0.9em;">⚠️ Make sure all accounts are set to <strong>auto-renew</strong> with a valid credit card.</p>
-                    </div>
-
-                    <!-- For a Programmer -->
-                    <div style="background: #ebf8ff; border: 1px solid #90cdf4; border-radius: 8px; padding: 20px;">
-                        <h4 style="color: #2b6cb0; margin: 0 0 12px 0;">💻 For a Future Programmer</h4>
-                        <ul style="margin: 0; padding-left: 20px; line-height: 1.8;">
-                            <li><strong>GitHub Repo:</strong> github.com/btracy18923/Golden-Oaks-Golf-League</li>
-                            <li><strong>Tech Stack:</strong> Flutter (Dart) Android app · Plain HTML/JS website · Firebase database · Netlify hosting · Resend email</li>
-                            <li><strong>Deploy website:</strong> Run <code style="background:#e2e8f0; padding: 2px 6px; border-radius: 3px;">.\deploy.bat</code> from the project folder</li>
-                            <li><strong>Build APK:</strong> Run <code style="background:#e2e8f0; padding: 2px 6px; border-radius: 3px;">flutter build apk --release</code></li>
-                            <li><strong>AI Assistance:</strong> This project was built with <strong>Claude Code</strong> (claude.ai/code). A future programmer can open the project folder and pick up where we left off — the full history is in the git log.</li>
-                        </ul>
+                    <!-- Edit form (hidden) -->
+                    <div id="recoveryEditForm" style="display: none;">
+                        <div style="margin-bottom: 20px;">
+                            <label style="display: block; font-weight: bold; margin-bottom: 6px; color: #276749;">📱 APK Download URL</label>
+                            <input type="text" id="recoveryApkUrl" style="width: 100%; padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 14px; box-sizing: border-box;">
+                        </div>
+                        <div style="margin-bottom: 20px;">
+                            <label style="display: block; font-weight: bold; margin-bottom: 6px; color: #276749;">📱 Phone Recovery Steps (one per line)</label>
+                            <textarea id="recoveryPhoneTextarea" rows="6" style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 14px; resize: vertical; box-sizing: border-box;"></textarea>
+                            <label style="display: block; font-size: 0.9em; color: #718096; margin-top: 6px;">Note line (shown below steps):</label>
+                            <input type="text" id="recoveryPhoneNoteInput" style="width: 100%; padding: 6px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; margin-top: 4px; box-sizing: border-box;">
+                        </div>
+                        <div style="margin-bottom: 20px;">
+                            <label style="display: block; font-weight: bold; margin-bottom: 6px; color: #744210;">🌐 Website Recovery Steps (one per line)</label>
+                            <textarea id="recoveryWebsiteTextarea" rows="5" style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 14px; resize: vertical; box-sizing: border-box;"></textarea>
+                            <label style="display: block; font-size: 0.9em; color: #718096; margin-top: 6px;">Note line (shown below steps):</label>
+                            <input type="text" id="recoveryWebsiteNoteInput" style="width: 100%; padding: 6px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; margin-top: 4px; box-sizing: border-box;">
+                        </div>
+                        <div style="margin-bottom: 20px;">
+                            <label style="display: block; font-weight: bold; margin-bottom: 6px; color: #2b6cb0;">💻 Programmer Notes (one per line)</label>
+                            <textarea id="recoveryProgrammerTextarea" rows="6" style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 14px; resize: vertical; box-sizing: border-box;"></textarea>
+                        </div>
+                        <div style="display: flex; gap: 10px;">
+                            <button onclick="saveRecoveryInfo()" style="background: #48bb78; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: 1em;">💾 Save</button>
+                            <button onclick="cancelEditRecovery()" style="background: #718096; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: 1em;">Cancel</button>
+                        </div>
+                        <div id="recoverySaveResult" style="margin-top: 15px;"></div>
                     </div>
                 </div>
 
@@ -3065,6 +3082,7 @@ Your current HC is displayed when you log in.
                 document.getElementById('rosterResult').innerHTML = '';
             } else if (screenType === 'recovery') {
                 document.getElementById('recoveryScreen').style.display = 'block';
+                loadRecoveryInfo();
             }
         };
 
@@ -3638,6 +3656,100 @@ Your current HC is displayed when you log in.
                 result.innerHTML = `<div class="error">Error: ${err.message}</div>`;
             }
         });
+
+        // ============== RECOVERY INFO FUNCTIONS ==============
+
+        const RECOVERY_DEFAULTS = {
+            apk_url: 'https://github.com/btracy18923/Golden-Oaks-Golf-League/releases/latest/download/app-release.apk',
+            phone_steps: 'Copy the APK file to the replacement phone (USB cable, email, or Google Drive)\nOn the phone go to Settings → Apps → Special App Access → Install Unknown Apps and allow it\nTap the APK file and follow the on-screen prompts to install\nOpen the app — all player data will sync automatically from the cloud',
+            phone_note: '⚠️ All data is stored in Firebase (cloud) — a broken phone does not mean lost data.',
+            website_steps: 'Go to netlify.com and log in (see Account List)\nClick on the Golden Oaks Golf League site\nClick "Trigger deploy"\nWait about 2 minutes and check goldenoaks.golf',
+            website_note: '⚠️ If Netlify deploy does not fix it, contact someone familiar with the deploy.bat script in the GitHub repo.',
+            programmer_notes: 'GitHub Repo: github.com/btracy18923/Golden-Oaks-Golf-League\nTech Stack: Flutter (Dart) Android app · Plain HTML/JS website · Firebase database · Netlify hosting · Resend email\nDeploy website: Run .\\deploy.bat from the project folder\nBuild APK: Run flutter build apk --release\nAI Assistance: This project was built with Claude Code (claude.ai/code) — a future programmer can open the project folder and pick up where we left off; the full history is in the git log.'
+        };
+
+        let currentRecoveryData = { ...RECOVERY_DEFAULTS };
+
+        function renderRecoveryDisplay(data) {
+            // APK download link
+            document.getElementById('recoveryApkLink').innerHTML =
+                `<a href="${data.apk_url}" style="color: #276749; font-weight: bold;">⬇️ Click here to download app-release.apk</a>`;
+
+            // Phone steps
+            const phoneList = document.getElementById('recoveryPhoneSteps');
+            phoneList.innerHTML = data.phone_steps.split('\n').filter(s => s.trim())
+                .map(s => `<li>${s.trim()}</li>`).join('');
+            document.getElementById('recoveryPhoneNote').textContent = data.phone_note;
+
+            // Website steps
+            const websiteList = document.getElementById('recoveryWebsiteSteps');
+            websiteList.innerHTML = data.website_steps.split('\n').filter(s => s.trim())
+                .map(s => `<li>${s.trim()}</li>`).join('');
+            document.getElementById('recoveryWebsiteNote').textContent = data.website_note;
+
+            // Programmer notes
+            const progList = document.getElementById('recoveryProgrammerNotes');
+            progList.innerHTML = data.programmer_notes.split('\n').filter(s => s.trim())
+                .map(s => `<li>${s.trim()}</li>`).join('');
+        }
+
+        async function loadRecoveryInfo() {
+            try {
+                const docRef = doc(db, 'recovery_info', 'main');
+                const docSnap = await getDoc(docRef);
+                if (docSnap.exists()) {
+                    currentRecoveryData = { ...RECOVERY_DEFAULTS, ...docSnap.data() };
+                } else {
+                    currentRecoveryData = { ...RECOVERY_DEFAULTS };
+                }
+            } catch (err) {
+                currentRecoveryData = { ...RECOVERY_DEFAULTS };
+            }
+            renderRecoveryDisplay(currentRecoveryData);
+        }
+
+        window.showEditRecovery = function() {
+            if (!isAdmin) return;
+            document.getElementById('recoveryApkUrl').value = currentRecoveryData.apk_url;
+            document.getElementById('recoveryPhoneTextarea').value = currentRecoveryData.phone_steps;
+            document.getElementById('recoveryPhoneNoteInput').value = currentRecoveryData.phone_note;
+            document.getElementById('recoveryWebsiteTextarea').value = currentRecoveryData.website_steps;
+            document.getElementById('recoveryWebsiteNoteInput').value = currentRecoveryData.website_note;
+            document.getElementById('recoveryProgrammerTextarea').value = currentRecoveryData.programmer_notes;
+            document.getElementById('recoverySaveResult').innerHTML = '';
+            document.getElementById('recoveryDisplay').style.display = 'none';
+            document.getElementById('recoveryEditForm').style.display = 'block';
+            document.getElementById('editRecoveryBtn').style.display = 'none';
+        };
+
+        window.cancelEditRecovery = function() {
+            document.getElementById('recoveryDisplay').style.display = 'block';
+            document.getElementById('recoveryEditForm').style.display = 'none';
+            document.getElementById('editRecoveryBtn').style.display = 'inline-block';
+        };
+
+        window.saveRecoveryInfo = async function() {
+            if (!isAdmin) return;
+            const result = document.getElementById('recoverySaveResult');
+            result.innerHTML = '<span style="color: #718096;">Saving...</span>';
+            try {
+                const data = {
+                    apk_url: document.getElementById('recoveryApkUrl').value.trim(),
+                    phone_steps: document.getElementById('recoveryPhoneTextarea').value.trim(),
+                    phone_note: document.getElementById('recoveryPhoneNoteInput').value.trim(),
+                    website_steps: document.getElementById('recoveryWebsiteTextarea').value.trim(),
+                    website_note: document.getElementById('recoveryWebsiteNoteInput').value.trim(),
+                    programmer_notes: document.getElementById('recoveryProgrammerTextarea').value.trim(),
+                };
+                await setDoc(doc(db, 'recovery_info', 'main'), data);
+                currentRecoveryData = data;
+                renderRecoveryDisplay(data);
+                cancelEditRecovery();
+            } catch (err) {
+                result.innerHTML = `<span style="color: #e53e3e;">Error saving: ${err.message}</span>`;
+            }
+        };
+
     </script>
 </body>
 </html>
