@@ -14,13 +14,18 @@ class BackendEmailService {
     required String body,
     String? htmlBody,
     List<String>? bcc,
+    List<String>? recipients,
   }) async {
     try {
       final Map<String, dynamic> payload = {
-        'to': to,
         'subject': subject,
         'text': body,
       };
+      if (recipients != null && recipients.isNotEmpty) {
+        payload['recipients'] = recipients;
+      } else {
+        payload['to'] = to;
+      }
       if (htmlBody != null && htmlBody.isNotEmpty) {
         payload['html'] = htmlBody;
       }
@@ -107,5 +112,22 @@ class BackendEmailService {
     }
     debugPrint('Sending custom email to ${to.length} recipients');
     return _send(to: to, subject: subject, body: body, htmlBody: htmlBody, bcc: bcc);
+  }
+
+  /// Sends one individual email per address using Resend's batch API.
+  /// Each recipient sees only their own address in the To field.
+  /// All emails are submitted in a single API call (no Netlify timeout risk).
+  Future<bool> sendBatchEmail({
+    required List<String> recipients,
+    required String subject,
+    required String body,
+    String? htmlBody,
+  }) async {
+    if (recipients.isEmpty) {
+      debugPrint('Error: No recipients specified');
+      return false;
+    }
+    debugPrint('Sending batch email to ${recipients.length} recipients');
+    return _send(to: [], subject: subject, body: body, htmlBody: htmlBody, recipients: recipients);
   }
 }

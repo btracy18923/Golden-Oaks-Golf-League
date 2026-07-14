@@ -15,9 +15,8 @@ echo.
 echo ============================================================
 echo.
 
-:: Refresh PATH to ensure gh CLI is available
-for /f "tokens=2*" %%a in ('reg query "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Environment" /v Path 2^>nul') do set "MACHINE_PATH=%%b"
-set "PATH=%MACHINE_PATH%;%PATH%"
+:: Refresh PATH via PowerShell to ensure gh CLI is available
+for /f "delims=" %%a in ('powershell -NoProfile -Command "[System.Environment]::GetEnvironmentVariable(\"Path\",\"Machine\") + \";\" + [System.Environment]::GetEnvironmentVariable(\"Path\",\"User\")"') do set "PATH=%%a"
 
 :: Read version from app_config.dart
 for /f "tokens=2 delims='" %%a in ('findstr "versionDate" lib\config\app_config.dart') do set VERSION=%%a
@@ -43,7 +42,7 @@ echo.
 :: Step 2: Create GitHub release and upload APK
 echo Creating GitHub Release %VERSION% and uploading APK...
 echo.
-gh release create %VERSION% "build/app/outputs/flutter-apk/app-release.apk" --title "Golden Oaks Golf League %VERSION%" --notes "Release %VERSION%"
+powershell -NoProfile -Command "& { $env:Path = [System.Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [System.Environment]::GetEnvironmentVariable('Path','User'); gh release create '%VERSION%' 'build/app/outputs/flutter-apk/app-release.apk' --title 'Golden Oaks Golf League %VERSION%' --notes 'Release %VERSION%' }"
 if errorlevel 1 (
     echo.
     echo ERROR: GitHub release failed. Check that version %VERSION% does not already exist.

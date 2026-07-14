@@ -1765,9 +1765,8 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
         body: body,
       );
     } else {
-      success = await backendEmailService.sendCustomEmail(
-        to: [EmailConfig.senderEmail],
-        bcc: emails.toList(),
+      success = await backendEmailService.sendBatchEmail(
+        recipients: emails.toList(),
         subject: subject,
         body: body,
       );
@@ -1819,6 +1818,9 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
           holeLabel = 'Hole ${i + 1} - ${chipColors[reverseIndex]} Poker Chip';
         } else {
           holeLabel = 'Hole ${i + 1}';
+        }
+        if (i == 3) {
+          holeLabel += '\n         Pick up Chip on Hole #3, Par 3';
         }
       }
 
