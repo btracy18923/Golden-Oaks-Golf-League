@@ -2,28 +2,26 @@
 ///
 /// Implements a simplified handicap calculation algorithm based on recent scores
 class HandicapCalculationService {
+  /// Fixed padding score used when a player has fewer than 6 recorded rounds.
+  static const double paddingScore = 44;
+
   /// Rounds a value to 1 decimal place
   double _roundToOneDecimal(double value) {
     return (value * 10).round() / 10;
   }
 
-  /// Calculates handicap for Wednesday league using OHC padding algorithm
+  /// Calculates handicap for Wednesday league
   ///
   /// Algorithm based on the first 6 latest scores with positive gross data:
-  /// - 1 score: Add 5 (OHC + 35) as the 2nd-6th scores, drop highest & lowest, HC = (Avg of 4 remaining) - 35
-  /// - 2 scores: Add 4 (OHC + 35) as the 3rd-6th scores, drop highest & lowest, HC = (Avg of 4 remaining) - 35
-  /// - 3 scores: Add 3 (OHC + 35) as the 4th-6th scores, drop highest & lowest, HC = (Avg of 4 remaining) - 35
-  /// - 4 scores: Add 2 (OHC + 35) as the 5th-6th scores, drop highest & lowest, HC = (Avg of 4 remaining) - 35
-  /// - 5 scores: Add 1 (OHC + 35) as the 6th score, drop highest & lowest, HC = (Avg of 4 remaining) - 35
-  /// - 6+ scores: Drop highest & lowest, HC = (Avg of 4 remaining) - 35
+  /// - Fewer than 6 scores: pad the remaining slots with [paddingScore]
+  /// - Drop the highest and lowest of the 6 scores
+  /// - HC = (Average of the remaining 4 scores) - 35
   ///
   /// [grossScores] - List of gross scores (most recent first recommended)
-  /// [originalHandicap] - The player's OHC (Original Handicap) value
   ///
   /// Returns the calculated handicap rounded to 1 decimal place
   double calculateWednesdayHandicap({
     required List<int> grossScores,
-    required double originalHandicap,
   }) {
     if (grossScores.isEmpty) {
       return 0.0;
@@ -31,14 +29,10 @@ class HandicapCalculationService {
 
     // Only use the first 6 scores
     List<double> scoresToUse = grossScores.take(6).map((s) => s.toDouble()).toList();
-    int scoreCount = scoresToUse.length;
 
-    // Calculate the padding value: OHC + 35
-    double paddingValue = originalHandicap + 35;
-
-    // Pad the scores list to 6 total scores using (OHC + 35)
+    // Pad the scores list to 6 total scores using the fixed padding score
     while (scoresToUse.length < 6) {
-      scoresToUse.add(paddingValue);
+      scoresToUse.add(paddingScore);
     }
 
     // Sort the 6 scores

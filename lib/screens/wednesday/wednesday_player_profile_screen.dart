@@ -34,7 +34,6 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
   final TextEditingController _firstController = TextEditingController();
   final TextEditingController _lastController = TextEditingController();
   final TextEditingController _handicapController = TextEditingController();
-  final TextEditingController _ohcController = TextEditingController();
   final TextEditingController _cellController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
 
@@ -43,7 +42,6 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
   final FocusNode _firstFocus = FocusNode();
   final FocusNode _lastFocus = FocusNode();
   final FocusNode _handicapFocus = FocusNode();
-  final FocusNode _ohcFocus = FocusNode();
   final FocusNode _cellFocus = FocusNode();
   final FocusNode _emailFocus = FocusNode();
 
@@ -64,7 +62,6 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
     _firstController.dispose();
     _lastController.dispose();
     _handicapController.dispose();
-    _ohcController.dispose();
     _cellController.dispose();
     _emailController.dispose();
 
@@ -72,7 +69,6 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
     _firstFocus.dispose();
     _lastFocus.dispose();
     _handicapFocus.dispose();
-    _ohcFocus.dispose();
     _cellFocus.dispose();
     _emailFocus.dispose();
 
@@ -137,7 +133,6 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
     _firstController.clear();
     _lastController.clear();
     _handicapController.clear();
-    _ohcController.clear();
     _cellController.clear();
     _emailController.clear();
 
@@ -194,7 +189,6 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
       _firstController.text = player['first'] ?? '';
       _lastController.text = player['last'] ?? '';
       _handicapController.text = player['HC']?.toString() ?? '';
-      _ohcController.text = player['OHC']?.toString() ?? '';
       _cellController.text = player['cell'] ?? '';
       _emailController.text = player['email'] ?? '';
     });
@@ -284,7 +278,7 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
     try {
       final leagueStr = _selectedLeague == League.monday ? 'monday' : 'wednesday';
 
-      // Insert player to local database (OHC is managed directly in Firebase)
+      // Insert player to local database
       await _databaseHelper.insertPlayer({
         'player_number': int.tryParse(_idController.text) ?? 0,
         'first': _firstController.text.trim(),
@@ -295,25 +289,11 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
         'email': _emailController.text.trim(),
       });
 
-      // Save form values before clearing for W_starting_OHC upload
-      final playerNumber = int.tryParse(_idController.text) ?? 0;
-      final lastName = _lastController.text.trim();
-      final hc = double.tryParse(_handicapController.text) ?? 0.0;
-
       _clearForm();
       _refreshPlayerList();
 
       // Immediately try to upload to Firebase
       final uploadSuccess = await _firebaseUploadService.uploadPlayerTableWithQueue(_selectedLeague);
-
-      // Also upload to W_starting_OHC collection for Wednesday players
-      if (_selectedLeague == League.wednesday) {
-        await _firebaseUploadService.uploadPlayerToStartingOHC(
-          playerNumber: playerNumber,
-          lastName: lastName,
-          hc: hc,
-        );
-      }
 
       if (uploadSuccess) {
         _showSuccessDialog('Player added and uploaded to Firebase!');
@@ -723,21 +703,8 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
               const SizedBox(height: 0),
               buildCompactFormField('Last Name', lastController, lastFocus, handicapFocus),
               const SizedBox(height: 0),
-              Row(
-                children: [
-                  Expanded(
-                    child: buildCompactFormField('HC', handicapController, handicapFocus, cellFocus,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true)),
-                  ),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: PlayerProfileService.buildCompactFormField(
-                      context, 'OHC', _ohcController, _ohcFocus, null, null,
-                      enabled: false,
-                    ),
-                  ),
-                ],
-              ),
+              buildCompactFormField('HC', handicapController, handicapFocus, cellFocus,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true)),
               const SizedBox(height: 0),
               buildCompactFormField('Cell Phone', cellController, cellFocus, emailFocus,
                 keyboardType: const TextInputType.numberWithOptions(decimal: false)),
@@ -765,21 +732,8 @@ class _WednesdayPlayerProfileScreenState extends State<WednesdayPlayerProfileScr
               const SizedBox(height: 8),
               buildCompactFormField('Last Name', lastController, lastFocus, handicapFocus),
               const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: buildCompactFormField('HC', handicapController, handicapFocus, cellFocus,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true)),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: PlayerProfileService.buildCompactFormField(
-                      context, 'OHC', _ohcController, _ohcFocus, null, null,
-                      enabled: false,
-                    ),
-                  ),
-                ],
-              ),
+              buildCompactFormField('HC', handicapController, handicapFocus, cellFocus,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true)),
               const SizedBox(height: 8),
               buildCompactFormField('Cell Phone', cellController, cellFocus, emailFocus,
                 keyboardType: const TextInputType.numberWithOptions(decimal: false)),

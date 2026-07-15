@@ -4,6 +4,7 @@ import '../../models/league.dart';
 import '../../services/database_helper.dart';
 import '../../services/device_detection_service.dart';
 import '../../services/firebase_upload_service.dart';
+import '../../services/handicap_calculation_service.dart';
 import '../../config/email_config.dart';
 
 class WednesdayAdminScreen extends StatefulWidget {
@@ -20,6 +21,7 @@ class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
   final DatabaseHelper _dbHelper = DatabaseHelper();
   final FirebaseUploadService _firebaseUploadService = FirebaseUploadService();
   bool _isDownloading = false;
+  bool _isRecalculatingHandicaps = false;
   bool _firebaseUploadsEnabled = true;
   bool _allowDuplicateDates = true;
   bool _testEmailMode = false;
@@ -293,6 +295,13 @@ class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
                       _isDownloading ? Colors.grey[400]! : Colors.blue[300]!,
                       _isDownloading ? () {} : () => _downloadWednesdayPlayerProfiles(),
                     ),
+
+                    _buildDownloadButton(
+                      _isRecalculatingHandicaps ? 'Recalculating...' : 'Recalculate All Handicaps',
+                      _isRecalculatingHandicaps ? Icons.hourglass_bottom : Icons.calculate,
+                      _isRecalculatingHandicaps ? Colors.grey[400]! : Colors.purple[200]!,
+                      _isRecalculatingHandicaps ? () {} : () => _recalculateAllHandicaps(),
+                    ),
                   ],
                 ),
 
@@ -385,14 +394,13 @@ class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
   Future<void> _insertOrUpdatePlayer(Map<String, dynamic> playerData) async {
     try {
       // Clean the data to only include fields that exist in the local database schema
-      // Local players table has: player_number, first, last, skat_number, HC, OHC, cell, email, league
+      // Local players table has: player_number, first, last, skat_number, HC, cell, email, league
       Map<String, dynamic> cleanData = {
         'player_number': playerData['player_number'],
         'first': playerData['first'],
         'last': playerData['last'],
         'skat_number': playerData['skat_number'],
         'HC': playerData['HC'],
-        'OHC': playerData['OHC'],
         'cell': playerData['cell'],
         'email': playerData['email'],
         'league': playerData['league'],
@@ -437,7 +445,125 @@ class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
     }
   }
 
+  /// Recalculates every Wednesday player's handicap from their score history
+  /// using the current algorithm, overwriting their stored HC locally and in
+  /// Firebase. Also refreshes the new_hc/pad_count on each player's most
+  /// recent score record so the website's history stays in sync.
+  Future<void> _recalculateAllHandicaps() async {
+    if (_isRecalculatingHandicaps) return;
 
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Recalculate All Handicaps?'),
+        content: const Text(
+          'This recalculates every Wednesday player\'s handicap from their score '
+          'history and overwrites their current HC, both locally and in Firebase. '
+          'This cannot be undone. Continue?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Recalculate'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() {
+      _isRecalculatingHandicaps = true;
+    });
+
+    try {
+      final players = await _dbHelper.getPlayersByLeague(League.wednesday);
+      final handicapService = HandicapCalculationService();
+      int updatedCount = 0;
+      int skippedCount = 0;
+
+      for (final player in players) {
+        final playerId = player['player_number'];
+        if (playerId == null) {
+          skippedCount++;
+          continue;
+        }
+
+        final scores = await _dbHelper.getPlayerRecentScores(
+          playerId,
+          League.wednesday,
+          limit: 6,
+        );
+
+        final grossScores = scores
+            .where((score) => score['gross_score'] != null)
+            .map((score) => score['gross_score'] as int)
+            .toList();
+
+        if (grossScores.isEmpty) {
+          skippedCount++;
+          continue;
+        }
+
+        final padCount = 6 - grossScores.length.clamp(0, 6);
+        final newHandicap = handicapService.calculateWednesdayHandicap(
+          grossScores: grossScores,
+        );
+
+        await _dbHelper.updatePlayerHandicap(playerId, newHandicap, League.wednesday);
+
+        // Keep the most recent score record's new_hc/pad_count in sync too
+        final mostRecentScoreId = scores.first['id'] as int?;
+        if (mostRecentScoreId != null) {
+          await _dbHelper.updateScoreField(mostRecentScoreId, 'new_hc', newHandicap, League.wednesday);
+          await _dbHelper.updateScoreField(mostRecentScoreId, 'pad_count', padCount, League.wednesday);
+        }
+
+        updatedCount++;
+      }
+
+      // Push the updated players and scores to Firebase
+      final playersUploadOk = await _firebaseUploadService.uploadPlayerTableWithQueue(League.wednesday);
+      final scoresUploadOk = await _firebaseUploadService.uploadPlayerScoresTableWithQueue(League.wednesday);
+
+      if (mounted) {
+        final uploadNote = (!playersUploadOk || !scoresUploadOk)
+            ? ' Firebase upload queued for retry (no WiFi).'
+            : '';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Recalculated $updatedCount handicap${updatedCount == 1 ? '' : 's'}'
+              '${skippedCount > 0 ? ' ($skippedCount skipped - no scores)' : ''}.'
+              '$uploadNote',
+            ),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Recalculate failed: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isRecalculatingHandicaps = false;
+        });
+      }
+    }
+  }
 
   Future<void> _downloadWednesdayPlayerScores() async {
     if (_isDownloading) return;

@@ -285,7 +285,6 @@ class _WednesdayPlayerScoresScreenState extends State<WednesdayPlayerScoresScree
       children: [
         _buildFlexDataCellWithIcon(score['name'] ?? '', isUnlocked, 16, isCompact: isCompact),
         _buildFlexDataCell(_formatDateToMMDDYY(score['date_played']), 12, isCompact: isCompact),
-        _buildFlexDataCell('${score['OHC'] ?? ''}', 11, isCompact: isCompact),
         _buildFlexDataCell('${score['pad_count'] ?? ''}', 10, isCompact: isCompact),
         _buildFlexDataCell('${score['handicap'] ?? ''}', 12, isCompact: isCompact),
         _buildFlexDataCell('${score['gross_score'] ?? ''}', 12, isCompact: isCompact),
@@ -309,7 +308,6 @@ class _WednesdayPlayerScoresScreenState extends State<WednesdayPlayerScoresScree
       children: [
         _buildFlexDataCell(_selectedPlayer ?? '', 16, isCompact: isCompact),
         _buildFlexDataCell(_getCurrentDateMMDDYY(), 12, isCompact: isCompact),
-        _buildFlexDataCell('', 11, isCompact: isCompact), // OHC â€” populated on save
         _buildFlexDataCell('', 10, isCompact: isCompact), // Pad# â€” calculated on save
         _buildFlexEditableCellWithBorder(_handicapController, _handicapFocus, 12, TextInputType.number, isCompact: isCompact),
         _buildFlexEditableCellWithBorder(_grossScoreController, _grossScoreFocus, 12, TextInputType.number, isCompact: isCompact),
@@ -327,7 +325,6 @@ class _WednesdayPlayerScoresScreenState extends State<WednesdayPlayerScoresScree
           children: [
             _buildFlexHeaderCell('Name', 16, isCompact: isCompact),
             _buildFlexHeaderCell('Date', 12, isCompact: isCompact),
-            _buildFlexHeaderCell('OHC', 11, isCompact: isCompact),
             _buildFlexHeaderCell('Pad#', 10, isCompact: isCompact),
             _buildFlexHeaderCell('Start\nHC', 12, isCompact: isCompact),
             _buildFlexHeaderCell('Match\nGross', 12, isCompact: isCompact),

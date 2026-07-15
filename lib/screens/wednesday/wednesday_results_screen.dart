@@ -287,7 +287,6 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
             'name': playerName,
             'date_played': currentDate,
             'golf_course': selectedGolfCourse,
-            'OHC': (dbPlayer['OHC'] as num?)?.toDouble() ?? 0.0,
             'handicap': startHC,
             'gross_score': playerData['gross_score'],
             'ind_pos': playerData['ind_pos'],
@@ -334,9 +333,14 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
       // Upload scores to Firebase
       await _uploadScoresToFirebase();
 
-      // Upload only the updated HC values to Firebase (not full player profiles)
-      final newHCValues = handicapResults.map((k, v) => MapEntry(k, v['new_hc'] as double));
-      await _uploadHandicapsToFirebase(newHCValues);
+      // Upload the updated player table (includes new HC values) to Firebase.
+      // Uses the WiFi-checked, offline-queued upload path so a connectivity blip
+      // gets retried automatically instead of silently dropping the HC update
+      // (a raw one-off write here previously failed silently with no retry).
+      final hcUploadSuccess = await _firebaseUploadService.uploadPlayerTableWithQueue(League.wednesday);
+      if (!hcUploadSuccess) {
+        debugPrint('WARNING: Failed to upload updated handicaps to Firebase');
+      }
 
       // Then delete old scores from Firebase if any were removed locally
       if (allDeletedScores.isNotEmpty) {
@@ -383,12 +387,9 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
   /// Calculates and updates handicaps for selected players only
   /// Uses the first 6 latest scores with positive gross data from wednesday_scores table
   /// Algorithm:
-  /// - 1 score: Add 5 (OHC + 35) as the 2nd-6th scores, drop 2 highest, HC = (Avg of 4 remaining) - 35
-  /// - 2 scores: Add 4 (OHC + 35) as the 3rd-6th scores, drop 2 highest, HC = (Avg of 4 remaining) - 35
-  /// - 3 scores: Add 3 (OHC + 35) as the 4th-6th scores, drop 2 highest, HC = (Avg of 4 remaining) - 35
-  /// - 4 scores: Add 2 (OHC + 35) as the 5th-6th scores, drop 2 highest, HC = (Avg of 4 remaining) - 35
-  /// - 5 scores: Add 1 (OHC + 35) as the 6th score, drop 2 highest, HC = (Avg of 4 remaining) - 35
-  /// - 6+ scores: Drop 2 highest, HC = (Avg of 4 remaining) - 35
+  /// - Fewer than 6 scores: pad remaining slots with a fixed score of 44
+  /// - Drop the highest and lowest of the 6 scores
+  /// - HC = (Avg of 4 remaining) - 35
   /// Returns a map of player names to their new handicap values
   Future<Map<String, Map<String, dynamic>>> _updateSelectedPlayerHandicaps(
     List<Map<String, dynamic>> selectedPlayers,
@@ -415,7 +416,6 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
 
         if (dbPlayer.isNotEmpty) {
           final playerId = dbPlayer['player_number'];
-          final originalHandicap = (dbPlayer['OHC'] as num?)?.toDouble() ?? 0.0;
 
           final scores = await _databaseHelper.getPlayerRecentScores(
             playerId,
@@ -433,7 +433,6 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
 
             double newHandicap = handicapService.calculateWednesdayHandicap(
               grossScores: grossScores,
-              originalHandicap: originalHandicap,
             );
 
             await _databaseHelper.updatePlayerHandicap(
@@ -740,23 +739,6 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
       }
     } catch (e) {
       debugPrint('Error uploading scores to Firebase: $e');
-    }
-  }
-
-  /// Update only the HC field in Firebase for players who played today
-  Future<void> _uploadHandicapsToFirebase(Map<String, double> newHandicaps) async {
-    try {
-      final firestore = FirebaseFirestore.instance;
-      for (final entry in newHandicaps.entries) {
-        final cleanedLastName = entry.key.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
-        await firestore
-            .collection('W_player_profile')
-            .doc(cleanedLastName)
-            .update({'HC': entry.value});
-        debugPrint('Updated HC for $cleanedLastName: ${entry.value}');
-      }
-    } catch (e) {
-      debugPrint('Error uploading handicaps to Firebase: $e');
     }
   }
 

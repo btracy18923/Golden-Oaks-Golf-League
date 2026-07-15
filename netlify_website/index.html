@@ -1135,6 +1135,30 @@
             if (event.persisted) window.location.reload();
         });
 
+        // Re-fetches the logged-in player's profile doc from Firestore so fields
+        // that change between logins (HC, SKAT #) don't go stale in the cached session.
+        async function refreshCurrentUserFromFirestore(user, league) {
+            try {
+                const collectionName = league === 'monday' ? 'M_player_profile' : 'W_player_profile';
+                const playersRef = collection(db, collectionName);
+                const emailQuery = query(playersRef, where('email', '==', (user.email || '').toLowerCase()));
+                const snapshot = await getDocs(emailQuery);
+
+                const enteredPlayerNumber = String(parseInt(user.player_number, 10));
+                for (const docSnap of snapshot.docs) {
+                    const data = docSnap.data();
+                    if (String(parseInt(data.player_number, 10)) === enteredPlayerNumber) {
+                        const refreshed = { id: docSnap.id, ...data };
+                        refreshed.name = `${refreshed.first} ${refreshed.last}`;
+                        return refreshed;
+                    }
+                }
+            } catch (err) {
+                console.error('Error refreshing user profile from Firestore:', err);
+            }
+            return null;
+        }
+
         const storedSession = localStorage.getItem('golfLeagueSession_v2');
         if (storedSession) {
             const session = JSON.parse(storedSession);
@@ -1143,6 +1167,23 @@
             selectedLeague = session.league;
             adminSelectedLeague = session.adminLeague;
             setTimeout(() => showMainApp(), 0);
+
+            // Refresh the cached profile from Firestore in the background so the
+            // header shows the live HC/SKAT #, not whatever was true at last login.
+            (async () => {
+                const league = isAdmin && adminSelectedLeague ? adminSelectedLeague : selectedLeague;
+                const refreshed = await refreshCurrentUserFromFirestore(currentUser, league);
+                if (refreshed) {
+                    currentUser = refreshed;
+                    localStorage.setItem('golfLeagueSession_v2', JSON.stringify({
+                        user: currentUser,
+                        isAdmin: isAdmin,
+                        league: selectedLeague,
+                        adminLeague: adminSelectedLeague
+                    }));
+                    renderUserInfoBox(league);
+                }
+            })();
         }
 
         // League selection functions
@@ -1278,16 +1319,8 @@
             }
         });
         
-        function showMainApp() {
-            document.getElementById('loginContainer').style.display = 'none';
-            document.getElementById('mainApp').classList.add('show');
-
-            // Get the league to display (admin uses adminSelectedLeague, regular users use selectedLeague)
-            const displayLeague = isAdmin && adminSelectedLeague ? adminSelectedLeague : selectedLeague;
-            const leagueLabel = displayLeague === 'monday' ? 'Monday League' : 'Wednesday League';
-            document.getElementById('leagueTitle').textContent = `⛳ ${leagueLabel} Manager`;
-
-            // Build user info with SKAT # for Monday league or Handicap for Wednesday league
+        // Renders the "Logged in as..." box (name/admin badge + SKAT #/Handicap) from currentUser.
+        function renderUserInfoBox(displayLeague) {
             let userInfoHtml = `Logged in as: ${currentUser.name}${isAdmin ? '<span class="admin-badge">ADMIN</span>' : ''}`;
 
             // Add SKAT # for Monday league (field name is skat_number in Firebase)
@@ -1304,6 +1337,18 @@
             }
 
             document.getElementById('userInfo').innerHTML = userInfoHtml;
+        }
+
+        function showMainApp() {
+            document.getElementById('loginContainer').style.display = 'none';
+            document.getElementById('mainApp').classList.add('show');
+
+            // Get the league to display (admin uses adminSelectedLeague, regular users use selectedLeague)
+            const displayLeague = isAdmin && adminSelectedLeague ? adminSelectedLeague : selectedLeague;
+            const leagueLabel = displayLeague === 'monday' ? 'Monday League' : 'Wednesday League';
+            document.getElementById('leagueTitle').textContent = `⛳ ${leagueLabel} Manager`;
+
+            renderUserInfoBox(displayLeague);
             document.getElementById('leagueTitle').textContent = leagueLabel;
 
             const adminNavBtn = document.getElementById('adminNavBtn');
@@ -2433,15 +2478,15 @@ Your handicap (HC) is calculated using your most recent 6 gross scores.
 <strong>Calculation Steps:</strong>
 
 1. Take your last 6 gross scores
-2. If you have fewer than 6 scores, pad with (OHC + 35)*
-3. Drop the 2 highest scores
-4. Average the remaining 4 lowest scores
+2. If you have fewer than 6 scores, pad the rest with a score of 44
+3. Drop the highest and lowest of the 6 scores
+4. Average the remaining 4 scores
 5. Subtract 35 from the average
 6. Round to 1 decimal place
 
 <strong>Padding Rules (for new players):</strong>
 
-• 1 score:  Add 5 padding values (OHC + 35)
+• 1 score:  Add 5 padding values (44 each)
 • 2 scores: Add 4 padding values
 • 3 scores: Add 3 padding values
 • 4 scores: Add 2 padding values
@@ -2449,9 +2494,7 @@ Your handicap (HC) is calculated using your most recent 6 gross scores.
 • 6+ scores: No padding needed
 
 <strong>Formula:</strong>
-HC = (Average of 4 lowest scores) − 35
-
-*OHC = Original Handicap (your starting handicap)
+HC = (Average of 4 remaining scores) − 35
 
 Your current HC is displayed when you log in.
                         </div>
@@ -2657,7 +2700,6 @@ Your current HC is displayed when you log in.
                             <thead>
                                 <tr>
                                     <th>Date Played</th>
-                                    <th>OHC</th>
                                     <th>Pad#</th>
                                     <th>Start HC</th>
                                     <th>Match Gross</th>
@@ -2682,7 +2724,6 @@ Your current HC is displayed when you log in.
                         htmlContent += `
                             <tr>
                                 <td>${dateFormatted}</td>
-                                <td>${score.OHC ?? 'N/A'}</td>
                                 <td>${score.pad_count ?? 'N/A'}</td>
                                 <td>${score.handicap ?? 'N/A'}</td>
                                 <td>${score.gross_score ?? 'N/A'}</td>
@@ -3225,7 +3266,6 @@ Your current HC is displayed when you log in.
                     { label: 'First',    field: 'first' },
                     { label: 'Last',     field: 'last' },
                     { label: 'HC',       field: 'HC' },
-                    { label: 'OHC',      field: 'OHC' },
                     { label: 'Phone',    field: 'cell' },
                     { label: 'Email',    field: 'email' },
                 ]);

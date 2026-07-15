@@ -14,7 +14,7 @@ class FirebaseDownloadService {
   final DatabaseHelper _dbHelper = DatabaseHelper();
 
   /// Download all Monday league data from Firebase
-  /// This includes players (only if local DB is empty), scores, and golf courses
+  /// This includes players, scores, and golf courses
   Future<Map<String, dynamic>> downloadMondayLeagueData() async {
     debugPrint('=== DOWNLOADING MONDAY LEAGUE DATA FROM FIREBASE ===');
 
@@ -24,22 +24,12 @@ class FirebaseDownloadService {
     List<String> errors = [];
 
     try {
-      // Only download player profiles on a fresh install (no players in local DB).
-      // On existing installs, local SK# values are authoritative — downloading would
-      // overwrite them with potentially stale Firebase data.
-      final db = await _dbHelper.database;
-      final existingPlayers = await db.query('players',
-          where: 'league = ? OR league = ?',
-          whereArgs: ['monday', 'both'],
-          limit: 1);
-      if (existingPlayers.isEmpty) {
-        final playersResult = await _downloadMondayPlayers();
-        playersDownloaded = playersResult['count'] as int;
-        if (playersResult['errors'] != null) {
-          errors.addAll(playersResult['errors'] as List<String>);
-        }
-      } else {
-        debugPrint('Monday players already in local DB — skipping player profile download');
+      // Always re-download player profiles so HC/SK# updates made on other
+      // admins' devices (and uploaded to Firebase) propagate to this device.
+      final playersResult = await _downloadMondayPlayers();
+      playersDownloaded = playersResult['count'] as int;
+      if (playersResult['errors'] != null) {
+        errors.addAll(playersResult['errors'] as List<String>);
       }
 
       // Download Monday scores from M_player_scores
@@ -79,7 +69,7 @@ class FirebaseDownloadService {
   }
 
   /// Download all Wednesday league data from Firebase
-  /// This includes players (only if local DB is empty) and scores
+  /// This includes players and scores
   Future<Map<String, dynamic>> downloadWednesdayLeagueData() async {
     debugPrint('=== DOWNLOADING WEDNESDAY LEAGUE DATA FROM FIREBASE ===');
 
@@ -88,22 +78,12 @@ class FirebaseDownloadService {
     List<String> errors = [];
 
     try {
-      // Only download player profiles on a fresh install (no players in local DB).
-      // On existing installs, local HC values are authoritative — downloading would
-      // overwrite them with potentially stale Firebase data.
-      final db = await _dbHelper.database;
-      final existingPlayers = await db.query('players',
-          where: 'league = ? OR league = ?',
-          whereArgs: ['wednesday', 'both'],
-          limit: 1);
-      if (existingPlayers.isEmpty) {
-        final playersResult = await _downloadWednesdayPlayers();
-        playersDownloaded = playersResult['count'] as int;
-        if (playersResult['errors'] != null) {
-          errors.addAll(playersResult['errors'] as List<String>);
-        }
-      } else {
-        debugPrint('Wednesday players already in local DB — skipping player profile download');
+      // Always re-download player profiles so HC updates made on other
+      // admins' devices (and uploaded to Firebase) propagate to this device.
+      final playersResult = await _downloadWednesdayPlayers();
+      playersDownloaded = playersResult['count'] as int;
+      if (playersResult['errors'] != null) {
+        errors.addAll(playersResult['errors'] as List<String>);
       }
 
       // Download Wednesday scores from W_player_scores
@@ -195,7 +175,6 @@ class FirebaseDownloadService {
             'first': data['first'] ?? '',
             'last': data['last'] ?? '',
             'HC': data['HC'],
-            'OHC': data['OHC'],
             'cell': data['cell'],
             'email': data['email'],
             'league': 'wednesday',
@@ -394,78 +373,4 @@ class FirebaseDownloadService {
     }
   }
 
-  /// Get a player's starting handicap (OHC) from W_starting_OHC collection
-  /// Returns null if not found or on error
-  Future<double?> getStartingHandicap(String lastName) async {
-    try {
-      // Use cleaned last name as document ID
-      final docId = lastName.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
-
-      final doc = await _firestore.collection('W_starting_OHC').doc(docId).get();
-
-      if (doc.exists) {
-        final data = doc.data();
-        if (data != null && data['OHC'] != null) {
-          return (data['OHC'] as num).toDouble();
-        }
-      }
-
-      debugPrint('No OHC found for $lastName in W_starting_OHC');
-      return null;
-    } catch (e) {
-      debugPrint('Error getting OHC for $lastName: $e');
-      return null;
-    }
-  }
-
-  /// Get a player's starting handicap (OHC) by player number from W_starting_OHC
-  /// Returns null if not found or on error
-  Future<double?> getStartingHandicapByPlayerNumber(int playerNumber) async {
-    try {
-      final snapshot = await _firestore
-          .collection('W_starting_OHC')
-          .where('player_number', isEqualTo: playerNumber)
-          .limit(1)
-          .get();
-
-      if (snapshot.docs.isNotEmpty) {
-        final data = snapshot.docs.first.data();
-        if (data['OHC'] != null) {
-          return (data['OHC'] as num).toDouble();
-        }
-      }
-
-      debugPrint('No OHC found for player number $playerNumber in W_starting_OHC');
-      return null;
-    } catch (e) {
-      debugPrint('Error getting OHC for player number $playerNumber: $e');
-      return null;
-    }
-  }
-
-  /// Get all starting handicaps from W_starting_OHC collection
-  /// Returns a map of lastName -> OHC value
-  Future<Map<String, double>> getAllStartingHandicaps() async {
-    final Map<String, double> handicaps = {};
-
-    try {
-      final snapshot = await _firestore.collection('W_starting_OHC').get();
-
-      for (var doc in snapshot.docs) {
-        final data = doc.data();
-        final lastName = data['Last Name']?.toString() ?? '';
-        final handicap = data['OHC'];
-
-        if (lastName.isNotEmpty && handicap != null) {
-          handicaps[lastName] = (handicap as num).toDouble();
-        }
-      }
-
-      debugPrint('Retrieved ${handicaps.length} starting handicaps from W_starting_OHC');
-      return handicaps;
-    } catch (e) {
-      debugPrint('Error getting all starting handicaps: $e');
-      return handicaps;
-    }
-  }
 }
