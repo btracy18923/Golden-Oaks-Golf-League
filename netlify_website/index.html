@@ -1950,6 +1950,19 @@
                 const displayLeague = isAdmin && adminSelectedLeague ? adminSelectedLeague : selectedLeague;
                 const signupCollection = displayLeague === 'monday' ? 'M_Signups' : 'W_Signups';
 
+                // For Monday, look up the openings limit for this play date
+                let monOpenings = null;
+                if (displayLeague === 'monday') {
+                    try {
+                        const pdSnap = await getDoc(doc(db, 'M_playDates', playDateId));
+                        if (pdSnap.exists() && pdSnap.data().openings !== undefined && pdSnap.data().openings !== null) {
+                            monOpenings = pdSnap.data().openings;
+                        }
+                    } catch (e) {
+                        console.error('Error loading openings for play date:', e);
+                    }
+                }
+
                 // Use cached player list if available for this collection, otherwise fetch and cache
                 let players;
                 if (cachedPlayers && cachedPlayersCollection === collectionName) {
@@ -1985,6 +1998,15 @@
                     return;
                 }
 
+                // Count how many are currently playing, to know if Monday openings are full
+                let currentPlayingCount = 0;
+                players.forEach(player => {
+                    const pn = String(player.player_number || '');
+                    const status = statusMap[pn] !== undefined ? statusMap[pn] : statusMap[String(player.id)];
+                    if (status === true) currentPlayingCount++;
+                });
+                const openingsFull = monOpenings !== null && currentPlayingCount >= monOpenings;
+
                 container.innerHTML = '<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;">' +
                 players.map(player => {
                     const pn = String(player.player_number || '');
@@ -2001,11 +2023,15 @@
                     if (canEdit) {
                         const rowBg = status === true ? '#c6f6d5' : status === false ? '#fed7d7' : 'white';
                         const rowBorder = status === true ? '#48bb78' : status === false ? '#fc8181' : '#e2e8f0';
+                        // Non-admins can't add themselves as Playing once Monday openings are full,
+                        // but can always switch themselves to Not Playing to free up a spot for someone else.
+                        const lockPlaying = openingsFull && status !== true && !isAdmin;
+                        const playingOnClick = lockPlaying ? '' : `onclick="window.toggleAvailability('${pn}', '${playDateId}', true, 'playersStatusList')"`;
                         return `
                             <div style="padding: 6px; border: 2px solid ${rowBorder}; background: ${rowBg}; border-radius: 6px; display: flex; align-items: center; gap: 4px;">
                                 <span style="font-weight: 600; color: #2d3748; flex: 1; min-width: 0; font-size: 0.85em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${player.name}</span>
-                                <button onclick="window.toggleAvailability('${pn}', '${playDateId}', true, 'playersStatusList')"
-                                        style="padding: 4px 8px; border-radius: 4px; border: 1px solid #48bb78; background: ${status === true ? '#48bb78' : 'white'}; color: ${status === true ? 'white' : '#276749'}; font-weight: 600; cursor: pointer; font-size: 0.75em; white-space: nowrap;">
+                                <button ${playingOnClick} ${lockPlaying ? 'disabled title="No openings available"' : ''}
+                                        style="padding: 4px 8px; border-radius: 4px; border: 1px solid #48bb78; background: ${status === true ? '#48bb78' : 'white'}; color: ${status === true ? 'white' : '#276749'}; font-weight: 600; cursor: ${lockPlaying ? 'not-allowed' : 'pointer'}; font-size: 0.75em; white-space: nowrap; ${lockPlaying ? 'opacity: 0.4;' : ''}">
                                     ${status === true ? '✓ ' : ''}Playing
                                 </button>
                                 <button onclick="window.toggleAvailability('${pn}', '${playDateId}', false, 'playersStatusList')"
@@ -2214,6 +2240,35 @@
                 // Get the current league to use the correct signup collection
                 const displayLeague = isAdmin && adminSelectedLeague ? adminSelectedLeague : selectedLeague;
                 const signupCollection = displayLeague === 'monday' ? 'M_Signups' : 'W_Signups';
+
+                // Re-check the Monday openings limit right before writing, so a stale/cached
+                // view (e.g. two open tabs) can't sneak a player in over the limit.
+                if (!isAdmin && isPlaying === true && displayLeague === 'monday') {
+                    const pdSnap = await getDoc(doc(db, 'M_playDates', playDateId));
+                    const monOpenings = pdSnap.exists() ? pdSnap.data().openings : undefined;
+                    if (monOpenings !== undefined && monOpenings !== null) {
+                        const sSnap = await getDocs(query(collection(db, signupCollection), where('playDateId', '==', playDateId)));
+                        let playingCount = 0;
+                        sSnap.docs.forEach(d => {
+                            const data = d.data();
+                            if (data.isPlaying === true && String(data.playerId) !== String(playerId)) playingCount++;
+                        });
+                        if (playingCount >= monOpenings) {
+                            alert('Sorry, this play date is full. No openings are available.');
+                            if (containerId === 'userCheckbox') {
+                                loadUserCheckbox(playDateId);
+                            } else if (containerId === 'adminUserCheckbox') {
+                                loadAdminUserCheckbox(playDateId);
+                            } else if (containerId === 'playersStatusList') {
+                                const pcName = displayLeague === 'monday' ? 'M_player_profile' : 'W_player_profile';
+                                loadPlayersStatusList(playDateId, pcName);
+                            } else {
+                                loadAvailability(playDateId, containerId);
+                            }
+                            return;
+                        }
+                    }
+                }
 
                 const signupId = `${playerId}_${playDateId}`;
                 await setDoc(doc(db, signupCollection, signupId), {
