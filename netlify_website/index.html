@@ -2007,7 +2007,11 @@
                 });
                 const openingsFull = monOpenings !== null && currentPlayingCount >= monOpenings;
 
-                container.innerHTML = '<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;">' +
+                const openingsFullBanner = openingsFull
+                    ? '<p style="background: #fed7d7; border: 2px solid #fc8181; border-radius: 6px; padding: 8px 12px; color: #c53030; font-weight: 600; text-align: center; margin: 0 0 10px;">⛔ Openings Filled - check back later</p>'
+                    : '';
+
+                container.innerHTML = openingsFullBanner + '<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;">' +
                 players.map(player => {
                     const pn = String(player.player_number || '');
                     const status = statusMap[pn] !== undefined
