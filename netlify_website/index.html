@@ -3408,16 +3408,19 @@ Your current HC is displayed when you log in.
                     .sort((a, b) => b.date.localeCompare(a.date))
                     .slice(0, 20);
 
-                dateList.innerHTML = results.map(r => {
+                const options = results.map(r => {
                     const d = new Date(r.date + 'T12:00:00');
                     const label = d.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-                    return `<button onclick="showPastResult('${r.id}', '${league}')"
-                        style="display:block; width:100%; text-align:left; padding:10px 16px; margin-bottom:6px;
-                               background:#f0fff4; border:1px solid #c6f6d5; border-radius:6px; cursor:pointer;
-                               font-size:1em; color:#276749; font-weight:600;">
-                        📅 ${label} — ${r.golf_course || 'The Hideout'}
-                    </button>`;
+                    return `<option value="${r.id}">📅 ${label} — ${r.golf_course || 'The Hideout'}</option>`;
                 }).join('');
+
+                dateList.innerHTML = `
+                    <select id="pastResultsSelect" onchange="if (this.value) showPastResult(this.value, '${league}')"
+                            style="font-size:1em; font-weight:600; color:#276749;">
+                        <option value="">Select a play date...</option>
+                        ${options}
+                    </select>
+                `;
             } catch (err) {
                 dateList.innerHTML = `<div class="error">Error: ${err.message}</div>`;
             }
@@ -3426,6 +3429,7 @@ Your current HC is displayed when you log in.
         window.showPastResult = async function(date, league) {
             const detail = document.getElementById('pastResultsDetail');
             detail.innerHTML = '<div class="loading">Loading...</div>';
+            detail.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
             try {
                 const collectionName = league === 'monday' ? 'M_results' : 'W_results';
