@@ -820,9 +820,6 @@
                         <button class="primary" onclick="showAdminScreen('emailRoster')" style="padding: 20px; font-size: 1.1em;">
                             📋 Email Roster
                         </button>
-                        <button class="primary" onclick="showAdminScreen('recovery')" style="padding: 20px; font-size: 1.1em; background: #744210; grid-column: 1 / -1;">
-                            🔑 Recovery &amp; Backup Info
-                        </button>
                     </div>
                 </div>
                 
@@ -876,6 +873,9 @@
                         <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px;">
                             <button type="button" onclick="previewEmailBlast()" style="background: #718096; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer;">
                                 👥 Preview Recipients
+                            </button>
+                            <button type="button" onclick="previewUndecidedEmailBlast()" style="background: #ed8936; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer;">
+                                🤷 Undecided (Next Play Date)
                             </button>
                             <button type="submit" class="primary" id="blastSendBtn">📧 Send Email Blast</button>
                         </div>
@@ -3607,6 +3607,91 @@ Your current HC is displayed when you log in.
                 document.querySelectorAll('.email-recipient-cb').forEach(cb => cb.checked = false);
             } catch (err) {
                 preview.innerHTML = `<div class="error">Error loading recipients: ${err.message}</div>`;
+            }
+        };
+
+        window.previewUndecidedEmailBlast = async function() {
+            const preview = document.getElementById('blastPreview');
+            preview.innerHTML = '<div class="loading">Loading undecided players...</div>';
+            try {
+                const displayLeague = adminSelectedLeague || selectedLeague;
+                const playerCollection = displayLeague === 'monday' ? 'M_player_profile' : 'W_player_profile';
+                const playDatesCollection = displayLeague === 'monday' ? 'M_playDates' : 'W_playDates';
+                const signupCollection = displayLeague === 'monday' ? 'M_Signups' : 'W_Signups';
+
+                // Find the topmost (soonest) upcoming play date — same ordering as the Upcoming Play Dates list
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const pdQuery = query(collection(db, playDatesCollection), where('date', '>=', Timestamp.fromDate(today)), orderBy('date'), limit(1));
+                const pdSnap = await getDocs(pdQuery);
+
+                if (pdSnap.empty) {
+                    preview.innerHTML = '<div class="error">No upcoming play date scheduled.</div>';
+                    return;
+                }
+
+                const playDate = { id: pdSnap.docs[0].id, ...pdSnap.docs[0].data() };
+                const dateLabel = new Date(playDate.date.seconds * 1000).toLocaleDateString();
+
+                const playersSnap = await getDocs(collection(db, playerCollection));
+                const players = playersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+                const signupsSnap = await getDocs(query(collection(db, signupCollection), where('playDateId', '==', playDate.id)));
+                const statusMap = {};
+                signupsSnap.docs.forEach(d => {
+                    const data = d.data();
+                    statusMap[String(data.playerId)] = data.isPlaying;
+                });
+
+                // Undecided = no signup record found by player_number or doc id
+                const seen = new Set();
+                const recipients = [];
+                players.forEach(p => {
+                    const pn = String(p.player_number || '');
+                    const status = statusMap[pn] !== undefined ? statusMap[pn] : statusMap[String(p.id)];
+                    if (status !== undefined) return;
+                    const email = (p.email || '').trim().toLowerCase();
+                    if (email.includes('@') && email.includes('.') && !seen.has(email)) {
+                        seen.add(email);
+                        recipients.push({ name: `${p.first} ${p.last}`, email });
+                    }
+                });
+                recipients.sort((a, b) => a.name.localeCompare(b.name));
+
+                const leagueLabel = displayLeague === 'monday' ? 'Monday' : 'Wednesday';
+
+                if (recipients.length === 0) {
+                    preview.innerHTML = `<div class="info-box">Everyone has responded for ${dateLabel} — no undecided players with an email on file.</div>`;
+                    return;
+                }
+
+                let html = `<div class="info-box">
+                    <div style="margin-bottom:8px; color:#4a5568; font-size:0.9em;">🤷 Undecided for <strong>${dateLabel}</strong></div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
+                        <strong id="emailBlastCount">${recipients.length} ${leagueLabel} players selected</strong>
+                        <div style="display:flex; gap:8px;">
+                            <button type="button" onclick="toggleAllEmailRecipients(true)" style="background:#48bb78; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer; font-size:0.85em;">Select All</button>
+                            <button type="button" onclick="toggleAllEmailRecipients(false)" style="background:#fc8181; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer; font-size:0.85em;">Deselect All</button>
+                        </div>
+                    </div>
+                    <div style="columns:2; gap:16px;">`;
+
+                recipients.forEach(r => {
+                    html += `<label style="display:flex; align-items:center; gap:6px; cursor:pointer; padding:3px 0; break-inside:avoid;">
+                        <input type="checkbox" class="email-recipient-cb" data-email="${r.email}" data-name="${r.name}"
+                               checked
+                               onchange="updateEmailBlastCount()"
+                               style="width:16px; height:16px; cursor:pointer;">
+                        ${r.name}
+                    </label>`;
+                });
+
+                html += `</div></div>`;
+                preview.innerHTML = html;
+                // Preselect all — overrides any browser form-state restoration
+                document.querySelectorAll('.email-recipient-cb').forEach(cb => cb.checked = true);
+            } catch (err) {
+                preview.innerHTML = `<div class="error">Error loading undecided players: ${err.message}</div>`;
             }
         };
 
