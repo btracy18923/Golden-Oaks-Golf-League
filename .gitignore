@@ -17,6 +17,7 @@ migrate_working_dir/
 *.ipr
 *.iws
 .idea/
+.idea_old/
 
 # The .vscode folder contains launch configuration and tasks you configure in
 # VS Code which you may wish to be included in version control, so this line
@@ -46,3 +47,9 @@ app.*.map.json
 
 # Local Netlify folder
 .netlify
+
+# Firebase report scripts — service account key grants full DB access, and
+# generated reports may contain player data; neither belongs in git
+tools/firebase-reports/serviceAccountKey.json
+tools/firebase-reports/node_modules/
+tools/firebase-reports/*.csv

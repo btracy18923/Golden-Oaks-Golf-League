@@ -3,9 +3,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/league.dart';
 import '../../services/database_helper.dart';
 import '../../services/device_detection_service.dart';
+import '../../services/firebase_download_service.dart';
 import '../../services/firebase_upload_service.dart';
 import '../../services/handicap_calculation_service.dart';
-import '../../config/email_config.dart';
+import '../../services/error_log_service.dart';
 
 class WednesdayAdminScreen extends StatefulWidget {
   final League? currentLeague;
@@ -22,48 +23,11 @@ class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
   final FirebaseUploadService _firebaseUploadService = FirebaseUploadService();
   bool _isDownloading = false;
   bool _isRecalculatingHandicaps = false;
-  bool _firebaseUploadsEnabled = true;
-  bool _allowDuplicateDates = true;
-  bool _testEmailMode = false;
 
   @override
   void initState() {
     super.initState();
     _initializeFirestore();
-    _loadFirebaseUploadsState();
-    _loadAllowDuplicateDatesState();
-    _loadTestEmailModeState();
-  }
-
-  Future<void> _loadTestEmailModeState() async {
-    await EmailConfig.loadTestEmailModeState();
-    if (mounted) {
-      setState(() {
-        _testEmailMode = EmailConfig.testEmailMode;
-      });
-    }
-  }
-
-  /// Load the Firebase uploads enabled state from SharedPreferences
-  Future<void> _loadFirebaseUploadsState() async {
-    // Wait for the state to be loaded from SharedPreferences
-    await FirebaseUploadService.loadUploadsEnabledState();
-    if (mounted) {
-      setState(() {
-        _firebaseUploadsEnabled = FirebaseUploadService.uploadsEnabled;
-      });
-    }
-  }
-
-  /// Load the allow duplicate dates state from SharedPreferences
-  Future<void> _loadAllowDuplicateDatesState() async {
-    // Wait for the state to be loaded from SharedPreferences
-    await DatabaseHelper.loadAllowDuplicateDatesState();
-    if (mounted) {
-      setState(() {
-        _allowDuplicateDates = DatabaseHelper.allowDuplicateDates;
-      });
-    }
   }
 
   void _initializeFirestore() {
@@ -84,7 +48,7 @@ class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Wednesday Administration'),
-        backgroundColor: FirebaseUploadService.anyAdminOverrideActive ? Colors.red[700] : Colors.orange[800],
+        backgroundColor: Colors.orange[800],
         foregroundColor: Colors.white,
       ),
       body: SafeArea(
@@ -93,185 +57,6 @@ class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
           child: SingleChildScrollView(
             child: Column(
               children: [
-                const SizedBox(height: 20),
-
-                // Firebase Upload Toggle Checkbox
-                Center(
-                  child: SizedBox(
-                    width: MediaQuery.of(context).size.width * 0.7,
-                    child: Card(
-                      elevation: 4,
-                      color: _firebaseUploadsEnabled ? Colors.green[50] : Colors.red[50],
-                      child: CheckboxListTile(
-                        title: Text(
-                          'Turn off Firebase Uploads',
-                          style: TextStyle(
-                            fontSize: 20 * DeviceDetectionService.getFontScale(context),
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        subtitle: Text(
-                          _firebaseUploadsEnabled
-                            ? 'Firebase uploads are currently ENABLED'
-                            : 'Firebase uploads are currently DISABLED',
-                          style: TextStyle(
-                            fontSize: 16 * DeviceDetectionService.getFontScale(context),
-                            color: _firebaseUploadsEnabled ? Colors.green[800] : Colors.red[800],
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        value: !_firebaseUploadsEnabled,
-                        onChanged: (bool? value) async {
-                          final newState = !(value ?? false);
-                          setState(() {
-                            _firebaseUploadsEnabled = newState;
-                            FirebaseUploadService.uploadsEnabled = newState;
-                          });
-
-                          // Save the state to SharedPreferences
-                          await FirebaseUploadService.saveUploadsEnabledState(newState);
-
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  _firebaseUploadsEnabled
-                                    ? 'Firebase uploads ENABLED'
-                                    : 'Firebase uploads DISABLED',
-                                ),
-                                backgroundColor: _firebaseUploadsEnabled ? Colors.green : Colors.red,
-                                duration: const Duration(seconds: 2),
-                              ),
-                            );
-                          }
-                        },
-                      ),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 20),
-
-                // Allow Duplicate Dates Checkbox
-                Center(
-                  child: SizedBox(
-                    width: MediaQuery.of(context).size.width * 0.7,
-                    child: Card(
-                      elevation: 4,
-                      color: _allowDuplicateDates ? Colors.blue[50] : Colors.orange[50],
-                      child: CheckboxListTile(
-                        title: Text(
-                          'Allow Duplicate Dates',
-                          style: TextStyle(
-                            fontSize: 20 * DeviceDetectionService.getFontScale(context),
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        subtitle: Text(
-                          _allowDuplicateDates
-                            ? 'Multiple scores can be stored for the same date'
-                            : 'Only one score per date allowed',
-                          style: TextStyle(
-                            fontSize: 16 * DeviceDetectionService.getFontScale(context),
-                            color: _allowDuplicateDates ? Colors.blue[800] : Colors.orange[800],
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        value: _allowDuplicateDates,
-                        onChanged: (bool? value) async {
-                          final newState = value ?? true;
-                          setState(() {
-                            _allowDuplicateDates = newState;
-                          });
-
-                          // Save the state to SharedPreferences
-                          await DatabaseHelper.saveAllowDuplicateDatesState(newState);
-
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  _allowDuplicateDates
-                                    ? 'Duplicate dates ALLOWED'
-                                    : 'Duplicate dates BLOCKED',
-                                ),
-                                backgroundColor: _allowDuplicateDates ? Colors.blue : Colors.orange,
-                                duration: const Duration(seconds: 2),
-                              ),
-                            );
-                          }
-                        },
-                      ),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 20),
-
-                // Test Email Mode Checkbox
-                Center(
-                  child: SizedBox(
-                    width: MediaQuery.of(context).size.width * 0.7,
-                    child: Card(
-                      elevation: 4,
-                      color: _testEmailMode ? Colors.amber[50] : Colors.grey[50],
-                      child: CheckboxListTile(
-                        title: Text(
-                          'Test Email Mode / Delete Saved Groupings',
-                          style: TextStyle(
-                            fontSize: 20 * DeviceDetectionService.getFontScale(context),
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        subtitle: Text(
-                          _testEmailMode
-                            ? 'Emails go only to btracy18923@gmail.com'
-                            : 'Emails go to all intended recipients',
-                          style: TextStyle(
-                            fontSize: 16 * DeviceDetectionService.getFontScale(context),
-                            color: _testEmailMode ? Colors.amber[800] : Colors.grey[700],
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        value: _testEmailMode,
-                        onChanged: (bool? value) async {
-                          final newState = value ?? false;
-                          setState(() {
-                            _testEmailMode = newState;
-                          });
-                          await EmailConfig.saveTestEmailModeState(newState);
-
-                          if (newState) {
-                            // Clear any saved groupings from Firebase when entering test mode
-                            try {
-                              await FirebaseFirestore.instance
-                                  .collection('W_scheduled_groups')
-                                  .doc('pending')
-                                  .delete();
-                            } catch (e) {
-                              debugPrint('Could not clear saved groupings: $e');
-                            }
-                          }
-
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  newState
-                                    ? 'Test Email Mode ON - emails go only to you'
-                                    : 'Test Email Mode OFF - emails go to all recipients',
-                                ),
-                                backgroundColor: newState ? Colors.amber[700] : Colors.grey[700],
-                                duration: const Duration(seconds: 2),
-                              ),
-                            );
-                          }
-                        },
-                      ),
-                    ),
-                  ),
-                ),
-
                 const SizedBox(height: 20),
 
                 GridView.count(
@@ -301,6 +86,13 @@ class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
                       _isRecalculatingHandicaps ? Icons.hourglass_bottom : Icons.calculate,
                       _isRecalculatingHandicaps ? Colors.grey[400]! : Colors.purple[200]!,
                       _isRecalculatingHandicaps ? () {} : () => _recalculateAllHandicaps(),
+                    ),
+
+                    _buildDownloadButton(
+                      'View Error Log',
+                      Icons.bug_report,
+                      Colors.red[200]!,
+                      () => _showErrorLog(),
                     ),
                   ],
                 ),
@@ -481,49 +273,74 @@ class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
     });
 
     try {
+      // Refresh local scores/profiles from Firebase first. This recalculates
+      // every player's handicap from THIS device's local score history and
+      // then pushes the full roster back to Firebase (a genuinely bulk
+      // action, unlike a single-player edit) — if this device's local score
+      // history were stale (missing a round entered on another device), it
+      // would compute a wrong handicap and overwrite the correct one already
+      // in Firebase. Pulling fresh first makes the calculation trustworthy.
+      try {
+        await FirebaseDownloadService().downloadWednesdayLeagueData();
+      } catch (e) {
+        debugPrint('Pre-recalculate Firebase refresh failed, continuing with local data: $e');
+      }
+
       final players = await _dbHelper.getPlayersByLeague(League.wednesday);
       final handicapService = HandicapCalculationService();
       int updatedCount = 0;
       int skippedCount = 0;
+      int failedCount = 0;
 
+      // Each player is isolated in its own try/catch so one bad/malformed
+      // record can't silently abort the recalculation for every other
+      // player (previously a single exception anywhere in this loop
+      // aborted the whole batch with no indication of which player caused it).
       for (final player in players) {
         final playerId = player['player_number'];
+        final playerName = player['last']?.toString() ?? 'Unknown';
         if (playerId == null) {
           skippedCount++;
           continue;
         }
 
-        final scores = await _dbHelper.getPlayerRecentScores(
-          playerId,
-          League.wednesday,
-          limit: 6,
-        );
+        try {
+          final scores = await _dbHelper.getPlayerRecentScores(
+            playerId,
+            League.wednesday,
+            limit: 6,
+          );
 
-        final grossScores = scores
-            .where((score) => score['gross_score'] != null)
-            .map((score) => score['gross_score'] as int)
-            .toList();
+          final grossScores = scores
+              .where((score) => score['gross_score'] != null)
+              .map((score) => (score['gross_score'] as num).toInt())
+              .toList();
 
-        if (grossScores.isEmpty) {
-          skippedCount++;
-          continue;
+          if (grossScores.isEmpty) {
+            skippedCount++;
+            continue;
+          }
+
+          final padCount = 6 - grossScores.length.clamp(0, 6);
+          final newHandicap = handicapService.calculateWednesdayHandicap(
+            grossScores: grossScores,
+          );
+
+          await _dbHelper.updatePlayerHandicap(playerId, newHandicap, League.wednesday);
+
+          // Keep the most recent score record's new_hc/pad_count in sync too
+          final mostRecentScoreId = scores.first['id'] as int?;
+          if (mostRecentScoreId != null) {
+            await _dbHelper.updateScoreField(mostRecentScoreId, 'new_hc', newHandicap, League.wednesday);
+            await _dbHelper.updateScoreField(mostRecentScoreId, 'pad_count', padCount, League.wednesday);
+          }
+
+          updatedCount++;
+        } catch (e) {
+          failedCount++;
+          debugPrint('Error recalculating handicap for $playerName: $e');
+          await ErrorLogService().logError('Wednesday Recalculate Handicap ($playerName)', e);
         }
-
-        final padCount = 6 - grossScores.length.clamp(0, 6);
-        final newHandicap = handicapService.calculateWednesdayHandicap(
-          grossScores: grossScores,
-        );
-
-        await _dbHelper.updatePlayerHandicap(playerId, newHandicap, League.wednesday);
-
-        // Keep the most recent score record's new_hc/pad_count in sync too
-        final mostRecentScoreId = scores.first['id'] as int?;
-        if (mostRecentScoreId != null) {
-          await _dbHelper.updateScoreField(mostRecentScoreId, 'new_hc', newHandicap, League.wednesday);
-          await _dbHelper.updateScoreField(mostRecentScoreId, 'pad_count', padCount, League.wednesday);
-        }
-
-        updatedCount++;
       }
 
       // Push the updated players and scores to Firebase
@@ -538,10 +355,11 @@ class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
           SnackBar(
             content: Text(
               'Recalculated $updatedCount handicap${updatedCount == 1 ? '' : 's'}'
-              '${skippedCount > 0 ? ' ($skippedCount skipped - no scores)' : ''}.'
+              '${skippedCount > 0 ? ' ($skippedCount skipped - no scores)' : ''}'
+              '${failedCount > 0 ? ' ($failedCount failed - see Error Log)' : ''}.'
               '$uploadNote',
             ),
-            backgroundColor: Colors.green,
+            backgroundColor: failedCount > 0 ? Colors.orange : Colors.green,
             duration: const Duration(seconds: 4),
           ),
         );
@@ -563,6 +381,64 @@ class _WednesdayAdminScreenState extends State<WednesdayAdminScreen> {
         });
       }
     }
+  }
+
+  /// Shows the persistent local error log (populated by the Results save
+  /// flow whenever a save, upload, or email step fails silently) so failures
+  /// can be reviewed later without a tethered debug session.
+  Future<void> _showErrorLog() async {
+    final entries = await ErrorLogService().getErrors();
+    if (!mounted) return;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Error Log'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: entries.isEmpty
+                ? const Text('No errors recorded.')
+                : ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: entries.length,
+                    separatorBuilder: (_, __) => const Divider(),
+                    itemBuilder: (context, index) {
+                      final entry = entries[index];
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${entry['timestamp'] ?? ''}',
+                            style: const TextStyle(fontSize: 12, color: Colors.grey),
+                          ),
+                          Text(
+                            '${entry['context'] ?? ''}',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          Text('${entry['error'] ?? ''}'),
+                        ],
+                      );
+                    },
+                  ),
+          ),
+          actions: [
+            if (entries.isNotEmpty)
+              TextButton(
+                onPressed: () async {
+                  await ErrorLogService().clearErrors();
+                  if (dialogContext.mounted) Navigator.of(dialogContext).pop();
+                },
+                child: const Text('Clear Log'),
+              ),
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Future<void> _downloadWednesdayPlayerScores() async {

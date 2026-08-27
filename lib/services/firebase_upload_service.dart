@@ -2,8 +2,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../config/email_config.dart';
 import '../models/league.dart';
 import 'database_helper.dart';
 import 'upload_queue_service.dart';
@@ -12,45 +10,11 @@ class FirebaseUploadService {
   static final FirebaseUploadService _instance = FirebaseUploadService._internal();
   static FirebaseFirestore? _firestore;
 
-  /// Global flag to disable all Firebase uploads
-  static bool uploadsEnabled = true;
-
-  /// Returns true if any admin checkbox is in a non-normal state (any screen should show red app bar)
-  static bool get anyAdminOverrideActive =>
-      !uploadsEnabled || DatabaseHelper.allowDuplicateDates || EmailConfig.testEmailMode;
-
-  /// SharedPreferences key for storing the uploads enabled state
-  static const String _uploadsEnabledKey = 'firebase_uploads_enabled';
-
   factory FirebaseUploadService() => _instance;
-  FirebaseUploadService._internal() {
-    loadUploadsEnabledState();
-  }
-
-  /// Load the uploads enabled state from SharedPreferences
-  static Future<void> loadUploadsEnabledState() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      uploadsEnabled = prefs.getBool(_uploadsEnabledKey) ?? true;
-    } catch (e) {
-      debugPrint('Error loading uploads enabled state: $e');
-      uploadsEnabled = true; // Default to enabled on error
-    }
-  }
-
-  /// Save the uploads enabled state to SharedPreferences
-  static Future<void> saveUploadsEnabledState(bool enabled) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool(_uploadsEnabledKey, enabled);
-      uploadsEnabled = enabled;
-    } catch (e) {
-      debugPrint('Error saving uploads enabled state: $e');
-    }
-  }
+  FirebaseUploadService._internal();
 
   final UploadQueueService _uploadQueueService = UploadQueueService();
-  
+
   Future<FirebaseFirestore> get firestore async {
     if (_firestore == null) {
       await Firebase.initializeApp();
@@ -59,96 +23,148 @@ class FirebaseUploadService {
     return _firestore!;
   }
 
-  /// Uploads player table data to Firebase
-  Future<bool> uploadPlayerTable(League league) async {
-    if (!uploadsEnabled) {
-      return false;
+  /// Builds the Firebase document ID and field payload for a single player,
+  /// per the league-specific field set. Shared by the full-roster and
+  /// scoped upload paths so they stay in exact sync.
+  (String docId, Map<String, dynamic> data) _playerFirebaseDoc(League league, Map<String, dynamic> player) {
+    final lastName = (player['last'] ?? '').toString().replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
+    final docId = lastName;
+
+    Map<String, dynamic> firebaseData;
+    if (league == League.monday) {
+      // For Monday (M_player_profile): match local database field order
+      firebaseData = <String, dynamic>{
+        'player_number': player['player_number'],  // ID#
+        'first': player['first'],                  // First
+        'last': player['last'],                    // Last
+        'skat_number': player['skat_number'],      // SKAT#
+        'cell': player['cell'],                    // Phone
+        'email': player['email'],                  // Email
+        'upload_timestamp': FieldValue.serverTimestamp(),
+      };
+    } else {
+      // For Wednesday (W_player_profile): exclude skat_number field
+      firebaseData = <String, dynamic>{
+        'player_number': player['player_number'],  // Player #
+        'first': player['first'],                  // First
+        'last': player['last'],                    // Last
+        'HC': player['HC'],                        // HC
+        'cell': player['cell'],                    // Phone
+        'email': player['email'],                  // Email
+        'league': player['league'],                // League
+        'upload_timestamp': FieldValue.serverTimestamp(),
+      };
     }
 
+    // Remove any null values
+    firebaseData.removeWhere((key, value) => value == null);
+    return (docId, firebaseData);
+  }
+
+  /// Uploads player table data to Firebase
+  ///
+  /// Pushes the FULL local roster for [league], overwriting every player's
+  /// Firebase doc with whatever this device currently has locally. Only
+  /// safe to call when this device's local roster is known to be fresh for
+  /// EVERY player, not just the one(s) actually being edited — otherwise a
+  /// stale local value for an untouched player (e.g. a handicap this device
+  /// hasn't re-synced since another device updated it) silently overwrites
+  /// that player's correct Firebase value. For any edit that only concerns
+  /// one or a few specific players, use [uploadPlayers] instead so unrelated
+  /// players' data can't be clobbered by this device's stale cache.
+  Future<bool> uploadPlayerTable(League league) async {
     try {
-      final db = await firestore;
       final databaseHelper = DatabaseHelper();
-      
-      // Get all players for the specified league
       final players = await databaseHelper.getPlayersByLeague(league);
-      
-      if (players.isEmpty) {
-        return true; // Not an error if no players exist
-      }
-      
-      // Create a batch operation for efficient upload
-      final batch = db.batch();
-      
-      // Upload to league-specific player profile collection
-      final collectionName = league == League.monday ? 'M_player_profile' : 'W_player_profile';
-      final collection = db.collection(collectionName);
-      
-      // Add each player to the batch
-      for (final player in players) {
-        // Use different document ID formats for each league
-        final lastName = (player['last'] ?? '').toString().replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
-        
-        String docId;
-        if (league == League.monday) {
-          // For Monday (M_player_profile): use just the last name
-          docId = lastName;
-        } else {
-          // For Wednesday (W_player_profile): use just the last name
-          docId = lastName;
-        }
-        
-        final docRef = collection.doc(docId);
-        
-        // Prepare data for Firebase with different field sets for each league
-        Map<String, dynamic> firebaseData;
-        
-        if (league == League.monday) {
-          // For Monday (M_player_profile): match local database field order
-          firebaseData = <String, dynamic>{
-            'player_number': player['player_number'],  // ID#
-            'first': player['first'],                  // First
-            'last': player['last'],                    // Last
-            'skat_number': player['skat_number'],      // SKAT#
-            'cell': player['cell'],                    // Phone
-            'email': player['email'],                  // Email
-            'upload_timestamp': FieldValue.serverTimestamp(),
-          };
-        } else {
-          // For Wednesday (W_player_profile): exclude skat_number field
-          firebaseData = <String, dynamic>{
-            'player_number': player['player_number'],  // Player #
-            'first': player['first'],                  // First
-            'last': player['last'],                    // Last
-            'HC': player['HC'],                        // HC
-            'cell': player['cell'],                    // Phone
-            'email': player['email'],                  // Email
-            'league': player['league'],                // League
-            'upload_timestamp': FieldValue.serverTimestamp(),
-          };
-        }
-        
-        // Remove any null values
-        firebaseData.removeWhere((key, value) => value == null);
-        
-        batch.set(docRef, firebaseData, SetOptions(merge: true));
-      }
-      
-      // Execute the batch operation
-      await batch.commit();
-      
-      return true;
-      
+      return await uploadPlayers(league, players);
     } catch (e) {
       return false;
     }
   }
 
-  /// Uploads golf course table data to Firebase
-  Future<bool> uploadGolfCourseTable(League league) async {
-    if (!uploadsEnabled) {
+  /// Uploads only the given players' profile docs to Firebase — leaves
+  /// every other player's Firebase doc untouched. Use this whenever an
+  /// action on this device only actually changed specific player(s), so a
+  /// stale local cache for unrelated players can never overwrite their
+  /// correct Firebase values (see [uploadPlayerTable] for the full-roster
+  /// alternative and why it's riskier).
+  Future<bool> uploadPlayers(League league, List<Map<String, dynamic>> players) async {
+    try {
+      if (players.isEmpty) {
+        return true; // Not an error if there's nothing to push
+      }
+
+      final db = await firestore;
+      final batch = db.batch();
+      final collectionName = league == League.monday ? 'M_player_profile' : 'W_player_profile';
+      final collection = db.collection(collectionName);
+
+      for (final player in players) {
+        final (docId, firebaseData) = _playerFirebaseDoc(league, player);
+        batch.set(collection.doc(docId), firebaseData, SetOptions(merge: true));
+      }
+
+      await batch.commit();
+      return true;
+    } catch (e) {
       return false;
     }
+  }
 
+  /// Re-fetches each given player's profile doc directly from the Firestore
+  /// server (bypassing local persistence cache) and compares the key field
+  /// — skat_number for Monday, HC for Wednesday — against the value that
+  /// was expected to have just been uploaded.
+  ///
+  /// This exists because uploadPlayerTable/uploadPlayerTableWithQueue can
+  /// report "success" even when the write didn't really land: WithQueue
+  /// reports success just for successfully queuing when offline, and a
+  /// connectivity blip while "online" (WiFi/mobile-associated but no real
+  /// internet) can make the write silently fail inside its own catch block.
+  /// Forcing a server read (not cache) here means a failure to even
+  /// complete this check is itself meaningful — it means there's currently
+  /// no real connectivity to verify anything, not just that data mismatched.
+  ///
+  /// [expected] is a list of {'name': lastName, 'expected': value} maps.
+  /// Throws if Firestore can't be reached at all — callers should treat
+  /// that as "couldn't verify yet", distinct from a confirmed mismatch.
+  Future<Map<String, dynamic>> verifyPlayerProfileSync(
+    League league,
+    List<Map<String, dynamic>> expected,
+  ) async {
+    final db = await firestore;
+    final collectionName = league == League.monday ? 'M_player_profile' : 'W_player_profile';
+    final fieldName = league == League.monday ? 'skat_number' : 'HC';
+
+    final mismatches = <String>[];
+    for (final entry in expected) {
+      final name = entry['name'].toString();
+      final expectedValue = entry['expected'];
+      final docId = name.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
+
+      final doc = await db
+          .collection(collectionName)
+          .doc(docId)
+          .get(const GetOptions(source: Source.server));
+
+      if (!doc.exists) {
+        mismatches.add('$name (missing in Firebase)');
+        continue;
+      }
+
+      final actual = doc.data()?[fieldName];
+      final actualNum = (actual as num?)?.toDouble();
+      final expectedNum = (expectedValue as num?)?.toDouble();
+      if (actualNum == null || expectedNum == null || (actualNum - expectedNum).abs() > 0.01) {
+        mismatches.add('$name (Firebase has ${actual ?? 'nothing'}, expected $expectedValue)');
+      }
+    }
+
+    return {'ok': mismatches.isEmpty, 'mismatches': mismatches};
+  }
+
+  /// Uploads golf course table data to Firebase
+  Future<bool> uploadGolfCourseTable(League league) async {
     try {
       final db = await firestore;
       final databaseHelper = DatabaseHelper();
@@ -205,10 +221,6 @@ class FirebaseUploadService {
 
   /// Uploads player scores table data to Firebase
   Future<bool> uploadPlayerScoresTable(League league) async {
-    if (!uploadsEnabled) {
-      return false;
-    }
-
     try {
       final db = await firestore;
       final databaseHelper = DatabaseHelper();
@@ -345,10 +357,6 @@ class FirebaseUploadService {
     List<Map<String, dynamic>> scoresToDelete,
     League league
   ) async {
-    if (!uploadsEnabled) {
-      return false;
-    }
-
     try {
       final db = await firestore;
 
@@ -410,10 +418,6 @@ class FirebaseUploadService {
     required List<Map<String, dynamic>> data,
     String? documentIdField,
   }) async {
-    if (!uploadsEnabled) {
-      return false;
-    }
-
     try {
       final db = await firestore;
 
@@ -458,23 +462,24 @@ class FirebaseUploadService {
     }
   }
 
-  /// Check if WiFi is connected
-  Future<bool> _isWiFiConnected() async {
+  /// Check if connected to WiFi or mobile data
+  Future<bool> _isOnline() async {
     try {
       final connectivity = Connectivity();
       final results = await connectivity.checkConnectivity();
-      return results.contains(ConnectivityResult.wifi);
+      return results.contains(ConnectivityResult.wifi) || results.contains(ConnectivityResult.mobile);
     } catch (e) {
       return false;
     }
   }
 
-  /// Queue upload for later when no WiFi connection
-  Future<bool> _queueUpload(UploadType uploadType, League league) async {
+  /// Queue upload for later when there's no connection
+  Future<bool> _queueUpload(UploadType uploadType, League league, {List<int>? playerNumbers}) async {
     try {
       await _uploadQueueService.queueUpload(
         uploadType: uploadType,
         league: league,
+        playerNumbers: playerNumbers,
       );
       return true;
     } catch (e) {
@@ -484,24 +489,35 @@ class FirebaseUploadService {
 
   /// Upload with connectivity checking and queuing
   Future<bool> uploadPlayerTableWithQueue(League league) async {
-    if (!uploadsEnabled) {
-      return false;
-    }
-
-    if (await _isWiFiConnected()) {
+    if (await _isOnline()) {
       return await uploadPlayerTable(league);
     } else {
       return await _queueUpload(UploadType.players, league);
     }
   }
 
+  /// Scoped version of [uploadPlayerTableWithQueue] — only pushes the given
+  /// players, online or queued for retry, so this device's cache for
+  /// everyone else can never overwrite their correct Firebase values. This
+  /// is the one to use for any edit that only concerns specific player(s)
+  /// (score entry, a profile edit, a single-player handicap recalc) —
+  /// reserve the full-roster version for genuinely bulk operations.
+  Future<bool> uploadPlayersWithQueue(League league, List<Map<String, dynamic>> players) async {
+    if (players.isEmpty) return true;
+    if (await _isOnline()) {
+      return await uploadPlayers(league, players);
+    } else {
+      final playerNumbers = players
+          .map((p) => p['player_number'])
+          .whereType<int>()
+          .toList();
+      return await _queueUpload(UploadType.players, league, playerNumbers: playerNumbers);
+    }
+  }
+
   /// Upload with connectivity checking and queuing
   Future<bool> uploadGolfCourseTableWithQueue(League league) async {
-    if (!uploadsEnabled) {
-      return false;
-    }
-
-    if (await _isWiFiConnected()) {
+    if (await _isOnline()) {
       return await uploadGolfCourseTable(league);
     } else {
       return await _queueUpload(UploadType.golfCourses, league);
@@ -510,11 +526,7 @@ class FirebaseUploadService {
 
   /// Upload with connectivity checking and queuing
   Future<bool> uploadPlayerScoresTableWithQueue(League league) async {
-    if (!uploadsEnabled) {
-      return false;
-    }
-
-    final isConnected = await _isWiFiConnected();
+    final isConnected = await _isOnline();
 
     if (isConnected) {
       return await uploadPlayerScoresTable(league);
@@ -525,10 +537,6 @@ class FirebaseUploadService {
 
   /// Delete a player from Firebase
   Future<bool> deletePlayerFromFirebase(League league, String lastName) async {
-    if (!uploadsEnabled) {
-      return false;
-    }
-
     try {
       final db = await firestore;
 
@@ -550,11 +558,7 @@ class FirebaseUploadService {
 
   /// Delete a player from Firebase with connectivity checking
   Future<bool> deletePlayerFromFirebaseWithQueue(League league, String lastName) async {
-    if (!uploadsEnabled) {
-      return false;
-    }
-
-    if (await _isWiFiConnected()) {
+    if (await _isOnline()) {
       return await deletePlayerFromFirebase(league, lastName);
     } else {
       // If no WiFi, we can't delete from Firebase now
@@ -565,10 +569,6 @@ class FirebaseUploadService {
 
   /// Delete a golf course from Firebase
   Future<bool> deleteGolfCourseFromFirebase(String courseName) async {
-    if (!uploadsEnabled) {
-      return false;
-    }
-
     try {
       final db = await firestore;
 
@@ -589,11 +589,7 @@ class FirebaseUploadService {
 
   /// Delete a golf course from Firebase with connectivity checking
   Future<bool> deleteGolfCourseFromFirebaseWithQueue(String courseName) async {
-    if (!uploadsEnabled) {
-      return false;
-    }
-
-    if (await _isWiFiConnected()) {
+    if (await _isOnline()) {
       return await deleteGolfCourseFromFirebase(courseName);
     } else {
       // If no WiFi, we can't delete from Firebase now

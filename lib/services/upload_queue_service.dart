@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import '../models/league.dart';
@@ -13,6 +14,14 @@ class PendingUpload {
   final int retryCount;
   final String? errorMessage;
 
+  /// For UploadType.players only: the specific player_number(s) this
+  /// queued upload should push once connectivity returns. Null means
+  /// "push the full roster" (legacy entries, and genuinely bulk actions
+  /// like Recalculate All Handicaps) — non-null means only these players'
+  /// docs should be touched, so a stale local cache for everyone else on
+  /// this device can't clobber their already-correct Firebase values.
+  final List<int>? playerNumbers;
+
   PendingUpload({
     required this.id,
     required this.uploadType,
@@ -21,6 +30,7 @@ class PendingUpload {
     required this.status,
     this.retryCount = 0,
     this.errorMessage,
+    this.playerNumbers,
   });
 
   Map<String, dynamic> toMap() {
@@ -32,10 +42,20 @@ class PendingUpload {
       'status': status,
       'retry_count': retryCount,
       'error_message': errorMessage,
+      'payload': playerNumbers != null ? jsonEncode(playerNumbers) : null,
     };
   }
 
   factory PendingUpload.fromMap(Map<String, dynamic> map) {
+    List<int>? playerNumbers;
+    final payload = map['payload'] as String?;
+    if (payload != null && payload.isNotEmpty) {
+      try {
+        playerNumbers = (jsonDecode(payload) as List).cast<int>();
+      } catch (_) {
+        playerNumbers = null;
+      }
+    }
     return PendingUpload(
       id: map['id'] as int,
       uploadType: UploadType.values.byName(map['upload_type'] as String),
@@ -44,6 +64,7 @@ class PendingUpload {
       status: map['status'] as String,
       retryCount: map['retry_count'] as int? ?? 0,
       errorMessage: map['error_message'] as String?,
+      playerNumbers: playerNumbers,
     );
   }
 }
@@ -65,7 +86,7 @@ class UploadQueueService {
     
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE pending_uploads (
@@ -76,55 +97,89 @@ class UploadQueueService {
             status TEXT NOT NULL DEFAULT 'pending',
             retry_count INTEGER DEFAULT 0,
             error_message TEXT,
+            payload TEXT,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
             updated_at TEXT DEFAULT CURRENT_TIMESTAMP
           )
         ''');
-        
+
         // Create index for faster queries
         await db.execute('''
-          CREATE INDEX idx_pending_uploads_status_type 
+          CREATE INDEX idx_pending_uploads_status_type
           ON pending_uploads (status, upload_type, league)
         ''');
+      },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          // Scoped player-upload payload (JSON list of player_number). Existing
+          // rows get NULL, which means "push the full roster" — same behavior
+          // as before this column existed.
+          await db.execute('ALTER TABLE pending_uploads ADD COLUMN payload TEXT');
+        }
       },
     );
   }
 
-  /// Add an upload to the queue
+  /// Add an upload to the queue.
+  ///
+  /// [playerNumbers] scopes a UploadType.players entry to only those
+  /// players (see [PendingUpload.playerNumbers]); leave null for a
+  /// full-roster upload. If an unresolved entry of this type/league
+  /// already exists, the two requests are merged: a full-roster request
+  /// (either the existing one or this one) always wins, since it already
+  /// covers any scoped subset; two scoped requests union their player
+  /// lists so neither player's retry gets dropped.
   Future<int> queueUpload({
     required UploadType uploadType,
     required League league,
+    List<int>? playerNumbers,
   }) async {
     final db = await database;
-    
+
     // Check if there's already a pending upload of this type for this league
     final existing = await db.query(
       'pending_uploads',
       where: 'upload_type = ? AND league = ? AND status IN (?, ?)',
       whereArgs: [
-        uploadType.name, 
+        uploadType.name,
         league == League.monday ? 'monday' : 'wednesday',
         'pending',
         'uploading'
       ],
       limit: 1,
     );
-    
+
     if (existing.isNotEmpty) {
-      // Update timestamp of existing upload
       final existingId = existing.first['id'] as int;
+      final existingPayload = existing.first['payload'] as String?;
+
+      String? mergedPayload;
+      if (existingPayload == null || playerNumbers == null) {
+        // Either side wants the full roster — full roster wins.
+        mergedPayload = null;
+      } else {
+        try {
+          final existingNumbers = (jsonDecode(existingPayload) as List).cast<int>();
+          final merged = {...existingNumbers, ...playerNumbers}.toList();
+          mergedPayload = jsonEncode(merged);
+        } catch (_) {
+          mergedPayload = null; // Malformed existing payload — fall back to full roster to be safe
+        }
+      }
+
       await db.update(
         'pending_uploads',
         {
           'timestamp': DateTime.now().toIso8601String(),
           'updated_at': DateTime.now().toIso8601String(),
+          'payload': mergedPayload,
         },
         where: 'id = ?',
         whereArgs: [existingId],
       );
       return existingId;
     }
-    
+
     // Insert new upload
     final uploadData = {
       'upload_type': uploadType.name,
@@ -132,8 +187,9 @@ class UploadQueueService {
       'timestamp': DateTime.now().toIso8601String(),
       'status': 'pending',
       'retry_count': 0,
+      'payload': playerNumbers != null ? jsonEncode(playerNumbers) : null,
     };
-    
+
     final id = await db.insert('pending_uploads', uploadData);
     return id;
   }
@@ -297,12 +353,29 @@ class UploadQueueService {
   /// Check if there are any pending uploads
   Future<bool> hasPendingUploads() async {
     final db = await database;
-    
+
     final count = Sqflite.firstIntValue(await db.rawQuery(
       'SELECT COUNT(*) FROM pending_uploads WHERE status IN (?, ?)',
       ['pending', 'failed'],
     )) ?? 0;
-    
+
+    return count > 0;
+  }
+
+  /// Check if a specific league/upload type still has an unresolved queued
+  /// upload. Used before comparing Firebase against expected values — if
+  /// the write that would make Firebase correct hasn't actually run yet
+  /// (still queued from an earlier offline moment), comparing against
+  /// Firebase's current state would just report a stale, misleading
+  /// mismatch instead of "this is still in flight."
+  Future<bool> hasPendingUploadFor(League league, UploadType uploadType) async {
+    final db = await database;
+
+    final count = Sqflite.firstIntValue(await db.rawQuery(
+      'SELECT COUNT(*) FROM pending_uploads WHERE status IN (?, ?) AND league = ? AND upload_type = ?',
+      ['pending', 'failed', league == League.monday ? 'monday' : 'wednesday', uploadType.name],
+    )) ?? 0;
+
     return count > 0;
   }
 

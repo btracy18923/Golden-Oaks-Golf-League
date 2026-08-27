@@ -15,7 +15,6 @@ import '../../services/wednesday_winnings_service.dart';
 import '../../services/process_groups_service.dart';
 import '../../services/backend_email_service.dart';
 import '../../services/database_helper.dart';
-import '../../config/email_config.dart';
 import '../../models/league.dart';
 import '../../models/wednesday_player_data.dart';
 import 'wednesday_closest_pin_screen.dart';
@@ -1529,9 +1528,7 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
   }
 
   /// Saves current groupings to Firebase so they can be restored on game day.
-  /// Skipped when Test Email Mode is on — test runs should not overwrite real groupings.
   Future<void> _saveGroupingsToFirebase() async {
-    if (EmailConfig.testEmailMode) return;
     try {
       final groupsJson = jsonEncode(groups.map((group) =>
           group.map((p) => p != null ? Map<String, dynamic>.from(p) : null).toList()
@@ -1556,19 +1553,10 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
     final subject = 'Golden Oaks Wed. Players - $currentDate';
     final body = _buildProShopEmailBody();
 
-    final bool success;
-    if (EmailConfig.testEmailMode) {
-      success = await backendEmailService.sendCustomEmail(
-        to: [EmailConfig.fallbackEmail],
-        subject: '[TEST] $subject',
-        body: body,
-      );
-    } else {
-      success = await backendEmailService.sendProShopEmail(
-        subject: subject,
-        body: body,
-      );
-    }
+    final success = await backendEmailService.sendProShopEmail(
+      subject: subject,
+      body: body,
+    );
 
     if (success) {
       await _saveGroupingsToFirebase();
@@ -1757,20 +1745,11 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
       return;
     }
 
-    final bool success;
-    if (EmailConfig.testEmailMode) {
-      success = await backendEmailService.sendCustomEmail(
-        to: [EmailConfig.fallbackEmail],
-        subject: '[TEST] $subject',
-        body: body,
-      );
-    } else {
-      success = await backendEmailService.sendBatchEmail(
-        recipients: emails.toList(),
-        subject: subject,
-        body: body,
-      );
-    }
+    final success = await backendEmailService.sendBatchEmail(
+      recipients: emails.toList(),
+      subject: subject,
+      body: body,
+    );
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1787,7 +1766,17 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
 
   /// Builds the individual player email body — same layout as ProShop but with
   /// Hole/chip labels instead of "Group X" and no member numbers.
-  /// Listed descending: last hole (RED) first, Hole 1 last.
+  ///
+  /// Starting holes work backwards from the turn: Group 1 tees off Hole 1,
+  /// then each subsequent group starts at Hole 9, 8, 7, 6, 5, 4 in that order
+  /// (course only supports up to 7 groups this way). Poker chip colors and
+  /// pickup notes are tied to the physical hole, not the group's position:
+  ///   Hole 1 = RED, Hole 9 = WHITE, Hole 8 = BLUE, Hole 7 = GREEN, Hole 6 =
+  ///   BLACK, Hole 5 = no chip. The group starting Hole 9 also picks up the
+  ///   tee marker on Hole 8; the group starting Hole 7 also picks up the chip
+  ///   on Hole 6; and whichever group is last in the lineup (Hole 7, 6, 5, or
+  ///   4) also picks up the chip on Hole 3.
+  /// Listed in start order: Hole 1 first, then Hole 9, 8, 7, 6, 5, 4.
   String _buildGroupsEmailBody() {
     final buffer = StringBuffer();
     buffer.writeln('Golden Oaks Wednesday League - Starting Holes');
@@ -1803,25 +1792,34 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
       if (validPlayers.isNotEmpty) validGroups.add(validPlayers);
     }
 
-    const chipColors = ['RED', 'WHITE', 'BLUE', 'GREEN', 'BLACK'];
+    const chipColors = {1: 'RED', 9: 'WHITE', 8: 'BLUE', 7: 'GREEN', 6: 'BLACK'};
+    const lastGroupNoteHoles = {7, 6, 5, 4};
     final totalGroups = validGroups.length;
     int totalPlayers = 0;
 
-    // Descending: last hole (RED) first, Hole 1 last
-    for (int i = totalGroups - 1; i >= 0; i--) {
-      String holeLabel;
-      if (i == 0) {
-        holeLabel = 'Hole 1 - Pick up Poker Chip on #6 Par 3\n         Pick up Tee Marker on #8 after Teeing off';
-      } else {
-        final reverseIndex = totalGroups - 1 - i;
-        if (reverseIndex < chipColors.length) {
-          holeLabel = 'Hole ${i + 1} - ${chipColors[reverseIndex]} Poker Chip';
-        } else {
-          holeLabel = 'Hole ${i + 1}';
-        }
-        if (i == 3) {
-          holeLabel += '\n         Pick up Chip on Hole #3, Par 3';
-        }
+    // Group 0 -> Hole 1; every group after that works backwards from Hole 9.
+    int holeForGroupIndex(int i) => i == 0 ? 1 : 10 - i;
+    final lastHole = totalGroups > 0 ? holeForGroupIndex(totalGroups - 1) : 0;
+
+    // Display order: Hole 1 first, then Hole 9, 8, 7, 6, 5, 4 (group start order).
+    final displayOrder = <int>[for (int i = 0; i < totalGroups; i++) i];
+
+    for (final i in displayOrder) {
+      final hole = holeForGroupIndex(i);
+      String holeLabel = 'Hole $hole';
+      final chipColor = chipColors[hole];
+      if (chipColor != null) {
+        holeLabel += ' - $chipColor Poker Chip';
+      }
+
+      if (hole == 9) {
+        holeLabel += '\n         Pick up Tee Marker on hole #8';
+      }
+      if (hole == 7) {
+        holeLabel += '\n         Pick up Chip on Hole #6';
+      }
+      if (i == totalGroups - 1 && lastGroupNoteHoles.contains(lastHole)) {
+        holeLabel += '\n         Pick up Chip on Hole #3';
       }
 
       buffer.writeln('$holeLabel:');

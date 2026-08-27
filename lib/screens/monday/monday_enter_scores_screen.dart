@@ -10,7 +10,6 @@ import '../../services/shared/swap_service.dart';
 import '../../services/shared/league_purse_service.dart';
 import '../../services/payout_validation_service.dart';
 import '../../services/database_helper.dart';
-import '../../services/firebase_upload_service.dart';
 import '../../services/screen_data_retention_service.dart';
 import '../../services/skat_adjustment_service.dart';
 import '../../models/league.dart';
@@ -1630,9 +1629,7 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
   }
 
   /// Saves current Monday groupings to Firebase so they can be restored on restart.
-  /// Skipped when Firebase uploads are disabled.
   Future<void> _saveGroupingsToFirebase() async {
-    if (!FirebaseUploadService.uploadsEnabled) return;
     try {
       final groupsJson = jsonEncode(groups.map((group) =>
           group.map((p) => {

@@ -1,9 +1,10 @@
 import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import '../models/league.dart';
+import 'database_helper.dart';
 import 'firebase_upload_service.dart';
 import 'upload_queue_service.dart';
-import 'backend_email_service.dart';
-import 'pending_email_service.dart';
+import 'results_email_verification_service.dart';
 
 class ConnectivityService {
   static final ConnectivityService _instance = ConnectivityService._internal();
@@ -50,28 +51,28 @@ class ConnectivityService {
   
   /// Handle connectivity state changes
   void _handleConnectivityChange(List<ConnectivityResult> results) {
-    final bool isConnected = _isConnectedToWiFi(results);
-    
+    final bool isConnected = _isConnectedToInternet(results);
+
 
     // Only process uploads when transitioning from offline to online
     if (isConnected && !_lastConnectedState) {
       _processPendingUploads();
     } else if (!isConnected && _lastConnectedState) {
     }
-    
+
     _lastConnectedState = isConnected;
   }
-  
-  /// Check if connected to WiFi
-  bool _isConnectedToWiFi(List<ConnectivityResult> results) {
-    return results.contains(ConnectivityResult.wifi);
+
+  /// Check if connected to WiFi or mobile data
+  bool _isConnectedToInternet(List<ConnectivityResult> results) {
+    return results.contains(ConnectivityResult.wifi) || results.contains(ConnectivityResult.mobile);
   }
-  
-  /// Get current connectivity status
-  Future<bool> isWiFiConnected() async {
+
+  /// Get current connectivity status (WiFi or mobile data)
+  Future<bool> isOnline() async {
     try {
       final results = await _connectivity.checkConnectivity();
-      return _isConnectedToWiFi(results);
+      return _isConnectedToInternet(results);
     } catch (e) {
       return false;
     }
@@ -118,42 +119,15 @@ class ConnectivityService {
     }
   }
 
-  /// Sends any results emails that were saved while the device was offline.
+  /// Sends any results emails that were held back (offline, or the
+  /// Firebase profile upload couldn't be verified) while the device was
+  /// offline. Runs after queued uploads above have already been retried,
+  /// so the verify inside retryPending has a real chance of finding the
+  /// profile upload landed this time.
   Future<void> _sendPendingEmail() async {
-    final pendingEmailService = PendingEmailService();
-    final emailService = BackendEmailService();
-
-    // Monday
-    if (await pendingEmailService.hasPendingMondayEmail()) {
-      final emailData = await pendingEmailService.getPendingMondayEmail();
-      if (emailData != null) {
-        try {
-          final success = await emailService.sendMondayResultsEmail(
-            subject: emailData['subject']!,
-            body: emailData['body']!,
-          );
-          if (success) await pendingEmailService.clearPendingMondayEmail();
-        } catch (e) {
-          // Leave in place for next retry
-        }
-      }
-    }
-
-    // Wednesday
-    if (await pendingEmailService.hasPendingWednesdayEmail()) {
-      final emailData = await pendingEmailService.getPendingWednesdayEmail();
-      if (emailData != null) {
-        try {
-          final success = await emailService.sendWednesdayResultsEmail(
-            subject: emailData['subject']!,
-            body: emailData['body']!,
-          );
-          if (success) await pendingEmailService.clearPendingWednesdayEmail();
-        } catch (e) {
-          // Leave in place for next retry
-        }
-      }
-    }
+    final emailVerificationService = ResultsEmailVerificationService();
+    await emailVerificationService.retryPending(League.monday);
+    await emailVerificationService.retryPending(League.wednesday);
   }
   
   /// Process a single upload
@@ -164,11 +138,23 @@ class ConnectivityService {
       await _uploadQueueService.markAsUploading(upload.id);
       
       bool success = false;
-      
+
       // Execute the appropriate upload based on type
       switch (upload.uploadType) {
         case UploadType.players:
-          success = await _firebaseUploadService.uploadPlayerTable(upload.league);
+          if (upload.playerNumbers != null && upload.playerNumbers!.isNotEmpty) {
+            // Scoped retry: re-fetch just these players fresh from local DB
+            // (not whatever was cached when originally queued) and push only
+            // them, so this device's cache for everyone else still can't
+            // clobber their correct Firebase values.
+            final allPlayers = await DatabaseHelper().getPlayersByLeague(upload.league);
+            final scoped = allPlayers
+                .where((p) => upload.playerNumbers!.contains(p['player_number']))
+                .toList();
+            success = await _firebaseUploadService.uploadPlayers(upload.league, scoped);
+          } else {
+            success = await _firebaseUploadService.uploadPlayerTable(upload.league);
+          }
           break;
         case UploadType.golfCourses:
           success = await _firebaseUploadService.uploadGolfCourseTable(upload.league);
@@ -191,7 +177,7 @@ class ConnectivityService {
   
   /// Manually trigger upload processing (useful for testing or manual retry)
   Future<void> processUploadsManually() async {
-    if (await isWiFiConnected()) {
+    if (await isOnline()) {
       await _processPendingUploads();
     } else {
     }

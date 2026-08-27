@@ -10,7 +10,6 @@ import '../../services/responsive_typography.dart';
 import '../../services/UI/button_bar_UI_service.dart';
 import 'monday_enter_scores_screen.dart';
 import '../../widgets/responsive_wrapper.dart';
-import '../../services/firebase_upload_service.dart';
 
 class MondayPlayerSelectionScreen extends StatefulWidget {
   final double? playersAnte;
@@ -399,7 +398,7 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
           'Select Players for Monday\'s Match - ${AppConfig.versionDate}',
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
-        backgroundColor: FirebaseUploadService.anyAdminOverrideActive ? Colors.red[700] : Colors.green[700],
+        backgroundColor: Colors.green[700],
         foregroundColor: Colors.white,
         centerTitle: true,
       ),
@@ -459,7 +458,7 @@ class _MondayPlayerSelectionScreenState extends State<MondayPlayerSelectionScree
       backgroundColor: Colors.grey[300],
       appBar: AppBar(
         title: const Text("Select Players for Monday's Match - ${AppConfig.versionDate}"),
-        backgroundColor: FirebaseUploadService.anyAdminOverrideActive ? Colors.red[700] : Colors.green[700],
+        backgroundColor: Colors.green[700],
         foregroundColor: Colors.white,
         centerTitle: true,
       ),

@@ -1,5 +1,3 @@
-import 'package:shared_preferences/shared_preferences.dart';
-
 /// Email configuration for the Golden Oaks Golf League app
 class EmailConfig {
   /// Resend API key
@@ -24,19 +22,4 @@ class EmailConfig {
 
   /// Sender name
   static const String senderName = 'Golden Oaks Golf League';
-
-  /// When true, ALL emails are sent only to [fallbackEmail] for testing.
-  /// Toggle from the Wednesday Admin screen. Set to false before going live.
-  static bool testEmailMode = false;
-
-  static Future<void> loadTestEmailModeState() async {
-    final prefs = await SharedPreferences.getInstance();
-    testEmailMode = prefs.getBool('test_email_mode') ?? false;
-  }
-
-  static Future<void> saveTestEmailModeState(bool value) async {
-    testEmailMode = value;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('test_email_mode', value);
-  }
 }

@@ -5,6 +5,7 @@ import '../../models/league.dart';
 import '../../services/database_helper.dart';
 import '../../services/device_detection_service.dart';
 import '../../services/firebase_upload_service.dart';
+import '../../services/error_log_service.dart';
 
 class MondayAdminScreen extends StatefulWidget {
   final League? currentLeague;
@@ -20,37 +21,11 @@ class _MondayAdminScreenState extends State<MondayAdminScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final DatabaseHelper _dbHelper = DatabaseHelper();
   bool _isDownloading = false;
-  bool _firebaseUploadsEnabled = true;
-  bool _allowDuplicateDates = true;
 
   @override
   void initState() {
     super.initState();
     _initializeFirestore();
-    _loadFirebaseUploadsState();
-    _loadAllowDuplicateDatesState();
-  }
-
-  /// Load the Firebase uploads enabled state from SharedPreferences
-  Future<void> _loadFirebaseUploadsState() async {
-    // Wait for the state to be loaded from SharedPreferences
-    await FirebaseUploadService.loadUploadsEnabledState();
-    if (mounted) {
-      setState(() {
-        _firebaseUploadsEnabled = FirebaseUploadService.uploadsEnabled;
-      });
-    }
-  }
-
-  /// Load the allow duplicate dates state from SharedPreferences
-  Future<void> _loadAllowDuplicateDatesState() async {
-    // Wait for the state to be loaded from SharedPreferences
-    await DatabaseHelper.loadAllowDuplicateDatesState();
-    if (mounted) {
-      setState(() {
-        _allowDuplicateDates = DatabaseHelper.allowDuplicateDates;
-      });
-    }
   }
 
   void _initializeFirestore() {
@@ -70,7 +45,7 @@ class _MondayAdminScreenState extends State<MondayAdminScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Monday Administration'),
-        backgroundColor: FirebaseUploadService.anyAdminOverrideActive ? Colors.red[700] : Colors.green[800],
+        backgroundColor: Colors.green[800],
         foregroundColor: Colors.white,
       ),
       body: SafeArea(
@@ -79,119 +54,6 @@ class _MondayAdminScreenState extends State<MondayAdminScreen> {
           child: SingleChildScrollView(
             child: Column(
               children: [
-                const SizedBox(height: 20),
-
-                // Firebase Upload Toggle Checkbox
-                Center(
-                  child: SizedBox(
-                    width: MediaQuery.of(context).size.width * 0.7,
-                    child: Card(
-                      elevation: 4,
-                      color: _firebaseUploadsEnabled ? Colors.green[50] : Colors.red[50],
-                      child: CheckboxListTile(
-                        title: Text(
-                          'Turn off Firebase Uploads',
-                          style: TextStyle(
-                            fontSize: 20 * DeviceDetectionService.getFontScale(context),
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        subtitle: Text(
-                          _firebaseUploadsEnabled
-                            ? 'Firebase uploads are currently ENABLED'
-                            : 'Firebase uploads are currently DISABLED',
-                          style: TextStyle(
-                            fontSize: 16 * DeviceDetectionService.getFontScale(context),
-                            color: _firebaseUploadsEnabled ? Colors.green[800] : Colors.red[800],
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        value: !_firebaseUploadsEnabled,
-                        onChanged: (bool? value) async {
-                          final newState = !(value ?? false);
-                          setState(() {
-                            _firebaseUploadsEnabled = newState;
-                            FirebaseUploadService.uploadsEnabled = newState;
-                          });
-
-                          // Save the state to SharedPreferences
-                          await FirebaseUploadService.saveUploadsEnabledState(newState);
-
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  _firebaseUploadsEnabled
-                                    ? 'Firebase uploads ENABLED'
-                                    : 'Firebase uploads DISABLED',
-                                ),
-                                backgroundColor: _firebaseUploadsEnabled ? Colors.green : Colors.red,
-                                duration: const Duration(seconds: 2),
-                              ),
-                            );
-                          }
-                        },
-                      ),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 20),
-
-                // Allow Duplicate Dates Checkbox
-                Center(
-                  child: SizedBox(
-                    width: MediaQuery.of(context).size.width * 0.7,
-                    child: Card(
-                      elevation: 4,
-                      color: _allowDuplicateDates ? Colors.blue[50] : Colors.orange[50],
-                      child: CheckboxListTile(
-                        title: Text(
-                          'Allow Duplicate Dates',
-                          style: TextStyle(
-                            fontSize: 20 * DeviceDetectionService.getFontScale(context),
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        subtitle: Text(
-                          _allowDuplicateDates
-                            ? 'Multiple scores can be stored for the same date'
-                            : 'Only one score per date allowed',
-                          style: TextStyle(
-                            fontSize: 16 * DeviceDetectionService.getFontScale(context),
-                            color: _allowDuplicateDates ? Colors.blue[800] : Colors.orange[800],
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        value: _allowDuplicateDates,
-                        onChanged: (bool? value) async {
-                          final newState = value ?? true;
-                          setState(() {
-                            _allowDuplicateDates = newState;
-                          });
-
-                          // Save the state to SharedPreferences
-                          await DatabaseHelper.saveAllowDuplicateDatesState(newState);
-
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  _allowDuplicateDates
-                                    ? 'Duplicate dates ALLOWED'
-                                    : 'Duplicate dates BLOCKED',
-                                ),
-                                backgroundColor: _allowDuplicateDates ? Colors.blue : Colors.orange,
-                                duration: const Duration(seconds: 2),
-                              ),
-                            );
-                          }
-                        },
-                      ),
-                    ),
-                  ),
-                ),
-
                 const SizedBox(height: 20),
 
                 _buildDownloadButton(
@@ -219,12 +81,79 @@ class _MondayAdminScreenState extends State<MondayAdminScreen> {
                   () => _downloadMondayPlayerScores(),
                 ),
 
+                const SizedBox(height: 16),
+
+                _buildDownloadButton(
+                  'View Error Log',
+                  Icons.bug_report,
+                  Colors.red[200]!,
+                  () => _showErrorLog(),
+                ),
+
                 const SizedBox(height: 20),
               ],
             ),
           ),
         ),
       ),
+    );
+  }
+
+  /// Shows the persistent local error log (populated by the Results save
+  /// flow whenever a save, upload, or email step fails silently) so failures
+  /// can be reviewed later without a tethered debug session.
+  Future<void> _showErrorLog() async {
+    final entries = await ErrorLogService().getErrors();
+    if (!mounted) return;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Error Log'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: entries.isEmpty
+                ? const Text('No errors recorded.')
+                : ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: entries.length,
+                    separatorBuilder: (_, __) => const Divider(),
+                    itemBuilder: (context, index) {
+                      final entry = entries[index];
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${entry['timestamp'] ?? ''}',
+                            style: const TextStyle(fontSize: 12, color: Colors.grey),
+                          ),
+                          Text(
+                            '${entry['context'] ?? ''}',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          Text('${entry['error'] ?? ''}'),
+                        ],
+                      );
+                    },
+                  ),
+          ),
+          actions: [
+            if (entries.isNotEmpty)
+              TextButton(
+                onPressed: () async {
+                  await ErrorLogService().clearErrors();
+                  if (dialogContext.mounted) Navigator.of(dialogContext).pop();
+                },
+                child: const Text('Clear Log'),
+              ),
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -565,8 +494,16 @@ class _MondayAdminScreenState extends State<MondayAdminScreen> {
 
       // Handle Monday league specific fields
       if (league.toLowerCase() == 'monday') {
-        // Convert Firebase currency strings back to numbers
-        localScoreData['skat_number'] = scoreData['SKAT #'];
+        // monday_scores has no 'skat_number' column, and Firebase never
+        // uploads a field called 'SKAT #' — the actual uploaded fields are
+        // S_SK, SKATS, DIFF, and New_SK (see firebase_upload_service.dart).
+        // The old field names here caused every downloaded row to fail with
+        // "no such column: skat_number", which is what produced the
+        // "Errors: 113" result on this button.
+        localScoreData['S_SK'] = scoreData['S_SK'];
+        localScoreData['SKATS'] = scoreData['SKATS'];
+        localScoreData['DIFF'] = scoreData['DIFF'];
+        localScoreData['New_SK'] = scoreData['New_SK'];
         localScoreData['close_pin_winnings'] = _parseCurrency(scoreData['Close Pin Winnings']);
         localScoreData['skat_winnings'] = _parseCurrency(scoreData['SKAT Winnings']);
 
@@ -590,6 +527,25 @@ class _MondayAdminScreenState extends State<MondayAdminScreen> {
 
       // Use the passed league parameter
       League leagueEnum = league == 'monday' ? League.monday : League.wednesday;
+
+      // insertScoreLeague only dedupes by player+date for Wednesday; for
+      // Monday it always inserts, so re-running this download would create
+      // duplicate rows for every score already present locally. Update the
+      // existing row in place instead — this also lets a corrected Firebase
+      // record (e.g. after manually fixing a mistaken SK#) actually land
+      // locally, rather than being silently skipped because "a record
+      // already exists" for that player+date.
+      if (leagueEnum == League.monday) {
+        final existing = await _dbHelper.getPlayerScoreByDate(
+          localScoreData['player_id'] as int,
+          localScoreData['date_played'] as String,
+          League.monday,
+        );
+        if (existing != null) {
+          await _dbHelper.updateScoreRecord(existing['id'] as int, localScoreData, League.monday);
+          return;
+        }
+      }
 
       Map<String, dynamic> insertResult = await _dbHelper.insertScoreLeague(localScoreData, leagueEnum);
       List<Map<String, dynamic>> deletedScores = insertResult['deletedScores'] as List<Map<String, dynamic>>;

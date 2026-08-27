@@ -31,7 +31,12 @@
       "Bash(git config *)",
       "Bash(git log *)",
       "PowerShell(Copy-Item *)",
-      "Bash(git *)"
+      "Bash(git *)",
+      "PowerShell(.\\\\release.bat)",
+      "PowerShell(gh release *)",
+      "PowerShell(winget install *)",
+      "Bash(nslookup -type=TXT _dmarc.goldenoaks.golf)",
+      "Bash(nslookup -type=TXT _dmarc.send.goldenoaks.golf)"
     ],
     "deny": []
   }

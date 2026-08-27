@@ -6,7 +6,6 @@ import 'screens/main_menu_screen.dart';
 import 'firebase_options.dart';
 import 'services/connectivity_service.dart';
 import 'services/upload_queue_service.dart';
-import 'config/email_config.dart';
 
 //Version 4, November 16, 2025
 void main() async {
@@ -38,12 +37,6 @@ void main() async {
   // Clear any stale queued uploads from previous sessions before connecting
   try {
     await UploadQueueService().clearAllPendingUploads();
-  } catch (e) {
-  }
-
-  // Load persisted email test mode setting
-  try {
-    await EmailConfig.loadTestEmailModeState();
   } catch (e) {
   }
 

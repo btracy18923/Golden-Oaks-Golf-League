@@ -10,7 +10,6 @@ import '../../services/UI/button_bar_UI_service.dart';
 import '../../models/league.dart';
 import 'wednesday_enter_scores_screen.dart';
 import '../../widgets/responsive_wrapper.dart';
-import '../../services/firebase_upload_service.dart';
 
 class WednesdayPlayerSelectionScreen extends StatefulWidget {
   const WednesdayPlayerSelectionScreen({super.key});
@@ -37,18 +36,57 @@ class _WednesdayPlayerSelectionScreenState extends State<WednesdayPlayerSelectio
     WidgetsBinding.instance.addPostFrameCallback((_) => _checkAndLoadSavedGroupings());
   }
 
+  /// Groupings older than this are treated as stale and released rather
+  /// than auto-loaded. Wide enough to cover an admin prepping groupings a
+  /// day or two ahead (e.g. Tuesday for a Wednesday match), but well short
+  /// of the 7-day gap between matches, so a rained-out match's leftover
+  /// groupings (never cleared because Save Results was never pressed)
+  /// don't silently carry over into the next match with different players.
+  static const int _maxSavedGroupingsAgeDays = 3;
+
+  /// Checks for saved groupings and auto-loads them — but only if they're
+  /// still within [_maxSavedGroupingsAgeDays]. Older groupings are released
+  /// instead of being silently loaded into a different match with
+  /// different signed-up players.
   Future<void> _checkAndLoadSavedGroupings() async {
     try {
-      final doc = await FirebaseFirestore.instance
+      final docRef = FirebaseFirestore.instance
           .collection('W_scheduled_groups')
-          .doc('pending')
-          .get();
-      if (doc.exists && mounted) {
-        _loadSavedGroupings();
+          .doc('pending');
+      final doc = await docRef.get();
+      if (!doc.exists || !mounted) return;
+
+      final savedAt = doc.data()?['saved_at'] as Timestamp?;
+      final isStale = savedAt == null ||
+          _daysBetween(savedAt.toDate(), DateTime.now()) > _maxSavedGroupingsAgeDays;
+
+      if (isStale) {
+        await docRef.delete();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Cleared outdated saved groupings from a previous match.'),
+              backgroundColor: Colors.orange,
+              duration: Duration(seconds: 4),
+            ),
+          );
+        }
+        return;
       }
+
+      _loadSavedGroupings();
     } catch (e) {
       // If check fails, proceed normally to player selection
     }
+  }
+
+  /// Number of whole calendar days between [from] and [to] (ignoring
+  /// time-of-day, so a save late on day 1 checked early on day 2 still
+  /// counts as 1 day, not 0).
+  int _daysBetween(DateTime from, DateTime to) {
+    final fromDate = DateTime(from.year, from.month, from.day);
+    final toDate = DateTime(to.year, to.month, to.day);
+    return toDate.difference(fromDate).inDays;
   }
 
   void _setOrientation() {
@@ -131,7 +169,7 @@ class _WednesdayPlayerSelectionScreenState extends State<WednesdayPlayerSelectio
           "Select Wednesday Players - ${AppConfig.versionDate}",
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
-        backgroundColor: FirebaseUploadService.anyAdminOverrideActive ? Colors.red[700] : Colors.orange[700],
+        backgroundColor: Colors.orange[700],
         foregroundColor: Colors.white,
         centerTitle: true,
       ),
@@ -191,7 +229,7 @@ class _WednesdayPlayerSelectionScreenState extends State<WednesdayPlayerSelectio
       backgroundColor: Colors.grey[300],
       appBar: AppBar(
         title: const Text("Select Players for Wednesday's Match - ${AppConfig.versionDate}"),
-        backgroundColor: FirebaseUploadService.anyAdminOverrideActive ? Colors.red[700] : Colors.orange[700],
+        backgroundColor: Colors.orange[700],
         foregroundColor: Colors.white,
         centerTitle: true,
       ),

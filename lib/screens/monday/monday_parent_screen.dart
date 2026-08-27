@@ -14,7 +14,6 @@ import '../../services/UI/parent_screen_service.dart';
 import '../../services/UI/custom_keypad_service.dart';
 import '../../services/UI/button_bar_UI_service.dart';
 import '../../services/firebase_download_service.dart';
-import '../../services/firebase_upload_service.dart';
 import '../../widgets/responsive_wrapper.dart';
 
 class MondayParentScreen extends StatefulWidget {
@@ -309,7 +308,7 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
           'Monday League - Golden Oaks Golf - ${AppConfig.versionDate}',
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
-        backgroundColor: FirebaseUploadService.anyAdminOverrideActive ? Colors.red[700] : Colors.green[700],
+        backgroundColor: Colors.green[700],
         foregroundColor: Colors.white,
         centerTitle: true,
         actions: [
@@ -392,7 +391,7 @@ class _MondayParentScreenState extends State<MondayParentScreen> {
           'Monday League - Golden Oaks Golf - ${AppConfig.versionDate}',
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
         ),
-        backgroundColor: FirebaseUploadService.anyAdminOverrideActive ? Colors.red[700] : Colors.green[700],
+        backgroundColor: Colors.green[700],
         foregroundColor: Colors.white,
         centerTitle: true,
         actions: [

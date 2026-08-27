@@ -1,6 +1,5 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
 import '../models/league.dart';
 import '../config/app_config.dart';
@@ -9,40 +8,8 @@ class DatabaseHelper {
   static final DatabaseHelper _instance = DatabaseHelper._internal();
   static Database? _database;
 
-  /// Global flag to allow duplicate dates in wednesday_scores
-  static bool allowDuplicateDates = false;
-
-  /// SharedPreferences key for storing the allow duplicate dates state
-  static const String _allowDuplicateDatesKey = 'allow_duplicate_dates_wednesday';
-
   factory DatabaseHelper() => _instance;
-  DatabaseHelper._internal() {
-    loadAllowDuplicateDatesState();
-  }
-
-  /// Load the allow duplicate dates state from SharedPreferences
-  static Future<void> loadAllowDuplicateDatesState() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      allowDuplicateDates = prefs.getBool(_allowDuplicateDatesKey) ?? false;
-      debugPrint('Loaded allow duplicate dates state: $allowDuplicateDates');
-    } catch (e) {
-      debugPrint('Error loading allow duplicate dates state: $e');
-      allowDuplicateDates = false; // Default to blocked on error
-    }
-  }
-
-  /// Save the allow duplicate dates state to SharedPreferences
-  static Future<void> saveAllowDuplicateDatesState(bool allowed) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool(_allowDuplicateDatesKey, allowed);
-      allowDuplicateDates = allowed;
-      debugPrint('Saved allow duplicate dates state: $allowed');
-    } catch (e) {
-      debugPrint('Error saving allow duplicate dates state: $e');
-    }
-  }
+  DatabaseHelper._internal();
 
   Future<Database> get database async {
     _database ??= await _initDatabase();
@@ -1076,8 +1043,8 @@ class DatabaseHelper {
     int insertId = 0;
 
     await db.transaction((txn) async {
-      // For Wednesday league, check for duplicate dates if flag is disabled
-      if (league == League.wednesday && !allowDuplicateDates) {
+      // For Wednesday league, check for duplicate dates
+      if (league == League.wednesday) {
         // Check if a score already exists for this player and date
         List<Map<String, dynamic>> existingScores = await txn.query(
           tableName,
@@ -1147,6 +1114,24 @@ class DatabaseHelper {
     }
     
     return 0; // No records found to update
+  }
+
+  // Update all given fields on a score record by record ID (e.g. correcting
+  // a record from a re-downloaded/corrected Firebase copy)
+  Future<int> updateScoreRecord(int recordId, Map<String, dynamic> data, League league) async {
+    final db = await database;
+    String tableName = league == League.monday ? 'monday_scores' : 'wednesday_scores';
+
+    try {
+      return await db.update(
+        tableName,
+        data,
+        where: 'id = ?',
+        whereArgs: [recordId],
+      );
+    } catch (e) {
+      return 0;
+    }
   }
 
   // Update a specific field in a score record by record ID

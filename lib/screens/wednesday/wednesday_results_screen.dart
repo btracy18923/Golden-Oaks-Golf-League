@@ -9,9 +9,8 @@ import '../../models/league.dart';
 import '../main_menu_screen.dart';
 import '../../services/firebase_upload_service.dart';
 import '../../services/handicap_calculation_service.dart';
-import '../../services/backend_email_service.dart';
-import '../../services/pending_email_service.dart';
-import '../../services/connectivity_service.dart';
+import '../../services/results_email_verification_service.dart';
+import '../../services/error_log_service.dart';
 
 class WednesdayResultsScreen extends StatefulWidget {
   final double groupPurseAmount;
@@ -334,12 +333,34 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
       await _uploadScoresToFirebase();
 
       // Upload the updated player table (includes new HC values) to Firebase.
-      // Uses the WiFi-checked, offline-queued upload path so a connectivity blip
-      // gets retried automatically instead of silently dropping the HC update
-      // (a raw one-off write here previously failed silently with no retry).
-      final hcUploadSuccess = await _firebaseUploadService.uploadPlayerTableWithQueue(League.wednesday);
+      // Scoped to just the players who played this round — NOT a full-roster
+      // push. This device's local cache for every OTHER Wednesday player may
+      // be stale (e.g. an admin's phone that hasn't re-synced since someone
+      // else's handicap changed elsewhere), and a full-roster push would
+      // silently overwrite those players' correct Firebase values with this
+      // device's stale copy. Uses the connectivity-checked, offline-queued
+      // upload path so a blip gets retried automatically instead of silently
+      // dropping the HC update.
+      final touchedPlayers = <Map<String, dynamic>>[];
+      for (final entry in handicapResults.entries) {
+        final dbPlayer = allDbPlayers.firstWhere(
+          (p) => p['last'] == entry.key,
+          orElse: () => <String, dynamic>{},
+        );
+        if (dbPlayer.isEmpty) continue;
+        // Re-fetch fresh from local DB (updatePlayerHandicap above already
+        // wrote the new HC there) rather than patching the pre-round
+        // snapshot, so nothing else about this player's record is stale.
+        final fresh = await _databaseHelper.getPlayer(dbPlayer['player_number']);
+        if (fresh != null) touchedPlayers.add(fresh);
+      }
+      final hcUploadSuccess = await _firebaseUploadService.uploadPlayersWithQueue(League.wednesday, touchedPlayers);
       if (!hcUploadSuccess) {
         debugPrint('WARNING: Failed to upload updated handicaps to Firebase');
+        await ErrorLogService().logError(
+          'Wednesday HC Upload',
+          'uploadPlayersWithQueue returned false for $currentDate',
+        );
       }
 
       // Then delete old scores from Firebase if any were removed locally
@@ -351,11 +372,22 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
       _saveResultsSummaryToFirebase(consolidatedPlayerData, currentDate);
 
       // Build full email body (including roster) here while still in the awaited save,
-      // then fire the send unawaited so it doesn't block navigation.
+      // then fire the verify-and-send unawaited so it doesn't block navigation.
+      // The email won't actually go out until a Firestore read-back confirms
+      // the HC values above really landed in Firebase — see
+      // ResultsEmailVerificationService.
       final emailSubject = 'Golden Oaks Wednesday League Results - $currentDate';
       final emailBody = _buildResultsEmailBody(consolidatedPlayerData, currentDate)
           + await _buildHandicapRoster();
-      _sendResultsEmail(emailSubject, emailBody);
+      final verifyManifest = handicapResults.entries
+          .map((e) => {'name': e.key, 'expected': e.value['new_hc']})
+          .toList();
+      ResultsEmailVerificationService().verifyAndSendOrQueue(
+        league: League.wednesday,
+        subject: emailSubject,
+        body: emailBody,
+        verifyManifest: verifyManifest,
+      );
 
       // Show success message
       if (mounted) {
@@ -369,6 +401,7 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
       }
     } catch (e) {
       debugPrint('ERROR in _saveResultsToDatabase: $e');
+      await ErrorLogService().logError('Wednesday Save Results', e);
       // Show error message
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -397,18 +430,22 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
   ) async {
     // Returns map of playerName â†’ {'new_hc': double, 'pad_count': int}
     Map<String, Map<String, dynamic>> results = {};
+    final handicapService = HandicapCalculationService();
 
-    try {
-      final handicapService = HandicapCalculationService();
-
-      Set<String> selectedPlayerNames = {};
-      for (var player in selectedPlayers) {
-        if (player['last'] != null && player['last'].toString().isNotEmpty) {
-          selectedPlayerNames.add(player['last'].toString().trim());
-        }
+    Set<String> selectedPlayerNames = {};
+    for (var player in selectedPlayers) {
+      if (player['last'] != null && player['last'].toString().isNotEmpty) {
+        selectedPlayerNames.add(player['last'].toString().trim());
       }
+    }
 
-      for (var playerName in selectedPlayerNames) {
+    // Each player is isolated in its own try/catch so one bad/malformed
+    // record can't silently abort New HC calculation for every other player
+    // in the same save (previously a single exception anywhere in this loop
+    // aborted the whole batch, which is why New HC could end up blank for
+    // everyone in a given week).
+    for (var playerName in selectedPlayerNames) {
+      try {
         final dbPlayer = allDbPlayers.firstWhere(
           (p) => p['last'] == playerName,
           orElse: () => <String, dynamic>{}
@@ -425,7 +462,7 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
 
           List<int> grossScores = scores
               .where((score) => score['gross_score'] != null)
-              .map((score) => score['gross_score'] as int)
+              .map((score) => (score['gross_score'] as num).toInt())
               .toList();
 
           if (grossScores.isNotEmpty) {
@@ -446,9 +483,10 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
         } else {
           debugPrint('WARNING: No database player found for $playerName during handicap update');
         }
+      } catch (e) {
+        debugPrint('Error updating handicap for $playerName: $e');
+        await ErrorLogService().logError('Wednesday New HC Calculation ($playerName)', e);
       }
-    } catch (e) {
-      debugPrint('Error updating handicaps: $e');
     }
 
     return results;
@@ -555,24 +593,7 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
       });
     } catch (e) {
       debugPrint('Failed to save Wednesday results summary: $e');
-    }
-  }
-
-  /// Sends the Wednesday results email to admins.
-  /// Subject and body (including roster) are pre-built by the caller.
-  /// If offline, saves to SharedPreferences for retry when WiFi reconnects.
-  Future<void> _sendResultsEmail(String subject, String body) async {
-    try {
-      final isOnline = await ConnectivityService().isWiFiConnected();
-      if (isOnline) {
-        await BackendEmailService().sendWednesdayResultsEmail(subject: subject, body: body);
-        debugPrint('Wednesday results email sent successfully');
-      } else {
-        await PendingEmailService().savePendingWednesdayEmail(subject: subject, body: body);
-        debugPrint('Device offline — Wednesday results email queued for retry on WiFi reconnect');
-      }
-    } catch (e) {
-      debugPrint('Error sending Wednesday results email: $e');
+      await ErrorLogService().logError('Wednesday Results Summary (Firebase W_results/$date)', e);
     }
   }
 
@@ -585,7 +606,7 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
           (a['last'] ?? '').toString().compareTo((b['last'] ?? '').toString()));
       final buffer = StringBuffer();
       buffer.writeln('');
-      buffer.writeln('HANDICAP ROSTER');
+      buffer.writeln('New Handicap Numbers');
       buffer.writeln('-' * 30);
       for (final player in allPlayers) {
         final last = player['last']?.toString() ?? '';
@@ -603,7 +624,7 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
       return buffer.toString();
     } catch (e) {
       debugPrint('Failed to build handicap roster: $e');
-      return '\n\nHANDICAP ROSTER\n[Error loading roster: $e]\n';
+      return '\n\nNew Handicap Numbers\n[Error loading roster: $e]\n';
     }
   }
 
@@ -736,9 +757,11 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
       final scoresSuccess = await _firebaseUploadService.uploadPlayerScoresTableWithQueue(League.wednesday);
       if (!scoresSuccess) {
         debugPrint('Failed to upload scores to Firebase');
+        await ErrorLogService().logError('Wednesday Scores Upload', 'uploadPlayerScoresTableWithQueue returned false');
       }
     } catch (e) {
       debugPrint('Error uploading scores to Firebase: $e');
+      await ErrorLogService().logError('Wednesday Scores Upload', e);
     }
   }
 
@@ -748,10 +771,12 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
       final success = await _firebaseUploadService.deletePlayerScoresFromFirebase(scoresToDelete, League.wednesday);
       if (!success) {
         debugPrint('Failed to delete old scores from Firebase');
+        await ErrorLogService().logError('Wednesday Old Scores Delete', 'deletePlayerScoresFromFirebase returned false');
       }
     } catch (e) {
       debugPrint('Error deleting scores from Firebase: $e');
-      // Log error but don't show to user - deletion failure shouldn't block save operation
+      // Don't show to user - deletion failure shouldn't block save operation, but do record it.
+      await ErrorLogService().logError('Wednesday Old Scores Delete', e);
     }
   }
 
@@ -822,7 +847,7 @@ class _WednesdayResultsScreenState extends State<WednesdayResultsScreen> {
             fontSize: 24,
           ),
         ),
-        backgroundColor: FirebaseUploadService.anyAdminOverrideActive ? Colors.red[700] : Colors.orange[300],
+        backgroundColor: Colors.orange[300],
         foregroundColor: Colors.black,
         centerTitle: true,
         automaticallyImplyLeading: false,

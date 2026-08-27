@@ -54,35 +54,27 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
 
   @override
   void dispose() {
-    // Upload player table to Firebase before leaving
-    _uploadPlayerDataToFirebase();
-    
+    // Note: no Firebase push here. _addPlayer/_updatePlayer already upload
+    // the specific player they just changed immediately after saving —
+    // pushing again on every dispose (even when nothing was edited) used to
+    // re-upload this device's ENTIRE local roster, which could silently
+    // overwrite other players' correct Firebase data (e.g. a SKAT#) with
+    // whatever stale copy happened to be cached on this device.
     _idController.dispose();
     _firstController.dispose();
     _lastController.dispose();
     _skatController.dispose();
     _cellController.dispose();
     _emailController.dispose();
-    
+
     _idFocus.dispose();
     _firstFocus.dispose();
     _lastFocus.dispose();
     _skatFocus.dispose();
     _cellFocus.dispose();
     _emailFocus.dispose();
-    
-    super.dispose();
-  }
 
-  /// Upload player table data to Firebase when leaving the screen
-  void _uploadPlayerDataToFirebase() async {
-    try {
-      final success = await _firebaseUploadService.uploadPlayerTableWithQueue(_selectedLeague);
-      if (success) {
-      } else {
-      }
-    } catch (e) {
-    }
+    super.dispose();
   }
 
   void _setupFocusListeners() {
@@ -275,7 +267,7 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
     try {
       final leagueStr = _selectedLeague == League.monday ? 'monday' : 'wednesday';
       
-      await _databaseHelper.insertPlayer({
+      final newPlayer = {
         'player_number': int.tryParse(_idController.text) ?? 0,
         'first': _firstController.text.trim(),
         'last': _lastController.text.trim(),
@@ -283,13 +275,16 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
         'league': leagueStr,
         'cell': _cellController.text.trim(),
         'email': _emailController.text.trim(),
-      });
-      
+      };
+      await _databaseHelper.insertPlayer(newPlayer);
+
       _clearForm();
       _refreshPlayerList();
-      
-      // Immediately try to upload to Firebase
-      final uploadSuccess = await _firebaseUploadService.uploadPlayerTableWithQueue(_selectedLeague);
+
+      // Immediately try to upload just this player to Firebase — not the
+      // whole roster, so this device's cache for everyone else (which may
+      // be stale) can't overwrite their correct Firebase data.
+      final uploadSuccess = await _firebaseUploadService.uploadPlayersWithQueue(_selectedLeague, [newPlayer]);
       if (uploadSuccess) {
         _showSuccessDialog('Player added and uploaded to Firebase!');
       } else {
@@ -311,7 +306,7 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
     try {
       final leagueStr = _selectedLeague == League.monday ? 'monday' : 'wednesday';
 
-      await _databaseHelper.updatePlayer(_selectedPlayer!['player_number'], {
+      final updatedPlayer = {
         'player_number': int.tryParse(_idController.text) ?? 0,
         'first': _firstController.text.trim(),
         'last': _lastController.text.trim(),
@@ -319,13 +314,16 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
         'league': leagueStr,
         'cell': _cellController.text.trim(),
         'email': _emailController.text.trim(),
-      });
-      
+      };
+      await _databaseHelper.updatePlayer(_selectedPlayer!['player_number'], updatedPlayer);
+
       _refreshPlayerList();
       _clearForm();
-      
-      // Immediately try to upload to Firebase
-      final uploadSuccess = await _firebaseUploadService.uploadPlayerTableWithQueue(_selectedLeague);
+
+      // Immediately try to upload just this player to Firebase — not the
+      // whole roster, so this device's cache for everyone else (which may
+      // be stale) can't overwrite their correct Firebase data.
+      final uploadSuccess = await _firebaseUploadService.uploadPlayersWithQueue(_selectedLeague, [updatedPlayer]);
       if (uploadSuccess) {
         _showSuccessDialog('Player updated and uploaded to Firebase!');
       } else {
@@ -489,7 +487,7 @@ class _MondayPlayerProfileScreenState extends State<MondayPlayerProfileScreen> {
           style: TextStyle(fontSize: ResponsiveTypography.getAppBarTitle(context)),
         ),
         centerTitle: true,
-        backgroundColor: FirebaseUploadService.anyAdminOverrideActive ? Colors.red[700] : (_selectedLeague == League.monday ? Colors.green[700] : Colors.orange[700]),
+        backgroundColor: _selectedLeague == League.monday ? Colors.green[700] : Colors.orange[700],
         foregroundColor: Colors.white,
       ),
       body: SafeArea(

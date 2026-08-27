@@ -655,11 +655,9 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
           style: ResponsiveTypography.appBarTitleStyle(context),
         ),
         centerTitle: true,
-        backgroundColor: FirebaseUploadService.anyAdminOverrideActive
-                        ? Colors.red[700]
-                        : (widget.league == League.monday ? Colors.green[700] :
-                           widget.league == League.wednesday ? Colors.orange[700] :
-                           Colors.cyan[700]),
+        backgroundColor: widget.league == League.monday ? Colors.green[700] :
+                          widget.league == League.wednesday ? Colors.orange[700] :
+                          Colors.cyan[700],
         foregroundColor: Colors.white,
       ),
       resizeToAvoidBottomInset: false,
@@ -701,11 +699,9 @@ class _MondayGolfCourseScreenState extends State<MondayGolfCourseScreen> {
           style: ResponsiveTypography.appBarTitleStyle(context),
         ),
         centerTitle: true,
-        backgroundColor: FirebaseUploadService.anyAdminOverrideActive
-                        ? Colors.red[700]
-                        : (widget.league == League.monday ? Colors.green[700] :
-                           widget.league == League.wednesday ? Colors.orange[700] :
-                           Colors.cyan[700]),
+        backgroundColor: widget.league == League.monday ? Colors.green[700] :
+                          widget.league == League.wednesday ? Colors.orange[700] :
+                          Colors.cyan[700],
         foregroundColor: Colors.white,
       ),
       resizeToAvoidBottomInset: true,

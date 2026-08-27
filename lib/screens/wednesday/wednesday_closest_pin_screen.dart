@@ -7,7 +7,6 @@ import '../../services/responsive_typography.dart';
 import '../../models/league.dart';
 import 'wednesday_parent_screen.dart';
 import 'wednesday_results_screen.dart';
-import '../../services/firebase_upload_service.dart';
 import '../../services/screen_data_retention_service.dart';
 
 class WednesdayClosestPinScreen extends StatefulWidget {
@@ -384,7 +383,7 @@ class _WednesdayClosestPinScreenState extends State<WednesdayClosestPinScreen> {
 
     return Container(
       width: double.infinity,
-      color: FirebaseUploadService.anyAdminOverrideActive ? Colors.red[700] : Colors.orange[300],
+      color: Colors.orange[300],
       padding: increasedPadding,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,

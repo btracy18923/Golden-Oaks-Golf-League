@@ -7,6 +7,8 @@ import '../../config/app_config.dart';
 import '../../services/device_detection_service.dart';
 import '../../services/UI/button_bar_UI_service.dart';
 import '../../services/firebase_upload_service.dart';
+import '../../services/handicap_calculation_service.dart';
+import '../../services/error_log_service.dart';
 
 class WednesdayPlayerScoresScreen extends StatefulWidget {
   final League? league;
@@ -19,12 +21,14 @@ class WednesdayPlayerScoresScreen extends StatefulWidget {
 
 class _WednesdayPlayerScoresScreenState extends State<WednesdayPlayerScoresScreen> {
   final DatabaseHelper _databaseHelper = DatabaseHelper();
+  final FirebaseUploadService _firebaseUploadService = FirebaseUploadService();
   League _selectedLeague = League.wednesday;
   String? _selectedPlayer;
   List<Map<String, dynamic>> _players = [];
   List<Map<String, dynamic>> _scores = [];
   int? _selectedScoreIndex;
   bool _showAddScoreRow = false;
+  DateTime? _insertDate;
   final Set<int> _unlockedScoreIds = {};
 
   // Controllers for adding new scores
@@ -115,9 +119,159 @@ class _WednesdayPlayerScoresScreenState extends State<WednesdayPlayerScoresScree
       _selectedPlayer = playerLast;
       _selectedScoreIndex = null;
       _showAddScoreRow = false;
+      _insertDate = null;
+      _grossScoreController.clear();
       _unlockedScoreIds.clear();
     });
     _loadPlayerScores(playerLast);
+  }
+
+  void _startInsertScore() {
+    setState(() {
+      _showAddScoreRow = true;
+      _insertDate = DateTime.now();
+      _grossScoreController.clear();
+    });
+  }
+
+  void _cancelInsertScore() {
+    setState(() {
+      _showAddScoreRow = false;
+      _insertDate = null;
+      _grossScoreController.clear();
+    });
+  }
+
+  Future<void> _pickInsertDate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _insertDate ?? now,
+      firstDate: DateTime(now.year - 2),
+      lastDate: now,
+    );
+    if (picked != null) {
+      setState(() {
+        _insertDate = picked;
+      });
+    }
+  }
+
+  /// Inserts a manually-entered score for the currently selected player.
+  /// Reuses the same insert path (and duplicate-date handling) as a normal
+  /// Save Results, then recalculates this player's handicap so New HC / Pad#
+  /// populate immediately instead of staying blank until a manual recalc.
+  Future<void> _insertManualScore() async {
+    if (_selectedPlayer == null) return;
+
+    final grossText = _grossScoreController.text.trim();
+    if (grossText.isEmpty) {
+      _showErrorDialog('Please enter a Match Gross score.');
+      return;
+    }
+    final grossScore = int.tryParse(grossText);
+    if (grossScore == null) {
+      _showErrorDialog('Match Gross score must be a number.');
+      return;
+    }
+
+    final dbPlayer = _players.firstWhere(
+      (p) => p['last'] == _selectedPlayer,
+      orElse: () => <String, dynamic>{},
+    );
+    if (dbPlayer.isEmpty) {
+      _showErrorDialog('Could not find player record.');
+      return;
+    }
+
+    final date = _insertDate ?? DateTime.now();
+    final dateStr = '${date.year.toString().padLeft(4, '0')}-'
+        '${date.month.toString().padLeft(2, '0')}-'
+        '${date.day.toString().padLeft(2, '0')}';
+    final playerId = dbPlayer['player_number'] as int;
+    final playerName = _selectedPlayer!;
+
+    try {
+      final scoreData = <String, dynamic>{
+        'player_id': playerId,
+        'name': playerName,
+        'date_played': dateStr,
+        'golf_course': 'The Hideout',
+        'handicap': (dbPlayer['HC'] as num?)?.toDouble() ?? 0.0,
+        'gross_score': grossScore,
+        'close_pin_winnings': 0.0,
+        'single_winnings': 0.0,
+        'group_winnings': 0.0,
+      };
+
+      final insertResult = await _databaseHelper.insertScoreLeague(scoreData, League.wednesday);
+      final deletedScores = insertResult['deletedScores'] as List<Map<String, dynamic>>;
+
+      await _recalculateHandicapForPlayer(playerId, playerName);
+
+      await _firebaseUploadService.uploadPlayerScoresTableWithQueue(League.wednesday);
+      // Scoped to just this one player — a full-roster push would also
+      // re-upload every other Wednesday player from this device's local
+      // cache, which may be stale for players this device didn't touch.
+      final updatedPlayer = await _databaseHelper.getPlayer(playerId);
+      if (updatedPlayer != null) {
+        await _firebaseUploadService.uploadPlayersWithQueue(League.wednesday, [updatedPlayer]);
+      }
+      if (deletedScores.isNotEmpty) {
+        await _firebaseUploadService.deletePlayerScoresFromFirebase(deletedScores, League.wednesday);
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _showAddScoreRow = false;
+        _insertDate = null;
+        _grossScoreController.clear();
+      });
+
+      await _loadPlayerScores(playerName);
+      await _loadPlayers();
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Score inserted successfully.'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      await ErrorLogService().logError('Wednesday Manual Score Insert ($playerName)', e);
+      if (mounted) _showErrorDialog('Error inserting score: $e');
+    }
+  }
+
+  /// Recalculates a single player's handicap from their recent score history
+  /// (same algorithm as "Recalculate All Handicaps") and writes New HC /
+  /// Pad# onto their most recent score record.
+  Future<void> _recalculateHandicapForPlayer(int playerId, String playerName) async {
+    try {
+      final scores = await _databaseHelper.getPlayerRecentScores(playerId, League.wednesday, limit: 6);
+      final grossScores = scores
+          .where((s) => s['gross_score'] != null)
+          .map((s) => (s['gross_score'] as num).toInt())
+          .toList();
+      if (grossScores.isEmpty) return;
+
+      final padCount = 6 - grossScores.length.clamp(0, 6);
+      final handicapService = HandicapCalculationService();
+      final newHandicap = handicapService.calculateWednesdayHandicap(grossScores: grossScores);
+
+      await _databaseHelper.updatePlayerHandicap(playerId, newHandicap, League.wednesday);
+
+      final mostRecentScoreId = scores.first['id'] as int?;
+      if (mostRecentScoreId != null) {
+        await _databaseHelper.updateScoreField(mostRecentScoreId, 'new_hc', newHandicap, League.wednesday);
+        await _databaseHelper.updateScoreField(mostRecentScoreId, 'pad_count', padCount, League.wednesday);
+      }
+    } catch (e) {
+      debugPrint('Error recalculating handicap for $playerName: $e');
+      await ErrorLogService().logError('Wednesday Manual Score Insert - HC Recalc ($playerName)', e);
+    }
   }
 
 
@@ -307,12 +461,45 @@ class _WednesdayPlayerScoresScreenState extends State<WednesdayPlayerScoresScree
     return Row(
       children: [
         _buildFlexDataCell(_selectedPlayer ?? '', 16, isCompact: isCompact),
-        _buildFlexDataCell(_getCurrentDateMMDDYY(), 12, isCompact: isCompact),
+        _buildInsertDateCell(isCompact: isCompact),
         _buildFlexDataCell('', 10, isCompact: isCompact), // Pad# â€” calculated on save
-        _buildFlexEditableCellWithBorder(_handicapController, _handicapFocus, 12, TextInputType.number, isCompact: isCompact),
+        _buildFlexDataCell('', 12, isCompact: isCompact), // Start HC â€” taken from player's current HC on save
         _buildFlexEditableCellWithBorder(_grossScoreController, _grossScoreFocus, 12, TextInputType.number, isCompact: isCompact),
         _buildFlexDataCell('', 15, isCompact: isCompact), // New HC â€” calculated on save
       ],
+    );
+  }
+
+  /// Tappable Date cell for the manual-insert row — opens a date picker
+  /// instead of free-text entry to keep the stored date format valid.
+  Widget _buildInsertDateCell({bool isCompact = false}) {
+    final dateText = _insertDate != null
+        ? _formatDateToMMDDYY(_insertDate!.toIso8601String())
+        : _getCurrentDateMMDDYY();
+
+    return Expanded(
+      flex: 12,
+      child: GestureDetector(
+        onTap: _pickInsertDate,
+        child: Container(
+          height: isCompact ? 35 : 30,
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.black, width: 0.5),
+            color: Colors.white,
+          ),
+          child: Center(
+            child: Text(
+              dateText,
+              style: TextStyle(
+                fontSize: ResponsiveTypography.getSmall(context) - 3,
+                decoration: TextDecoration.underline,
+                color: Colors.blue[800],
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -520,7 +707,7 @@ class _WednesdayPlayerScoresScreenState extends State<WednesdayPlayerScoresScree
         title: Text('Player Scores - ${_getLeagueDisplayName()} League- ${AppConfig.versionDate}',
           style: ResponsiveTypography.appBarTitleStyle(context, color: Colors.white)),
         centerTitle: true,
-        backgroundColor: FirebaseUploadService.anyAdminOverrideActive ? Colors.red[700] : Colors.orange[700],
+        backgroundColor: Colors.orange[700],
         foregroundColor: Colors.white,
       ),
       resizeToAvoidBottomInset: false,
@@ -547,7 +734,7 @@ class _WednesdayPlayerScoresScreenState extends State<WednesdayPlayerScoresScree
         title: Text('Player Scores - ${_getLeagueDisplayName()} League- ${AppConfig.versionDate}',
           style: ResponsiveTypography.appBarTitleStyle(context, color: Colors.white)),
         centerTitle: true,
-        backgroundColor: FirebaseUploadService.anyAdminOverrideActive ? Colors.red[700] : Colors.orange[700],
+        backgroundColor: Colors.orange[700],
         foregroundColor: Colors.white,
       ),
       resizeToAvoidBottomInset: false,
@@ -661,6 +848,8 @@ class _WednesdayPlayerScoresScreenState extends State<WednesdayPlayerScoresScree
   }
 
   Widget _buildPhoneButtonBar() {
+    final canInsert = _selectedPlayer != null && !_showAddScoreRow;
+
     return ButtonBarUIService.buildButtonBar(
       context,
       backgroundColor: Colors.white,
@@ -670,12 +859,35 @@ class _WednesdayPlayerScoresScreenState extends State<WednesdayPlayerScoresScree
           context,
           text: '<---- MainMenu',
           color: Colors.blue[300]!,
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: _showAddScoreRow ? null : () => Navigator.of(context).pop(),
           flex: 5, // 25% of screen width (5 out of 20 total flex units) - matches player_profile_screen
         ),
-        const Expanded(flex: 5, child: SizedBox()), // Spacer with flex: 5
-        const Expanded(flex: 5, child: SizedBox()), // Spacer with flex: 5
-        const Expanded(flex: 5, child: SizedBox()), // Spacer with flex: 5
+        if (_showAddScoreRow) ...[
+          ButtonBarUIService.buildActionButton(
+            context,
+            text: 'Save New Score',
+            color: Colors.green[400]!,
+            onPressed: _insertManualScore,
+            flex: 10,
+          ),
+          ButtonBarUIService.buildActionButton(
+            context,
+            text: 'Cancel',
+            color: Colors.grey[400]!,
+            onPressed: _cancelInsertScore,
+            flex: 5,
+          ),
+        ] else ...[
+          ButtonBarUIService.buildActionButton(
+            context,
+            text: 'Insert Score',
+            color: canInsert ? Colors.orange[300]! : Colors.grey[400]!,
+            onPressed: canInsert ? _startInsertScore : null,
+            flex: 5, // Spacer with flex: 5
+          ),
+          const Expanded(flex: 5, child: SizedBox()), // Spacer with flex: 5
+          const Expanded(flex: 5, child: SizedBox()), // Spacer with flex: 5
+        ],
       ],
     );
   }

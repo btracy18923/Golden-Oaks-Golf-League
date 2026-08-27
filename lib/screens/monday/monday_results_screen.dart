@@ -11,9 +11,8 @@ import '../main_menu_screen.dart';
 import '../../services/firebase_upload_service.dart';
 import '../../widgets/responsive_wrapper.dart';
 import '../../services/skat_adjustment_service.dart';
-import '../../services/backend_email_service.dart';
-import '../../services/pending_email_service.dart';
-import '../../services/connectivity_service.dart';
+import '../../services/results_email_verification_service.dart';
+import '../../services/error_log_service.dart';
 
 class MondayResultsScreen extends StatefulWidget {
   const MondayResultsScreen({super.key});
@@ -78,46 +77,43 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
 
       // CRITICAL: Check for duplicate dates BEFORE saving anything
       // If ANY player already has a score for today, abort the entire save operation
-      // Only check if duplicate dates are NOT allowed
-      if (!DatabaseHelper.allowDuplicateDates) {
-        bool duplicateFound = false;
-        for (var player in allSelectedPlayers) {
-          final dbPlayer = allDbPlayers.firstWhere(
-            (p) => p['last'] == player.name,
-            orElse: () => <String, dynamic>{}
-          );
+      bool duplicateFound = false;
+      for (var player in allSelectedPlayers) {
+        final dbPlayer = allDbPlayers.firstWhere(
+          (p) => p['last'] == player.name,
+          orElse: () => <String, dynamic>{}
+        );
 
-          if (dbPlayer.isNotEmpty) {
-            final playerId = dbPlayer['player_number'];
-            final existingScoreForDate = await _databaseHelper.getPlayerScoreByDate(playerId, currentDate, League.monday);
+        if (dbPlayer.isNotEmpty) {
+          final playerId = dbPlayer['player_number'];
+          final existingScoreForDate = await _databaseHelper.getPlayerScoreByDate(playerId, currentDate, League.monday);
 
-            if (existingScoreForDate != null) {
-              duplicateFound = true;
-              break; // Stop checking as soon as we find one duplicate
-            }
+          if (existingScoreForDate != null) {
+            duplicateFound = true;
+            break; // Stop checking as soon as we find one duplicate
           }
         }
+      }
 
-        // If duplicate date found, show error and DO NOT SAVE
-        if (duplicateFound) {
-          if (!mounted) return;
-          final screenSize = MediaQuery.of(context).size;
-          final is6InchPhone = screenSize.width <= 900;
-          final is8InchTablet = screenSize.width > 900 && screenSize.width <= 1200;
-          final double fontSize = is6InchPhone ? 14 : (is8InchTablet ? 16 : 34);
+      // If duplicate date found, show error and DO NOT SAVE
+      if (duplicateFound) {
+        if (!mounted) return;
+        final screenSize = MediaQuery.of(context).size;
+        final is6InchPhone = screenSize.width <= 900;
+        final is8InchTablet = screenSize.width > 900 && screenSize.width <= 1200;
+        final double fontSize = is6InchPhone ? 14 : (is8InchTablet ? 16 : 34);
 
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Duplicate Play Dates - SKAT data not saved',
-                style: TextStyle(fontSize: fontSize + 10),
-              ),
-              backgroundColor: Colors.red,
-              duration: const Duration(seconds: 5),
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Duplicate Play Dates - SKAT data not saved',
+              style: TextStyle(fontSize: fontSize + 10),
             ),
-          );
-          return; // STOP HERE - Do not save to database or Firebase
-        }
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+        return; // STOP HERE - Do not save to database or Firebase
       }
 
       // STEP A1: Create initial rows for all selected players
@@ -224,8 +220,31 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
         }
       }
 
-      // Upload player profile data to Firebase (includes updated SKAT #)
-      await _firebaseUploadService.uploadPlayerTableWithQueue(League.monday);
+      // Upload player profile data to Firebase (includes updated SKAT #).
+      // Scoped to just the players who played this round — NOT a full-roster
+      // push. This device's local cache for every OTHER Monday player may be
+      // stale (e.g. an admin's phone that hasn't re-synced since someone
+      // else's SKAT# changed elsewhere), and a full-roster push would
+      // silently overwrite those players' correct Firebase values with this
+      // device's stale copy.
+      final touchedPlayers = <Map<String, dynamic>>[];
+      for (final player in allSelectedPlayers) {
+        final dbPlayer = allDbPlayers.firstWhere(
+          (p) => p['last'] == player.name,
+          orElse: () => <String, dynamic>{},
+        );
+        if (dbPlayer.isEmpty) continue;
+        final fresh = await _databaseHelper.getPlayer(dbPlayer['player_number']);
+        if (fresh != null) touchedPlayers.add(fresh);
+      }
+      final profileUploadSuccess = await _firebaseUploadService.uploadPlayersWithQueue(League.monday, touchedPlayers);
+      if (!profileUploadSuccess) {
+        debugPrint('WARNING: Failed to upload updated player profiles to Firebase');
+        await ErrorLogService().logError(
+          'Monday Player Profile Upload',
+          'uploadPlayersWithQueue returned false for $currentDate',
+        );
+      }
 
       // Upload NEW scores to Firebase FIRST
       await _uploadScoresToFirebase();
@@ -240,11 +259,20 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
       _saveResultsSummaryToFirebase(allSelectedPlayers, currentDate);
 
       // Build full email body (including roster) here while still in the awaited save,
-      // then fire the send unawaited so it doesn't block navigation.
+      // then fire the verify-and-send unawaited so it doesn't block navigation.
+      // The email won't actually go out until a Firestore read-back confirms
+      // the SK# values above really landed in Firebase — see
+      // ResultsEmailVerificationService.
       final emailSubject = 'Golden Oaks Monday League Results - $currentDate';
       final emailBody = _buildResultsEmailBody(allSelectedPlayers, currentDate)
           + await _buildSkatRoster();
-      _sendResultsEmail(emailSubject, emailBody);
+      final verifyManifest = await _buildSkatVerifyManifest(allSelectedPlayers);
+      ResultsEmailVerificationService().verifyAndSendOrQueue(
+        league: League.monday,
+        subject: emailSubject,
+        body: emailBody,
+        verifyManifest: verifyManifest,
+      );
 
       // Show success message
       if (!mounted) return;
@@ -256,6 +284,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
         ),
       );
     } catch (e) {
+      await ErrorLogService().logError('Monday Save Results', e);
       // Show error message
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -268,12 +297,37 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
     }
   }
 
+  /// Builds the {'name', 'expected'} manifest used to verify that each
+  /// played player's current SK# actually landed in Firebase, by re-reading
+  /// their fresh (post-STEP-A5) skat_number straight from the local DB.
+  Future<List<Map<String, dynamic>>> _buildSkatVerifyManifest(List<PlayerData> allSelectedPlayers) async {
+    final freshPlayers = await _databaseHelper.getPlayersByLeague(League.monday);
+    final manifest = <Map<String, dynamic>>[];
+    final seen = <String>{};
+    for (final player in allSelectedPlayers) {
+      if (!seen.add(player.name)) continue;
+      final freshPlayer = freshPlayers.firstWhere(
+        (p) => p['last'] == player.name,
+        orElse: () => <String, dynamic>{},
+      );
+      if (freshPlayer.isNotEmpty && freshPlayer['skat_number'] != null) {
+        manifest.add({'name': player.name, 'expected': freshPlayer['skat_number']});
+      }
+    }
+    return manifest;
+  }
+
   /// Upload player scores to Firebase after saving to database
   Future<void> _uploadScoresToFirebase() async {
     try {
-      await _firebaseUploadService.uploadPlayerScoresTableWithQueue(League.monday);
+      final success = await _firebaseUploadService.uploadPlayerScoresTableWithQueue(League.monday);
+      if (!success) {
+        debugPrint('Failed to upload scores to Firebase');
+        await ErrorLogService().logError('Monday Scores Upload', 'uploadPlayerScoresTableWithQueue returned false');
+      }
     } catch (e) {
       // Error uploading/queuing player scores - will retry on next sync
+      await ErrorLogService().logError('Monday Scores Upload', e);
     }
   }
 
@@ -339,24 +393,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
       });
     } catch (e) {
       debugPrint('Failed to save Monday results summary: $e');
-    }
-  }
-
-  /// Sends the Monday results email to admins.
-  /// Subject and body (including roster) are pre-built by the caller.
-  /// If offline, saves the email to SharedPreferences for retry when WiFi reconnects.
-  Future<void> _sendResultsEmail(String subject, String body) async {
-    try {
-      final isOnline = await ConnectivityService().isWiFiConnected();
-      if (isOnline) {
-        await BackendEmailService().sendMondayResultsEmail(subject: subject, body: body);
-        debugPrint('Monday results email sent successfully');
-      } else {
-        await PendingEmailService().savePendingMondayEmail(subject: subject, body: body);
-        debugPrint('Device offline — Monday results email queued for retry on WiFi reconnect');
-      }
-    } catch (e) {
-      debugPrint('Error sending Monday results email: $e');
+      await ErrorLogService().logError('Monday Results Summary (Firebase M_results/$date)', e);
     }
   }
 
@@ -369,7 +406,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
           (a['last'] ?? '').toString().compareTo((b['last'] ?? '').toString()));
       final buffer = StringBuffer();
       buffer.writeln('');
-      buffer.writeln('SKAT ROSTER');
+      buffer.writeln('New Skat Numbers');
       buffer.writeln('-' * 30);
       for (final player in allPlayers) {
         final last = player['last']?.toString() ?? '';
@@ -382,7 +419,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
       return buffer.toString();
     } catch (e) {
       debugPrint('Failed to build skat roster: $e');
-      return '\n\nSKAT ROSTER\n[Error loading roster: $e]\n';
+      return '\n\nNew Skat Numbers\n[Error loading roster: $e]\n';
     }
   }
 
@@ -485,10 +522,12 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
         debugPrint('Successfully deleted ${scoresToDelete.length} old scores from Firebase');
       } else {
         debugPrint('Failed to delete old scores from Firebase');
+        await ErrorLogService().logError('Monday Old Scores Delete', 'deletePlayerScoresFromFirebase returned false');
       }
     } catch (e) {
       debugPrint('Error deleting scores from Firebase: $e');
-      // Log error but don't show to user - deletion failure shouldn't block save operation
+      // Don't show to user - deletion failure shouldn't block save operation, but do record it.
+      await ErrorLogService().logError('Monday Old Scores Delete', e);
     }
   }
 
@@ -563,7 +602,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
             fontSize: 24,
           ),
         ),
-        backgroundColor: FirebaseUploadService.anyAdminOverrideActive ? Colors.red[700] : Colors.blue[300],
+        backgroundColor: Colors.blue[300],
         foregroundColor: Colors.black,
         centerTitle: true,
         automaticallyImplyLeading: false,
@@ -620,7 +659,7 @@ class _MondayResultsScreenState extends State<MondayResultsScreen> {
             fontSize: 24,
           ),
         ),
-        backgroundColor: FirebaseUploadService.anyAdminOverrideActive ? Colors.red[700] : Colors.green[700],
+        backgroundColor: Colors.green[700],
         foregroundColor: Colors.white,
         centerTitle: true,
         automaticallyImplyLeading: false,
