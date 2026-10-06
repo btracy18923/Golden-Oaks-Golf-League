@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:convert';
+import 'dart:math';
 import '../../services/database_helper.dart';
 import '../../config/app_config.dart';
 import '../../services/device_detection_service.dart';
@@ -24,7 +25,16 @@ class _WednesdayPlayerSelectionScreenState extends State<WednesdayPlayerSelectio
   Set<int> selectedPlayerIds = <int>{};
   List<List<Map<String, dynamic>>>? _cachedColumns;
   bool isLoading = true;
-  
+
+  // Tracks whether "Enter Gross" has already performed its automatic random
+  // shuffle for the current player selection. Only the first "Enter Gross"
+  // press (per clean selection) shuffles; subsequent presses re-use the
+  // existing grouping so an Admin bouncing back and forth doesn't keep
+  // reshuffling. Cleared whenever the selection goes back to empty (a
+  // "clean" Select Players screen).
+  bool _hasAutoShuffledForEnterGross = false;
+  List<Map<String, dynamic>>? _cachedShuffledPlayers;
+
   // Hard-coded Wednesday league colors and values
   static const Color _leagueColor = Color.fromRGBO(255, 214, 0, 1); // Gold
 
@@ -140,13 +150,21 @@ class _WednesdayPlayerSelectionScreenState extends State<WednesdayPlayerSelectio
       } else {
         selectedPlayerIds.add(playerId);
       }
+      if (selectedPlayerIds.isEmpty) {
+        // Clean slate - allow "Enter Gross" to auto-shuffle again next time
+        _hasAutoShuffledForEnterGross = false;
+        _cachedShuffledPlayers = null;
+      }
     });
   }
-  
+
   void selectAllPlayers() {
     setState(() {
       if (selectedPlayerIds.length == players.length) {
         selectedPlayerIds.clear();
+        // Clean slate - allow "Enter Gross" to auto-shuffle again next time
+        _hasAutoShuffledForEnterGross = false;
+        _cachedShuffledPlayers = null;
       } else {
         selectedPlayerIds = players.map((p) => p['player_number'] as int).toSet();
       }
@@ -388,10 +406,34 @@ class _WednesdayPlayerSelectionScreenState extends State<WednesdayPlayerSelectio
   
   void _navigateToEnterScores() {
     try {
-      // Get selected players
-      List<Map<String, dynamic>> selectedPlayers = players
-          .where((player) => selectedPlayerIds.contains(player['player_number'] as int))
-          .toList();
+      // Get selected players, randomly shuffled so the groups are randomized
+      // automatically in case the Admin forgets to use "Adjust Players".
+      // This only happens once per clean selection: if the Admin goes back
+      // to this screen and presses "Enter Gross" again, the previous
+      // shuffled order is reused instead of shuffling again (players
+      // added/removed since are slotted in without disturbing the rest).
+      List<Map<String, dynamic>> selectedPlayers;
+      if (_hasAutoShuffledForEnterGross && _cachedShuffledPlayers != null) {
+        final cachedIds = _cachedShuffledPlayers!
+            .map((p) => p['player_number'] as int)
+            .toSet();
+        selectedPlayers = _cachedShuffledPlayers!
+            .where((p) => selectedPlayerIds.contains(p['player_number'] as int))
+            .toList();
+        for (var player in players) {
+          final id = player['player_number'] as int;
+          if (selectedPlayerIds.contains(id) && !cachedIds.contains(id)) {
+            selectedPlayers.add(player);
+          }
+        }
+      } else {
+        selectedPlayers = players
+            .where((player) => selectedPlayerIds.contains(player['player_number'] as int))
+            .toList();
+        selectedPlayers.shuffle(Random());
+        _hasAutoShuffledForEnterGross = true;
+      }
+      _cachedShuffledPlayers = List.from(selectedPlayers);
 
       // Organize players into groups, ensuring each group has at least 3 players
       List<List<Map<String, dynamic>?>> groups = [];

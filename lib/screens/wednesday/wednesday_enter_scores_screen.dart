@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:convert';
-import 'dart:math';
 import '../popup_utils.dart';
 import '../../services/shared/league_purse_service.dart';
 import '../../services/csv_payout_service.dart';
@@ -392,92 +391,7 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
     }
   }
 
-  // ============== SHUFFLE FUNCTIONALITY ==============
-
-  /// Handles the Shuffle button press — completely random grouping.
-  void _handleShuffle() {
-    List<Map<String, dynamic>> allPlayers = [];
-    for (int groupIndex = 0; groupIndex < groups.length; groupIndex++) {
-      for (var player in groups[groupIndex]) {
-        if (player != null) {
-          allPlayers.add(Map<String, dynamic>.from(player));
-        }
-      }
-    }
-
-    if (allPlayers.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No players to shuffle'),
-          duration: Duration(seconds: 2),
-        ),
-      );
-      return;
-    }
-
-    final totalPlayers = allPlayers.length;
-
-    if (totalPlayers < 4) {
-      setState(() {
-        for (int i = 0; i < groups.length; i++) {
-          groups[i].clear();
-          groups[i] = [null, null, null, null];
-        }
-        for (int i = 0; i < allPlayers.length; i++) {
-          groups[0][i] = allPlayers[i];
-        }
-      });
-      _createControllersForPlayers();
-      return;
-    }
-
-    // Completely random shuffle
-    allPlayers.shuffle(Random());
-
-    // Calculate number of groups
-    int numGroups;
-    if (totalPlayers <= 4) {
-      numGroups = 1;
-    } else if (totalPlayers <= 8) {
-      numGroups = 2;
-    } else if (totalPlayers <= 12) {
-      numGroups = 3;
-    } else if (totalPlayers <= 16) {
-      numGroups = 4;
-    } else if (totalPlayers <= 20) {
-      numGroups = 5;
-    } else if (totalPlayers <= 24) {
-      numGroups = 6;
-    } else if (totalPlayers <= 28) {
-      numGroups = 7;
-    } else if (totalPlayers <= 32) {
-      numGroups = 8;
-    } else if (totalPlayers <= 36) {
-      numGroups = 9;
-    } else {
-      numGroups = 10;
-    }
-
-    int playersPerGroup = totalPlayers ~/ numGroups;
-    int remainingPlayers = totalPlayers % numGroups;
-    int playerIdx = 0;
-
-    setState(() {
-      for (int i = 0; i < groups.length; i++) {
-        groups[i].clear();
-        groups[i] = [null, null, null, null];
-      }
-
-      for (int groupIndex = 0; groupIndex < numGroups; groupIndex++) {
-        int groupSize = playersPerGroup + (groupIndex < remainingPlayers ? 1 : 0);
-        for (int slot = 0; slot < groupSize && slot < 4; slot++) {
-          groups[groupIndex][slot] = allPlayers[playerIdx++];
-        }
-      }
-    });
-
-    _createControllersForPlayers();
-  }
+  // ============== DELETE PLAYER ==============
 
   /// Returns true if a player is selected for deletion (triple-clicked)
   bool _isDeleteMode() {
@@ -590,51 +504,13 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
     );
   }
 
-  /// Gets the text for the shuffle/delete button
-  String _getShuffleButtonText() {
-    if (_isDeleteMode()) return 'Delete';
-    return 'Shuffle';
+  /// Delete button is greyed out until a player is triple-tapped
+  Color _getDeleteButtonColor() {
+    return _isDeleteMode() ? Colors.red : Colors.grey[400]!;
   }
 
-  /// Gets the color for the shuffle button based on score data or group processing
-  Color _getShuffleButtonColor() {
-    if (_isDeleteMode()) return Colors.red;
-    if (_hasAnyScoreData() || groupsProcessed) {
-      return Colors.grey[400]!;
-    }
-    return Colors.purple[200]!;
-  }
-
-  /// Gets the handler for the shuffle button based on score data or group processing
-  VoidCallback? _getShuffleButtonHandler() {
-    if (_isDeleteMode()) return _handleDeletePlayer;
-    if (_hasAnyScoreData()) {
-      return _handleShuffleDisabledDueToScores;
-    }
-    if (groupsProcessed) {
-      return _handleShuffleDisabledDueToGroupProcessing;
-    }
-    return _handleShuffle;
-  }
-
-  /// Handles when shuffle button is pressed but disabled due to score data
-  void _handleShuffleDisabledDueToScores() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Cannot shuffle players after score data has been entered'),
-        duration: Duration(seconds: 2),
-      ),
-    );
-  }
-
-  /// Handles when shuffle button is pressed but disabled due to group processing
-  void _handleShuffleDisabledDueToGroupProcessing() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Cannot shuffle players after groups have been processed'),
-        duration: Duration(seconds: 2),
-      ),
-    );
+  VoidCallback? _getDeleteButtonHandler() {
+    return _isDeleteMode() ? _handleDeletePlayer : null;
   }
 
   // ============== SWAP FUNCTIONALITY ==============
@@ -1422,12 +1298,12 @@ class _WednesdayEnterScoresScreenState extends State<WednesdayEnterScoresScreen>
       onPressed: _handleCloseAdjustPlayersOverlay,
     ));
 
-    // Shuffle/Delete button
+    // Delete button (active after triple-tapping a player)
     buttons.add(ButtonBarUIService.buildActionButton(
       context,
-      text: _getShuffleButtonText(),
-      color: _getShuffleButtonColor(),
-      onPressed: _getShuffleButtonHandler(),
+      text: 'Delete',
+      color: _getDeleteButtonColor(),
+      onPressed: _getDeleteButtonHandler(),
     ));
 
     // Swap button

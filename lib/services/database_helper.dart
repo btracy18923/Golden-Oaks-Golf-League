@@ -1070,7 +1070,7 @@ class DatabaseHelper {
       // Insert the new score (or if duplicates are allowed, or if it's Monday league)
       insertId = await txn.insert(tableName, score);
 
-      // Clean up old scores to maintain 15 entry limit
+      // Clean up old scores to maintain the maxScoresPerPlayer limit
       // This returns the list of scores that were deleted
       deletedScores = await _cleanupOldScoresLeagueInTransaction(txn, score['player_id'] as int, tableName);
     });
@@ -1155,6 +1155,9 @@ class DatabaseHelper {
     }
   }
 
+  // Rounds kept per player in each league's score table (Monday and Wednesday)
+  static const int maxScoresPerPlayer = 20;
+
   // Transaction-safe cleanup method for league tables
   // Returns list of deleted scores for Firebase sync
   Future<List<Map<String, dynamic>>> _cleanupOldScoresLeagueInTransaction(Transaction txn, int playerId, String tableName) async {
@@ -1167,15 +1170,15 @@ class DatabaseHelper {
 
     int totalScores = countResult.first['count'] as int;
 
-    // If more than 15 scores, delete the oldest ones
-    if (totalScores > 15) {
+    // If more than the limit, delete the oldest ones
+    if (totalScores > maxScoresPerPlayer) {
       // First, get the scores that will be deleted for Firebase sync
       List<Map<String, dynamic>> scoresToDelete = await txn.rawQuery('''
         SELECT * FROM $tableName
         WHERE player_id = ?
         ORDER BY id ASC
         LIMIT ?
-      ''', [playerId, totalScores - 15]);
+      ''', [playerId, totalScores - maxScoresPerPlayer]);
 
       // Then delete them from local database
       await txn.rawQuery('''
@@ -1186,7 +1189,7 @@ class DatabaseHelper {
           ORDER BY id ASC
           LIMIT ?
         )
-      ''', [playerId, totalScores - 15]);
+      ''', [playerId, totalScores - maxScoresPerPlayer]);
 
       return scoresToDelete;
     }

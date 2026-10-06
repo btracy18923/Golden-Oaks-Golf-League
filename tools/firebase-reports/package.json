@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "monday-report": "node monday_match_report.js"
+    "monday-report": "node monday_match_report.js",
+    "wednesday-season": "node wednesday_season_report.js"
   },
   "keywords": [],
   "author": "",

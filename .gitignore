@@ -53,3 +53,4 @@ app.*.map.json
 tools/firebase-reports/serviceAccountKey.json
 tools/firebase-reports/node_modules/
 tools/firebase-reports/*.csv
+tools/firebase-reports/*.html

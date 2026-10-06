@@ -3710,6 +3710,59 @@ Your current HC is displayed when you log in.
             }
         };
 
+        // A table copied from a web page or spreadsheet pastes into the
+        // message box as tab-separated lines. Plain-text email squeezes those
+        // columns together, so when the message has tabs, also send an HTML
+        // version that turns each run of tabbed lines into a real table (first
+        // row = header row) and shows the message's first line as a large
+        // heading. Returns null for ordinary messages.
+        function buildBlastHtml(message) {
+            if (!message.includes('\t')) return null;
+
+            const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            const isNumber = (s) => /^\s*-?\$?[\d,]*\.?\d+\s*$/.test(s);
+            const th = 'background:#2e5e2e;color:#ffffff;padding:8px 12px;border:1px solid #999;text-align:center;white-space:nowrap;';
+            const td = 'padding:8px 12px;border:1px solid #ccc;white-space:nowrap;';
+
+            const parts = [];
+            let tableRows = [];
+            const flushTable = () => {
+                if (tableRows.length === 0) return;
+                const rowsHtml = tableRows.map((cells, i) => {
+                    if (i === 0) {
+                        return '<tr>' + cells.map(c => `<th style="${th}">${esc(c.trim())}</th>`).join('') + '</tr>';
+                    }
+                    const bg = i % 2 === 0 ? 'background:#f2f7f2;' : 'background:#ffffff;';
+                    return '<tr>' + cells.map(c =>
+                        `<td style="${td}${bg}text-align:${isNumber(c) ? 'right' : 'left'};">${esc(c.trim())}</td>`
+                    ).join('') + '</tr>';
+                }).join('');
+                parts.push(`<table cellpadding="8" cellspacing="0" border="1" style="border-collapse:collapse;font-size:14px;border-color:#999;margin:8px 0;">${rowsHtml}</table>`);
+                tableRows = [];
+            };
+
+            const lines = message.split(/\r?\n/);
+            // The first line, when it isn't part of the table, is the heading:
+            // twice the normal size with a blank line under it
+            if (lines.length > 0 && !lines[0].includes('\t') && lines[0].trim() !== '') {
+                parts.push(`<div style="font-size:28px;font-weight:bold;color:#2e5e2e;">${esc(lines.shift().trim())}</div>`);
+                parts.push('<br>');
+                while (lines.length > 0 && lines[0].trim() === '') lines.shift();
+            }
+
+            for (const line of lines) {
+                if (line.includes('\t')) {
+                    tableRows.push(line.split('\t'));
+                } else {
+                    flushTable();
+                    parts.push(line.trim() === '' ? '<br>' : `<div>${esc(line)}</div>`);
+                }
+            }
+            flushTable();
+
+            return `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#222;">${parts.join('\n')}</div>`;
+        }
+
         document.getElementById('emailBlastForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             if (!isAdmin) { alert('You must be an administrator to send email blasts'); return; }
@@ -3748,13 +3801,15 @@ Your current HC is displayed when you log in.
                 sendBtn.disabled = true;
                 sendBtn.textContent = 'Sending...';
 
+                const html = buildBlastHtml(message);
                 const sgResponse = await fetch('/.netlify/functions/send-email', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         recipients: uniqueEmails,
                         subject: subject,
-                        text: message
+                        text: message,
+                        ...(html ? { html } : {})
                     })
                 });
 

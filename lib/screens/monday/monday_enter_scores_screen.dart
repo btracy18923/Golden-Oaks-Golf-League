@@ -1190,60 +1190,6 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     Navigator.pop(context);
   }
 
-  /// Handles the Shuffle button press to randomize player order
-  void _handleShuffle() {
-    
-    // Collect all players from all groups
-    List<PlayerData> allPlayers = [];
-    List<int> groupSizes = [];
-    
-    // Store original group sizes and collect all players
-    for (int groupIndex = 0; groupIndex < groups.length; groupIndex++) {
-      int groupSize = groups[groupIndex].length;
-      if (groupSize > 0) {
-        groupSizes.add(groupSize);
-        allPlayers.addAll(groups[groupIndex]);
-      } else {
-        groupSizes.add(0);
-      }
-    }
-    
-    if (allPlayers.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No players to shuffle'),
-          duration: Duration(seconds: 2),
-        ),
-      );
-      return;
-    }
-    
-    // Shuffle all players randomly
-    final random = Random();
-    allPlayers.shuffle(random);
-    
-    setState(() {
-      // Clear all groups
-      for (int i = 0; i < groups.length; i++) {
-        groups[i].clear();
-      }
-      
-      // Redistribute shuffled players back into groups with original sizes
-      int playerIndex = 0;
-      for (int groupIndex = 0; groupIndex < groupSizes.length; groupIndex++) {
-        int groupSize = groupSizes[groupIndex];
-        for (int i = 0; i < groupSize && playerIndex < allPlayers.length; i++) {
-          groups[groupIndex].add(allPlayers[playerIndex]);
-          playerIndex++;
-        }
-      }
-      
-      // Mark that shuffling occurred in this session
-      _shuffledInCurrentSession = true;
-    });
-  }
-
-
   /// Returns true if a player is selected for deletion (triple-clicked)
   bool _isDeleteMode() {
     return _deleteTargetPlayerName != null && _deleteTargetTapCount >= 3;
@@ -1277,39 +1223,13 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
     _deleteTargetTapCount = 0;
   }
 
-  /// Gets the text for the shuffle/delete button
-  String _getShuffleButtonText() {
-    if (_isDeleteMode()) return 'Delete';
-    return 'Shuffle';
+  /// Delete button is greyed out until a player is triple-tapped
+  Color _getDeleteButtonColor() {
+    return _isDeleteMode() ? Colors.red : Colors.grey[400]!;
   }
 
-  /// Gets the color for the shuffle button based on SKATS data only
-  Color _getShuffleButtonColor() {
-    if (_isDeleteMode()) return Colors.red;
-    if (_hasAnySkatsData()) {
-      return Colors.grey[400]!;
-    }
-    return Colors.purple[200]!;
-  }
-
-  /// Gets the handler for the shuffle button based on SKATS data only
-  VoidCallback _getShuffleButtonHandler() {
-    if (_isDeleteMode()) return _handleDeletePlayer;
-    if (_hasAnySkatsData()) {
-      return _handleShuffleDisabledDueToSkats;
-    }
-    return _handleShuffle;
-  }
-
-
-  /// Handles when shuffle button is pressed but disabled due to SKATS data
-  void _handleShuffleDisabledDueToSkats() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Cannot shuffle players after SKATS data has been entered'),
-        duration: Duration(seconds: 2),
-      ),
-    );
+  VoidCallback? _getDeleteButtonHandler() {
+    return _isDeleteMode() ? _handleDeletePlayer : null;
   }
 
   /// Gets the handler for the SWAP button based on SKATS data
@@ -1553,12 +1473,12 @@ class _MondayEnterScoresScreenState extends State<MondayEnterScoresScreen> {
       onPressed: _handleCloseAdjustPlayersOverlay,
     ));
 
-    // Shuffle/Delete button
+    // Delete button (active after triple-tapping a player)
     buttons.add(ButtonBarUIService.buildActionButton(
       context,
-      text: _getShuffleButtonText(),
-      color: _getShuffleButtonColor(),
-      onPressed: _getShuffleButtonHandler(),
+      text: 'Delete',
+      color: _getDeleteButtonColor(),
+      onPressed: _getDeleteButtonHandler(),
     ));
 
     // Swap button
